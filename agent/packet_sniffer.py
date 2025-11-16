@@ -5,7 +5,7 @@ import re  #  ADD: Missing import for regex validation
 from typing import Callable, Dict, Optional  # Thư viện hỗ trợ kiểu dữ liệu tĩnh
 import os  #  ADD: Manage environment variables for Scapy cache
 import tempfile  #  ADD: Get hệ thống thư mục tạm thời
-
+from pathlib import Path  #  ADD: Path manipulations
 # Cấu hình logger cho module này (cần trước khi cấu hình Scapy)
 logger = logging.getLogger("packet_sniffer")
 
@@ -48,6 +48,73 @@ def _configure_scapy_cache() -> Optional[str]:
 
 
 _SCAPY_CACHE_DIR = _configure_scapy_cache()
+
+def _ensure_pcap_driver() -> None:
+    """Make Scapy work with either WinPcap or Npcap on Windows.
+
+    Scapy chỉ cần tìm thấy ``wpcap.dll`` trong PATH để hoạt động. Npcap và
+    WinPcap đều cung cấp DLL này nhưng thường nằm ở các thư mục khác nhau
+    (``C:\\Windows\\System32\\Npcap``, ``C:\\Program Files\\Npcap``,
+    ``C:\\Program Files\\WinPcap``...). Hàm này dò tìm các vị trí phổ biến và
+    thêm chúng vào PATH/dll search path nếu cần.
+    """
+
+    if os.name != "nt":
+        return
+
+    candidate_dirs = []
+
+    # Các biến môi trường từ installer Npcap/WinPcap (nếu có)
+    for env_var in ["NPCAP_DIR", "WINPCAP_DIR"]:
+        env_path = os.environ.get(env_var)
+        if env_path:
+            candidate_dirs.append(Path(env_path))
+
+    system_root = Path(os.environ.get("SystemRoot", r"C:\\Windows"))
+    program_files = Path(os.environ.get("ProgramFiles", r"C:\\Program Files"))
+    program_files_x86 = Path(os.environ.get("ProgramFiles(x86)", str(program_files)))
+
+    # Các vị trí cài đặt phổ biến của Npcap/WinPcap
+    candidate_dirs.extend(
+        [
+            system_root / "System32" / "Npcap",
+            system_root / "System32",
+            system_root / "SysWOW64" / "Npcap",
+            program_files / "Npcap",
+            program_files_x86 / "Npcap",
+            program_files / "WinPcap",
+            program_files_x86 / "WinPcap",
+        ]
+    )
+
+    added_paths = []
+    for directory in candidate_dirs:
+        wpcap_path = directory / "wpcap.dll"
+        if wpcap_path.exists():
+            # Tránh thêm trùng lặp
+            current_path = os.environ.get("PATH", "")
+            path_parts = current_path.split(os.pathsep)
+            if str(directory) not in path_parts:
+                os.environ["PATH"] = str(directory) + os.pathsep + current_path
+                added_paths.append(directory)
+
+            # Trên Python 3.8+ cần add_dll_directory để nạp DLL ngoài PATH
+            try:
+                if hasattr(os, "add_dll_directory"):
+                    os.add_dll_directory(str(directory))
+            except Exception as exc:  # pragma: no cover - log và tiếp tục
+                logger.debug("Could not add DLL directory %s: %s", directory, exc)
+
+    if added_paths:
+        logger.info("Added pcap driver locations: %s", ", ".join(map(str, added_paths)))
+    else:
+        logger.warning(
+            "wpcap.dll not found in common Npcap/WinPcap locations; "
+            "ensure one of the drivers is installed."
+        )
+
+
+_ensure_pcap_driver()
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, sleep
