@@ -101,6 +101,91 @@ function getLatestLog(agentId) {
     return `[${log.display_time || '---'}] ${log.message || 'N/A'}`;
 }
 
+function normalizeAgentLog(log) {
+    if (!log) return null;
+
+    const displayTime = log.display_time || formatTimestamp(log.timestamp);
+    return {
+        ...log,
+        display_time: displayTime,
+        source_ip: log.source_ip || log.src_ip || 'unknown',
+        dest_ip: log.dest_ip || log.destination || 'unknown',
+        message: log.message || 'N/A'
+    };
+}
+
+function renderAgentLogContent(agentId) {
+    const log = normalizeAgentLog(agentLogs[agentId]);
+
+    if (!log) {
+        return `
+            <div class="agent-log-empty">
+                <i class="fas fa-clock me-2"></i>
+                <span>Đang chờ log real-time...</span>
+            </div>
+        `;
+    }
+
+    const levelClass = (log.level || 'info').toLowerCase();
+    const routeText = (log.source_ip && log.dest_ip)
+        ? `${log.source_ip} → ${log.dest_ip}${log.port ? ':' + log.port : ''}`
+        : '';
+
+    return `
+        <div class="agent-log-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-stream text-primary"></i>
+                <span class="fw-semibold">Last activity</span>
+            </div>
+            <div class="text-muted">
+                <i class="fas fa-clock me-1"></i>${log.display_time || '---'}
+            </div>
+        </div>
+        <div class="agent-log-body">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge rounded-pill log-level ${levelClass}">${log.level || 'INFO'}</span>
+                ${log.action ? `<span class="badge rounded-pill bg-light text-dark border action-badge">${log.action}</span>` : ''}
+            </div>
+            <div class="agent-log-message">${log.message}</div>
+            ${routeText ? `<div class="agent-log-meta text-muted"><i class="fas fa-location-arrow me-1"></i>${routeText}</div>` : ''}
+        </div>
+    `;
+}
+
+function updateAgentLogElement(agentId) {
+    const logElement = document.getElementById(`agent-log-${agentId}`);
+    if (logElement) {
+        logElement.innerHTML = renderAgentLogContent(agentId);
+    }
+}
+
+async function preloadLatestLogsForAgents(agentIds = []) {
+    if (!agentIds.length) return;
+
+    try {
+        const limit = Math.min(Math.max(agentIds.length * 3, 50), 300);
+        const response = await fetch(`/api/logs?limit=${limit}`);
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const latestByAgent = {};
+
+        (data.logs || []).forEach((log) => {
+            if (!log.agent_id) return;
+            if (latestByAgent[log.agent_id]) return;
+            latestByAgent[log.agent_id] = normalizeAgentLog(log);
+        });
+
+        Object.entries(latestByAgent).forEach(([agentId, log]) => {
+            agentLogs[agentId] = log;
+            updateAgentLogElement(agentId);
+        });
+    } catch (error) {
+        console.error('Error preloading latest logs:', error);
+    }
+}
+
 /**
  * Load agents from API
  */
@@ -118,6 +203,7 @@ async function loadAgents() {
             agentsData = data.agents || [];
             console.log(' Loaded agents:', agentsData);
             renderAgents(agentsData);
+            await preloadLatestLogsForAgents(agentsData.map(agent => agent.agent_id).filter(Boolean));
         } else {
             console.error(' Failed to load agents:', agentsResponse.statusText);
             showError('Failed to load agents');
@@ -242,12 +328,9 @@ function renderAgents(agents) {
                                         OS: ${formatOsInfo(agent)}
                                     </small>
                                 </div>
-                                <div class="col-md-6">
-                                    <small class="agent-log text-truncate" id="agent-log-${agent.agent_id}">
-                                        <i class="fas fa-stream me-1"></i>
-                                        ${getLatestLog(agent.agent_id)}
-                                    </small>
                                 </div>
+                            <div class="agent-log-panel" id="agent-log-${agent.agent_id}">
+                                ${renderAgentLogContent(agent.agent_id)}
                             </div>
                             ${agent.agent_version ? `
                                 <div class="mt-1">
@@ -492,14 +575,10 @@ try {
         socket.on('new_log', function(log) {
             if (!log || !log.agent_id) return;
 
-            agentLogs[log.agent_id] = log;
-
-            const logElement = document.getElementById(`agent-log-${log.agent_id}`);
-            if (logElement) {
-                logElement.innerHTML = `<i class="fas fa-stream me-1"></i>[${log.display_time || '---'}] ${log.message || 'N/A'}`;
-            }
+            agentLogs[log.agent_id] = normalizeAgentLog(log);
+            updateAgentLogElement(log.agent_id);
         });
-        
+
     } else {
         console.log(' Socket.IO not available - real-time updates disabled');
     }

@@ -124,6 +124,66 @@
     vertical-align: middle;
 }
 
+.agent-log-panel {
+    background: #f8f9fc;
+    border: 1px dashed #d6d8e1;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 12px;
+}
+
+.agent-log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+.agent-log-body {
+    margin-top: 6px;
+    display: grid;
+    gap: 4px;
+}
+
+.agent-log-message {
+    font-weight: 600;
+    color: #2d3748;
+    word-break: break-word;
+}
+
+.agent-log-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.agent-log-empty {
+    display: flex;
+    align-items: center;
+    color: #6c757d;
+    gap: 6px;
+}
+
+.log-level {
+    background: #e8eaf6;
+    color: #3f51b5;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.log-level.error { background: #fdecea; color: #c0392b; }
+.log-level.warn { background: #fff7e6; color: #b36b00; }
+.log-level.info { background: #e8f5e9; color: #1b5e20; }
+
+.action-badge {
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 4px 10px;
+}
+
 .stats-card {
     background: white;
     border: none;
