@@ -1,5 +1,5 @@
 let agentsData = [];
-
+const agentLogs = {};
 /**
  * Parse timestamp with Vietnam timezone support
  */
@@ -64,6 +64,41 @@ function getStatusInfo(status) {
         default:
             return { class: 'offline', text: 'Unknown', icon: 'question-circle' };
     }
+}
+
+/**
+ * Format OS information for display
+ */
+function formatOsInfo(agent) {
+    const osInfo = agent.os_info || agent.platform;
+
+    if (!osInfo) {
+        return 'Unknown OS';
+    }
+
+    if (typeof osInfo === 'string') {
+        return osInfo;
+    }
+
+    if (typeof osInfo === 'object') {
+        const parts = [osInfo.name || osInfo.platform, osInfo.version, osInfo.arch];
+        const formatted = parts.filter(Boolean).join(' · ');
+        return formatted || 'Unknown OS';
+    }
+
+    return String(osInfo);
+}
+
+/**
+ * Get latest real-time log message for an agent
+ */
+function getLatestLog(agentId) {
+    const log = agentLogs[agentId];
+    if (!log) {
+        return '<span class="text-muted">Đang chờ log real-time...</span>';
+    }
+
+    return `[${log.display_time || '---'}] ${log.message || 'N/A'}`;
 }
 
 /**
@@ -200,6 +235,20 @@ function renderAgents(agents) {
                                     </small>
                                 </div>
                             </div>
+                            <div class="row text-muted mt-2">
+                                <div class="col-md-6">
+                                    <small>
+                                        <i class="fas fa-microchip me-1"></i>
+                                        OS: ${formatOsInfo(agent)}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="agent-log text-truncate" id="agent-log-${agent.agent_id}">
+                                        <i class="fas fa-stream me-1"></i>
+                                        ${getLatestLog(agent.agent_id)}
+                                    </small>
+                                </div>
+                            </div>
                             ${agent.agent_version ? `
                                 <div class="mt-1">
                                     <small class="text-muted">
@@ -214,12 +263,7 @@ function renderAgents(agents) {
                 
                 <div class="col-md-4 text-md-end">
                     <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-info btn-action" 
-                                onclick="pingAgent('${agent.agent_id}')" 
-                                title="Ping Agent">
-                            <i class="fas fa-wifi"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary btn-action" 
+                        <button type="button" class="btn btn-outline-primary btn-action"
                                 onclick="viewAgentLogs('${agent.agent_id}')" 
                                 title="View Logs">
                             <i class="fas fa-file-alt"></i>
@@ -442,6 +486,17 @@ try {
                 updateStatistics();
                 renderAgents(agentsData);
                 showNotification('info', `Agent ${data.hostname || data.agent_id} was removed`);
+            }
+        });
+        
+        socket.on('new_log', function(log) {
+            if (!log || !log.agent_id) return;
+
+            agentLogs[log.agent_id] = log;
+
+            const logElement = document.getElementById(`agent-log-${log.agent_id}`);
+            if (logElement) {
+                logElement.innerHTML = `<i class="fas fa-stream me-1"></i>[${log.display_time || '---'}] ${log.message || 'N/A'}`;
             }
         });
         

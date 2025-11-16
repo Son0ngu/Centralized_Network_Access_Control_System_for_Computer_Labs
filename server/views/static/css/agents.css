@@ -118,6 +118,12 @@
     border: 1px solid #f1c2c7;
 }
 
+.agent-log {
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
 .stats-card {
     background: white;
     border: none;
