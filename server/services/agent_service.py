@@ -58,15 +58,23 @@ class AgentService:
             if agent_ip == "127.0.0.1" and client_ip != "127.0.0.1":
                 agent_ip = client_ip
         
-            # Check for existing agent by hostname + IP
-            query = {"$or": [
-                {"ip_address": agent_ip}, 
-                {"hostname": hostname},
-                {"$and": [{"hostname": hostname}, {"ip_address": agent_ip}]}
-            ]}
-            
-            agents = self.model.get_all_agents(query, limit=1)
-            existing_agent = agents[0] if agents else None
+            device_id = agent_data.get("device_id")
+            if not device_id:
+                raise ValueError("Device ID is required for agent registration")
+
+            # Prefer device_id to detect existing agents, fallback to hostname/IP for legacy records
+            existing_agent = self.model.find_by_device_id(device_id)
+            if not existing_agent:
+                query = {"$or": [
+                    {"ip_address": agent_ip},
+                    {"hostname": hostname},
+                    {"$and": [{"hostname": hostname}, {"ip_address": agent_ip}]}
+                ]}
+
+                agents = self.model.get_all_agents(query, limit=1)
+                legacy_agent = agents[0] if agents else None
+                if legacy_agent and not legacy_agent.get("device_id"):
+                    existing_agent = legacy_agent
             
             # Use vietnam time for all timestamps
             current_time = now_vietnam()
@@ -76,6 +84,7 @@ class AgentService:
                 agent_id = existing_agent.get("agent_id")
                 update_data = {
                     "hostname": hostname,
+                    "device_id": device_id,
                     "ip_address": agent_ip,
                     "platform": agent_data.get("platform"),
                     "os_info": agent_data.get("os_info"),
@@ -99,6 +108,7 @@ class AgentService:
                 
                 agent_registration_data = {
                     "agent_id": agent_id,
+                    "device_id": device_id,
                     "hostname": hostname,
                     "ip_address": agent_ip,
                     "platform": agent_data.get("platform"),
@@ -125,7 +135,7 @@ class AgentService:
         
             return {
                 "agent_id": agent_id,
-                "user_id": agent_ip,
+                "user_id": device_id,
                 "token": agent_token,
                 "status": "active",
                 "message": f"Agent {'updated' if existing_agent else 'registered'} successfully",
@@ -265,6 +275,11 @@ class AgentService:
             if agent.get("agent_token") != token:
                 raise ValueError("Invalid token")
             
+            incoming_device_id = heartbeat_data.get("device_id")
+            stored_device_id = agent.get("device_id")
+            if stored_device_id and incoming_device_id and stored_device_id != incoming_device_id:
+                raise ValueError("Device ID mismatch")
+            
             # Parse agent timestamp using vietnam parsing
             agent_timestamp = heartbeat_data.get("timestamp")
             if agent_timestamp:
@@ -290,6 +305,9 @@ class AgentService:
                 "last_heartbeat": heartbeat_time
             }
             
+            if incoming_device_id and not stored_device_id:
+                update_data["device_id"] = incoming_device_id
+                
             self.logger.info(f"Setting heartbeat for {agent_id}: {heartbeat_time}")
             
             success = self.model.update_heartbeat(agent_id, update_data)

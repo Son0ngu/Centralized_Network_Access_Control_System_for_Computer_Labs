@@ -27,6 +27,8 @@ class AgentModel:
         try:
             # Unique index on agent_id
             self.collection.create_index([("agent_id", ASCENDING)], unique=True)
+            # Unique device_id when provided
+            self.collection.create_index([("device_id", ASCENDING)], unique=True, sparse=True)
             # Indexes for queries
             self.collection.create_index([("hostname", ASCENDING)])
             self.collection.create_index([("ip_address", ASCENDING)])
@@ -112,7 +114,15 @@ class AgentModel:
         except Exception as e:
             self.logger.error(f"Error finding agents by hostname {hostname}: {e}")
             return []
-    
+        
+    def find_by_device_id(self, device_id: str) -> Optional[Dict]:
+        """Find agent by device ID"""
+        try:
+            return self.collection.find_one({"device_id": device_id})
+        except Exception as e:
+            self.logger.error(f"Error finding agent by device ID {device_id}: {e}")
+            return None
+        
     def get_all_agents(self, query: Dict = None, limit: int = 100, skip: int = 0) -> List[Dict]:
         """Get all agents with optional filtering"""
         try:

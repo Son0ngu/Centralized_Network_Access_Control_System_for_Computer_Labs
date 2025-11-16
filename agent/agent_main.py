@@ -26,6 +26,7 @@ import platform
 import requests
 import psutil
 import netifaces 
+import uuid
 
 # Custom modules
 from config import get_config
@@ -76,7 +77,22 @@ agent_state = {
     "agent_id": None
 }
 
+def generate_device_id() -> str:
+    """Create a stable device identifier using MAC + system fingerprint."""
+    try:
+        mac = uuid.getnode()
+        mac_hex = f"{mac:012x}"
+
+        system_fingerprint = f"{platform.system()}-{platform.release()}-{platform.machine()}"
+        hashed_fingerprint = uuid.uuid5(uuid.NAMESPACE_DNS, system_fingerprint).hex[:12]
+
+        return f"{mac_hex}-{hashed_fingerprint}"
+    except Exception as e:
+        logger.warning(f"Could not generate device ID, falling back to hostname: {e}")
+        return socket.gethostname().strip() or "UnknownDevice"
+    
 AGENT_HOSTNAME = socket.gethostname().strip() or "Unknown Agent"
+AGENT_DEVICE_ID = generate_device_id()
 
 # ========================================
 # CONFIGURATION VALIDATION
@@ -356,6 +372,7 @@ def register_agent() -> bool:
         
         agent_info = {
             "hostname": socket.gethostname(),
+            "device_id": AGENT_DEVICE_ID,
             "ip_address": local_ip,
             "platform": platform.system(),
             "os_info": f"{platform.system()} {platform.release()}",
@@ -762,6 +779,9 @@ def main():
         # Load and validate configuration
         logger.info("Loading configuration...")
         config = get_config()
+
+        # Ensure device ID is available for registration/heartbeats
+        config["device_id"] = AGENT_DEVICE_ID
         
         if not validate_configuration(config):
             logger.error("Configuration validation failed")

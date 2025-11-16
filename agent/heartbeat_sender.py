@@ -129,6 +129,7 @@ class HeartbeatSender:
         heartbeat_data = {
             "agent_id": self.agent_id,
             "token": self.agent_token,
+            "device_id": self.config.get("device_id"),
             "timestamp": now_iso(),  # vietnam ISO timestamp
             "metrics": metrics,
             "status": "active",

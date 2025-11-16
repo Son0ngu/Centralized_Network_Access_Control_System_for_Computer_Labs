@@ -106,7 +106,7 @@ class AgentController:
     def register_agent(self):
         """Register a new agent"""
         try:
-            data = self._validate_json_request(['hostname'])
+            data = self._validate_json_request(['hostname', 'device_id'])
             client_ip = request.remote_addr or data.get("ip_address", "unknown")
             
             # Call service method
@@ -229,7 +229,7 @@ class AgentController:
                     "last_heartbeat": last_heartbeat_iso,
                     "time_since_heartbeat": agent.get("time_since_heartbeat"),
                     "metrics": agent.get("metrics"),
-                    "user_id": agent.get("ip_address")
+                    "user_id": agent.get("device_id") or agent.get("ip_address")
                 }
                 
                 formatted_agents.append(formatted_agent)
