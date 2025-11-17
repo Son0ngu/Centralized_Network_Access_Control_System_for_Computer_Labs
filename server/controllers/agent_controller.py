@@ -225,11 +225,13 @@ class AgentController:
                 formatted_agent = {
                     "agent_id": agent.get("agent_id"),
                     "hostname": agent.get("hostname", "Unknown"),
+                    "display_name": agent.get("display_name") or agent.get("hostname", "Unknown"),
                     "ip_address": agent.get("ip_address", "Unknown"),
                     "platform": agent.get("platform", "Unknown"),
                     "os_info": agent.get("os_info", "Unknown"),
                     "agent_version": agent.get("agent_version", "Unknown"),
                     "status": agent.get("status"),
+                    "group_id": str(agent.get("group_id")) if agent.get("group_id") else None,
                     "registered_date": registered_date_iso,
                     "last_heartbeat": last_heartbeat_iso,
                     "time_since_heartbeat": agent.get("time_since_heartbeat"),

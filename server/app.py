@@ -5,6 +5,8 @@ vietnam ONLY - Clean and simple
 
 #  QUAN TRỌNG: Monkey patch PHẢI ở đầu tiên, trước tất cả imports khác
 import eventlet
+
+from server.models import group_model
 eventlet.monkey_patch()
 
 import os
@@ -190,6 +192,7 @@ def register_controllers(app, socketio, db):
         whitelist_model = WhitelistModel(db)
         agent_model = AgentModel(db)
         log_model = LogModel(db)
+        group_model = GroupModel(db)
         
         logger.info(" Models initialized")
         

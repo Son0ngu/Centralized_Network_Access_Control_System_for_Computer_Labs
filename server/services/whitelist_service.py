@@ -377,6 +377,53 @@ class WhitelistService:
             
         return list(merged.values())
 
+    def get_scoped_whitelist(self, agent_id: Optional[str] = None, group_id: Optional[str] = None) -> Dict:
+        """Return global and group whitelist entries with version metadata."""
+        try:
+            target_group_id = group_id
+            agent = None
+
+            if agent_id:
+                agent = self.agent_model.find_by_agent_id(agent_id)
+                if not agent:
+                    raise ValueError("Agent not found")
+                target_group_id = target_group_id or agent.get("group_id")
+
+            group = self.group_model.find_by_id(target_group_id) if target_group_id else None
+            if not group:
+                group = self.group_model.ensure_pending_group()
+                target_group_id = str(group.get("_id"))
+                if agent and not agent.get("group_id"):
+                    self.agent_model.update_agent(agent_id, {"group_id": target_group_id, "status": agent.get("status", "pending")})
+
+            global_entries = self.model.get_entries_for_sync(scope="global")
+            for entry in global_entries:
+                entry.setdefault("scope", "global")
+
+            group_entries = self._normalize_group_entries(group)
+            combined = self._merge_whitelists(global_entries, group_entries)
+
+            return {
+                "success": True,
+                "global": global_entries,
+                "group": group_entries,
+                "merged": combined,
+                "global_version": self.model.get_global_version(),
+                "group_version": group.get("whitelist_version", 1),
+                "group_id": str(group.get("_id")),
+                "group_name": group.get("name"),
+                "timestamp": now_iso(),
+            }
+        except Exception as exc:
+            self.logger.error(f"Error getting scoped whitelist: {exc}")
+            return {
+                "success": False,
+                "error": str(exc),
+                "global": [],
+                "group": [],
+                "merged": [],
+                "timestamp": now_iso(),
+            }
 
     def get_agent_sync_data(self, since_datetime: Optional[object] = None, agent_id: str = None,
                             global_version: Optional[int] = None, group_version: Optional[int] = None) -> Dict:
@@ -394,6 +441,8 @@ class WhitelistService:
             if not group:
                 group = self.group_model.ensure_pending_group()
                 group_id = str(group.get("_id"))
+                if not agent.get("group_id"):
+                    self.agent_model.update_agent(agent_id, {"group_id": group_id, "status": agent.get("status", "pending")})
 
             global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
             group_entries = self._normalize_group_entries(group)

@@ -132,6 +132,14 @@ class WhitelistController:
     def list_domains(self):
         """List all whitelist domains - vietnam ONLY"""
         try:
+            agent_id = request.args.get('agent_id')
+            group_id = request.args.get('group_id')
+
+            if agent_id or group_id:
+                scoped = self.service.get_scoped_whitelist(agent_id=agent_id, group_id=group_id)
+                status_code = 200 if scoped.get("success") else 400
+                return jsonify(scoped), status_code
+            
             # Get pagination parameters
             limit = min(int(request.args.get('limit', 100)), 1000)
             offset = int(request.args.get('offset', 0))
