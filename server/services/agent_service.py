@@ -829,7 +829,7 @@ class AgentService:
                 "hostname": agent.get("hostname"),
                 "display_name": agent.get("display_name"),
                 "ip_address": agent.get("ip_address"),
-                "group_id": group_id_str,  #  Already string
+                "group_id": group_id_str,  
                 "group_name": group.get("name"),
                 "status": final_status,
                 "last_heartbeat": agent.get("last_heartbeat"),

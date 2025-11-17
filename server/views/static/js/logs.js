@@ -10,8 +10,6 @@ let currentFilter = {
     limit: 100
 };
 let currentClearAction = null;
-
-// Add to global variables
 let agentsData = [];
 
 function normalizeAgentField(value) {
@@ -347,12 +345,10 @@ function populateAgentFilter() {
 function onFilterChange() {
     console.log('Filter changed, current state:', currentFilter);
     
-    // Update current filter state from all filter controls
     const levelFilter = document.getElementById('level-filter');
     const agentFilter = document.getElementById('agent-filter');
     const searchInput = document.getElementById('log-search');
     
-    // Update other filters
     currentFilter.level = levelFilter ? levelFilter.value : '';
     currentFilter.agent = agentFilter ? agentFilter.value : '';
     currentFilter.search = searchInput ? searchInput.value : '';
