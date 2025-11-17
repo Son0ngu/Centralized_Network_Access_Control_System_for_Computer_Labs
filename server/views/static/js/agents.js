@@ -61,8 +61,11 @@ function getStatusInfo(status) {
             return { class: 'inactive', text: 'Inactive', icon: 'exclamation-triangle' };
         case 'offline':
             return { class: 'offline', text: 'Offline', icon: 'times-circle' };
+        case 'pending':
+            return { class: 'pending', text: 'Pending', icon: 'hourglass-half' };
         default:
-            return { class: 'offline', text: 'Unknown', icon: 'question-circle' };
+            return { class: 'unknown', text: 'Unknown', icon: 'question-circle' };
+        
     }
 }
 
@@ -105,11 +108,25 @@ function normalizeAgentLog(log) {
     if (!log) return null;
 
     const displayTime = log.display_time || formatTimestamp(log.timestamp);
+    
+    // ✅ Extract domain from log
+    let domain = log.domain || log.destination || 'N/A';
+    
+    // If domain is missing, try to extract from message
+    if (domain === 'N/A' && log.message) {
+        // Try patterns like "Domain: example.com" or "Blocked: example.com"
+        const domainMatch = log.message.match(/(?:domain|destination|blocked|allowed)[:：\s]+([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        if (domainMatch) {
+            domain = domainMatch[1];
+        }
+    }
+    
     return {
         ...log,
         display_time: displayTime,
         source_ip: log.source_ip || log.src_ip || 'unknown',
         dest_ip: log.dest_ip || log.destination || 'unknown',
+        domain: domain, // ✅ Add extracted domain
         message: log.message || 'N/A'
     };
 }
@@ -146,7 +163,10 @@ function renderAgentLogContent(agentId) {
                 <span class="badge rounded-pill log-level ${levelClass}">${log.level || 'INFO'}</span>
                 ${log.action ? `<span class="badge rounded-pill bg-light text-dark border action-badge">${log.action}</span>` : ''}
             </div>
-            <div class="agent-log-message">${log.message}</div>
+            <div class="agent-log-message">
+                <i class="fas fa-globe me-1"></i>
+                <strong>${log.domain}</strong>
+            </div>
             ${routeText ? `<div class="agent-log-meta text-muted"><i class="fas fa-location-arrow me-1"></i>${routeText}</div>` : ''}
         </div>
     `;
@@ -227,11 +247,19 @@ async function loadAgents() {
  * Update statistics display
  */
 function updateStatistics(stats = null) {
+    const setCount = (elementId, value) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = value ?? 0;
+        }
+    };
+
     if (stats) {
-        document.getElementById('totalAgentsCount').textContent = stats.total || 0;
-        document.getElementById('activeAgentsCount').textContent = stats.active || 0;
-        document.getElementById('inactiveAgentsCount').textContent = stats.inactive || 0;
-        document.getElementById('offlineAgentsCount').textContent = stats.offline || 0;
+        setCount('totalAgentsCount', stats.total || 0);
+        setCount('activeAgentsCount', stats.active || 0);
+        setCount('inactiveAgentsCount', stats.inactive || 0);
+        setCount('offlineAgentsCount', stats.offline || 0);
+        setCount('pendingAgentsCount', stats.pending || 0);
     } else {
         // Calculate from current data
         const total = agentsData.length;
@@ -239,10 +267,13 @@ function updateStatistics(stats = null) {
         const inactive = agentsData.filter(a => a.status === 'inactive').length;
         const offline = agentsData.filter(a => a.status === 'offline').length;
         
-        document.getElementById('totalAgentsCount').textContent = total;
-        document.getElementById('activeAgentsCount').textContent = active;
-        document.getElementById('inactiveAgentsCount').textContent = inactive;
-        document.getElementById('offlineAgentsCount').textContent = offline;
+        const pending = agentsData.filter(a => a.status === 'pending').length;
+
+        setCount('totalAgentsCount', total);
+        setCount('activeAgentsCount', active);
+        setCount('inactiveAgentsCount', inactive);
+        setCount('offlineAgentsCount', offline);
+        setCount('pendingAgentsCount', pending);
     }
 }
 
@@ -283,7 +314,7 @@ function renderAgents(agents) {
         agentElement.className = 'p-4 border-bottom agent-item';
         agentElement.dataset.name = (agent.hostname || '').toLowerCase();
         agentElement.dataset.ip = agent.ip_address || '';
-        agentElement.dataset.status = agent.status || 'offline';
+        agentElement.dataset.status = agent.status || 'unknown';
         
         agentElement.innerHTML = `
             <div class="row align-items-center">

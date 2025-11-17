@@ -252,7 +252,8 @@ class AgentService:
             active = len([a for a in agents if a.get('status') == 'active'])
             inactive = len([a for a in agents if a.get('status') == 'inactive'])
             offline = len([a for a in agents if a.get('status') == 'offline'])
-            
+            pending = len([a for a in agents if a.get('status') == 'pending'])
+
             # Calculate percentages
             active_percentage = (active / total * 100) if total > 0 else 0
             
@@ -261,6 +262,7 @@ class AgentService:
                 'active': active,
                 'inactive': inactive,
                 'offline': offline,
+                'pending': pending,
                 'active_percentage': round(active_percentage, 1),
                 'health_status': 'good' if active_percentage > 70 else 'warning' if active_percentage > 30 else 'critical',
                 'last_calculated': now_iso(),  # vietnam ISO
@@ -280,6 +282,7 @@ class AgentService:
                 'active': 0, 
                 'inactive': 0, 
                 'offline': 0,
+                'pending': 0,
                 'active_percentage': 0,
                 'health_status': 'error',
                 'last_calculated': now_iso(),
