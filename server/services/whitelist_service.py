@@ -372,12 +372,19 @@ class WhitelistService:
         merged = {}
         for entry in global_entries + group_entries:
             key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
+            merged_entry = merged.get(key, {})
             merged[key] = {
+                **merged_entry,
                 "value": entry.get("value"),
                 "type": entry.get("type", "domain"),
                 "priority": entry.get("priority", "normal"),
                 "category": entry.get("category", "uncategorized"),
                 "scope": entry.get("scope", "global"),
+                "group_id": entry.get("group_id") or merged_entry.get("group_id"),
+                "group_name": entry.get("group_name") or merged_entry.get("group_name"),
+                "agent_id": entry.get("agent_id") or merged_entry.get("agent_id"),
+                "added_date": entry.get("added_date") or merged_entry.get("added_date"),
+                "notes": entry.get("notes") or merged_entry.get("notes"),
             }
             
         return list(merged.values())

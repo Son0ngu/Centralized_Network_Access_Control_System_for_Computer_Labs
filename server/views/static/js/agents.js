@@ -2,6 +2,11 @@ let agentsData = [];
 let groupsData = [];
 const agentLogs = {};
 let currentDropTarget = null;
+
+function getAgentId(agent) {
+    return agent?.agent_id || agent?._id || agent?.id;
+}
+
 /**
  * Parse timestamp with Vietnam timezone support
  */
@@ -231,7 +236,7 @@ async function loadAgents() {
             agentsData = data.agents || [];
             console.log(' Loaded agents:', agentsData);
             renderAgents(agentsData);
-            await preloadLatestLogsForAgents(agentsData.map(agent => agent.agent_id).filter(Boolean));
+            await preloadLatestLogsForAgents(agentsData.map(agent => getAgentId(agent)).filter(Boolean));
         } else {
             console.error(' Failed to load agents:', agentsResponse.statusText);
             showError('Failed to load agents');
@@ -305,6 +310,7 @@ function renderAgents(agents) {
     container.innerHTML = '';
     
     agents.forEach((agent, index) => {
+        const agentId = getAgentId(agent);
         const statusInfo = getStatusInfo(agent.status);
         const lastSeen = formatTimestamp(agent.last_heartbeat);
         const registered = formatTimestamp(agent.registered_date);
@@ -324,6 +330,7 @@ function renderAgents(agents) {
         agentElement.dataset.ip = agent.ip_address || '';
         agentElement.dataset.status = agent.status || 'unknown';
         agentElement.dataset.groupId = agent.group_id || '';
+        agentElement.dataset.id = agentId || '';
         agentElement.draggable = true;
         agentElement.addEventListener('dragstart', handleAgentDragStart);
         agentElement.addEventListener('dragend', handleAgentDragEnd);
@@ -389,17 +396,17 @@ function renderAgents(agents) {
                 
                 <div class="col-md-6">
                     <div class="d-flex align-items-center justify-content-end gap-3">
-                        <div class="agent-log-panel flex-grow-1" id="agent-log-${agent.agent_id}">
-                            ${renderAgentLogContent(agent.agent_id)}
+                        <div class="agent-log-panel flex-grow-1" id="agent-log-${agentId}">
+                            ${renderAgentLogContent(agentId)}
                         </div>
                         <div class="btn-group btn-group-sm flex-shrink-0" role="group">
                             <button type="button" class="btn btn-outline-primary btn-action"
-                                    onclick="viewAgentLogs('${agent.agent_id}')" 
+                                    onclick="viewAgentLogs('${agentId}')"
                                     title="View Logs">
                                 <i class="fas fa-file-alt"></i>
                             </button>
-                            <button type="button" class="btn btn-outline-danger btn-action" 
-                                    onclick="removeAgent('${agent.agent_id}')" 
+                            <button type="button" class="btn btn-outline-danger btn-action"
+                                    onclick="removeAgent('${agentId}')"
                                     title="Remove Agent">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -466,12 +473,35 @@ function renderGroups() {
 
     groupsData.forEach(group => {
         const whitelistCount = (group.whitelist || []).length;
+        
+        // ✅ Count agents in this group
+        const agentsInGroup = agentsData.filter(a => a.group_id === group._id);
+        const agentCount = agentsInGroup.length;
+        
         const card = document.createElement('div');
         card.className = 'group-card';
         card.dataset.groupId = group._id;
         card.addEventListener('dragover', handleGroupDragOver);
         card.addEventListener('dragleave', handleGroupDragLeave);
         card.addEventListener('drop', handleGroupDrop);
+
+        // ✅ Render agents list
+        const agentsListHtml = agentsInGroup.map(agent => {
+            const statusInfo = getStatusInfo(agent.status);
+            return `
+                <div class="group-agent-item" data-agent-id="${getAgentId(agent)}">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-desktop text-primary" style="font-size: 0.9rem;"></i>
+                        <span class="agent-name">${agent.hostname || 'Unknown'}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted">${agent.ip_address || 'N/A'}</small>
+                        <span class="agent-status-dot ${statusInfo.class}" 
+                              title="${statusInfo.text}"></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
@@ -490,26 +520,80 @@ function renderGroups() {
                     `}
                 </div>
             </div>
-            <div class="group-meta mb-2">${group.description || 'No description'}</div>
-            <div class="d-flex gap-3 align-items-center">
+            <div class="group-meta">${group.description || 'No description'}</div>
+            <div class="group-stats">
                 <span class="badge bg-light text-dark border">
                     <i class="fas fa-shield-alt me-1"></i>Whitelist: ${whitelistCount}
                 </span>
-                <span class="badge bg-light text-dark border">
-                    <i class="fas fa-id-card me-1"></i>ID: ${group._id}
-                </span>
+            </div>
+            
+            <!-- ✅ Agent count toggle -->
+            <div class="group-agent-count" data-action="toggle-agents" data-group-id="${group._id}">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-users text-primary"></i>
+                    <span class="fw-semibold">${agentCount} Agent${agentCount !== 1 ? 's' : ''}</span>
+                </div>
+                <i class="fas fa-chevron-down expand-icon text-muted"></i>
+            </div>
+            
+            <!-- ✅ Agents list (collapsible) -->
+            <div class="group-agents-list" id="agents-list-${group._id}">
+                ${agentCount > 0 ? agentsListHtml : '<div class="text-muted text-center py-2"><small>No agents in this group</small></div>'}
             </div>
         `;
 
         board.appendChild(card);
     });
 
+    // ✅ Add event listeners for toggle
+    board.querySelectorAll('[data-action="toggle-agents"]').forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent drag events
+            const groupId = toggle.dataset.groupId;
+            const agentsList = document.getElementById(`agents-list-${groupId}`);
+            const groupCard = toggle.closest('.group-card');
+            
+            if (agentsList.classList.contains('expanded')) {
+                agentsList.classList.remove('expanded');
+                groupCard.classList.remove('expanded');
+            } else {
+                // Close all other expanded lists
+                board.querySelectorAll('.group-agents-list.expanded').forEach(list => {
+                    list.classList.remove('expanded');
+                });
+                board.querySelectorAll('.group-card.expanded').forEach(card => {
+                    card.classList.remove('expanded');
+                });
+                
+                // Expand this one
+                agentsList.classList.add('expanded');
+                groupCard.classList.add('expanded');
+            }
+        });
+    });
+
+    // ✅ Add click to view agent logs
+    board.querySelectorAll('.group-agent-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const agentId = item.dataset.agentId;
+            viewAgentLogs(agentId);
+        });
+    });
+
+    // Existing edit/delete event listeners
     board.querySelectorAll('button[data-action="edit"]').forEach(btn => {
-        btn.addEventListener('click', () => openGroupModal(btn.dataset.id));
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openGroupModal(btn.dataset.id);
+        });
     });
 
     board.querySelectorAll('button[data-action="delete"]').forEach(btn => {
-        btn.addEventListener('click', () => deleteGroup(btn.dataset.id));
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteGroup(btn.dataset.id);
+        });
     });
 }
 
@@ -553,18 +637,29 @@ function refreshAgents() {
 }
 
 async function moveAgentToGroup(agentId, groupId) {
+    const resolvedAgentId = agentId || '';
+    const resolvedGroupId = groupId || '';
+
+    if (!resolvedAgentId || !resolvedGroupId) {
+        showError('Invalid agent or group information');
+        return;
+    }
+
     try {
-        const response = await fetch(`/api/agents/${agentId}/group`, {
+        const response = await fetch(`/api/agents/${resolvedAgentId}/group`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_id: groupId })
+            body: JSON.stringify({ group_id: resolvedGroupId })
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to move agent');
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result.success === false) {
+            const errorMessage = result.error || result.message || 'Failed to move agent';
+            throw new Error(errorMessage);
+        
         }
 
-        const result = await response.json();
         showSuccess(result.message || 'Agent moved to group');
         await loadAgents();
     } catch (error) {
@@ -857,7 +952,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveGroupBtn) {
         saveGroupBtn.addEventListener('click', saveGroup);
     }
-    
+
     // Setup Socket.IO for real-time updates
     if (typeof io !== 'undefined') {
         const socket = io();

@@ -796,23 +796,46 @@ class AgentService:
         return True
 
     def move_agent_to_group(self, agent_id: str, group_id: str) -> Dict:
-        agent = self.model.find_by_agent_id(agent_id)
-        if not agent:
-            raise ValueError("Agent not found")
+        """Move agent to a new group"""
+        try:
+            agent = self.model.find_by_agent_id(agent_id)
+            if not agent:
+                raise ValueError("Agent not found")
 
-        group = self.group_model.find_by_id(group_id)
-        if not group:
-            raise ValueError("Group not found")
+            group = self.group_model.find_by_id(group_id)
+            if not group:
+                raise ValueError("Group not found")
 
-        new_status = "pending" if group.get("is_system") and group.get("name") == "pending" else "active"
-        success = self.model.update_agent_group(agent_id, str(group.get("_id")), new_status)
+            # ✅ FIX: Convert ObjectId to string immediately
+            group_id_str = str(group.get("_id"))
+            
+            # Determine new status
+            new_status = "pending" if group.get("is_system") and group.get("name") == "pending" else "active"
+            
+            # Update agent group
+            success = self.model.update_agent_group(agent_id, group_id_str, new_status)
 
-        if not success:
-            raise ValueError("Failed to move agent to group")
+            if not success:
+                raise ValueError("Failed to move agent to group")
 
-        agent["group_id"] = str(group.get("_id"))
-        agent["status"] = new_status
-        return agent
+            # ✅ FIX: Return serializable dict
+            return {
+                "agent_id": agent_id,
+                "hostname": agent.get("hostname"),
+                "display_name": agent.get("display_name"),
+                "ip_address": agent.get("ip_address"),
+                "group_id": group_id_str,  # ✅ Already string
+                "group_name": group.get("name"),
+                "status": new_status,
+                "last_heartbeat": agent.get("last_heartbeat"),
+                "platform": agent.get("platform"),
+                "os_info": agent.get("os_info"),
+                "agent_version": agent.get("agent_version")
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error moving agent to group: {e}")
+            raise
     
     def list_commands(self, filters: Dict = None, limit: int = 50, skip: int = 0) -> Dict:
         """List commands with filtering - vietnam ONLY"""

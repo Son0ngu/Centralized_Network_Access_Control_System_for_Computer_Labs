@@ -399,17 +399,54 @@
 
 /* Group management */
 .group-board {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    display: flex;
     gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 0;
+    scroll-behavior: smooth;
+    
+    /* Custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: #667eea #f1f1f1;
 }
 
+.group-board::-webkit-scrollbar {
+    height: 8px;
+}
+
+.group-board::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.group-board::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+
+.group-board::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* ✅ Group card fixed width for horizontal layout */
 .group-card {
-    border: 1px dashed #d6d8e1;
+    min-width: 280px;
+    max-width: 320px;
+    flex-shrink: 0;
+    border: 2px dashed #d6d8e1;
     border-radius: 12px;
     padding: 14px;
     background: #f8f9fc;
     transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.group-card:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .group-card .group-name {
@@ -417,6 +454,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-bottom: 8px;
 }
 
 .group-card .group-actions {
@@ -427,14 +465,105 @@
 .group-card .group-meta {
     font-size: 0.9rem;
     color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.group-card .group-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+/* ✅ Agent count badge in group */
+.group-agent-count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e3e6f0;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-agent-count:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
 }
 
 .group-card.dropping {
     border-color: #0d6efd;
+    border-style: solid;
     background: #e7f1ff;
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
 }
 
-.agent-item.draggable {
-    cursor: grab;
+/* ✅ Expand icon animation */
+.expand-icon {
+    transition: transform 0.2s ease;
+}
+
+.group-card.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+
+/* ✅ Agents list in group card */
+.group-agents-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    margin-top: 8px;
+}
+
+.group-agents-list.expanded {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.group-agent-item {
+    padding: 8px 10px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    border: 1px solid #e3e6f0;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.group-agent-item:hover {
+    background: #f8f9fc;
+    border-color: #667eea;
+}
+
+.group-agent-item .agent-name {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.group-agent-item .agent-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 8px;
+}
+
+.group-agent-item .agent-status-dot.active {
+    background: #28a745;
+}
+
+.group-agent-item .agent-status-dot.inactive {
+    background: #ffc107;
+}
+
+.group-agent-item .agent-status-dot.offline {
+    background: #dc3545;
+}
+
+.group-agent-item .agent-status-dot.pending {
+    background: #17a2b8;
 }

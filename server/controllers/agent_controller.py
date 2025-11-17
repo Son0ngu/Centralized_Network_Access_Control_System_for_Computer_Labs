@@ -5,6 +5,7 @@ vietnam ONLY - Clean and simple
 
 import logging
 from datetime import datetime
+from bson import ObjectId
 from flask import Blueprint, request, jsonify
 from typing import Dict, Tuple
 from models.agent_model import AgentModel
@@ -104,6 +105,22 @@ class AgentController:
                 filters[key] = value
         
         return filters
+    
+    def _serialize_agent(self, agent: Dict) -> Dict:
+        """Ensure agent dict is JSON serializable."""
+        if not agent:
+            return {}
+
+        serialized = {}
+        for key, value in agent.items():
+            if isinstance(value, ObjectId):
+                serialized[key] = str(value)
+            elif isinstance(value, datetime):
+                serialized[key] = value.isoformat()
+            else:
+                serialized[key] = value
+
+        return serialized
     
     def register_agent(self):
         """Register a new agent"""
@@ -465,7 +482,25 @@ class AgentController:
         try:
             data = self._validate_json_request(['group_id'])
             agent = self.service.move_agent_to_group(agent_id, data.get('group_id'))
-            return self._success_response(agent, "Agent group updated")
+            
+            # ✅ FIX: Serialize ObjectId before returning
+            serialized_agent = self._serialize_agent(agent)
+            
+            # ✅ IMPROVED: Broadcast via SocketIO
+            if self.socketio:
+                self.socketio.emit("agent_group_updated", {
+                    "agent_id": agent_id,
+                    "hostname": serialized_agent.get("hostname"),
+                    "group_id": serialized_agent.get("group_id"),
+                    "status": serialized_agent.get("status"),
+                    "timestamp": now_iso()
+                })
+            
+            return self._success_response(
+                data=serialized_agent,
+                message="Agent moved to group successfully"
+            )
+            
         except ValueError as e:
             return self._error_response(str(e), 400)
         except Exception as e:
