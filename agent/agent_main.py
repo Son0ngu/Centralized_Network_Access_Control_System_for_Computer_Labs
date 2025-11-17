@@ -408,7 +408,7 @@ def try_register_with_server(server_url: str, agent_info: Dict) -> bool:
     """
     try:
         register_url = f"{server_url.rstrip('/')}/api/agents/register"
-        logger.info(f"🔗 Attempting registration with: {register_url}")
+        logger.info(f" Attempting registration with: {register_url}")
         
         response = requests.post(
             register_url,
@@ -833,7 +833,7 @@ def main():
         
         # Mark startup as completed
         agent_state['startup_completed'] = True
-        logger.info(f"🎉 Agent startup completed successfully (startup time: {uptime_string()})")
+        logger.info(f" Agent startup completed successfully (startup time: {uptime_string()})")
         
         # Main loop với UTC timestamps
         loop_count = 0

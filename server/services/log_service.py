@@ -19,9 +19,11 @@ from time_utils import (
 class LogService:
     """Service class for log business logic - vietnam ONLY"""
     
-    def __init__(self, log_model: LogModel, socketio=None):
+    def __init__(self, log_model: LogModel, agent_model=None, socketio=None):
+        """Initialize LogService with optional agent_model for group filtering"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = log_model
+        self.agent_model = agent_model  # Store agent_model reference
         self.socketio = socketio
     
     def receive_logs(self, logs_data: Dict, agent_id: str = None) -> Dict:
@@ -227,6 +229,42 @@ class LogService:
                 if filters.get('agent_id'):
                     query['agent_id'] = filters['agent_id']
                 
+                # CRITICAL FIX: Handle group_id filter
+                if filters.get('group_id'):
+                    group_id = filters['group_id']
+                    self.logger.info(f"Filtering logs by group_id: {group_id}")
+                    
+                    # Get all agents in this group
+                    try:
+                        # Use injected agent_model or create temporary instance
+                        if self.agent_model:
+                            agent_model = self.agent_model
+                        else:
+                            from models.agent_model import AgentModel
+                            db = self.model.db
+                            agent_model = AgentModel(db)
+                        
+                        # Find all agents in this group
+                        agents_in_group = agent_model.collection.find({'group_id': group_id})
+                        agent_ids = [agent['agent_id'] for agent in agents_in_group if 'agent_id' in agent]
+                        
+                        self.logger.info(f"Found {len(agent_ids)} agents in group {group_id}: {agent_ids}")
+                        
+                        if agent_ids:
+                            # Filter logs by agent_ids in this group
+                            query['agent_id'] = {'$in': agent_ids}
+                        else:
+                            # No agents in group - return empty result
+                            self.logger.warning(f" No agents found in group {group_id}")
+                            query['agent_id'] = {'$in': []}  # Will match nothing
+                            
+                    except Exception as e:
+                        self.logger.error(f"❌ Error filtering by group: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # If error, don't filter by group (show all logs)
+                        pass
+                
                 if filters.get('search'):
                     search_term = filters['search']
                     query['$or'] = [
@@ -261,7 +299,7 @@ class LogService:
                     try:
                         start_date = parse_agent_timestamp(filters['start_date'])
                         query['timestamp'] = query.get('timestamp', {})
-                        query['timestamp']['$gte'] = parse_agent_timestamp(start_date)
+                        query['timestamp']['$gte'] = start_date
                     except Exception as e:
                         self.logger.warning(f"Invalid start_date filter: {e}")
                 
@@ -269,11 +307,11 @@ class LogService:
                     try:
                         end_date = parse_agent_timestamp(filters['end_date'])
                         query['timestamp'] = query.get('timestamp', {})
-                        query['timestamp']['$lte'] = parse_agent_timestamp(end_date)
+                        query['timestamp']['$lte'] = end_date
                     except Exception as e:
                         self.logger.warning(f"Invalid end_date filter: {e}")
-            
-            self.logger.info(f"Getting logs with query: {query}, limit: {limit}, offset: {offset}")
+        
+            self.logger.info(f"Final MongoDB query: {query}, limit: {limit}, offset: {offset}")
             
             # Get logs and total count
             logs = self.model.find_all_logs(query, limit=limit, offset=offset)
@@ -334,7 +372,7 @@ class LogService:
                 "offset": offset,
                 "has_more": offset + limit < total_count,
                 "success": True,
-                "server_time": now_iso()  # vietnam ISO
+                "server_time": now_iso()
             }
             
             self.logger.info(f"Returning {len(formatted_logs)} formatted logs")
@@ -349,7 +387,7 @@ class LogService:
                 "error": str(e), 
                 "logs": [], 
                 "total": 0,
-                "server_time": now_iso()  # vietnam ISO
+                "server_time": now_iso()
             }
     
     def clear_logs(self, filters: Dict = None) -> Dict:

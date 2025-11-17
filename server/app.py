@@ -199,7 +199,7 @@ def register_controllers(app, socketio, db):
         group_service = GroupService(group_model, agent_model)
         whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio)
         agent_service = AgentService(agent_model, group_model, socketio)
-        log_service = LogService(log_model, socketio)
+        log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
         
         logger.info(" Services initialized")
         

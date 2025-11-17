@@ -63,11 +63,17 @@ async function loadGroups() {
 function populateGroupSelects() {
     const filterSelect = document.getElementById('group-filter');
     const modalSelect = document.getElementById('groupSelect');
+    const bulkGroupSelect = document.getElementById('bulkGroupSelect'); // Add bulk import group select
 
-    [filterSelect, modalSelect].forEach(select => {
+    [filterSelect, modalSelect, bulkGroupSelect].forEach(select => {
         if (!select) return;
         const current = select.value;
-        const placeholder = select.id === 'groupSelect' ? 'Select a group...' : 'All Groups';
+        let placeholder = 'All Groups';
+        
+        if (select.id === 'groupSelect' || select.id === 'bulkGroupSelect') {
+            placeholder = 'Select a group...';
+        }
+        
         select.innerHTML = `<option value="">${placeholder}</option>`;
         groupsData.forEach(group => {
             const option = document.createElement('option');
@@ -84,6 +90,7 @@ function populateGroupSelects() {
         filterSelect.value = selectedGroupId;
     }
 }
+
 /**
  * Enhanced error handling for API responses
  */
@@ -422,9 +429,6 @@ function showAddItemModal(type = 'domain') {
     document.getElementById('valueExample').textContent = config.help;
     document.getElementById('inputExample').textContent = config.example;
     
-    // Load agents for agent-specific items
-    loadAgentsForSelect();
-    
     const scopeSelect = document.getElementById('scopeSelect');
     const groupSelect = document.getElementById('groupSelect');
     const groupSelectGroup = document.getElementById('groupSelectGroup');
@@ -433,11 +437,9 @@ function showAddItemModal(type = 'domain') {
         scopeSelect.value = 'group';
         groupSelect.value = selectedGroupId;
         groupSelectGroup.style.display = 'block';
-        document.getElementById('agentSelectGroup').style.display = 'none';
     } else {
         scopeSelect.value = 'global';
         groupSelectGroup.style.display = 'none';
-        document.getElementById('agentSelectGroup').style.display = 'none';
     }
 
     modal.show();
@@ -575,11 +577,7 @@ async function addItem() {
             active: formData.get('active') === 'on'
         };
         
-        if (formData.get('scope') === 'agent') {
-            itemData.agent_id = formData.get('agent_id');
-        }
-        
-        console.log(' Sending item data:', itemData);
+        console.log('Sending item data:', itemData);
         
         if (itemData.scope === 'group') {
             const targetGroupId = formData.get('group_id') || selectedGroupId;
@@ -591,7 +589,6 @@ async function addItem() {
             showSuccess(`${itemData.value} added to group whitelist`);
             await Promise.all([loadGroups(), loadItems()]);
         } else {
-            //  FIX: Actually call the API instead of manipulating local array
             const response = await fetch('/api/whitelist', {
                 method: 'POST',
                 headers: {
@@ -601,7 +598,7 @@ async function addItem() {
             });
 
             const result = await handleApiResponse(response);
-            console.log(' API response:', result);
+            console.log('API response:', result);
 
             showSuccess(result.message || `${itemData.type.toUpperCase()} ${itemData.value} added successfully!`);
 
@@ -609,12 +606,11 @@ async function addItem() {
             form.reset();
             bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
 
-            //  FIX: Reload data from server instead of manipulating local array
             await loadItems();
         }
         
     } catch (error) {
-        console.error(' Error adding item:', error);
+        console.error('Error adding item:', error);
         showError('Failed to add item: ' + error.message);
     } finally {
         button.innerHTML = originalText;
@@ -699,7 +695,6 @@ function filterItems() {
     const searchTerm = document.getElementById('item-search').value.toLowerCase();
     const typeFilter = document.getElementById('type-filter').value;
     const statusFilter = document.getElementById('status-filter').value;
-    const scopeFilter = document.getElementById('scope-filter').value;
     const groupFilter = document.getElementById('group-filter').value;
     const itemRows = document.querySelectorAll('.item-row');
     
@@ -707,18 +702,14 @@ function filterItems() {
         const value = row.dataset.value;
         const type = row.dataset.type;
         const status = row.dataset.status;
-        const scope = row.dataset.scope || 'global';
-        
         const group = row.dataset.group || '';
 
         const matchesSearch = value.includes(searchTerm);
         const matchesType = !typeFilter || type === typeFilter;
         const matchesStatus = !statusFilter || status === statusFilter;
-        const matchesScope = !scopeFilter || scope === scopeFilter;
-        
         const matchesGroup = !groupFilter || group === groupFilter;
 
-        if (matchesSearch && matchesType && matchesStatus && matchesScope && matchesGroup) {
+        if (matchesSearch && matchesType && matchesStatus && matchesGroup) {
             row.style.display = 'block';
         } else {
             row.style.display = 'none';
@@ -749,7 +740,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('item-search').addEventListener('input', filterItems);
     document.getElementById('type-filter').addEventListener('change', filterItems);
     document.getElementById('status-filter').addEventListener('change', filterItems);
-    document.getElementById('scope-filter').addEventListener('change', filterItems);
     document.getElementById('group-filter').addEventListener('change', function() {
         selectedGroupId = this.value;
         loadItems();
@@ -763,12 +753,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('bulkActionsBtn').addEventListener('click', toggleBulkActionsPanel);
     document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteItems);
     
-    // Scope selection handler
+    // REMOVED: Agent-specific handling, only keep Global and Group
     document.getElementById('scopeSelect').addEventListener('change', function() {
-        const agentGroup = document.getElementById('agentSelectGroup');
         const groupSelect = document.getElementById('groupSelectGroup');
-        agentGroup.style.display = this.value === 'agent' ? 'block' : 'none';
         groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
+    });
+    
+    // NEW: Bulk scope selection handler
+    document.getElementById('bulkScope').addEventListener('change', function() {
+        const bulkGroupSelect = document.getElementById('bulkGroupSelectGroup');
+        bulkGroupSelect.style.display = this.value === 'group' ? 'block' : 'none';
     });
     
     // Bulk import method toggle
@@ -799,5 +793,5 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-refresh every 60 seconds
     setInterval(loadItems, 60000);
     
-    console.log(' Enhanced whitelist management initialized');
+    console.log('Enhanced whitelist management initialized');
 });

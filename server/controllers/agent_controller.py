@@ -164,26 +164,38 @@ class AgentController:
                 client_ip
             )
             
-            #  IMPROVED: Enhanced SocketIO broadcast với detailed info - vietnam only
+            # ENHANCED: Broadcast với detailed status info
             if self.socketio:
                 agent = self.model.find_by_agent_id(data['agent_id'])
                 
-                #  THÊM: Calculate time since last heartbeat for broadcast
-                current_time = now_iso()
-                time_since_last = 0  # Just received
+                # Calculate time since last heartbeat
+                current_time = now_vietnam()
+                last_heartbeat = agent.get("last_heartbeat") if agent else None
+                time_since_last = 0  # Just received, so 0
                 
-                self.socketio.emit("agent_heartbeat", {
+                # Determine actual status based on heartbeat timing
+                if agent:
+                    # Use service thresholds
+                    actual_status = result.get('status', 'active')
+                else:
+                    actual_status = 'active'
+                
+                broadcast_data = {
                     "agent_id": data['agent_id'],
                     "hostname": agent.get("hostname") if agent else "Unknown",
-                    "status": "active",
-                    "last_heartbeat": current_time,
+                    "status": actual_status,  # Use calculated status
+                    "last_heartbeat": now_iso(),
                     "time_since_heartbeat": time_since_last,
                     "metrics": data.get("metrics", {}),
                     "client_ip": client_ip,
-                    "timestamp": current_time,
+                    "timestamp": now_iso(),
                     "agent_version": data.get("agent_version"),
-                    "platform": data.get("platform")
-                })
+                    "platform": data.get("platform"),
+                    "group_id": str(agent.get("group_id")) if agent and agent.get("group_id") else None
+                }
+                
+                self.logger.info(f"Broadcasting heartbeat: {data['agent_id']} - {actual_status}")
+                self.socketio.emit("agent_heartbeat", broadcast_data)
             
             return self._success_response(result)
             
@@ -483,10 +495,10 @@ class AgentController:
             data = self._validate_json_request(['group_id'])
             agent = self.service.move_agent_to_group(agent_id, data.get('group_id'))
             
-            # ✅ FIX: Serialize ObjectId before returning
+            # Serialize ObjectId before returning
             serialized_agent = self._serialize_agent(agent)
             
-            # ✅ IMPROVED: Broadcast via SocketIO
+            # IMPROVED: Broadcast via SocketIO
             if self.socketio:
                 self.socketio.emit("agent_group_updated", {
                     "agent_id": agent_id,

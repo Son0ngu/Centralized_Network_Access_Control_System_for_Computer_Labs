@@ -1096,7 +1096,7 @@ class WhitelistManager:
     def set_firewall_manager(self, firewall_manager):
         """Set firewall manager for auto-sync"""
         self.firewall_manager = firewall_manager
-        logger.info("🔗 Firewall manager linked")
+        logger.info(" Firewall manager linked")
         
         # Perform initial sync if ready
         if self.startup_sync_completed and self.auto_sync_firewall:
@@ -1323,7 +1323,7 @@ class WhitelistManager:
                 
                 if success:
                     if consecutive_failures > 0:
-                        logger.info(f"🎉 Sync recovered after {consecutive_failures} failures")
+                        logger.info(f" Sync recovered after {consecutive_failures} failures")
                     consecutive_failures = 0
                     
                     # Refresh IPs after successful sync using parallel resolution

@@ -81,7 +81,7 @@ def get_mongo_client(config):
     
     if _mongo_client is None:
         try:
-            logger.info(f"🔗 [{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
+            logger.info(f" [{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
             
             # FIX: Optimized connection settings để reduce Win32 exceptions
             _mongo_client = MongoClient(

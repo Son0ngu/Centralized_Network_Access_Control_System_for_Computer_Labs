@@ -90,7 +90,7 @@ class FirewallManager:
                 self.allowed_ips = all_allowed_ips
                 self.essential_ips = essential_ips_v4
                 
-                logger.info("🎉 Whitelist firewall with Default Deny setup completed!")
+                logger.info(" Whitelist firewall with Default Deny setup completed!")
                 logger.info(" Windows Firewall Policy: DENY all outbound by default")
                 logger.info(f" Created {len(all_allowed_ips)} ALLOW rules for whitelisted traffic")
                 

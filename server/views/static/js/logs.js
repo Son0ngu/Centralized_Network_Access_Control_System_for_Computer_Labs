@@ -11,6 +11,10 @@ let currentFilter = {
 };
 let currentClearAction = null;
 
+// Add to global variables
+let agentsData = [];
+let groupsData = [];
+
 function normalizeAgentField(value) {
     if (value === null || value === undefined) return '';
     const str = typeof value === 'string' ? value : value.toString?.() || '';
@@ -186,75 +190,272 @@ async function updateStatistics() {
  */
 async function loadLogs() {
     try {
-        console.log(' Loading logs with filter:', currentFilter);
+        console.log('Loading logs with filter:', currentFilter);
         
         const params = new URLSearchParams();
-        if (currentFilter.level) params.append('level', currentFilter.level);
-        if (currentFilter.agent) params.append('agent_id', currentFilter.agent);
-        if (currentFilter.search) params.append('search', currentFilter.search);
-        if (currentFilter.time !== 'all') params.append('time_range', currentFilter.time);
+        
+        // Add all filter parameters
+        if (currentFilter.level) {
+            params.append('level', currentFilter.level);
+            console.log('  Level filter:', currentFilter.level);
+        }
+        
+        if (currentFilter.agent) {
+            params.append('agent_id', currentFilter.agent);
+            console.log('  Agent filter:', currentFilter.agent);
+        }
+        
+        if (currentFilter.search) {
+            params.append('search', currentFilter.search);
+            console.log('  Search filter:', currentFilter.search);
+        }
+        
+        if (currentFilter.time && currentFilter.time !== 'all') {
+            params.append('time_range', currentFilter.time);
+            console.log('  Time filter:', currentFilter.time);
+        }
+        
+        // CRITICAL: Add group filter
+        if (currentFilter.group_id) {
+            params.append('group_id', currentFilter.group_id);
+            console.log('  Group filter:', currentFilter.group_id);
+        }
+        
         params.append('limit', currentFilter.limit);
+        console.log('  Limit:', currentFilter.limit);
         
         const url = `/api/logs?${params.toString()}`;
-        console.log(' Fetching from URL:', url);
+        console.log('Fetching from URL:', url);
         
         const response = await fetch(url);
-        console.log(' Response status:', response.status);
-        console.log(' Response headers:', response.headers.get('content-type'));
+        console.log('Response status:', response.status);
         
         if (response.ok) {
             const responseText = await response.text();
-            console.log(' Raw response length:', responseText.length);
-            console.log(' Raw response start:', responseText.substring(0, 200));
+            console.log('📦 Raw response length:', responseText.length);
             
             try {
                 const data = JSON.parse(responseText);
-                console.log(' Parsed JSON successfully');
-                console.log(' Response structure:', {
+                console.log('Parsed JSON successfully');
+                console.log('Response structure:', {
                     success: data.success,
                     hasLogs: !!data.logs,
                     logsLength: data.logs ? data.logs.length : 0,
                     total: data.total,
-                    keys: Object.keys(data)
+                    filtered_by_group: data.group_id || 'none'
                 });
                 
                 if (data.logs && Array.isArray(data.logs)) {
                     logsData = data.logs;
-                    console.log(' Logs data assigned:', logsData.length, 'items');
+                    console.log('Logs data assigned:', logsData.length, 'items');
                     
                     if (logsData.length > 0) {
-                        console.log(' First log sample:', JSON.stringify(logsData[0], null, 2));
+                        console.log('First log sample:', JSON.stringify(logsData[0], null, 2));
                     }
                     
                     renderLogs(logsData);
                     await updateStatistics();
                 } else {
-                    console.error(' No valid logs array in response');
-                    console.log(' Full response:', data);
+                    console.error('No valid logs array in response');
+                    console.log('📄 Full response:', data);
                     showError('Invalid response format - no logs array');
                 }
             } catch (parseError) {
-                console.error(' JSON parse error:', parseError);
-                console.log(' Response text:', responseText.substring(0, 500));
+                console.error('JSON parse error:', parseError);
+                console.log('📄 Response text:', responseText.substring(0, 500));
                 showError('Failed to parse server response');
             }
         } else {
             const errorText = await response.text();
-            console.error(' Failed to load logs:', response.status, errorText);
+            console.error('Failed to load logs:', response.status, errorText);
             showError(`Failed to load logs: ${response.status}`);
         }
         
     } catch (error) {
-        console.error(' Error loading logs:', error);
+        console.error('Error loading logs:', error);
         showError('Error loading logs: ' + error.message);
         await updateStatistics();
     }
 }
 
 /**
+ * Load agents for filter dropdown
+ */
+async function loadAgentsForFilter() {
+    try {
+        console.log('Loading agents for filter...');
+        const response = await fetch('/api/agents');
+        
+        if (response.ok) {
+            const data = await response.json();
+            agentsData = data.agents || [];
+            console.log(' Loaded agents:', agentsData.length);
+            
+            populateAgentFilter();
+        } else {
+            console.error('Failed to load agents:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading agents:', error);
+    }
+}
+
+/**
+ * Load groups for filter dropdown
+ */
+async function loadGroupsForFilter() {
+    try {
+        console.log('Loading groups for filter...');
+        const response = await fetch('/api/groups');
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Handle different response formats
+            if (data.data && Array.isArray(data.data)) {
+                groupsData = data.data;
+            } else if (data.groups && Array.isArray(data.groups)) {
+                groupsData = data.groups;
+            } else if (Array.isArray(data)) {
+                groupsData = data;
+            }
+            
+            console.log('Loaded groups:', groupsData.length);
+            populateGroupFilter();
+        } else {
+            console.error('Failed to load groups:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+    }
+}
+
+/**
+ * Populate agent filter dropdown
+ */
+function populateAgentFilter() {
+    const agentFilter = document.getElementById('agent-filter');
+    if (!agentFilter) return;
+    
+    const currentValue = agentFilter.value;
+    
+    // Clear and add default option
+    agentFilter.innerHTML = '<option value="">All Agents</option>';
+    
+    // Sort agents by hostname
+    const sortedAgents = [...agentsData].sort((a, b) => {
+        const nameA = (a.hostname || a.display_name || a.agent_id || '').toLowerCase();
+        const nameB = (b.hostname || b.display_name || b.agent_id || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+    
+    // Add agent options
+    sortedAgents.forEach(agent => {
+        const option = document.createElement('option');
+        const agentId = agent.agent_id || agent._id || '';
+        const displayName = agent.hostname || agent.display_name || agentId;
+        const status = agent.status || 'unknown';
+        
+        option.value = agentId;
+        option.textContent = `${displayName} (${status})`;
+        
+        // Add icon based on status
+        if (status === 'active') {
+            option.textContent = `${displayName}`;
+        } else if (status === 'offline') {
+            option.textContent = ` ${displayName}`;
+        } else if (status === 'pending') {
+            option.textContent = `⏳ ${displayName}`;
+        }
+        
+        agentFilter.appendChild(option);
+    });
+    
+    // Restore previous selection
+    if (currentValue) {
+        agentFilter.value = currentValue;
+    }
+    
+    console.log(`Populated agent filter with ${sortedAgents.length} agents`);
+}
+
+/**
+ * Populate group filter dropdown
+ */
+function populateGroupFilter() {
+    const groupFilter = document.getElementById('group-filter');
+    if (!groupFilter) {
+        console.warn('Group filter element not found');
+        return;
+    }
+    
+    const currentValue = groupFilter.value;
+    console.log('Populating group filter, current value:', currentValue);
+    
+    // Clear and add default option
+    groupFilter.innerHTML = '<option value="">All Groups</option>';
+    
+    // Sort groups by name
+    const sortedGroups = [...groupsData].sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+    
+    console.log('Adding', sortedGroups.length, 'groups to filter');
+    
+    // Add group options
+    sortedGroups.forEach(group => {
+        const option = document.createElement('option');
+        const groupId = group._id || group.id;
+        option.value = groupId;
+        option.textContent = group.name;
+        
+        // Add system indicator
+        if (group.is_system) {
+            option.textContent = `${group.name}`;
+        }
+        
+        groupFilter.appendChild(option);
+        console.log(`  Added group: ${group.name} (${groupId})`);
+    });
+    
+    // Restore previous selection
+    if (currentValue) {
+        groupFilter.value = currentValue;
+        console.log('Restored group filter to:', currentValue);
+    }
+    
+    console.log('Group filter populated with', sortedGroups.length, 'groups');
+}
+
+/**
  *  Filter change handler
  */
 function onFilterChange() {
+    console.log('Filter changed, current state:', currentFilter);
+    
+    // Update current filter state from all filter controls
+    const groupFilter = document.getElementById('group-filter');
+    const levelFilter = document.getElementById('level-filter');
+    const agentFilter = document.getElementById('agent-filter');
+    const searchInput = document.getElementById('log-search');
+    
+    // Update group filter
+    if (groupFilter && groupFilter.value) {
+        currentFilter.group_id = groupFilter.value;
+        console.log('Group filter set to:', groupFilter.value);
+    } else {
+        delete currentFilter.group_id;
+        console.log('Group filter cleared');
+    }
+    
+    // Update other filters
+    currentFilter.level = levelFilter ? levelFilter.value : '';
+    currentFilter.agent = agentFilter ? agentFilter.value : '';
+    currentFilter.search = searchInput ? searchInput.value : '';
+    
+    console.log('Reloading logs with filter:', currentFilter);
     loadLogs();
 }
 
@@ -817,7 +1018,7 @@ function showNotification(type, message) {
  *  SINGLE INITIALIZATION
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log(' Initializing logs management...');
+    console.log('Initializing logs management...');
     
     // Time filter pills
     document.querySelectorAll('.time-pill').forEach(pill => {
@@ -825,39 +1026,59 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.time-pill.active')?.classList.remove('active');
             this.classList.add('active');
             currentFilter.time = this.dataset.time;
+            console.log('Time filter changed to:', currentFilter.time);
             onFilterChange();
         });
     });
     
-    // Search and filters
+    // Search input
     const searchInput = document.getElementById('log-search');
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             currentFilter.search = this.value;
-            filterLogs();
+            console.log('🔍 Search filter changed to:', currentFilter.search);
+            filterLogs(); // Use filterLogs for client-side search
         });
     }
     
+    // Level filter
     const levelFilter = document.getElementById('level-filter');
     if (levelFilter) {
         levelFilter.addEventListener('change', function() {
             currentFilter.level = this.value;
+            console.log('Level filter changed to:', currentFilter.level);
             onFilterChange();
         });
     }
     
+    // Agent filter
     const agentFilter = document.getElementById('agent-filter');
     if (agentFilter) {
         agentFilter.addEventListener('change', function() {
             currentFilter.agent = this.value;
+            console.log('Agent filter changed to:', currentFilter.agent);
             onFilterChange();
         });
     }
     
+    // CRITICAL: Group filter listener
+    const groupFilter = document.getElementById('group-filter');
+    if (groupFilter) {
+        groupFilter.addEventListener('change', function() {
+            currentFilter.group_id = this.value;
+            console.log('Group filter changed to:', this.value);
+            onFilterChange(); // Call onFilterChange, not loadLogs directly
+        });
+    } else {
+        console.error('Group filter element not found!');
+    }
+    
+    // Limit select
     const limitSelect = document.getElementById('limit-select');
     if (limitSelect) {
         limitSelect.addEventListener('change', function() {
             currentFilter.limit = parseInt(this.value);
+            console.log('Limit changed to:', currentFilter.limit);
             loadLogs();
         });
     }
@@ -947,18 +1168,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load initial data
-    console.log(' Loading initial data...');
-    loadLogs();
+    console.log('Loading initial data...');
+    Promise.all([
+        loadAgentsForFilter(),
+        loadGroupsForFilter()
+    ]).then(() => {
+        console.log('Filters loaded successfully');
+        console.log('Agents:', agentsData.length);
+        console.log('Groups:', groupsData.length);
+        console.log('Now loading logs...');
+        loadLogs();
+    }).catch(error => {
+        console.error('Error loading filters:', error);
+        loadLogs(); // Load logs anyway
+    });
     
-    // Emergency fallback
-    setTimeout(() => {
-        if (!logsData || logsData.length === 0) {
-            console.log('🚨 No logs loaded after 3 seconds, running emergency test');
-            emergencyTest();
-        }
-    }, 3000);
-    
-    console.log(' Logs management initialized');
+    console.log('Logs management initialized');
 });
 
 // Socket.IO for real-time updates

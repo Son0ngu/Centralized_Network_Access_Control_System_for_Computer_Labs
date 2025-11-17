@@ -94,11 +94,20 @@ class LogController:
             limit = int(request.args.get('limit', 100))
             offset = int(request.args.get('offset', 0))
             
+            # DEBUG: Log the filters being applied
+            self.logger.info(f"List logs called with filters: {filters}")
+            
             # Call service method
             result = self.service.get_all_logs(filters, limit, offset)
             
-            return jsonify(result), 200
+            # Add group_id to response for debugging
+            response_data = {
+                **result,
+                'applied_filters': filters  # Echo back filters for debugging
+            }
             
+            return jsonify(response_data), 200
+        
         except Exception as e:
             self.logger.error(f"Error listing logs: {e}")
             return self._error_response("Failed to list logs", 500)
@@ -267,6 +276,15 @@ class LogController:
         
         if request.args.get('search'):
             filters['search'] = request.args.get('search')
+        
+        # CRITICAL FIX: Add group_id filter
+        if request.args.get('group_id'):
+            filters['group_id'] = request.args.get('group_id')
+            self.logger.info(f"Group filter applied: {filters['group_id']}")
+        
+        # Time range filter
+        if request.args.get('time_range'):
+            filters['time_range'] = request.args.get('time_range')
         
         # Date filters
         if request.args.get('start_date'):

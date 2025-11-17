@@ -474,7 +474,7 @@ function renderGroups() {
     groupsData.forEach(group => {
         const whitelistCount = (group.whitelist || []).length;
         
-        // ✅ Count agents in this group
+        //  Count agents in this group
         const agentsInGroup = agentsData.filter(a => a.group_id === group._id);
         const agentCount = agentsInGroup.length;
         
@@ -485,7 +485,7 @@ function renderGroups() {
         card.addEventListener('dragleave', handleGroupDragLeave);
         card.addEventListener('drop', handleGroupDrop);
 
-        // ✅ Render agents list
+        //  Render agents list
         const agentsListHtml = agentsInGroup.map(agent => {
             const statusInfo = getStatusInfo(agent.status);
             return `
@@ -527,7 +527,7 @@ function renderGroups() {
                 </span>
             </div>
             
-            <!-- ✅ Agent count toggle -->
+            <!--  Agent count toggle -->
             <div class="group-agent-count" data-action="toggle-agents" data-group-id="${group._id}">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fas fa-users text-primary"></i>
@@ -536,7 +536,7 @@ function renderGroups() {
                 <i class="fas fa-chevron-down expand-icon text-muted"></i>
             </div>
             
-            <!-- ✅ Agents list (collapsible) -->
+            <!--  Agents list (collapsible) -->
             <div class="group-agents-list" id="agents-list-${group._id}">
                 ${agentCount > 0 ? agentsListHtml : '<div class="text-muted text-center py-2"><small>No agents in this group</small></div>'}
             </div>
@@ -545,7 +545,7 @@ function renderGroups() {
         board.appendChild(card);
     });
 
-    // ✅ Add event listeners for toggle
+    //  Add event listeners for toggle
     board.querySelectorAll('[data-action="toggle-agents"]').forEach(toggle => {
         toggle.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent drag events
@@ -572,7 +572,7 @@ function renderGroups() {
         });
     });
 
-    // ✅ Add click to view agent logs
+    // Add click to view agent logs
     board.querySelectorAll('.group-agent-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -646,6 +646,13 @@ async function moveAgentToGroup(agentId, groupId) {
     }
 
     try {
+        // Show loading state
+        const groupCard = document.querySelector(`[data-group-id="${resolvedGroupId}"]`);
+        if (groupCard) {
+            groupCard.style.opacity = '0.6';
+            groupCard.style.pointerEvents = 'none';
+        }
+
         const response = await fetch(`/api/agents/${resolvedAgentId}/group`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -657,27 +664,49 @@ async function moveAgentToGroup(agentId, groupId) {
         if (!response.ok || result.success === false) {
             const errorMessage = result.error || result.message || 'Failed to move agent';
             throw new Error(errorMessage);
-        
+        }
+
+        // Update local data immediately for instant UI feedback
+        const agent = agentsData.find(a => getAgentId(a) === resolvedAgentId);
+        if (agent) {
+            agent.group_id = resolvedGroupId;
         }
 
         showSuccess(result.message || 'Agent moved to group');
-        await loadAgents();
+        
+        // CRITICAL FIX: Reload both agents AND groups to update counts
+        await Promise.all([
+            loadAgents(),
+            loadGroups()
+        ]);
+        
     } catch (error) {
         console.error('Error moving agent:', error);
         showError(error.message || 'Failed to move agent');
+    } finally {
+        // Remove loading state
+        const groupCard = document.querySelector(`[data-group-id="${resolvedGroupId}"]`);
+        if (groupCard) {
+            groupCard.style.opacity = '1';
+            groupCard.style.pointerEvents = 'auto';
+        }
     }
 }
 
-async function loadGroups() {
+async function loadGroups(skipAgentRerender = false) {
     try {
+        console.log('Loading groups...');
         const response = await fetch('/api/groups');
         if (!response.ok) throw new Error('Failed to load groups');
+        
         const data = await response.json();
         groupsData = data.data || [];
+        
+        console.log('Loaded groups:', groupsData.length);
         renderGroups();
 
-        // Re-render agents to ensure group badges are up to date
-        if (agentsData.length) {
+        // Only re-render agents if explicitly needed (to update group badges)
+        if (!skipAgentRerender && agentsData.length) {
             renderAgents(agentsData);
         }
     } catch (error) {
@@ -919,10 +948,103 @@ function showSuccess(message) {
 }
 
 /**
- * Initialize page
+ * Quick update group agent count without full reload (faster)
  */
+function updateGroupAgentCount(groupId) {
+    const agentsInGroup = agentsData.filter(a => a.group_id === groupId);
+    const agentCount = agentsInGroup.length;
+    
+    const countElement = document.querySelector(`[data-group-id="${groupId}"] .group-agent-count .fw-semibold`);
+    if (countElement) {
+        countElement.textContent = `${agentCount} Agent${agentCount !== 1 ? 's' : ''}`;
+    }
+    
+    // Update agents list
+    const agentsList = document.getElementById(`agents-list-${groupId}`);
+    if (agentsList) {
+        if (agentCount > 0) {
+            const agentsListHtml = agentsInGroup.map(agent => {
+                const statusInfo = getStatusInfo(agent.status);
+                return `
+                    <div class="group-agent-item" data-agent-id="${getAgentId(agent)}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-desktop text-primary" style="font-size: 0.9rem;"></i>
+                            <span class="agent-name">${agent.hostname || 'Unknown'}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="text-muted">${agent.ip_address || 'N/A'}</small>
+                            <span class="agent-status-dot ${statusInfo.class}" 
+                                  title="${statusInfo.text}"></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            agentsList.innerHTML = agentsListHtml;
+            
+            // Re-attach click events
+            agentsList.querySelectorAll('.group-agent-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const agentId = item.dataset.agentId;
+                    viewAgentLogs(agentId);
+                });
+            });
+        } else {
+            agentsList.innerHTML = '<div class="text-muted text-center py-2"><small>No agents in this group</small></div>';
+        }
+    }
+}
+
+/**
+ * Update all group counts (when global status changes)
+ */
+function updateAllGroupCounts() {
+    const uniqueGroupIds = [...new Set(agentsData.map(a => a.group_id).filter(Boolean))];
+    uniqueGroupIds.forEach(groupId => {
+        updateGroupAgentCount(groupId);
+    });
+}
+
+/**
+ * Periodic check for offline agents (every 30 seconds)
+ */
+function startPeriodicStatusCheck() {
+    setInterval(async () => {
+        console.log('Checking agent status...');
+        
+        try {
+            const response = await fetch('/api/agents/statistics');
+            if (response.ok) {
+                const data = await response.json();
+                const stats = data.data;
+                
+                // Check if stats changed significantly
+                const currentStats = {
+                    active: agentsData.filter(a => a.status === 'active').length,
+                    inactive: agentsData.filter(a => a.status === 'inactive').length,
+                    offline: agentsData.filter(a => a.status === 'offline').length
+                };
+                
+                const hasChanges = 
+                    stats.active !== currentStats.active ||
+                    stats.inactive !== currentStats.inactive ||
+                    stats.offline !== currentStats.offline;
+                
+                if (hasChanges) {
+                    console.log('Status changed, reloading agents...');
+                    await loadAgents();
+                    updateAllGroupCounts();
+                }
+            }
+        } catch (error) {
+            console.error('Error checking status:', error);
+        }
+    }, 30000); // Every 30 seconds
+}
+
+// Add to DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log(' Agents page initialized');
+    console.log('🚀 Agents page initialized');
     loadAgents();
     loadGroups();
     
@@ -957,13 +1079,103 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof io !== 'undefined') {
         const socket = io();
         
+        // CRITICAL: Listen for heartbeat to update status
+        socket.on('agent_heartbeat', (data) => {
+            console.log('Agent heartbeat received:', data);
+            
+            // Update local agent data
+            const agent = agentsData.find(a => getAgentId(a) === data.agent_id);
+            if (agent) {
+                const oldGroupId = agent.group_id;
+                const oldStatus = agent.status;
+                
+                // Update agent fields
+                agent.status = data.status || 'active';
+                agent.last_heartbeat = data.last_heartbeat;
+                agent.time_since_heartbeat = data.time_since_heartbeat;
+                agent.metrics = data.metrics;
+                
+                console.log(`${agent.hostname}: ${oldStatus} → ${agent.status}`);
+                
+                // Re-render agent row
+                renderAgents(agentsData);
+                
+                // Update group count if status changed
+                if (oldGroupId) {
+                    updateGroupAgentCount(oldGroupId);
+                }
+                
+                // Update statistics
+                updateStatistics();
+            } else {
+                // New agent - reload everything
+                console.log('New agent detected, reloading...');
+                loadAgents();
+                loadGroups();
+            }
+        });
+        
+        // Listen for agent updates (registration, deletion)
         socket.on('agent_update', (data) => {
-            console.log(' Agent update received:', data);
+            console.log('Agent update received:', data);
             loadAgents();
         });
         
+        // Listen for agent group changes
+        socket.on('agent_group_updated', (data) => {
+            console.log('Agent group updated:', data);
+            
+            // Update local data
+            const agent = agentsData.find(a => getAgentId(a) === data.agent_id);
+            if (agent) {
+                const oldGroupId = agent.group_id;
+                agent.group_id = data.group_id;
+                agent.status = data.status;
+                
+                // Update both old and new group counts
+                if (oldGroupId) {
+                    updateGroupAgentCount(oldGroupId);
+                }
+                if (data.group_id) {
+                    updateGroupAgentCount(data.group_id);
+                }
+            }
+            
+            // Re-render agents list
+            renderAgents(agentsData);
+        });
+        
+        // Listen for agent registration
+        socket.on('agent_registered', (data) => {
+            console.log('Agent registered:', data);
+            loadAgents();
+            loadGroups(); // Reload groups to update pending count
+        });
+        
+        // Listen for agent deletion
+        socket.on('agent_deleted', (data) => {
+            console.log('Agent deleted:', data);
+            
+            // Remove from local data
+            const index = agentsData.findIndex(a => getAgentId(a) === data.agent_id);
+            if (index !== -1) {
+                const deletedAgent = agentsData[index];
+                agentsData.splice(index, 1);
+                
+                // Update group count
+                if (deletedAgent.group_id) {
+                    updateGroupAgentCount(deletedAgent.group_id);
+                }
+                
+                // Re-render
+                renderAgents(agentsData);
+                updateStatistics();
+            }
+        });
+        
+        // Listen for new logs
         socket.on('new_log', (logData) => {
-            console.log(' New log received:', logData);
+            console.log('New log received:', logData);
             if (logData.agent_id) {
                 agentLogs[logData.agent_id] = normalizeAgentLog(logData);
                 updateAgentLogElement(logData.agent_id);
@@ -971,11 +1183,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         socket.on('connect', () => {
-            console.log(' Socket.IO connected');
+            console.log('Socket.IO connected');
+            // Reload data on reconnect
+            loadAgents();
+            loadGroups();
         });
         
         socket.on('disconnect', () => {
-            console.log(' Socket.IO disconnected');
+            console.log('Socket.IO disconnected');
         });
+        
+        socket.on('error', (error) => {
+            console.error('Socket.IO error:', error);
+        });
+    } else {
+        console.warn('Socket.IO not available - real-time updates disabled');
     }
+    
+    // Start periodic check
+    startPeriodicStatusCheck();
 });
