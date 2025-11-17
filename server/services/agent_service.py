@@ -26,15 +26,17 @@ from time_utils import (
 class AgentService:
     """Service class for agent business logic - vietnam ONLY"""
     
-    def __init__(self, agent_model: AgentModel, socketio=None):
+    def __init__(self, agent_model: AgentModel, group_model, socketio=None):
         """Initialize AgentService with proper parameters"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
+        self.group_model = group_model
         self.socketio = socketio
         
         # Get database from model, not from parameter
         self.db = self.model.db
         self.commands_collection = self.db.agent_commands
+        self.pending_group = self.group_model.ensure_pending_group()
         
         # vietnam ONLY - no timezone complexity
         self.active_threshold = 300      # 5 minutes
@@ -91,8 +93,15 @@ class AgentService:
                     "agent_version": agent_data.get("agent_version"),
                     "last_heartbeat": current_time,
                     "updated_date": current_time,
-                    "status": "active"
+                    
                 }
+                if existing_agent.get("status") not in ["pending", "disabled"]:
+                    update_data["status"] = "active"
+
+                if not existing_agent.get("group_id"):
+                    update_data["group_id"] = str(self.pending_group.get("_id"))
+                if not existing_agent.get("display_name"):
+                    update_data["display_name"] = hostname
                 
                 self.model.update_agent(agent_id, update_data)
                 agent_token = existing_agent.get("agent_token")
@@ -110,6 +119,7 @@ class AgentService:
                     "agent_id": agent_id,
                     "device_id": device_id,
                     "hostname": hostname,
+                    "display_name": hostname,
                     "ip_address": agent_ip,
                     "platform": agent_data.get("platform"),
                     "os_info": agent_data.get("os_info"),
@@ -117,7 +127,8 @@ class AgentService:
                     "agent_token": agent_token,
                     "registered_date": current_time,
                     "last_heartbeat": current_time,
-                    "status": "active"
+                    "status": "pending",
+                    "group_id": str(self.pending_group.get("_id")),
                 }
                 
                 self.model.register_agent(agent_registration_data)
@@ -129,7 +140,7 @@ class AgentService:
                     "agent_id": agent_id,
                     "hostname": hostname,
                     "ip_address": agent_ip,
-                    "status": "active",
+                    "status": agent_registration_data.get("status") if not existing_agent else existing_agent.get("status"),
                     "timestamp": now_iso()  # vietnam ISO
                 })
         
@@ -137,7 +148,7 @@ class AgentService:
                 "agent_id": agent_id,
                 "user_id": device_id,
                 "token": agent_token,
-                "status": "active",
+                "status": agent_registration_data.get("status") if not existing_agent else update_data.get("status", existing_agent.get("status")),
                 "message": f"Agent {'updated' if existing_agent else 'registered'} successfully",
                 "server_time": now_iso()  # vietnam ISO
             }
@@ -163,6 +174,17 @@ class AgentService:
                 hostname = agent.get('hostname', 'Unknown')
                 last_heartbeat = agent.get('last_heartbeat')
                 
+                agent.setdefault('display_name', hostname)
+
+                if agent.get("status") in ["pending", "disabled"]:
+                    if last_heartbeat:
+                        try:
+                            last_dt = parse_agent_timestamp(last_heartbeat)
+                            agent['time_since_heartbeat'] = (current_time - last_dt).total_seconds() / 60
+                        except Exception:
+                            agent['time_since_heartbeat'] = None
+                    continue
+
                 if last_heartbeat:
                     self.logger.info(f"{hostname}: Processing heartbeat {last_heartbeat} (type: {type(last_heartbeat)})")
                     
@@ -294,10 +316,14 @@ class AgentService:
                 heartbeat_time = now_vietnam()
         
             # Update heartbeat with parsed timestamp
+            new_status = agent.get("status")
+            if new_status not in ["pending", "disabled"]:
+                new_status = heartbeat_data.get("status", "active")
+
             update_data = {
                 "client_ip": client_ip,
                 "metrics": heartbeat_data.get("metrics", {}),
-                "status": heartbeat_data.get("status", "active"),
+                "status": new_status,
                 "agent_version": heartbeat_data.get("agent_version"),
                 "last_heartbeat_data": heartbeat_data,
                 "platform": heartbeat_data.get("platform"),
@@ -333,7 +359,7 @@ class AgentService:
             
             return {
                 "agent_id": agent_id,
-                "status": "active",
+                "status": new_status,
                 "next_heartbeat": int(next_heartbeat_time.timestamp() * 1000),
                 "server_commands": [],
                 "server_time": now_iso()  # vietnam ISO
@@ -757,7 +783,34 @@ class AgentService:
         except Exception as e:
             self.logger.error(f"Error updating command result: {e}")
             raise
+    
+    def update_display_name(self, agent_id: str, display_name: str) -> bool:
+        if not display_name:
+            raise ValueError("display_name is required")
+        updated = self.model.update_agent(agent_id, {"display_name": display_name})
+        if not updated:
+            raise ValueError("Agent not found or not updated")
+        return True
 
+    def move_agent_to_group(self, agent_id: str, group_id: str) -> Dict:
+        agent = self.model.find_by_agent_id(agent_id)
+        if not agent:
+            raise ValueError("Agent not found")
+
+        group = self.group_model.find_by_id(group_id)
+        if not group:
+            raise ValueError("Group not found")
+
+        new_status = "pending" if group.get("is_system") and group.get("name") == "pending" else "active"
+        success = self.model.update_agent_group(agent_id, str(group.get("_id")), new_status)
+
+        if not success:
+            raise ValueError("Failed to move agent to group")
+
+        agent["group_id"] = str(group.get("_id"))
+        agent["status"] = new_status
+        return agent
+    
     def list_commands(self, filters: Dict = None, limit: int = 50, skip: int = 0) -> Dict:
         """List commands with filtering - vietnam ONLY"""
         try:

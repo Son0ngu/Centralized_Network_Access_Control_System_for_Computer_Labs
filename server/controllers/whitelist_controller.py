@@ -75,7 +75,9 @@ class WhitelistController:
             # Get query parameters
             since = request.args.get('since')
             agent_id = request.args.get('agent_id')
-            
+            global_version = request.args.get('global_version')
+            group_version = request.args.get('group_version')
+
             self.logger.debug(f"Agent sync request - since: {since}, agent_id: {agent_id}")
             
             # FIX: Better parameter validation using time_utils - vietnam ONLY
@@ -88,7 +90,12 @@ class WhitelistController:
                     # Continue without since filter
             
             # Call service method
-            result = self.service.get_agent_sync_data(since_datetime, agent_id)
+            result = self.service.get_agent_sync_data(
+                since_datetime,
+                agent_id,
+                int(global_version) if global_version else None,
+                int(group_version) if group_version else None,
+            )
             
             # FIX: Ensure response format is correct
             if not isinstance(result, dict):

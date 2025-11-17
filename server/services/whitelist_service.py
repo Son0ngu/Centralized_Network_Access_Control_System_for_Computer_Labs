@@ -21,9 +21,11 @@ logger = logging.getLogger(__name__)
 class WhitelistService:
     """Service class for whitelist business logic - vietnam ONLY"""
     
-    def __init__(self, whitelist_model: WhitelistModel, socketio=None):
+    def __init__(self, whitelist_model: WhitelistModel, agent_model, group_model, socketio=None):
         """Initialize WhitelistService with model and socketio"""
         self.model = whitelist_model
+        self.agent_model = agent_model
+        self.group_model = group_model
         self.socketio = socketio
         self.logger = logging.getLogger(self.__class__.__name__)
         
@@ -336,87 +338,97 @@ class WhitelistService:
             self.logger.error(f"Error getting detailed changes: {e}")
             return {"added": [], "removed": [], "modified": [], "active_domains": []}
     
-    def get_agent_sync_data(self, since_datetime: Optional[object] = None, agent_id: str = None) -> Dict:
-        """Get whitelist data for agent synchronization with detailed changes - vietnam ONLY"""
-        try:
-            sync_type = "full"  # Default to full sync
-            changes_details = {
-                "added": [],
-                "removed": [],
-                "modified": [],
-                "active_domains": []
+    def _normalize_group_entries(self, group) -> List[Dict]:
+        entries = []
+        for entry in group.get("whitelist", []):
+            if not entry:
+                continue
+            if isinstance(entry, dict):
+                value = entry.get("value")
+                entry_type = entry.get("type", "domain")
+                priority = entry.get("priority", "normal")
+                category = entry.get("category", "uncategorized")
+            else:
+                value = entry
+                entry_type = "domain"
+                priority = "normal"
+                category = "uncategorized"
+
+            entries.append({
+                "value": value,
+                "type": entry_type,
+                "priority": priority,
+                "category": category,
+                "scope": "group",
+            })
+        return entries
+
+    def _merge_whitelists(self, global_entries: List[Dict], group_entries: List[Dict]) -> List[Dict]:
+        merged = {}
+        for entry in global_entries + group_entries:
+            key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
+            merged[key] = {
+                "value": entry.get("value"),
+                "type": entry.get("type", "domain"),
+                "priority": entry.get("priority", "normal"),
+                "category": entry.get("category", "uncategorized"),
+                "scope": entry.get("scope", "global"),
             }
             
-            since_dt = None
+        return list(merged.values())
 
-            # Handle since parameter
-            if since_datetime:
-                try:
-                    sync_type = "incremental"
-                    since_dt = parse_agent_timestamp(since_datetime)
-                    current_time = now_vietnam()
 
-                    hours_ago = (current_time - since_dt).total_seconds() / 3600
+    def get_agent_sync_data(self, since_datetime: Optional[object] = None, agent_id: str = None,
+                            global_version: Optional[int] = None, group_version: Optional[int] = None) -> Dict:
+        """Get whitelist data for agent synchronization with group awareness"""
+        try:
+            if not agent_id:
+                raise ValueError("agent_id is required for sync")
 
-                    if hours_ago > 24:
-                        sync_type = "full"
-                        since_dt = None
-                        self.logger.info(f"Since date too old ({hours_ago:.1f}h), switching to full sync")
-                    else:
-                        
-                        changes_details = self._get_detailed_changes(since_dt)
-                        
-                except Exception as e:
-                    self.logger.warning(f"Error processing since parameter: {e}")
-                    since_dt = None
-                    sync_type = "full"
-            
-            #  FIX: Logic để trả về domains cho agent
-            if sync_type == "incremental":
-                #  Cho incremental sync: trả về TẤT CẢ active domains
-                # Agent sẽ tự so sánh với domains hiện tại để detect changes
-                entries = self.model.get_entries_for_sync(None)  # Get ALL active entries
-                
-                # Log incremental sync info
-                self.logger.info(f"Incremental sync: returning {len(entries)} total active domains, "
-                               f"Added: {len(changes_details['added'])}, "
-                               f"Removed: {len(changes_details['removed'])}")
-            else:
-                # Full sync: get all entries
-                entries = self.model.get_entries_for_sync(since_dt)
-                self.logger.info(f"Full sync: returning {len(entries)} domains")
-            
-            current_time = now_vietnam()
-            
-            # Format entries for agent sync
-            domains = []
-            for entry in entries:
-                domain_entry = {
-                    "value": entry.get("value"),
-                    "type": entry.get("type", "domain"),
-                    "added_date": entry.get("added_date"),
-                    "priority": entry.get("priority", "normal"),
-                    "category": entry.get("category", "uncategorized"),
-                    "is_active": entry.get("is_active", True)
+            agent = self.agent_model.find_by_agent_id(agent_id)
+            if not agent:
+                raise ValueError("Agent not found")
+
+            group_id = agent.get("group_id")
+            group = self.group_model.find_by_id(group_id) if group_id else None
+            if not group:
+                group = self.group_model.ensure_pending_group()
+                group_id = str(group.get("_id"))
+
+            global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
+            group_entries = self._normalize_group_entries(group)
+
+            current_global_version = self.model.get_global_version()
+            current_group_version = group.get("whitelist_version", 1)
+
+            if global_version == current_global_version and group_version == current_group_version:
+                return {
+                    "domains": [],
+                    "timestamp": now_iso(),
+                    "count": 0,
+                    "type": "versioned",
+                    "success": True,
+                    "server_time": now_iso(),
+                    "global_version": current_global_version,
+                    "group_version": current_group_version,
+                    "group_id": str(group.get("_id")),
+                    "up_to_date": True,        
                 }
-                domains.append(domain_entry)
+            
+            combined = self._merge_whitelists(global_entries, group_entries)
             
             response = {
-                "domains": domains,
-                "timestamp": current_time.isoformat(),
-                "count": len(domains),
-                "type": sync_type,
+                "domains": combined,
+                "timestamp": now_iso(),
+                "count": len(combined),
+                "type": "full",
                 "success": True,
                 "server_time": now_iso(),
-                "changes": changes_details  # Include detailed changes for debugging
+                "global_version": current_global_version,
+                "group_version": current_group_version,
+                "group_id": str(group.get("_id")),
+                "agent_id": agent_id,
             }
-            
-            # Include agent_id if provided
-            if agent_id:
-                response["agent_id"] = agent_id
-            
-            # Enhanced logging
-            self.logger.info(f"Agent sync response: {sync_type} sync with {len(domains)} total domains for agent {agent_id or 'unknown'}")
             
             return response
             

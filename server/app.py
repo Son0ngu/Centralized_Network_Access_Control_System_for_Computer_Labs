@@ -28,14 +28,17 @@ from time_utils import now_iso, format_datetime, parse_agent_timestamp
 from models.whitelist_model import WhitelistModel
 from models.agent_model import AgentModel
 from models.log_model import LogModel
+from models.group_model import GroupModel
 
 from services.whitelist_service import WhitelistService
 from services.agent_service import AgentService
 from services.log_service import LogService
+from services.group_service import GroupService
 
 from controllers.whitelist_controller import WhitelistController
 from controllers.agent_controller import AgentController
 from controllers.log_controller import LogController
+from controllers.group_controller import GroupController
 
 # Setup logging
 logging.basicConfig(
@@ -124,9 +127,9 @@ def create_app():
     
     #  FIX: Initialize MVC components and get services
     try:
-        log_service, agent_service = register_controllers(app, socketio, db)
-        
-        if log_service is None or agent_service is None:
+        log_service, agent_service, group_service = register_controllers(app, socketio, db)
+
+        if log_service is None or agent_service is None or group_service is None:
             raise RuntimeError("Failed to initialize services")
             
         app.logger.info(" MVC components initialized successfully")
@@ -145,6 +148,7 @@ def create_app():
     app.socketio = socketio
     app.log_service = log_service
     app.agent_service = agent_service
+    app.group_service = group_service
     
     #  Mark as initialized
     _app_initialized = True
@@ -166,7 +170,8 @@ def initialize_database_indexes(app, db):
         whitelist_model = WhitelistModel(db)
         log_model = LogModel(db) 
         agent_model = AgentModel(db)
-        
+        group_model = GroupModel(db)
+
         app.logger.info(" Database indexes initialized successfully")
         
     except Exception as e:
@@ -189,8 +194,9 @@ def register_controllers(app, socketio, db):
         logger.info(" Models initialized")
         
         #  Initialize services
-        whitelist_service = WhitelistService(whitelist_model, socketio)
-        agent_service = AgentService(agent_model, socketio)
+        group_service = GroupService(group_model, agent_model)
+        whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio)
+        agent_service = AgentService(agent_model, group_model, socketio)
         log_service = LogService(log_model, socketio)
         
         logger.info(" Services initialized")
@@ -199,14 +205,16 @@ def register_controllers(app, socketio, db):
         whitelist_controller = WhitelistController(whitelist_model, whitelist_service, socketio)
         agent_controller = AgentController(agent_model, agent_service, socketio)
         log_controller = LogController(log_model, log_service, socketio)
-        
+        group_controller = GroupController(group_service)
+
         logger.info(" Controllers initialized")
         
         #  Register blueprints with proper URL prefixes
         app.register_blueprint(whitelist_controller.blueprint, url_prefix='/api')
         app.register_blueprint(agent_controller.blueprint, url_prefix='/api')
         app.register_blueprint(log_controller.blueprint, url_prefix='/api')
-        
+        app.register_blueprint(group_controller.blueprint, url_prefix='/api')
+
         logger.info(" All controllers registered successfully")
         
         #  Debug: Log registered routes
@@ -217,13 +225,13 @@ def register_controllers(app, socketio, db):
                 logger.info(f"  {methods:15} {rule.rule}")
         
         #  FIX: Return services để dùng trong main routes
-        return log_service, agent_service
+        return log_service, agent_service, group_service
         
     except Exception as e:
         logger.error(f" Error registering controllers: {e}")
         import traceback
         traceback.print_exc()
-        return None, None
+        return None, None, None
 
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""

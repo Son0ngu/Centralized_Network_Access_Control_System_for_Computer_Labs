@@ -37,7 +37,9 @@ class AgentController:
         # Individual agent routes
         self.blueprint.add_url_rule('/agents/<agent_id>', 'get_agent', self.get_agent, methods=['GET'])
         self.blueprint.add_url_rule('/agents/<agent_id>', 'delete_agent', self.delete_agent, methods=['DELETE'])
-        
+        self.blueprint.add_url_rule('/agents/<agent_id>/display-name', 'update_display_name', self.update_display_name, methods=['PATCH'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/group', 'update_group', self.update_group, methods=['PATCH'])
+
         # Agent command routes
         self.blueprint.add_url_rule('/agents/<agent_id>/command', 'send_command', self.send_command, methods=['POST'])
         self.blueprint.add_url_rule('/agents/commands', 'list_commands', self.list_commands, methods=['GET'])
@@ -181,7 +183,7 @@ class AgentController:
             self.logger.info(" List agents called")
             
             pagination = self._get_pagination_params()
-            filters = self._get_filter_params(['status', 'hostname'])
+            filters = self._get_filter_params(['status', 'hostname','group_id'])
             
             agents_with_status = self.service.get_agents_with_status()
             self.logger.info(f" Found {len(agents_with_status)} agents")
@@ -196,6 +198,9 @@ class AgentController:
                 hostname_filter = filters["hostname"].lower()
                 filtered_agents = [a for a in filtered_agents if hostname_filter in a.get('hostname', '').lower()]
             
+            if filters.get("group_id"):
+                filtered_agents = [a for a in filtered_agents if str(a.get('group_id')) == filters['group_id']]
+
             # Apply pagination
             total_count = len(filtered_agents)
             agents_list = filtered_agents[pagination['skip']:pagination['skip']+pagination['limit']]
@@ -440,6 +445,31 @@ class AgentController:
         except Exception as e:
             self.logger.error(f"Error updating command result: {e}")
             return self._error_response("Failed to update command result", 500)
+
+    def update_display_name(self, agent_id: str):
+        """Update agent display name"""
+        try:
+            data = self._validate_json_request(['display_name'])
+            self.service.update_display_name(agent_id, data.get('display_name'))
+            return self._success_response(message="Display name updated")
+        except ValueError as e:
+            return self._error_response(str(e), 400)
+        except Exception as e:
+            self.logger.error(f"Error updating display name: {e}")
+            return self._error_response("Failed to update display name", 500)
+
+    def update_group(self, agent_id: str):
+        """Move agent to a new group"""
+        try:
+            data = self._validate_json_request(['group_id'])
+            agent = self.service.move_agent_to_group(agent_id, data.get('group_id'))
+            return self._success_response(agent, "Agent group updated")
+        except ValueError as e:
+            return self._error_response(str(e), 400)
+        except Exception as e:
+            self.logger.error(f"Error updating agent group: {e}")
+            return self._error_response("Failed to update agent group", 500)
+
 
     def debug_status(self):
         """Debug endpoint để kiểm tra status calculation - vietnam only"""
