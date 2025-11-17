@@ -287,7 +287,7 @@ function renderAgents(agents) {
         
         agentElement.innerHTML = `
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-md-6">
                     <div class="d-flex align-items-center">
                         <div class="me-3">
                             <i class="fas fa-desktop fa-2x text-primary"></i>
@@ -328,9 +328,6 @@ function renderAgents(agents) {
                                         OS: ${formatOsInfo(agent)}
                                     </small>
                                 </div>
-                                </div>
-                            <div class="agent-log-panel" id="agent-log-${agent.agent_id}">
-                                ${renderAgentLogContent(agent.agent_id)}
                             </div>
                             ${agent.agent_version ? `
                                 <div class="mt-1">
@@ -344,18 +341,23 @@ function renderAgents(agents) {
                     </div>
                 </div>
                 
-                <div class="col-md-4 text-md-end">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-primary btn-action"
-                                onclick="viewAgentLogs('${agent.agent_id}')" 
-                                title="View Logs">
-                            <i class="fas fa-file-alt"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger btn-action" 
-                                onclick="removeAgent('${agent.agent_id}')" 
-                                title="Remove Agent">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center justify-content-end gap-3">
+                        <div class="agent-log-panel flex-grow-1" id="agent-log-${agent.agent_id}">
+                            ${renderAgentLogContent(agent.agent_id)}
+                        </div>
+                        <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-action"
+                                    onclick="viewAgentLogs('${agent.agent_id}')" 
+                                    title="View Logs">
+                                <i class="fas fa-file-alt"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-action" 
+                                    onclick="removeAgent('${agent.agent_id}')" 
+                                    title="Remove Agent">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -487,14 +489,15 @@ async function removeAgent(agentId) {
             
             // Remove from local data
             const agentIndex = agentsData.findIndex(a => a.agent_id === agentId);
-            if (agentIndex >= 0) {
+            if (agentIndex !== -1) {
                 agentsData.splice(agentIndex, 1);
             }
             
-            updateStatistics();
+            // Re-render agents list
             renderAgents(agentsData);
+            updateStatistics();
         } else {
-            throw new Error(data.message || 'Failed to remove agent');
+            throw new Error(data.error || 'Failed to remove agent');
         }
         
     } catch (error) {
@@ -509,91 +512,86 @@ async function removeAgent(agentId) {
 }
 
 /**
- * Show error message
+ * Show notification
  */
-function showError(message) {
-    const container = document.getElementById('agentsContainer');
-    container.innerHTML = `
-        <div class="text-center py-5">
-            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-            <h5 class="text-danger">Error Loading Agents</h5>
-            <p class="text-muted">${message}</p>
-            <button class="btn btn-primary" onclick="refreshAgents()">
-                <i class="fas fa-redo me-2"></i>Try Again
-            </button>
+function showNotification(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     `;
+    
+    const container = document.querySelector('.toast-container') || createToastContainer();
+    container.appendChild(toast);
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+function showError(message) {
+    showNotification('danger', message);
 }
 
 /**
- * Event listeners
+ * Initialize page
  */
-document.getElementById('agent-search').addEventListener('input', filterAgents);
-document.getElementById('status-filter').addEventListener('change', filterAgents);
-
-/**
- * Socket.IO for real-time updates
- */
-try {
+document.addEventListener('DOMContentLoaded', function() {
+    console.log(' Agents page initialized');
+    loadAgents();
+    
+    // Setup search and filter
+    const searchInput = document.getElementById('agent-search');
+    const statusFilter = document.getElementById('status-filter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterAgents);
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterAgents);
+    }
+    
+    // Setup Socket.IO for real-time updates
     if (typeof io !== 'undefined') {
         const socket = io();
         
-        socket.on('connect', function() {
-            console.log('🔌 Connected to server for real-time updates');
+        socket.on('agent_update', (data) => {
+            console.log(' Agent update received:', data);
+            loadAgents();
         });
         
-        socket.on('agent_heartbeat', function(data) {
-            console.log('💓 Agent heartbeat received:', data);
-            
-            const agentIndex = agentsData.findIndex(a => a.agent_id === data.agent_id);
-            if (agentIndex >= 0) {
-                const agent = agentsData[agentIndex];
-                agent.status = 'active';
-                agent.last_heartbeat = data.last_heartbeat || data.timestamp;
-                agent.metrics = data.metrics;
-                
-                renderAgents(agentsData);
-                updateStatistics();
-            } else {
-                // New agent, reload list
-                loadAgents();
+        socket.on('new_log', (logData) => {
+            console.log(' New log received:', logData);
+            if (logData.agent_id) {
+                agentLogs[logData.agent_id] = normalizeAgentLog(logData);
+                updateAgentLogElement(logData.agent_id);
             }
         });
         
-        socket.on('agent_deleted', function(data) {
-            console.log(' Agent deleted:', data);
-            
-            const agentIndex = agentsData.findIndex(a => a.agent_id === data.agent_id);
-            if (agentIndex >= 0) {
-                agentsData.splice(agentIndex, 1);
-                updateStatistics();
-                renderAgents(agentsData);
-                showNotification('info', `Agent ${data.hostname || data.agent_id} was removed`);
-            }
+        socket.on('connect', () => {
+            console.log(' Socket.IO connected');
         });
         
-        socket.on('new_log', function(log) {
-            if (!log || !log.agent_id) return;
-
-            agentLogs[log.agent_id] = normalizeAgentLog(log);
-            updateAgentLogElement(log.agent_id);
+        socket.on('disconnect', () => {
+            console.log(' Socket.IO disconnected');
         });
-
-    } else {
-        console.log(' Socket.IO not available - real-time updates disabled');
     }
-} catch (error) {
-    console.error(' Socket.IO initialization error:', error);
-}
-
-/**
- * Initialize
- */
-document.addEventListener('DOMContentLoaded', function() {
-    loadAgents();
-    
-    // Auto-refresh every 30 seconds
-    setInterval(loadAgents, 30000);
-    
-    console.log(' Agent management initialized');
 });
