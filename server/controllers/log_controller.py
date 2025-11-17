@@ -100,7 +100,6 @@ class LogController:
             # Call service method
             result = self.service.get_all_logs(filters, limit, offset)
             
-            # Add group_id to response for debugging
             response_data = {
                 **result,
                 'applied_filters': filters  # Echo back filters for debugging
@@ -276,11 +275,6 @@ class LogController:
         
         if request.args.get('search'):
             filters['search'] = request.args.get('search')
-        
-        # CRITICAL FIX: Add group_id filter
-        if request.args.get('group_id'):
-            filters['group_id'] = request.args.get('group_id')
-            self.logger.info(f"Group filter applied: {filters['group_id']}")
         
         # Time range filter
         if request.args.get('time_range'):

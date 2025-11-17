@@ -20,7 +20,7 @@ class LogService:
     """Service class for log business logic - vietnam ONLY"""
     
     def __init__(self, log_model: LogModel, agent_model=None, socketio=None):
-        """Initialize LogService with optional agent_model for group filtering"""
+        """Initialize LogService with optional agent_model for agent lookups"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = log_model
         self.agent_model = agent_model  # Store agent_model reference
@@ -228,42 +228,6 @@ class LogService:
                 
                 if filters.get('agent_id'):
                     query['agent_id'] = filters['agent_id']
-                
-                # CRITICAL FIX: Handle group_id filter
-                if filters.get('group_id'):
-                    group_id = filters['group_id']
-                    self.logger.info(f"Filtering logs by group_id: {group_id}")
-                    
-                    # Get all agents in this group
-                    try:
-                        # Use injected agent_model or create temporary instance
-                        if self.agent_model:
-                            agent_model = self.agent_model
-                        else:
-                            from models.agent_model import AgentModel
-                            db = self.model.db
-                            agent_model = AgentModel(db)
-                        
-                        # Find all agents in this group
-                        agents_in_group = agent_model.collection.find({'group_id': group_id})
-                        agent_ids = [agent['agent_id'] for agent in agents_in_group if 'agent_id' in agent]
-                        
-                        self.logger.info(f"Found {len(agent_ids)} agents in group {group_id}: {agent_ids}")
-                        
-                        if agent_ids:
-                            # Filter logs by agent_ids in this group
-                            query['agent_id'] = {'$in': agent_ids}
-                        else:
-                            # No agents in group - return empty result
-                            self.logger.warning(f" No agents found in group {group_id}")
-                            query['agent_id'] = {'$in': []}  # Will match nothing
-                            
-                    except Exception as e:
-                        self.logger.error(f"❌ Error filtering by group: {e}")
-                        import traceback
-                        traceback.print_exc()
-                        # If error, don't filter by group (show all logs)
-                        pass
                 
                 if filters.get('search'):
                     search_term = filters['search']

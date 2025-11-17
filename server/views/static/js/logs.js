@@ -13,7 +13,6 @@ let currentClearAction = null;
 
 // Add to global variables
 let agentsData = [];
-let groupsData = [];
 
 function normalizeAgentField(value) {
     if (value === null || value === undefined) return '';
@@ -215,12 +214,6 @@ async function loadLogs() {
             console.log('  Time filter:', currentFilter.time);
         }
         
-        // CRITICAL: Add group filter
-        if (currentFilter.group_id) {
-            params.append('group_id', currentFilter.group_id);
-            console.log('  Group filter:', currentFilter.group_id);
-        }
-        
         params.append('limit', currentFilter.limit);
         console.log('  Limit:', currentFilter.limit);
         
@@ -241,8 +234,7 @@ async function loadLogs() {
                     success: data.success,
                     hasLogs: !!data.logs,
                     logsLength: data.logs ? data.logs.length : 0,
-                    total: data.total,
-                    filtered_by_group: data.group_id || 'none'
+                    total: data.total
                 });
                 
                 if (data.logs && Array.isArray(data.logs)) {
@@ -301,36 +293,6 @@ async function loadAgentsForFilter() {
 }
 
 /**
- * Load groups for filter dropdown
- */
-async function loadGroupsForFilter() {
-    try {
-        console.log('Loading groups for filter...');
-        const response = await fetch('/api/groups');
-        
-        if (response.ok) {
-            const data = await response.json();
-            
-            // Handle different response formats
-            if (data.data && Array.isArray(data.data)) {
-                groupsData = data.data;
-            } else if (data.groups && Array.isArray(data.groups)) {
-                groupsData = data.groups;
-            } else if (Array.isArray(data)) {
-                groupsData = data;
-            }
-            
-            console.log('Loaded groups:', groupsData.length);
-            populateGroupFilter();
-        } else {
-            console.error('Failed to load groups:', response.status);
-        }
-    } catch (error) {
-        console.error('Error loading groups:', error);
-    }
-}
-
-/**
  * Populate agent filter dropdown
  */
 function populateAgentFilter() {
@@ -380,75 +342,15 @@ function populateAgentFilter() {
 }
 
 /**
- * Populate group filter dropdown
- */
-function populateGroupFilter() {
-    const groupFilter = document.getElementById('group-filter');
-    if (!groupFilter) {
-        console.warn('Group filter element not found');
-        return;
-    }
-    
-    const currentValue = groupFilter.value;
-    console.log('Populating group filter, current value:', currentValue);
-    
-    // Clear and add default option
-    groupFilter.innerHTML = '<option value="">All Groups</option>';
-    
-    // Sort groups by name
-    const sortedGroups = [...groupsData].sort((a, b) => {
-        const nameA = (a.name || '').toLowerCase();
-        const nameB = (b.name || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-    });
-    
-    console.log('Adding', sortedGroups.length, 'groups to filter');
-    
-    // Add group options
-    sortedGroups.forEach(group => {
-        const option = document.createElement('option');
-        const groupId = group._id || group.id;
-        option.value = groupId;
-        option.textContent = group.name;
-        
-        // Add system indicator
-        if (group.is_system) {
-            option.textContent = `${group.name}`;
-        }
-        
-        groupFilter.appendChild(option);
-        console.log(`  Added group: ${group.name} (${groupId})`);
-    });
-    
-    // Restore previous selection
-    if (currentValue) {
-        groupFilter.value = currentValue;
-        console.log('Restored group filter to:', currentValue);
-    }
-    
-    console.log('Group filter populated with', sortedGroups.length, 'groups');
-}
-
-/**
  *  Filter change handler
  */
 function onFilterChange() {
     console.log('Filter changed, current state:', currentFilter);
     
     // Update current filter state from all filter controls
-    const groupFilter = document.getElementById('group-filter');
     const levelFilter = document.getElementById('level-filter');
     const agentFilter = document.getElementById('agent-filter');
     const searchInput = document.getElementById('log-search');
-    
-    // Update group filter
-    if (groupFilter && groupFilter.value) {
-        currentFilter.group_id = groupFilter.value;
-        console.log('Group filter set to:', groupFilter.value);
-    } else {
-        delete currentFilter.group_id;
-        console.log('Group filter cleared');
-    }
     
     // Update other filters
     currentFilter.level = levelFilter ? levelFilter.value : '';
@@ -1061,18 +963,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // CRITICAL: Group filter listener
-    const groupFilter = document.getElementById('group-filter');
-    if (groupFilter) {
-        groupFilter.addEventListener('change', function() {
-            currentFilter.group_id = this.value;
-            console.log('Group filter changed to:', this.value);
-            onFilterChange(); // Call onFilterChange, not loadLogs directly
-        });
-    } else {
-        console.error('Group filter element not found!');
-    }
-    
     // Limit select
     const limitSelect = document.getElementById('limit-select');
     if (limitSelect) {
@@ -1169,19 +1059,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load initial data
     console.log('Loading initial data...');
-    Promise.all([
-        loadAgentsForFilter(),
-        loadGroupsForFilter()
-    ]).then(() => {
-        console.log('Filters loaded successfully');
-        console.log('Agents:', agentsData.length);
-        console.log('Groups:', groupsData.length);
-        console.log('Now loading logs...');
-        loadLogs();
-    }).catch(error => {
-        console.error('Error loading filters:', error);
-        loadLogs(); // Load logs anyway
-    });
+    loadAgentsForFilter()
+        .then(() => {
+            console.log('Agent filter loaded successfully');
+            loadLogs();
+        })
+        .catch(error => {
+            console.error('Error loading agents:', error);
+            loadLogs(); // Load logs anyway
+        });
     
     console.log('Logs management initialized');
 });
