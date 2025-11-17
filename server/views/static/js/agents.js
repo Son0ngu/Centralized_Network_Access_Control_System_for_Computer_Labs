@@ -1,5 +1,7 @@
 let agentsData = [];
+let groupsData = [];
 const agentLogs = {};
+let currentDropTarget = null;
 /**
  * Parse timestamp with Vietnam timezone support
  */
@@ -92,6 +94,12 @@ function formatOsInfo(agent) {
     return String(osInfo);
 }
 
+function getGroupName(groupId) {
+    if (!groupId) return 'Pending';
+    const group = groupsData.find(g => g._id === groupId);
+    return group ? group.name : 'Pending';
+}
+
 /**
  * Get latest real-time log message for an agent
  */
@@ -109,7 +117,7 @@ function normalizeAgentLog(log) {
 
     const displayTime = log.display_time || formatTimestamp(log.timestamp);
     
-    // ✅ Extract domain from log
+    //  Extract domain from log
     let domain = log.domain || log.destination || 'N/A';
     
     // If domain is missing, try to extract from message
@@ -126,7 +134,7 @@ function normalizeAgentLog(log) {
         display_time: displayTime,
         source_ip: log.source_ip || log.src_ip || 'unknown',
         dest_ip: log.dest_ip || log.destination || 'unknown',
-        domain: domain, // ✅ Add extracted domain
+        domain: domain, //  Add extracted domain
         message: log.message || 'N/A'
     };
 }
@@ -311,10 +319,14 @@ function renderAgents(agents) {
         }
         
         const agentElement = document.createElement('div');
-        agentElement.className = 'p-4 border-bottom agent-item';
+        agentElement.className = 'p-4 border-bottom agent-item draggable';
         agentElement.dataset.name = (agent.hostname || '').toLowerCase();
         agentElement.dataset.ip = agent.ip_address || '';
         agentElement.dataset.status = agent.status || 'unknown';
+        agentElement.dataset.groupId = agent.group_id || '';
+        agentElement.draggable = true;
+        agentElement.addEventListener('dragstart', handleAgentDragStart);
+        agentElement.addEventListener('dragend', handleAgentDragEnd);
         
         agentElement.innerHTML = `
             <div class="row align-items-center">
@@ -328,15 +340,18 @@ function renderAgents(agents) {
                                 <i class="fas fa-server me-2"></i>
                                 ${agent.hostname || 'Unknown Host'}
                             </h6>
-                            <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex align-items-center mb-2 flex-wrap gap-2">
                                 <span class="agent-status ${statusInfo.class}">
                                     <span class="pulse-indicator ${statusInfo.class}"></span>
                                     ${statusInfo.text}${timeSince}
                                 </span>
-                                <small class="ms-3 text-muted">
+                                <small class="text-muted">
                                     <i class="fas fa-network-wired me-1"></i>
                                     ${agent.ip_address || 'Unknown IP'}
                                 </small>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="fas fa-layer-group me-1"></i>${getGroupName(agent.group_id)}
+                                </span>
                             </div>
                             <div class="row text-muted">
                                 <div class="col-md-6">
@@ -398,6 +413,106 @@ function renderAgents(agents) {
     });
 }
 
+function handleAgentDragStart(event) {
+    const agentId = event.currentTarget.dataset.id;
+    event.dataTransfer.setData('text/plain', agentId);
+    event.dataTransfer.effectAllowed = 'move';
+}
+
+function handleAgentDragEnd() {
+    if (currentDropTarget) {
+        currentDropTarget.classList.remove('dropping');
+        currentDropTarget = null;
+    }
+}
+
+function handleGroupDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const target = event.currentTarget;
+    if (currentDropTarget && currentDropTarget !== target) {
+        currentDropTarget.classList.remove('dropping');
+    }
+    target.classList.add('dropping');
+    currentDropTarget = target;
+}
+
+function handleGroupDragLeave(event) {
+    event.currentTarget.classList.remove('dropping');
+}
+
+function handleGroupDrop(event) {
+    event.preventDefault();
+    const groupId = event.currentTarget.dataset.groupId;
+    const agentId = event.dataTransfer.getData('text/plain');
+    event.currentTarget.classList.remove('dropping');
+    currentDropTarget = null;
+
+    if (groupId && agentId) {
+        moveAgentToGroup(agentId, groupId);
+    }
+}
+
+function renderGroups() {
+    const board = document.getElementById('groupBoard');
+    if (!board) return;
+
+    if (!groupsData.length) {
+        board.innerHTML = '<div class="text-muted">No groups found. Create one to get started.</div>';
+        return;
+    }
+
+    board.innerHTML = '';
+
+    groupsData.forEach(group => {
+        const whitelistCount = (group.whitelist || []).length;
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        card.dataset.groupId = group._id;
+        card.addEventListener('dragover', handleGroupDragOver);
+        card.addEventListener('dragleave', handleGroupDragLeave);
+        card.addEventListener('drop', handleGroupDrop);
+
+        card.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="group-name">
+                    <i class="fas fa-layer-group text-primary"></i>
+                    ${group.name}
+                </div>
+                <div class="group-actions">
+                    ${group.is_system ? '' : `
+                        <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${group._id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${group._id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `}
+                </div>
+            </div>
+            <div class="group-meta mb-2">${group.description || 'No description'}</div>
+            <div class="d-flex gap-3 align-items-center">
+                <span class="badge bg-light text-dark border">
+                    <i class="fas fa-shield-alt me-1"></i>Whitelist: ${whitelistCount}
+                </span>
+                <span class="badge bg-light text-dark border">
+                    <i class="fas fa-id-card me-1"></i>ID: ${group._id}
+                </span>
+            </div>
+        `;
+
+        board.appendChild(card);
+    });
+
+    board.querySelectorAll('button[data-action="edit"]').forEach(btn => {
+        btn.addEventListener('click', () => openGroupModal(btn.dataset.id));
+    });
+
+    board.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+        btn.addEventListener('click', () => deleteGroup(btn.dataset.id));
+    });
+}
+
 /**
  * Filter agents based on search and status
  */
@@ -435,6 +550,129 @@ function refreshAgents() {
         button.innerHTML = originalText;
         button.disabled = false;
     });
+}
+
+async function moveAgentToGroup(agentId, groupId) {
+    try {
+        const response = await fetch(`/api/agents/${agentId}/group`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ group_id: groupId })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to move agent');
+        }
+
+        const result = await response.json();
+        showSuccess(result.message || 'Agent moved to group');
+        await loadAgents();
+    } catch (error) {
+        console.error('Error moving agent:', error);
+        showError(error.message || 'Failed to move agent');
+    }
+}
+
+async function loadGroups() {
+    try {
+        const response = await fetch('/api/groups');
+        if (!response.ok) throw new Error('Failed to load groups');
+        const data = await response.json();
+        groupsData = data.data || [];
+        renderGroups();
+
+        // Re-render agents to ensure group badges are up to date
+        if (agentsData.length) {
+            renderAgents(agentsData);
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        const board = document.getElementById('groupBoard');
+        if (board) {
+            board.innerHTML = `<div class="text-danger">${error.message}</div>`;
+        }
+    }
+}
+
+function openGroupModal(groupId = null) {
+    const modal = new bootstrap.Modal(document.getElementById('groupModal'));
+    const title = document.getElementById('groupModalTitle');
+    const nameInput = document.getElementById('groupNameInput');
+    const descInput = document.getElementById('groupDescriptionInput');
+    const idInput = document.getElementById('groupIdInput');
+
+    if (groupId) {
+        const group = groupsData.find(g => g._id === groupId);
+        if (!group) return;
+        title.textContent = 'Edit Group';
+        nameInput.value = group.name || '';
+        descInput.value = group.description || '';
+        idInput.value = groupId;
+    } else {
+        title.textContent = 'Create Group';
+        nameInput.value = '';
+        descInput.value = '';
+        idInput.value = '';
+    }
+
+    modal.show();
+}
+
+async function saveGroup() {
+    const idInput = document.getElementById('groupIdInput');
+    const nameInput = document.getElementById('groupNameInput');
+    const descInput = document.getElementById('groupDescriptionInput');
+    const payload = { name: nameInput.value.trim(), description: descInput.value.trim() };
+
+    if (!payload.name) {
+        showError('Group name is required');
+        return;
+    }
+
+    const isEdit = Boolean(idInput.value);
+    const url = isEdit ? `/api/groups/${idInput.value}` : '/api/groups';
+    const method = isEdit ? 'PATCH' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to save group');
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+        showSuccess(isEdit ? 'Group updated' : 'Group created');
+        await loadGroups();
+    } catch (error) {
+        console.error('Error saving group:', error);
+        showError(error.message || 'Failed to save group');
+    }
+}
+
+async function deleteGroup(groupId) {
+    const group = groupsData.find(g => g._id === groupId);
+    if (!group) return;
+    if (!confirm(`Delete group "${group.name}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to delete group');
+        }
+
+        showSuccess('Group deleted');
+        await loadGroups();
+        await loadAgents();
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        showError(error.message || 'Failed to delete group');
+    }
 }
 
 function viewAgentLogs(agentId) {
@@ -581,12 +819,17 @@ function showError(message) {
     showNotification('danger', message);
 }
 
+function showSuccess(message) {
+    showNotification('success', message);
+}
+
 /**
  * Initialize page
  */
 document.addEventListener('DOMContentLoaded', function() {
     console.log(' Agents page initialized');
     loadAgents();
+    loadGroups();
     
     // Setup search and filter
     const searchInput = document.getElementById('agent-search');
@@ -598,6 +841,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (statusFilter) {
         statusFilter.addEventListener('change', filterAgents);
+    }
+    
+    const createGroupBtn = document.getElementById('createGroupBtn');
+    if (createGroupBtn) {
+        createGroupBtn.addEventListener('click', () => openGroupModal());
+    }
+
+    const refreshGroupsBtn = document.getElementById('refreshGroupsBtn');
+    if (refreshGroupsBtn) {
+        refreshGroupsBtn.addEventListener('click', loadGroups);
+    }
+
+    const saveGroupBtn = document.getElementById('saveGroupBtn');
+    if (saveGroupBtn) {
+        saveGroupBtn.addEventListener('click', saveGroup);
     }
     
     // Setup Socket.IO for real-time updates

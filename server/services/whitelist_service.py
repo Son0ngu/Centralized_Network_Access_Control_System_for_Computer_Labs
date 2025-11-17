@@ -340,6 +340,9 @@ class WhitelistService:
     
     def _normalize_group_entries(self, group) -> List[Dict]:
         entries = []
+        group_id = str(group.get("_id")) if group else None
+        group_name = group.get("name") if group else None
+
         for entry in group.get("whitelist", []):
             if not entry:
                 continue
@@ -360,6 +363,8 @@ class WhitelistService:
                 "priority": priority,
                 "category": category,
                 "scope": "group",
+                "group_id": group_id,
+                "group_name": group_name,
             })
         return entries
 
