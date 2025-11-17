@@ -806,27 +806,32 @@ class AgentService:
             if not group:
                 raise ValueError("Group not found")
 
-            # ✅ FIX: Convert ObjectId to string immediately
+            #  FIX: Convert ObjectId to string immediately
             group_id_str = str(group.get("_id"))
             
-            # Determine new status
-            new_status = "pending" if group.get("is_system") and group.get("name") == "pending" else "active"
-            
-            # Update agent group
-            success = self.model.update_agent_group(agent_id, group_id_str, new_status)
+            # Preserve the agent's current status unless moving to the pending system group
+            current_status = agent.get("status") or "pending"
+            is_pending_group = group.get("is_system") and group.get("name") == "pending"
+
+            # Only force status to "pending" when explicitly moving to the pending group
+            status_to_set = "pending" if is_pending_group else None
+            final_status = status_to_set or current_status
+
+            # Update agent group (status is only updated when necessary)
+            success = self.model.update_agent_group(agent_id, group_id_str, status_to_set)
 
             if not success:
                 raise ValueError("Failed to move agent to group")
 
-            # ✅ FIX: Return serializable dict
+            #  FIX: Return serializable dict
             return {
                 "agent_id": agent_id,
                 "hostname": agent.get("hostname"),
                 "display_name": agent.get("display_name"),
                 "ip_address": agent.get("ip_address"),
-                "group_id": group_id_str,  # ✅ Already string
+                "group_id": group_id_str,  #  Already string
                 "group_name": group.get("name"),
-                "status": new_status,
+                "status": final_status,
                 "last_heartbeat": agent.get("last_heartbeat"),
                 "platform": agent.get("platform"),
                 "os_info": agent.get("os_info"),
