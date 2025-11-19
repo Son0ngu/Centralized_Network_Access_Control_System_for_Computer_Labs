@@ -89,6 +89,20 @@
     box-shadow: 0 8px 30px rgba(0,0,0,0.15);
 }
 
+.agent-display-name {
+    color: #1f2933;
+}
+
+.agent-hostname {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: -4px;
+    margin-bottom: 6px;
+}
+
 .agent-status {
     padding: 0.4rem 0.8rem;
     border-radius: 15px;
@@ -543,6 +557,17 @@
 .group-agent-item .agent-name {
     font-weight: 600;
     color: #2d3748;
+}
+
+.group-agent-identity {
+    align-items: flex-start !important;
+}
+
+.agent-hostname-hint {
+    display: block;
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-top: 2px;
 }
 
 .group-agent-item .agent-status-dot {

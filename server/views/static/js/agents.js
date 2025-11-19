@@ -21,6 +21,43 @@ function getAgentId(agent) {
     return agent?.agent_id || agent?._id || agent?.id;
 }
 
+function normalizeAgentString(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function getAgentDisplayName(agent) {
+    if (!agent) return 'Unknown Agent';
+    const displayName = normalizeAgentString(agent.display_name);
+    const hostname = normalizeAgentString(agent.hostname);
+    return displayName || hostname || agent.agent_id || 'Unknown Agent';
+}
+
+function getAgentHostname(agent) {
+    return normalizeAgentString(agent?.hostname);
+}
+
+function shouldShowHostname(agent, displayName) {
+    const hostname = getAgentHostname(agent);
+    return Boolean(hostname) && hostname.toLowerCase() !== displayName.toLowerCase();
+}
+
+function buildAgentSearchValue(agent) {
+    return [
+        normalizeAgentString(agent?.display_name).toLowerCase(),
+        normalizeAgentString(agent?.hostname).toLowerCase(),
+        (agent?.agent_id || '').toLowerCase(),
+        (agent?.device_id || '').toLowerCase()
+    ].filter(Boolean).join(' ');
+}
+
+function formatAgentNameWithIp(agent) {
+    const friendlyName = getAgentDisplayName(agent);
+    if (agent?.ip_address) {
+        return `${friendlyName} (${agent.ip_address})`;
+    }
+    return friendlyName;
+}
+
 /**
  * Parse timestamp with Vietnam timezone support
  */
@@ -344,8 +381,14 @@ function renderAgents(agents) {
         
         const agentElement = document.createElement('div');
         agentElement.className = 'p-4 border-bottom agent-item draggable';
-        agentElement.dataset.name = (agent.hostname || '').toLowerCase();
-        agentElement.dataset.ip = agent.ip_address || '';
+        const displayName = getAgentDisplayName(agent);
+        const hostname = getAgentHostname(agent);
+        const hostnameMeta = shouldShowHostname(agent, displayName)
+            ? `<div class="agent-hostname text-muted"><i class="fas fa-desktop me-1"></i>${hostname}</div>`
+            : '';
+
+        agentElement.dataset.name = buildAgentSearchValue(agent);
+        agentElement.dataset.ip = (agent.ip_address || '').toLowerCase();
         agentElement.dataset.status = agent.status || 'unknown';
         agentElement.dataset.groupId = agent.group_id || '';
         agentElement.dataset.id = agentId || '';
@@ -363,8 +406,9 @@ function renderAgents(agents) {
                         <div>
                             <h6 class="mb-2 fw-bold">
                                 <i class="fas fa-server me-2"></i>
-                                ${agent.hostname || 'Unknown Host'}
+                                <span class="agent-display-name">${displayName}</span>
                             </h6>
+                            ${hostnameMeta}
                             <div class="d-flex align-items-center mb-2 flex-wrap gap-2">
                                 <span class="agent-status ${statusInfo.class}">
                                     <span class="pulse-indicator ${statusInfo.class}"></span>
@@ -506,11 +550,19 @@ function renderGroups() {
         //  Render agents list
         const agentsListHtml = agentsInGroup.map(agent => {
             const statusInfo = getStatusInfo(agent.status);
+            const displayName = getAgentDisplayName(agent);
+            const hostname = getAgentHostname(agent);
+            const hostnameHint = shouldShowHostname(agent, displayName)
+                ? `<small class="agent-hostname-hint text-muted">${hostname}</small>`
+                : '';
             return `
                 <div class="group-agent-item" data-agent-id="${getAgentId(agent)}">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 group-agent-identity">
                         <i class="fas fa-desktop text-primary" style="font-size: 0.9rem;"></i>
-                        <span class="agent-name">${agent.hostname || 'Unknown'}</span>
+                        <div>
+                            <span class="agent-name">${displayName}</span>
+                            ${hostnameHint}
+                        </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <small class="text-muted">${agent.ip_address || 'N/A'}</small>
@@ -624,8 +676,8 @@ function filterAgents() {
     const agentItems = document.querySelectorAll('.agent-item');
     
     agentItems.forEach(item => {
-        const name = item.dataset.name;
-        const ip = item.dataset.ip;
+        const name = (item.dataset.name || '').toLowerCase();
+        const ip = (item.dataset.ip || '').toLowerCase();
         const status = item.dataset.status;
         
         const matchesSearch = name.includes(searchTerm) || ip.includes(searchTerm);
@@ -822,7 +874,7 @@ function viewAgentLogs(agentId) {
 
 async function pingAgent(agentId) {
     const agent = agentsData.find(a => a.agent_id === agentId);
-    const agentName = agent ? `${agent.hostname} (${agent.ip_address})` : agentId;
+    const agentName = agent ? formatAgentNameWithIp(agent) : agentId;
     
     const pingButton = document.querySelector(`[onclick="pingAgent('${agentId}')"]`);
     if (pingButton) {
@@ -867,7 +919,7 @@ async function pingAgent(agentId) {
 
 async function removeAgent(agentId) {
     const agent = agentsData.find(a => a.agent_id === agentId);
-    const agentName = agent ? `${agent.hostname} (${agent.ip_address})` : agentId;
+    const agentName = agent ? formatAgentNameWithIp(agent) : agentId;
     
     if (!confirm(`Are you sure you want to remove agent "${agentName}"?\n\nThis action cannot be undone.`)) {
         return;
@@ -982,11 +1034,19 @@ function updateGroupAgentCount(groupId) {
         if (agentCount > 0) {
             const agentsListHtml = agentsInGroup.map(agent => {
                 const statusInfo = getStatusInfo(agent.status);
+                const displayName = getAgentDisplayName(agent);
+                const hostname = getAgentHostname(agent);
+                const hostnameHint = shouldShowHostname(agent, displayName)
+                    ? `<small class="agent-hostname-hint text-muted">${hostname}</small>`
+                    : '';
                 return `
                     <div class="group-agent-item" data-agent-id="${getAgentId(agent)}">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 group-agent-identity">
                             <i class="fas fa-desktop text-primary" style="font-size: 0.9rem;"></i>
-                            <span class="agent-name">${agent.hostname || 'Unknown'}</span>
+                            <div>
+                                <span class="agent-name">${displayName}</span>
+                                ${hostnameHint}
+                            </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <small class="text-muted">${agent.ip_address || 'N/A'}</small>
@@ -1112,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 agent.time_since_heartbeat = data.time_since_heartbeat;
                 agent.metrics = data.metrics;
                 
-                console.log(`${agent.hostname}: ${oldStatus} → ${agent.status}`);
+                console.log(`${getAgentDisplayName(agent)}: ${oldStatus} → ${agent.status}`);
                 
                 // Re-render agent row
                 renderAgents(agentsData);
