@@ -461,7 +461,14 @@ function renderAgents(agents) {
                         <div class="agent-log-panel flex-grow-1" id="agent-log-${agentId}">
                             ${renderAgentLogContent(agentId)}
                         </div>
-                        <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+                        <div class="agent-actions d-flex align-items-center gap-2 flex-shrink-0">
+                            <button type="button" class="btn btn-outline-secondary btn-action"
+                                    data-action="edit-name"
+                                    data-agent-id="${agentId}"
+                                    onclick="editAgentDisplayName('${agentId}')"
+                                    title="Edit Display Name">
+                                <i class="fas fa-pen"></i>
+                            </button>
                             <button type="button" class="btn btn-outline-primary btn-action"
                                     onclick="viewAgentLogs('${agentId}')"
                                     title="View Logs">
@@ -870,6 +877,65 @@ async function deleteGroup(groupId) {
 
 function viewAgentLogs(agentId) {
     window.location.href = `/logs?agent_id=${agentId}`;
+}
+
+async function editAgentDisplayName(agentId) {
+    const agent = agentsData.find(a => a.agent_id === agentId);
+    if (!agent) {
+        showError('Agent not found');
+        return;
+    }
+
+    const currentDisplayName = normalizeAgentString(agent.display_name);
+    const defaultValue = currentDisplayName || getAgentHostname(agent) || agentId;
+    const newDisplayName = prompt(`Enter a new display name for ${agent.agent_id}:`, defaultValue);
+
+    if (newDisplayName === null) {
+        return; // User cancelled
+    }
+
+    const trimmedName = newDisplayName.trim();
+
+    if (!trimmedName) {
+        showError('Display name cannot be empty.');
+        return;
+    }
+
+    if (trimmedName === currentDisplayName) {
+        return;
+    }
+
+    const editButton = document.querySelector(`[data-action="edit-name"][data-agent-id="${agentId}"]`);
+    if (editButton) {
+        editButton.disabled = true;
+        editButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        const response = await fetch(`/api/agents/${agentId}/display-name`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ display_name: trimmedName })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update display name');
+        }
+
+        agent.display_name = trimmedName;
+        renderAgents(agentsData);
+        showSuccess('Display name updated successfully');
+    } catch (error) {
+        console.error('Error updating display name:', error);
+        showError(error.message || 'Failed to update display name');
+
+        if (editButton) {
+            editButton.disabled = false;
+            editButton.innerHTML = '<i class="fas fa-pen"></i>';
+        }
+    }
 }
 
 async function pingAgent(agentId) {
