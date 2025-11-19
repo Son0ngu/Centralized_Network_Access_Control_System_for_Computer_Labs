@@ -809,12 +809,19 @@ class AgentService:
             #  FIX: Convert ObjectId to string immediately
             group_id_str = str(group.get("_id"))
             
-            # Preserve the agent's current status unless moving to the pending system group
+            # Preserve the agent's current status unless we need to change it based on the destination group.
             current_status = agent.get("status") or "pending"
             is_pending_group = group.get("is_system") and group.get("name") == "pending"
+            leaving_pending_group = current_status == "pending" and not is_pending_group
 
-            # Only force status to "pending" when explicitly moving to the pending group
-            status_to_set = "pending" if is_pending_group else None
+            # Force "pending" when explicitly moving into the pending group. When leaving the pending system group, immediately mark the agent as active so it will be picked up by the normal status calculation logic on the next refresh.
+            if is_pending_group:
+                status_to_set = "pending"
+            elif leaving_pending_group:
+                status_to_set = "active"
+            else:
+                status_to_set = None
+
             final_status = status_to_set or current_status
 
             # Update agent group (status is only updated when necessary)
