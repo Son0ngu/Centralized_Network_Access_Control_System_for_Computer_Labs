@@ -45,6 +45,33 @@ class AgentService:
         self.logger.info("AgentService initialized with vietnam timezone support")
         self.logger.info(f"Status thresholds: active≤{self.active_threshold}s, inactive≤{self.inactive_threshold}s")
 
+    def _persist_status_change(self, agent: Dict, new_status: str) -> None:
+        """Persist status change to database when calculated status differs"""
+        try:
+            agent_id = agent.get("agent_id")
+            previous_status = agent.get("status")
+
+            if not agent_id or not new_status:
+                return
+
+            if previous_status == new_status:
+                return
+
+            updated = self.model.update_agent(agent_id, {"status": new_status})
+            if updated:
+                self.logger.info(
+                    "Persisted status change for %s: %s -> %s",
+                    agent.get("hostname", agent_id),
+                    previous_status,
+                    new_status,
+                )
+            else:
+                self.logger.warning(
+                    "Failed to persist status change for %s", agent.get("hostname", agent_id)
+                )
+        except Exception as exc:
+            self.logger.error(f"Error persisting status for {agent.get('agent_id')}: {exc}")
+            
     def register_agent(self, agent_data: Dict, client_ip: str) -> Dict:
         """Register a new agent using hostname+IP as identifier - vietnam ONLY"""
         try:
@@ -176,7 +203,9 @@ class AgentService:
                 
                 agent.setdefault('display_name', hostname)
 
-                if agent.get("status") in ["pending", "disabled"]:
+                current_status = agent.get("status")
+
+                if current_status in ["pending", "disabled"]:
                     if last_heartbeat:
                         try:
                             last_dt = parse_agent_timestamp(last_heartbeat)
@@ -218,6 +247,7 @@ class AgentService:
                             status = 'offline'
                             self.logger.info(f"{hostname}: {time_diff_seconds:.2f}s > {self.inactive_threshold}s → OFFLINE")
                         
+                        self._persist_status_change(agent, status)
                         agent['status'] = status
                         agent['time_since_heartbeat'] = time_diff_seconds / 60
                         agent['last_heartbeat'] = last_heartbeat_vietnam
@@ -228,10 +258,12 @@ class AgentService:
                     except Exception as e:
                         self.logger.error(f"{hostname}: Error processing heartbeat: {e}")
                         self.logger.error(f"{hostname}: Traceback: {traceback.format_exc()}")
+                        self._persist_status_change(agent, 'offline')
                         agent['status'] = 'offline'
                         agent['time_since_heartbeat'] = 999
                 else:
                     self.logger.info(f"{hostname}: No heartbeat found")
+                    self._persist_status_change(agent, 'offline')
                     agent['status'] = 'offline'
                     agent['time_since_heartbeat'] = None
 
