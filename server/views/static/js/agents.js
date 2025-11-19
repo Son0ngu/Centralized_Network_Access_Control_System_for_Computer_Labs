@@ -3,6 +3,20 @@ let groupsData = [];
 const agentLogs = {};
 let currentDropTarget = null;
 
+/**
+ * Safely re-render the group board once both groups and agents are available.
+ *
+ * We fetch agents and groups independently (and often in parallel). When the
+ * groups finish loading before the agents, the group board is rendered with an
+ * empty agentsData array which results in zero counts until the user manually
+ * refreshes.  Centralising this logic ensures we never render stale data.
+ */
+function refreshGroupBoardIfReady() {
+    if (Array.isArray(groupsData) && groupsData.length > 0) {
+        renderGroups();
+    }
+}
+
 function getAgentId(agent) {
     return agent?.agent_id || agent?._id || agent?.id;
 }
@@ -248,7 +262,11 @@ async function loadAgents() {
         } else {
             updateStatistics();
         }
-        
+    
+    // Ensure the group board reflects the latest agent assignments/counts
+        // even if the groups were fetched before the agents finished loading.
+        refreshGroupBoardIfReady();
+
     } catch (error) {
         console.error(' Error loading agents:', error);
         showError('Error loading agents');
@@ -674,11 +692,10 @@ async function moveAgentToGroup(agentId, groupId) {
 
         showSuccess(result.message || 'Agent moved to group');
         
-        // CRITICAL FIX: Reload both agents AND groups to update counts
-        await Promise.all([
-            loadAgents(),
-            loadGroups()
-        ]);
+         // Reload sequentially to avoid race conditions between the two datasets
+        // (groups rely on the latest agents array to calculate counts correctly).
+        await loadAgents();
+        await loadGroups();
         
     } catch (error) {
         console.error('Error moving agent:', error);

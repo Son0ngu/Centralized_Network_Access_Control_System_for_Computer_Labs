@@ -429,7 +429,7 @@
     background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
 }
 
-/* ✅ Group card fixed width for horizontal layout */
+/*  Group card fixed width for horizontal layout */
 .group-card {
     min-width: 280px;
     max-width: 320px;
@@ -475,7 +475,7 @@
     margin-top: 10px;
 }
 
-/* ✅ Agent count badge in group */
+/*  Agent count badge in group */
 .group-agent-count {
     display: flex;
     align-items: center;
@@ -501,7 +501,7 @@
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
 }
 
-/* ✅ Expand icon animation */
+/*  Expand icon animation */
 .expand-icon {
     transition: transform 0.2s ease;
 }
@@ -510,7 +510,7 @@
     transform: rotate(180deg);
 }
 
-/* ✅ Agents list in group card */
+/*  Agents list in group card */
 .group-agents-list {
     max-height: 0;
     overflow: hidden;
