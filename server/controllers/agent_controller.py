@@ -374,3 +374,54 @@ class AgentController:
         except Exception as e:
             self.logger.error(f"Error getting statistics: {e}")
             return self._error_response("Failed to get statistics", 500)
+
+    def debug_status(self):
+        """Return debug information for troubleshooting"""
+        try:
+            stats = self.service.calculate_statistics()
+            sample_agents = [
+                self._serialize_agent(agent)
+                for agent in self.model.get_all_agents(limit=5)
+            ]
+
+            debug_info = {
+                "controller": "AgentController",
+                "socketio_enabled": bool(self.socketio),
+                "thresholds": {
+                    "active_seconds": getattr(self.service, "active_threshold", None),
+                    "inactive_seconds": getattr(self.service, "inactive_threshold", None)
+                },
+                "statistics": stats,
+                "sample_agents": sample_agents,
+                "timestamp": now_iso()
+            }
+
+            return self._success_response(debug_info, "Debug status retrieved")
+        except Exception as e:
+            self.logger.error(f"Error in debug_status: {e}")
+            return self._error_response("Failed to retrieve debug status", 500)
+
+    def debug_direct_call(self):
+        """Simple endpoint to verify controller accessibility"""
+        try:
+            return self._success_response(
+                {
+                    "message": "Agent controller is reachable",
+                    "routes": [
+                        "/agents/register",
+                        "/agents/heartbeat",
+                        "/agents",
+                        "/agents/statistics",
+                        "/agents/<agent_id>",
+                        "/agents/<agent_id>/display-name",
+                        "/agents/<agent_id>/group",
+                        "/agents/debug/status",
+                        "/agents/debug/direct"
+                    ],
+                    "timestamp": now_iso()
+                },
+                "Debug endpoint is active"
+            )
+        except Exception as e:
+            self.logger.error(f"Error in debug_direct_call: {e}")
+            return self._error_response("Debug endpoint failed", 500)
