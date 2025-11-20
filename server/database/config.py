@@ -3,6 +3,13 @@ Configuration and Database Client for Firewall Controller Server
 vietnam ONLY - Clean and simple
 """
 
+# Ensure eventlet monkey patch happens even when this module is imported
+# directly (before app.py). Otherwise, logging's global RLock is created
+# before being greened, triggering "RLock(s) were not greened" warnings.
+import eventlet
+
+eventlet.monkey_patch()
+
 import os
 import secrets
 import logging

@@ -512,7 +512,7 @@ def handle_domain_detection(record: Dict):
             level = "WARNING" if action == "BLOCKED" else "INFO"
         else:
             action = "MONITORED"
-            level = "INFO"
+            level = "INFO" if (domain_allowed or ip_allowed) else "WARNING"
         
         #Create enhanced log record với UTC timestamps
         enhanced_record = {
