@@ -159,39 +159,48 @@ class WhitelistController:
             return self._error_response("Failed to list domains", 500)
     
     def add_domain(self):
-        """Add new domain to whitelist - vietnam ONLY"""
+        """Add new entry to whitelist (domains, IPs, URLs, etc.)"""
         try:
             if not request.is_json:
                 return self._error_response("Request must be JSON", 400)
             
-            data = request.get_json()
-            if not data or 'value' not in data:
-                return self._error_response("Domain value is required", 400)
-            
-            domain_value = data['value'].strip().lower()
-            if not domain_value:
-                return self._error_response("Domain value cannot be empty", 400)
-            
-            # Call service method
-            result = self.service.add_domain(domain_value, data.get('category', 'general'))
+            data = request.get_json() or {}
+            entry_value = data.get('value', '').strip().lower()
+            if not entry_value:
+                return self._error_response("Value is required", 400)
+
+            # Normalize entry payload and client IP for auditing
+            entry_type = data.get('type', 'domain')
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if client_ip and ',' in client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+
+            # Call unified service to handle all whitelist types
+            result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip)
+
+            response_body = {
+                "success": True,
+                "timestamp": now_iso(),
+                **result
+            }
             
             # Broadcast update via SocketIO - vietnam ONLY
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
                     'action': 'added',
-                    'domain': domain_value,
+                    'type': entry_type,
+                    'value': entry_value,
                     'category': data.get('category', 'general'),
                     'timestamp': now_iso()  # vietnam ISO
                 })
             
-            # Add vietnam timestamp to response
-            if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
-            
-            return jsonify(result), 201 if result.get('success') else 400
+            return jsonify(response_body), 201
+
+        except ValueError as e:
+            return self._error_response(str(e), 400)
             
         except Exception as e:
-            self.logger.error(f"Error adding domain: {e}")
+            self.logger.error(f"Error adding entry: {e}")
             return self._error_response("Failed to add domain", 500)
     
     def delete_domain(self, domain_id: str):
