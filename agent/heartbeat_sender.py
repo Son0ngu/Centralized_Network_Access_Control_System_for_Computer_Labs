@@ -13,6 +13,7 @@ import platform
 
 # Import time utilities - vietnam ONLY
 from time_utils import now, now_iso, sleep
+from os_info import get_os_details
 
 logger = logging.getLogger("heartbeat_sender")
 
@@ -125,6 +126,8 @@ class HeartbeatSender:
         # Collect system metrics
         metrics = self._collect_metrics()
         
+        os_details = get_os_details()
+
         # Create heartbeat data với vietnam timestamp
         heartbeat_data = {
             "agent_id": self.agent_id,
@@ -133,8 +136,8 @@ class HeartbeatSender:
             "timestamp": now_iso(),  # vietnam ISO timestamp
             "metrics": metrics,
             "status": "active",
-            "platform": platform.system(),
-            "os_info": f"{platform.system()} {platform.release()}",
+            "platform": os_details["platform"],
+            "os_info": f"{os_details['name']} {os_details['version']}",
             "agent_version": "1.0.0"
         }
         

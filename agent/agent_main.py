@@ -35,7 +35,7 @@ from whitelist import WhitelistManager
 from packet_sniffer import PacketSniffer
 from log_sender import LogSender
 from heartbeat_sender import HeartbeatSender
-
+from os_info import get_os_details
 # UPDATED: Clean time utilities - UTC only
 from time_utils import (
     now, now_iso, now_server_compatible,
@@ -369,13 +369,15 @@ def register_agent() -> bool:
         # Collect agent information
         local_ip = get_local_ip()
         admin_status = check_admin_privileges()
-        
+
+        os_details = get_os_details()
+
         agent_info = {
             "hostname": socket.gethostname(),
             "device_id": AGENT_DEVICE_ID,
             "ip_address": local_ip,
-            "platform": platform.system(),
-            "os_info": f"{platform.system()} {platform.release()}",
+            "platform": os_details["platform"],
+            "os_info": f"{os_details['name']} {os_details['version']}",
             "agent_version": "1.0.0",
             "python_version": platform.python_version(),
             "admin_privileges": admin_status,
