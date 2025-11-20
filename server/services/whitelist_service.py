@@ -456,9 +456,6 @@ class WhitelistService:
                 if not agent.get("group_id"):
                     self.agent_model.update_agent(agent_id, {"group_id": group_id, "status": agent.get("status", "pending")})
 
-            global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
-            group_entries = self._normalize_group_entries(group)
-
             current_global_version = self.model.get_global_version()
             current_group_version = group.get("whitelist_version", 1)
 
@@ -475,6 +472,21 @@ class WhitelistService:
                     "group_id": str(group.get("_id")),
                     "up_to_date": True,        
                 }
+            # If versions are out of date or versions are missing, perform a full sync to prevent agents from losing existing global entries when requesting incremental updates.
+            needs_full_global = (
+                since_datetime is None
+                or global_version != current_global_version
+                or group_version != current_group_version
+            )
+
+            if needs_full_global:
+                global_entries = self.model.get_entries_for_sync(scope="global")
+                response_type = "full"
+            else:
+                global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
+                response_type = "incremental"
+
+            group_entries = self._normalize_group_entries(group)
             
             combined = self._merge_whitelists(global_entries, group_entries)
             
@@ -482,7 +494,7 @@ class WhitelistService:
                 "domains": combined,
                 "timestamp": now_iso(),
                 "count": len(combined),
-                "type": "full",
+                "type": "response_type",
                 "success": True,
                 "server_time": now_iso(),
                 "global_version": current_global_version,
