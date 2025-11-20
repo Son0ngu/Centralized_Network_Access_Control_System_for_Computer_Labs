@@ -938,51 +938,6 @@ async function editAgentDisplayName(agentId) {
     }
 }
 
-async function pingAgent(agentId) {
-    const agent = agentsData.find(a => a.agent_id === agentId);
-    const agentName = agent ? formatAgentNameWithIp(agent) : agentId;
-    
-    const pingButton = document.querySelector(`[onclick="pingAgent('${agentId}')"]`);
-    if (pingButton) {
-        pingButton.disabled = true;
-        pingButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    }
-    
-    try {
-        showNotification('info', `Pinging agent ${agentName}...`);
-        
-        const response = await fetch(`/api/agents/${agentId}/ping`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const responseTime = data.data.response_time;
-            showNotification('success', ` Ping successful! Response time: ${responseTime}s`);
-            
-            // Update agent status
-            if (agent) {
-                agent.status = 'active';
-                renderAgents(agentsData);
-                updateStatistics();
-            }
-        } else {
-            showNotification('danger', ` Ping failed: ${data.error}`);
-        }
-        
-    } catch (error) {
-        console.error('Error pinging agent:', error);
-        showNotification('danger', `Failed to ping agent: ${error.message}`);
-    } finally {
-        if (pingButton) {
-            pingButton.disabled = false;
-            pingButton.innerHTML = '<i class="fas fa-wifi"></i>';
-        }
-    }
-}
-
 async function removeAgent(agentId) {
     const agent = agentsData.find(a => a.agent_id === agentId);
     const agentName = agent ? formatAgentNameWithIp(agent) : agentId;
