@@ -515,7 +515,8 @@ class WhitelistManager:
         # Configuration loading
         whitelist_config = config.get("whitelist", {})
         server_config = config.get("server", {})
-        
+        self.agent_id = config.get("agent_id")
+
         # Basic settings
         self.update_interval = max(whitelist_config.get("update_interval", 300), 30)
         self.retry_interval = max(whitelist_config.get("retry_interval", 60), 10)
@@ -877,7 +878,10 @@ class WhitelistManager:
             )
             
             # Build request parameters
-            params = {}
+            if not self.agent_id:
+                raise ValueError("agent_id is required for whitelist sync")
+
+            params = {"agent_id": self.agent_id}
             if not should_do_full_sync and self.last_updated:
                 params['since'] = self._timestamp_to_iso(self.last_updated)
                 logger.info(f" [{sync_id}] Incremental sync since {params['since']}")
