@@ -146,69 +146,46 @@ class PacketSniffer:
     """
     
     def __init__(self, callback: Callable[[Dict], None]):
-        """
-        Initialize the packet sniffer.
-        
-        Args:
-            callback: Function to call when a domain is detected in traffic.
-                      Will receive a dictionary with domain info.
-        """
-        # Hàm callback sẽ được gọi khi phát hiện tên miền trong lưu lượng mạng
-        # Callback nhận một dict chứa thông tin về tên miền, IP, cổng, v.v.
         self.callback = callback
-        
-        # Cờ báo hiệu trạng thái hoạt động của bộ bắt gói tin
-        # Dùng để điều khiển vòng lặp bắt gói tin
         self.running = False
-        
-        # Biến lưu trữ tham chiếu đến luồng bắt gói tin
-        # Sẽ được khởi tạo khi gọi phương thức start()
         self.capture_thread = None
+        self._stop_event = threading.Event()  # ADD: Event for cleaner stop
     
     def start(self):
         """Start capturing packets in a background thread."""
-        # Kiểm tra nếu đã đang chạy thì không khởi động lại
-        # Tránh tạo nhiều luồng bắt gói tin dẫn đến xung đột
         if self.running:
             logger.warning("Packet sniffer is already running")
             return
         
-        # Đánh dấu là đang chạy
         self.running = True
+        self._stop_event.clear()  # ADD: Clear stop event
         
-        # Tạo luồng mới để bắt gói tin
-        # - target=self._capture_packets: Hàm sẽ được thực thi trong luồng
-        # - daemon=True: Khi chương trình chính kết thúc, luồng này sẽ tự động kết thúc
         self.capture_thread = threading.Thread(target=self._capture_packets)
         self.capture_thread.daemon = True
         self.capture_thread.start()
         
-        # Ghi log thông báo đã khởi động
         logger.info("Packet sniffer started")
     
     def stop(self):
         """Stop capturing packets."""
-        # Kiểm tra nếu không đang chạy thì không cần dừng
         if not self.running:
             logger.warning("Packet sniffer is not running")
             return
         
-        # Đánh dấu yêu cầu dừng luồng bắt gói tin
-        # Cờ này được kiểm tra trong hàm stop_filter của sniff()
+        logger.info("Stopping packet sniffer...")
         self.running = False
+        self._stop_event.set()  # ADD: Signal stop event
         
-        # Nếu có luồng bắt gói tin, chờ cho nó kết thúc
         if self.capture_thread:
-            # Chờ luồng kết thúc với timeout 3 giây
-            # Tránh treo chương trình nếu luồng không kết thúc
-            self.capture_thread.join(timeout=3)
+            # FIX: Shorter timeout since we use timeout in sniff()
+            self.capture_thread.join(timeout=5)
             
-            # Kiểm tra xem luồng có thực sự dừng hay không
             if self.capture_thread.is_alive():
-                # Ghi log cảnh báo nếu luồng không dừng được
-                logger.warning("Packet capture thread did not terminate gracefully")
+                logger.warning("Packet capture thread did not terminate gracefully - forcing stop")
+                # ADD: Thread will exit on next sniff timeout
+            else:
+                logger.info("Packet capture thread terminated gracefully")
         
-        # Ghi log thông báo đã dừng
         logger.info("Packet sniffer stopped")
     
     def _capture_packets(self):
@@ -218,38 +195,64 @@ class PacketSniffer:
         
         while self.running and retry_count < max_retries:
             try:
-                # Xây dựng bộ lọc BPF (Berkeley Packet Filter) cho gói tin
-                #  FIX: Enhanced filter để bắt nhiều traffic hơn
                 filter_str = "tcp and (dst port 80 or dst port 443 or dst port 53) or udp and dst port 53"
                 
-                # Ghi log thông tin về bộ lọc đang sử dụng
                 logger.info("Started packet capture with filter: %s", filter_str)
                 
-                # Bắt đầu bắt gói tin với Scapy
-                # Các tham số:
-                # - filter: Chuỗi bộ lọc BPF, xác định gói tin nào sẽ được bắt
-                # - prn: Hàm xử lý cho mỗi gói tin được bắt
-                # - store=0: Không lưu gói tin trong bộ nhớ (tiết kiệm bộ nhớ)
-                # - stop_filter: Hàm kiểm tra khi nào dừng bắt gói tin
-                sniff(
-                    filter=filter_str,
-                    prn=self._process_packet,  # Gọi _process_packet cho mỗi gói tin
-                    store=0,  # Không lưu gói tin vào bộ nhớ để tránh tràn bộ nhớ
-                    stop_filter=lambda _: not self.running  # Dừng khi self.running = False
-                )
-                break  # Thành công, thoát loop
+                # FIX: Use timeout to allow periodic stop checking
+                while self.running and not self._stop_event.is_set():
+                    try:
+                        sniff(
+                            filter=filter_str,
+                            prn=self._process_packet,
+                            store=0,
+                            timeout=2,  # ADD: Short timeout to check stop condition
+                            stop_filter=lambda _: self._stop_event.is_set() or not self.running
+                        )
+                    except Exception as sniff_error:
+                        if self.running:
+                            logger.debug(f"Sniff iteration error: {sniff_error}")
+                        break
+                    
+                    # Check if we should stop
+                    if self._stop_event.is_set() or not self.running:
+                        logger.debug("Stop signal received, exiting capture loop")
+                        break
                 
+                break  # Normal exit
+                
+            except PermissionError as pe:
+                logger.error(f"Permission error - need admin/root: {pe}")
+                retry_count = max_retries  # Don't retry permission errors
+                break
+                
+            except OSError as oe:
+                # Common: No suitable network interface or WinPcap/Npcap not installed
+                if "No suitable" in str(oe) or "wpcap" in str(oe).lower():
+                    logger.error(f"Network capture driver issue: {oe}")
+                    logger.error("Ensure WinPcap or Npcap is installed")
+                    retry_count = max_retries
+                    break
+                else:
+                    retry_count += 1
+                    logger.error(f"OS error in packet capture (attempt {retry_count}/{max_retries}): {oe}")
+                    
             except Exception as e:
                 retry_count += 1
                 logger.error(f"Error in packet capture (attempt {retry_count}/{max_retries}): {str(e)}")
                 
                 if retry_count < max_retries and self.running:
                     logger.info(f"Retrying packet capture in 5 seconds...")
-                    sleep(5)
+                    # FIX: Use event wait instead of sleep for faster response
+                    if self._stop_event.wait(timeout=5):
+                        logger.debug("Stop signal received during retry wait")
+                        break
                 else:
                     logger.error("Failed to start packet capture after all retries")
                     break
-    
+        
+        logger.debug("Packet capture thread exiting")
+
     def _process_packet(self, packet: Packet):
         """
         Process a captured packet to extract domain information.

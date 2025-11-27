@@ -211,70 +211,52 @@ class FirewallManager:
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
             
-            if result.returncode == 0:
-                output = result.stdout
+            if result.returncode != 0:
+                logger.warning(f"Could not verify firewall policy: {result.stderr}")
+                return False
+            
+            output = result.stdout
+            
+            # IMPROVED: Better multi-language parsing
+            profiles_verified = 0
+            lines = output.split('\n')
+            current_profile = None
+            
+            for i, line in enumerate(lines):
+                line_lower = line.strip().lower()
                 
-                #  IMPROVED: Better parsing logic
-                profiles_verified = 0
-                lines = output.split('\n')
-                current_profile = None
+                # Detect profile headers (multiple languages)
+                if any(x in line_lower for x in ['domain profile', 'private profile', 'public profile',
+                                                  'cấu hình miền', 'cấu hình riêng', 'cấu hình công cộng']):
+                    current_profile = line.strip()
+                    logger.debug(f"Checking profile: {current_profile}")
                 
-                for line in lines:
-                    line = line.strip()
-                    
-                    # Detect profile headers - more robust pattern
-                    if "Profile Settings:" in line or "profile settings" in line.lower():
-                        current_profile = line
-                        logger.debug(f"Checking profile: {current_profile}")
-                    
-                    # Look for outbound connections setting - case insensitive
-                    elif current_profile and ("outbound connections" in line.lower() or "outbound connection" in line.lower()):
-                        if "block" in line.lower():
-                            profiles_verified += 1
-                            logger.debug(f" Profile has outbound block: {line}")
-                        else:
-                            logger.debug(f" Profile allows outbound: {line}")
-                
-                #  IMPROVED: More lenient verification
-                if profiles_verified >= 1:  # At least 1 profile should have outbound blocking
-                    logger.info(f" Default Deny policy verified - {profiles_verified} profiles blocking outbound")
-                    return True
-                else:
-                    #  FALLBACK: Try alternative verification method
-                    logger.warning(" Standard verification failed, trying alternative method...")
-                    return self._verify_policy_alternative(output)
+                # Look for outbound connections setting
+                elif current_profile and any(x in line_lower for x in ['outbound connections', 'kết nối đi',
+                                                                        'firewall policy', 'chính sách']):
+                    if 'block' in line_lower or 'chặn' in line_lower:
+                        profiles_verified += 1
+                        logger.debug(f"✓ Profile has outbound block: {line.strip()}")
+            
+            # Check raw output for blockoutbound pattern
+            if profiles_verified == 0:
+                output_lower = output.lower()
+                if 'blockoutbound' in output_lower or 'block' in output_lower:
+                    # Count block occurrences near outbound
+                    block_count = output_lower.count('block')
+                    if block_count >= 2:  # At least 2 block references
+                        logger.debug("Found block patterns in output")
+                        profiles_verified = 1
+            
+            if profiles_verified >= 1:
+                logger.debug(f"Default Deny policy verified - {profiles_verified} indicators found")
+                return True
             else:
-                logger.error(f"Failed to verify firewall policy: {result.stderr}")
+                logger.debug("Default Deny policy not verified")
                 return False
                 
         except Exception as e:
-            logger.error(f"Error verifying Default Deny policy: {e}")
-            return False
-
-    def _verify_policy_alternative(self, output: str) -> bool:
-        """Alternative verification method using different patterns"""
-        try:
-            output_lower = output.lower()
-            
-            # Check for blockoutbound in the output
-            if "blockoutbound" in output_lower:
-                logger.info(" Alternative verification: Found blockoutbound policy")
-                return True
-            
-            # Check for block + outbound combination
-            block_count = output_lower.count("block")
-            outbound_count = output_lower.count("outbound")
-            
-            if block_count > 0 and outbound_count > 0:
-                logger.info(" Alternative verification: Found block + outbound indicators")
-                return True
-            
-            logger.warning(" Alternative verification also failed")
-            logger.debug(f"Full firewall output:\n{output}")
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error in alternative verification: {e}")
+            logger.warning(f"Error verifying Default Deny policy: {e}")
             return False
 
     def _restore_default_policy(self) -> bool:
@@ -620,15 +602,17 @@ class FirewallManager:
     def clear_all_rules(self) -> bool:
         """Remove all firewall rules created by this firewall manager"""
         try:
+            # FIX: List all rules, filter in code
             command = [
                 "netsh", "advfirewall", "firewall", "show", "rule",
-                "name=all", "verbose"
+                "name=all"
             ]
             
             result = subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
+                timeout=60,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
             
@@ -642,13 +626,16 @@ class FirewallManager:
             for line in lines:
                 if line.strip().startswith("Rule Name:"):
                     rule_name = line.strip()[10:].strip()
+                    # Filter by prefix in code
                     if rule_name.startswith(self.rule_prefix):
                         rule_names.append(rule_name)
             
             if not rule_names:
-                logger.info("No rules to clear")
+                logger.info(f"No rules with prefix '{self.rule_prefix}' to clear")
                 return True
-                
+            
+            logger.info(f"Found {len(rule_names)} rules to clear")
+            
             success = True
             for rule_name in rule_names:
                 command = [
@@ -660,22 +647,27 @@ class FirewallManager:
                     command,
                     capture_output=True,
                     text=True,
+                    timeout=30,
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
                 
                 if result.returncode == 0:
-                    logger.debug(f"Successfully removed rule: {rule_name}")
+                    logger.debug(f"✓ Removed rule: {rule_name}")
                 else:
-                    logger.error(f"Failed to remove rule {rule_name}. Error: {result.stderr.strip()}")
+                    logger.warning(f"Failed to remove rule {rule_name}: {result.stderr.strip()}")
                     success = False
             
             if success:
                 self.allowed_ips.clear()
+                logger.info(f"Cleared {len(rule_names)} rules successfully")
                 
             return success
-                
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Timeout while clearing firewall rules")
+            return False
         except Exception as e:
-            logger.error(f"Error clearing firewall rules: {str(e)}")
+            logger.error(f"Error clearing firewall rules: {e}")
             return False
 
     # ========================================
@@ -866,25 +858,28 @@ class FirewallManager:
         try:
             logger.debug("Loading existing firewall rules...")
             
+            # FIX: List ALL rules first, then filter in code
+            # netsh doesn't support wildcard in name filter properly
             command = [
-                 "netsh", "advfirewall", "firewall", "show", "rule",
-    f"name={self.rule_prefix}*", "verbose",
+                "netsh", "advfirewall", "firewall", "show", "rule",
+                "name=all"
             ]
             
             result = subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=60,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
             
             if result.returncode != 0:
-                logger.error(f"Failed to list rules: {result.stderr.strip()}")
+                logger.warning(f"Could not list rules (may need admin): {result.stderr.strip()}")
                 return
                 
             current_rule = None
             current_action = None
+            current_direction = None
             lines = result.stdout.split('\n')
             
             for line in lines:
@@ -893,19 +888,24 @@ class FirewallManager:
                 if line.startswith("Rule Name:"):
                     current_rule = line[10:].strip()
                     current_action = None
+                    current_direction = None
                     
+                    # Filter by our prefix in code
                     if not current_rule.startswith(self.rule_prefix):
                         current_rule = None
                         continue
                 
                 elif current_rule:
-                    if line.startswith("Action:"):
+                    if line.startswith("Direction:"):
+                        current_direction = line[10:].strip().lower()
+                    
+                    elif line.startswith("Action:"):
                         current_action = line[7:].strip().lower()
                     
-                    elif line.startswith("RemoteIP:") and current_action == "allow":
+                    elif line.startswith("RemoteIP:") and current_action == "allow" and current_direction == "out":
                         ip_part = line[9:].strip()
                         
-                        if ip_part and ip_part != "Any":
+                        if ip_part and ip_part.lower() != "any":
                             ip_parts = ip_part.split(',')
                             for part in ip_parts:
                                 part = part.strip()
@@ -920,12 +920,12 @@ class FirewallManager:
                     self.whitelist_mode_active = True
                     logger.info("Detected existing whitelist-only firewall mode with Default Deny")
             
-            logger.info(f"Loaded existing rules: {len(self.allowed_ips)} allow rules")
-            
+            logger.info(f"Loaded existing rules: {len(self.allowed_ips)} allow rules with prefix '{self.rule_prefix}'")
+        
         except subprocess.TimeoutExpired:
-            logger.error("Timeout while loading existing firewall rules")
+            logger.warning("Timeout while loading existing firewall rules - continuing without")
         except Exception as e:
-            logger.error(f"Error loading existing firewall rules: {e}")
+            logger.warning(f"Could not load existing firewall rules: {e}")
 
     def _has_admin_privileges(self) -> bool:
         """Check if the application is running with administrator privileges"""

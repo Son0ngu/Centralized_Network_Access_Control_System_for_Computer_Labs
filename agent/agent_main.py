@@ -17,14 +17,12 @@ Firewall Controller Agent - Module Chính (Refactored)
 import logging
 import signal
 import sys
-import json
-from typing import Dict, Optional, Set, List
+from typing import Dict
 
 # Network & system utilities
 import socket
 import platform
 import requests
-import psutil
 import netifaces 
 import uuid
 
@@ -49,7 +47,7 @@ from time_utils import (
 # ========================================
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("agent_main")
@@ -638,6 +636,54 @@ def initialize_components():
         logger.error(f"Failed to initialize components: {e}")
         return False
 
+# ========================================
+# LIFECYCLE LOG HELPERS - UTC ONLY
+# ========================================
+
+def get_primary_server_target() -> str:
+    """Return the primary server target for log display."""
+    server_config = config.get("server", {}) if config else {}
+
+    if server_config.get("urls"):
+        return server_config["urls"][0]
+
+    return (
+        server_config.get("url") or
+        (config.get("server_url") if config else None) or
+        "controller"
+    )
+
+
+def build_lifecycle_log(event_type: str, action: str, message: str) -> Dict:
+    """Construct lifecycle logs with meaningful routing fields."""
+    firewall_config = config.get("firewall", {}) if config else {}
+    server_target = get_primary_server_target()
+    # Tự động phát hiện port từ URL server
+    port = "443" if server_target.startswith("https") else "80" if server_target.startswith("http") else ""
+    return {
+        "agent_id": config.get("agent_id", "unknown"),
+        "event_type": event_type,
+        "message": message,
+        "action": action,
+        "level": "INFO",
+        "timestamp": now_iso(),
+        "timestamp_unix": now(),
+        "agent_host": AGENT_HOSTNAME,
+        "hostname": AGENT_HOSTNAME,
+        "host_name": AGENT_HOSTNAME,
+        "source": "agent_lifecycle",
+        "domain": "agent.lifecycle",
+        "destination": server_target,
+        "source_ip": get_local_ip(),
+        "dest_ip": server_target, 
+        "port": port,  # <--- THÊM DÒNG NÀY để ghi đè giá trị "unknown" mặc định
+        "firewall_enabled": firewall_config.get("enabled"),
+        "firewall_mode": firewall_config.get("mode"),
+        "admin_privileges": check_admin_privileges(),
+        "uptime_seconds": uptime(),
+        "uptime_string": uptime_string(),
+        "uptime_info": agent_state,
+    }
 
 # ========================================
 # CLEANUP - UTC ONLY
@@ -669,21 +715,11 @@ def cleanup():
     
     # Send final logs
     if log_sender and config.get('agent_id'):
-        shutdown_log = {
-            "agent_id": config['agent_id'],
-            "event_type": "agent_shutdown",
-            "timestamp": now_iso(),
-            "agent_host": AGENT_HOSTNAME,
-            "hostname": AGENT_HOSTNAME,
-            "host_name": AGENT_HOSTNAME,
-            "message": "Agent shutdown",
-            "action": "SHUTDOWN",
-            "level": "INFO",
-            "timestamp_unix": now(),
-            "uptime_seconds": uptime(),
-            "uptime_string": uptime_string(),
-            "uptime_info": agent_state
-        }
+        shutdown_log = build_lifecycle_log(
+            event_type="agent_shutdown",
+            action="SHUTDOWN",
+            message="Agent shutdown"
+        )
         CriticalErrorHandler.safe_execute(
             log_sender.queue_log,
             shutdown_log,
@@ -818,19 +854,11 @@ def main():
         
         # Send startup notification
         if log_sender and config.get('agent_id'):
-            startup_log = {
-                "agent_id": config['agent_id'],
-                "event_type": "agent_startup",
-                "hostname": socket.gethostname(),
-                "local_ip": get_local_ip(),
-                "admin_privileges": check_admin_privileges(),
-                "firewall_enabled": config["firewall"]["enabled"],
-                "firewall_mode": config["firewall"]["mode"],
-                "timestamp": now_iso(),  # UTC ISO
-                "timestamp_unix": now(),  # UTC Unix timestamp
-                "agent_host": AGENT_HOSTNAME,
-                "host_name": AGENT_HOSTNAME
-            }
+            startup_log = build_lifecycle_log(
+                event_type="agent_startup",
+                action="STARTUP",
+                message="Agent startup"
+            )
             log_sender.queue_log(startup_log)
         
         # Mark startup as completed

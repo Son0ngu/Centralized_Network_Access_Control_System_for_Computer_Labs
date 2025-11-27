@@ -37,7 +37,7 @@ class LogSender:
         # Cấu hình hàng đợi log
         self.max_queue_size = config.get("max_queue_size", 1000)
         self.batch_size = config.get("batch_size", 100)
-        self.send_interval = config.get("send_interval", 10)
+        self.send_interval = config.get("send_interval", 2)
         
         # Khởi tạo hàng đợi và trạng thái
         self.log_queue = queue.Queue(maxsize=self.max_queue_size)

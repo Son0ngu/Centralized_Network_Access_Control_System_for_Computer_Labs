@@ -87,7 +87,7 @@ DEFAULT_CONFIG = {
             "enabled": True,
             "batch_size": 100,
             "max_queue_size": 1000,
-            "send_interval": 30,
+            "send_interval": 2,
             "failures_before_warn": 3,
         }
     },

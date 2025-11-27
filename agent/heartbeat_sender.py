@@ -3,12 +3,11 @@ Heartbeat Sender - Gửi tín hiệu sống định kỳ lên server
 vietnam ONLY - Clean and simple
 """
 
-import json
 import logging
 import threading
 import requests
-from typing import Dict, Optional
-import psutil  # For system metrics  
+from typing import Dict
+import psutil
 import platform
 
 # Import time utilities - vietnam ONLY
@@ -16,6 +15,7 @@ from time_utils import now, now_iso, sleep
 from os_info import get_os_details
 
 logger = logging.getLogger("heartbeat_sender")
+
 
 class HeartbeatSender:
     """Gửi heartbeat định kỳ lên server - vietnam only"""
@@ -27,14 +27,10 @@ class HeartbeatSender:
         
         # Heartbeat settings
         self.enabled = self.heartbeat_config.get("enabled", True)
-        self.interval = self.heartbeat_config.get("interval", 20)  # 20 seconds
+        self.interval = self.heartbeat_config.get("interval", 20)
         self.timeout = self.heartbeat_config.get("timeout", 10)
-        self.retry_interval = self.heartbeat_config.get("retry_interval", 5)  # 5 seconds
-        self.max_failures = self.heartbeat_config.get("max_failures", 3)  # 3 failures
-        
-        # Retry logic cho failed heartbeats
-        self.max_retries = 3
-        self.retry_delay = 2  # 2 seconds between retries
+        self.retry_interval = self.heartbeat_config.get("retry_interval", 5)
+        self.max_failures = self.heartbeat_config.get("max_failures", 3)
         
         # Agent info
         self.agent_id = None
@@ -51,11 +47,9 @@ class HeartbeatSender:
         """Get list of server URLs to try"""
         urls = []
         
-        # Try multiple URLs from config
         if isinstance(self.server_config.get("urls"), list):
             urls.extend(self.server_config["urls"])
         
-        # Add main URL if specified
         if self.server_config.get("url"):
             main_url = self.server_config["url"]
             if main_url not in urls:
@@ -95,23 +89,22 @@ class HeartbeatSender:
         logger.info("Heartbeat sender stopped")
     
     def _heartbeat_loop(self):
-        """Main heartbeat loop - vietnam only"""
+        """Main heartbeat loop"""
         while self._running:
             try:
                 success = self._send_heartbeat()
                 
                 if success:
                     self._consecutive_failures = 0
-                    self._last_successful_heartbeat = now()  # vietnam timestamp
+                    self._last_successful_heartbeat = now()
                     sleep_time = self.interval
                 else:
                     self._consecutive_failures += 1
                     if self._consecutive_failures >= self.max_failures:
-                        logger.error(f"Too many consecutive heartbeat failures ({self._consecutive_failures}), stopping")
-                        break
+                        logger.error(f"Too many consecutive heartbeat failures ({self._consecutive_failures})")
+                        # Don't break - keep trying
                     sleep_time = self.retry_interval
                 
-                # Sleep with periodic checks for shutdown
                 for _ in range(int(sleep_time)):
                     if not self._running:
                         break
@@ -122,18 +115,15 @@ class HeartbeatSender:
                 sleep(self.retry_interval)
     
     def _send_heartbeat(self) -> bool:
-        """Send heartbeat to server - vietnam only"""
-        # Collect system metrics
+        """Send heartbeat to server"""
         metrics = self._collect_metrics()
-        
         os_details = get_os_details()
 
-        # Create heartbeat data với vietnam timestamp
         heartbeat_data = {
             "agent_id": self.agent_id,
             "token": self.agent_token,
             "device_id": self.config.get("device_id"),
-            "timestamp": now_iso(),  # vietnam ISO timestamp
+            "timestamp": now_iso(),
             "metrics": metrics,
             "status": "active",
             "platform": os_details["platform"],
@@ -141,7 +131,6 @@ class HeartbeatSender:
             "agent_version": "1.0.0"
         }
         
-        # Try each server URL
         for server_url in self.server_urls:
             try:
                 url = f"{server_url.rstrip('/')}/api/agents/heartbeat"
@@ -156,66 +145,62 @@ class HeartbeatSender:
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("success"):
-                        logger.debug(f" Heartbeat sent successfully to {server_url}")
+                        logger.debug(f"Heartbeat sent successfully to {server_url}")
                         return True
                     else:
                         logger.warning(f"Server rejected heartbeat: {data.get('error', 'Unknown error')}")
                 else:
-                    logger.warning(f"Heartbeat failed with status {response.status_code}: {response.text}")
+                    logger.warning(f"Heartbeat failed with status {response.status_code}")
                     
             except requests.exceptions.ConnectTimeout:
-                logger.warning(f"Connection timeout to {server_url}")
+                logger.debug(f"Connection timeout to {server_url}")
             except requests.exceptions.ConnectionError:
-                logger.warning(f"Connection error to {server_url}")
+                logger.debug(f"Connection error to {server_url}")
             except Exception as e:
                 logger.warning(f"Error sending heartbeat to {server_url}: {e}")
         
-        logger.error("Failed to send heartbeat to any server")
         return False
     
     def _collect_metrics(self) -> Dict:
-        """Collect system metrics - vietnam only"""
+        """Collect system metrics - simplified, no CPU percent (avoids PDH errors)"""
+        metrics = {
+            "memory_percent": 0,
+            "disk_percent": 0,
+            "uptime_seconds": 0,
+            "timestamp": now_iso()
+        }
+        
         try:
-            # Get disk usage for root drive (cross-platform)
-            if platform.system() == "Windows":
-                disk_path = "C:\\"
-            else:
-                disk_path = "/"
-            
-            return {
-                "cpu_percent": round(psutil.cpu_percent(interval=0.1), 2),
-                "memory_percent": round(psutil.virtual_memory().percent, 2),
-                "disk_percent": round(psutil.disk_usage(disk_path).percent, 2),
-                "uptime_seconds": int(now() - psutil.boot_time()),  # vietnam calculation
-                "network_connections": len(psutil.net_connections()),
-                "load_average": psutil.getloadavg() if hasattr(psutil, 'getloadavg') else None,
-                "timestamp": now_iso()  # vietnam ISO timestamp
-            }
-        except Exception as e:
-            logger.warning(f"Error collecting metrics: {e}")
-            return {
-                "cpu_percent": 0,
-                "memory_percent": 0,
-                "disk_percent": 0,
-                "uptime_seconds": 0,
-                "network_connections": 0,
-                "timestamp": now_iso()  # vietnam ISO timestamp
-            }
+            # Memory - không dùng performance counter
+            mem = psutil.virtual_memory()
+            metrics["memory_percent"] = round(mem.percent, 2)
+        except Exception:
+            pass
+        
+        try:
+            # Disk - không dùng performance counter
+            disk_path = "C:\\" if platform.system() == "Windows" else "/"
+            disk = psutil.disk_usage(disk_path)
+            metrics["disk_percent"] = round(disk.percent, 2)
+        except Exception:
+            pass
+        
+        try:
+            # Uptime - tính từ boot time
+            metrics["uptime_seconds"] = int(now() - psutil.boot_time())
+        except Exception:
+            pass
+        
+        return metrics
     
     def get_status(self) -> Dict:
-        """Get heartbeat sender status - vietnam only"""
-        last_heartbeat_iso = None
-        if self._last_successful_heartbeat:
-            # Convert vietnam timestamp to ISO string
-            last_heartbeat_iso = now_iso() if self._last_successful_heartbeat > 0 else "never"
-        
+        """Get heartbeat sender status"""
         return {
             "enabled": self.enabled,
             "running": self._running,
             "agent_id": self.agent_id,
             "consecutive_failures": self._consecutive_failures,
-            "last_successful_heartbeat": last_heartbeat_iso,
-            "last_successful_timestamp": self._last_successful_heartbeat,  # vietnam Unix timestamp
+            "last_successful_heartbeat": self._last_successful_heartbeat,
             "interval": self.interval,
-            "status_timestamp": now_iso()  # vietnam ISO timestamp
+            "timestamp": now_iso()
         }
