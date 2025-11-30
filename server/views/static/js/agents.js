@@ -543,7 +543,6 @@ function renderGroups() {
     groupsData.forEach(group => {
         const whitelistCount = (group.whitelist || []).length;
         
-        //  Count agents in this group
         const agentsInGroup = agentsData.filter(a => a.group_id === group._id);
         const agentCount = agentsInGroup.length;
         
@@ -554,7 +553,6 @@ function renderGroups() {
         card.addEventListener('dragleave', handleGroupDragLeave);
         card.addEventListener('drop', handleGroupDrop);
 
-        //  Render agents list
         const agentsListHtml = agentsInGroup.map(agent => {
             const statusInfo = getStatusInfo(agent.status);
             const displayName = getAgentDisplayName(agent);
@@ -580,6 +578,7 @@ function renderGroups() {
             `;
         }).join('');
 
+        // ✅ UPDATED: Added Detail button
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <div class="group-name">
@@ -587,6 +586,9 @@ function renderGroups() {
                     ${group.name}
                 </div>
                 <div class="group-actions">
+                    <button class="btn btn-sm btn-outline-info" data-action="detail" data-id="${group._id}" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     ${group.is_system ? '' : `
                         <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${group._id}">
                             <i class="fas fa-edit"></i>
@@ -604,7 +606,6 @@ function renderGroups() {
                 </span>
             </div>
             
-            <!--  Agent count toggle -->
             <div class="group-agent-count" data-action="toggle-agents" data-group-id="${group._id}">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fas fa-users text-primary"></i>
@@ -613,7 +614,6 @@ function renderGroups() {
                 <i class="fas fa-chevron-down expand-icon text-muted"></i>
             </div>
             
-            <!--  Agents list (collapsible) -->
             <div class="group-agents-list" id="agents-list-${group._id}">
                 ${agentCount > 0 ? agentsListHtml : '<div class="text-muted text-center py-2"><small>No agents in this group</small></div>'}
             </div>
@@ -672,6 +672,20 @@ function renderGroups() {
             deleteGroup(btn.dataset.id);
         });
     });
+    
+    // ✅ ADD: Detail button event listener
+    board.querySelectorAll('button[data-action="detail"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const groupId = btn.dataset.id;
+            viewGroupDetail(groupId);
+        });
+    });
+}
+
+// ✅ ADD: New function to navigate to group detail
+function viewGroupDetail(groupId) {
+    window.location.href = `/groups/${groupId}`;
 }
 
 /**
@@ -891,7 +905,7 @@ async function editAgentDisplayName(agentId) {
     const newDisplayName = prompt(`Enter a new display name for ${agent.agent_id}:`, defaultValue);
 
     if (newDisplayName === null) {
-        return; // User cancelled
+        return;
     }
 
     const trimmedName = newDisplayName.trim();
@@ -1145,6 +1159,16 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Agents page initialized');
     loadAgents();
     loadGroups();
+    
+    // ✅ ADD: Scroll to groups section if hash is #groups
+    if (window.location.hash === '#groups') {
+        setTimeout(() => {
+            const groupsSection = document.getElementById('groups');
+            if (groupsSection) {
+                groupsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 500); // Wait for content to load
+    }
     
     // Setup search and filter
     const searchInput = document.getElementById('agent-search');

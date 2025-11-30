@@ -206,6 +206,16 @@ class WhitelistController:
     def delete_domain(self, domain_id: str):
         """Delete domain from whitelist - vietnam ONLY"""
         try:
+            self.logger.info(f"Attempting to delete domain: {domain_id}")
+            
+            # ✅ FIX: Validate domain_id format
+            if not domain_id or len(domain_id) < 10:
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid domain ID format",
+                    "timestamp": now_iso()
+                }), 400
+            
             # Call service method
             result = self.service.delete_domain(domain_id)
             
@@ -214,18 +224,24 @@ class WhitelistController:
                 self.socketio.emit('whitelist_updated', {
                     'action': 'deleted',
                     'domain_id': domain_id,
-                    'timestamp': now_iso()  # vietnam ISO
+                    'timestamp': now_iso()
                 })
             
             # Add vietnam timestamp to response
             if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
+                result["timestamp"] = now_iso()
             
-            return jsonify(result), 200 if result.get('success') else 404
+            status_code = 200 if result.get('success') else 404
+            return jsonify(result), status_code
             
         except Exception as e:
             self.logger.error(f"Error deleting domain {domain_id}: {e}")
-            return self._error_response("Failed to delete domain", 500)
+            return jsonify({
+                "success": False,
+                "error": f"Failed to delete domain: {str(e)}",
+                "timestamp": now_iso()
+            }), 500
+
     
     def import_domains(self):
         """Import multiple domains - vietnam ONLY"""

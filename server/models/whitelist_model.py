@@ -209,7 +209,7 @@ class WhitelistModel:
         """Find all whitelist entries with proper sorting - vietnam ONLY"""
         query = query or {}
         
-        #  FIX: Add active filter by default
+        # FIX: Add active filter by default
         if "is_active" not in query:
             query["is_active"] = True
         query.setdefault("scope", "global")
@@ -223,16 +223,20 @@ class WhitelistModel:
         
         entries = []
         for entry in cursor:
-            entry["_id"] = str(entry["_id"])
+            # ✅ FIX: Convert ObjectId to string properly
+            if "_id" in entry:
+                entry["_id"] = str(entry["_id"])
             
             # Convert entry timezones for display - vietnam ONLY
             entry = self._convert_entry_timezones(entry)
             
-            #  FIX: Ensure all required fields exist
+            # ✅ FIX: Ensure all required fields exist with defaults
             entry.setdefault("type", "domain")
             entry.setdefault("category", "uncategorized")
             entry.setdefault("is_active", True)
             entry.setdefault("priority", "normal")
+            entry.setdefault("scope", "global")
+            entry.setdefault("value", "")  # ✅ Ensure value exists
             
             entries.append(entry)
         

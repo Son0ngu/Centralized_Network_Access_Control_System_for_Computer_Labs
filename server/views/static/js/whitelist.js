@@ -261,7 +261,7 @@ function updateStatistics() {
 }
 
 /**
- * Render items list
+ * Render items list - ✅ FIX: Handle all key formats
  */
 function renderItems(items) {
     const container = document.getElementById('itemsContainer');
@@ -286,7 +286,6 @@ function renderItems(items) {
             </div>
         `;
 
-        // Add event listeners for empty state buttons
         container.querySelectorAll('[data-type]').forEach(btn => {
             btn.addEventListener('click', () => showAddItemModal(btn.dataset.type));
         });
@@ -296,24 +295,57 @@ function renderItems(items) {
     container.innerHTML = '';
 
     items.forEach((item, index) => {
-        const isActive = item.active !== false;
+        const isActive = item.active !== false && item.is_active !== false;
         const itemType = item.type || 'domain';
-        const value = item.value || item.domain || item.ip || item.url || item.port || item.process;
-        const itemId = item.id || item._id || value;
+        
+        // ✅ FIX: Handle all possible value keys
+        const value = item.value || item.domain || item.ip || item.url || item.port || item.process || '';
+        
+        // ✅ FIX: Handle all possible ID keys
+        const itemId = item._id || item.id || '';
+        
+        // ✅ FIX: Check if item is from group (scope = 'group')
+        const scope = item.scope || 'global';
         const groupId = item.group_id || '';
-        const groupLabel = groupId ? (item.group_name || (groupsData.find(g => g._id === groupId)?.name || groupId)) : '';
+        const groupName = item.group_name || (groupId && groupsData.find(g => g._id === groupId)?.name) || '';
+        
+        if (!value) {
+            console.warn('Item has no value:', item);
+            return; // Skip items without value
+        }
+        
         const statusInfo = isActive ?
             { class: 'active', text: 'Active', icon: 'check-circle' } :
             { class: 'inactive', text: 'Inactive', icon: 'times-circle' };
         const typeConfig = typeConfigs[itemType] || typeConfigs.domain;
-        const created = item.added_date ? new Date(item.added_date).toLocaleDateString() : 'Unknown';
+        
+        // ✅ FIX: Better date handling - check multiple date fields
+        let created = '';
+        const dateValue = item.added_date || item.added_at || item.created_at;
+        if (dateValue) {
+            try {
+                const dateObj = new Date(dateValue);
+                if (!isNaN(dateObj.getTime())) {
+                    created = dateObj.toLocaleDateString('vi-VN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                }
+            } catch (e) {
+                console.warn('Invalid date:', dateValue);
+            }
+        }
+        
+        // ✅ FIX: Show "Recently added" if no date available
+        const dateDisplay = created || 'Recently added';
 
         const itemElement = document.createElement('div');
         itemElement.className = 'p-4 border-bottom item-row';
-        itemElement.dataset.value = (value || '').toLowerCase();
+        itemElement.dataset.value = value.toLowerCase();
         itemElement.dataset.status = isActive ? 'active' : 'inactive';
         itemElement.dataset.type = itemType;
-        itemElement.dataset.scope = (item.scope || 'global').toLowerCase();
+        itemElement.dataset.scope = scope.toLowerCase();
         itemElement.dataset.group = groupId;
 
         itemElement.innerHTML = `
@@ -321,7 +353,7 @@ function renderItems(items) {
                 <div class="col-md-1">
                     <div class="form-check">
                         <input class="form-check-input item-checkbox" type="checkbox" 
-                               value="${itemId}">
+                               value="${itemId}" ${!itemId ? 'disabled' : ''}>
                     </div>
                 </div>
                 <div class="col-md-7">
@@ -332,49 +364,37 @@ function renderItems(items) {
                         <div>
                             <h6 class="mb-2 fw-bold">
                                 <i class="fas fa-shield-alt me-2"></i>
-                                ${value}
+                                ${escapeHtml(value)}
                             </h6>
-                            <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex align-items-center mb-2 flex-wrap gap-1">
                                 <span class="domain-status ${statusInfo.class}">
                                     <span class="pulse-indicator ${statusInfo.class}"></span>
                                     ${statusInfo.text}
                                 </span>
-                                <span class="type-badge ${itemType} ms-2">
+                                <span class="type-badge ${itemType}">
                                     ${itemType.toUpperCase()}
                                 </span>
-                                <span class="domain-type-badge ${item.scope || 'global'} ms-2">
-                                    ${item.scope === 'agent' ? 'Agent Specific' : item.scope === 'group' ? `Group: ${groupLabel || 'Unknown'}` : 'Global'}
+                                <span class="domain-type-badge ${scope}">
+                                    ${scope === 'group' ? `Group: ${escapeHtml(groupName) || 'Unknown'}` : 'Global'}
                                 </span>
                             </div>
-                            <div class="row text-muted">
-                                <div class="col-md-6">
-                                    <small>
-                                        <i class="fas fa-calendar me-1"></i>
-                                        Added: ${created}
-                                    </small>
+                            <div class="row text-muted small">
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Added: ${dateDisplay}
                                 </div>
-                                ${item.agent_id ? `
-                                    <div class="col-md-6">
-                                        <small>
-                                            <i class="fas fa-laptop-code me-1"></i>
-                                            Agent: ${item.agent_id}
-                                        </small>
+                                ${item.category && item.category !== 'uncategorized' ? `
+                                    <div class="col-auto">
+                                        <i class="fas fa-tag me-1"></i>
+                                        ${escapeHtml(item.category)}
                                     </div>
                                 ` : ''}
                             </div>
-                            ${groupLabel ? `
-                                    <div class="col-md-6">
-                                        <small>
-                                            <i class="fas fa-layer-group me-1"></i>
-                                            Group: ${groupLabel}
-                                        </small>
-                                    </div>
-                                ` : ''}
                             ${item.notes ? `
                                 <div class="mt-2">
                                     <small class="text-muted">
                                         <i class="fas fa-sticky-note me-1"></i>
-                                        ${item.notes}
+                                        ${escapeHtml(item.notes)}
                                     </small>
                                 </div>
                             ` : ''}
@@ -387,9 +407,11 @@ function renderItems(items) {
                                 data-action="remove"
                                 data-item-id="${itemId}"
                                 data-group-id="${groupId}"
+                                data-scope="${scope}"
                                 data-item-type="${itemType}"
-                                data-item-value="${value}"
-                                title="Remove this item">
+                                data-item-value="${escapeHtml(value)}"
+                                title="Remove this item"
+                                ${!itemId && scope === 'global' ? 'disabled' : ''}>
                             <i class="fas fa-trash-alt me-1"></i>
                             <span>Remove</span>
                         </button>
@@ -401,84 +423,55 @@ function renderItems(items) {
         container.appendChild(itemElement);
     });
     
-    // Add event listeners for action buttons
+    // Add event listeners
     container.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', handleItemAction);
     });
     
-    // Add event listeners for checkboxes
     container.querySelectorAll('.item-checkbox').forEach(cb => {
         cb.addEventListener('change', updateSelectedItems);
     });
 }
 
-/**
- * Show add item modal for specific type
- */
-function showAddItemModal(type = 'domain') {
-    const config = typeConfigs[type] || typeConfigs.domain;
-    const modal = new bootstrap.Modal(document.getElementById('addItemModal'));
-    
-    // Update modal content based on type
-    document.getElementById('modalTitle').innerHTML = `
-        <i class="fas fa-${config.icon} me-2"></i>${config.title}
-    `;
-    document.getElementById('itemType').value = type;
-    document.getElementById('valueLabel').textContent = config.label;
-    document.getElementById('valueInput').placeholder = config.placeholder;
-    document.getElementById('valueExample').textContent = config.help;
-    document.getElementById('inputExample').textContent = config.example;
-    
-    const scopeSelect = document.getElementById('scopeSelect');
-    const groupSelect = document.getElementById('groupSelect');
-    const groupSelectGroup = document.getElementById('groupSelectGroup');
-
-    if (selectedGroupId && groupSelect) {
-        scopeSelect.value = 'group';
-        groupSelect.value = selectedGroupId;
-        groupSelectGroup.style.display = 'block';
-    } else {
-        scopeSelect.value = 'global';
-        groupSelectGroup.style.display = 'none';
-    }
-
-    modal.show();
+// ✅ ADD: escapeHtml function if not exists
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**
- * Show bulk import modal
- */
-function showBulkImportModal() {
-    const modal = new bootstrap.Modal(document.getElementById('bulkImportModal'));
-    modal.show();
-}
-
-/**
- * Handle item actions -  FIXED to call actual APIs
+ * Handle item actions - ✅ FIX: Properly handle scope
  */
 async function handleItemAction(event) {
-    const action = event.currentTarget.dataset.action;
-    const itemId = event.currentTarget.dataset.itemId;
-    const groupId = event.currentTarget.dataset.groupId;
-    const itemType = event.currentTarget.dataset.itemType;
-    const itemValue = event.currentTarget.dataset.itemValue;
-    console.log('Item action:', { action, itemId });
+    const btn = event.currentTarget;
+    const action = btn.dataset.action;
+    const itemId = btn.dataset.itemId;
+    const groupId = btn.dataset.groupId;
+    const scope = btn.dataset.scope;
+    const itemType = btn.dataset.itemType;
+    const itemValue = btn.dataset.itemValue;
+    
+    console.log('Item action:', { action, itemId, groupId, scope, itemType, itemValue });
 
-        if (action === 'remove') {
-        await removeItem(itemId, groupId, itemType, itemValue);
+    if (action === 'remove') {
+        await removeItem(itemId, groupId, scope, itemType, itemValue);
     }
 }
 
 /**
- * Remove item -  FIXED to call API
+ * Remove item - ✅ FIX: Handle both global and group items
  */
-async function removeItem(itemId, groupId = '', itemType = '', itemValue = '') {
+async function removeItem(itemId, groupId = '', scope = 'global', itemType = '', itemValue = '') {
     if (!confirm('Are you sure you want to remove this item?')) return;
     
-    if (groupId) {
+    // ✅ FIX: If scope is 'group', remove from group whitelist
+    if (scope === 'group' && groupId) {
         try {
-            await removeGroupItem(groupId, itemType, itemValue || itemId);
-            showSuccess('Group whitelist item removed');
+            console.log('Removing group item:', { groupId, itemType, itemValue });
+            await removeGroupItem(groupId, itemType, itemValue);
+            showSuccess('Item removed from group whitelist');
             await Promise.all([loadGroups(), loadItems()]);
         } catch (error) {
             console.error('Error removing group item:', error);
@@ -487,23 +480,36 @@ async function removeItem(itemId, groupId = '', itemType = '', itemValue = '') {
         return;
     }
 
+    // ✅ FIX: For global items, must have valid ID
+    if (!itemId) {
+        showError('Cannot remove item: Missing ID');
+        return;
+    }
+
     try {
-        console.log(' Removing item:', itemId);
+        console.log('Removing global item:', itemId);
         
         const response = await fetch(`/api/whitelist/${itemId}`, {
             method: 'DELETE'
         });
         
-        const result = await handleApiResponse(response);
-        console.log(' Remove result:', result);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
         
-        showSuccess(result.message || 'Item removed successfully');
+        const result = await response.json();
+        console.log('Remove result:', result);
         
-        // Reload data from server
-        await loadItems();
+        if (result.success) {
+            showSuccess(result.message || 'Item removed successfully');
+            await loadItems();
+        } else {
+            throw new Error(result.error || 'Failed to remove item');
+        }
         
     } catch (error) {
-        console.error(' Error removing item:', error);
+        console.error('Error removing item:', error);
         showError('Failed to remove item: ' + error.message);
     }
 }
@@ -715,6 +721,68 @@ function filterItems() {
             row.style.display = 'none';
         }
     });
+}
+
+/**
+ * Show Add Item Modal with pre-selected type
+ */
+function showAddItemModal(type = 'domain') {
+    const config = typeConfigs[type] || typeConfigs.domain;
+    
+    // ✅ FIX: Use correct element IDs from HTML
+    const modalTitleEl = document.getElementById('modalTitle');
+    const valueLabelEl = document.getElementById('valueLabel');
+    const valueInputEl = document.getElementById('valueInput');
+    const valueExampleEl = document.getElementById('valueExample');
+    const itemTypeEl = document.getElementById('itemType');
+    const formEl = document.getElementById('addItemForm');
+    
+    // Update modal title and labels
+    if (modalTitleEl) {
+        modalTitleEl.innerHTML = `<i class="fas fa-${config.icon} me-2"></i>${config.title}`;
+    }
+    if (valueLabelEl) {
+        valueLabelEl.textContent = config.label;
+    }
+    if (valueInputEl) {
+        valueInputEl.placeholder = config.placeholder;
+    }
+    if (valueExampleEl) {
+        valueExampleEl.textContent = config.example;
+    }
+    
+    // Set hidden type field
+    if (itemTypeEl) {
+        itemTypeEl.value = type;
+    }
+    
+    // Reset form
+    if (formEl) {
+        formEl.reset();
+    }
+    
+    // Set type again after reset
+    if (itemTypeEl) {
+        itemTypeEl.value = type;
+    }
+    
+    // Show modal
+    const modalEl = document.getElementById('addItemModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+/**
+ * Show Bulk Import Modal
+ */
+function showBulkImportModal() {
+    const modalEl = document.getElementById('bulkImportModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 }
 
 /**

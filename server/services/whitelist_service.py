@@ -42,35 +42,44 @@ class WhitelistService:
         # Format entries for response
         formatted_entries = []
         for entry in entries:
+            # ✅ FIX: Ensure all required fields are present
             formatted_entry = {
-                "id": entry.get("_id"),
+                "_id": entry.get("_id"),  # ✅ Keep _id for frontend
+                "id": entry.get("_id"),   # ✅ Also add id for compatibility
                 "type": entry.get("type", "domain"),
-                "value": entry.get("value"),
-                "domain": entry.get("value"),  # Backwards compatibility
-                "category": entry.get("category"),
+                "value": entry.get("value", ""),  # ✅ Always use 'value'
+                "category": entry.get("category", "uncategorized"),
                 "priority": entry.get("priority", "normal"),
-                "added_by": entry.get("added_by"),
-                "added_date": entry.get("added_date").isoformat() if entry.get("added_date") else None
+                "added_by": entry.get("added_by", "unknown"),
+                "is_active": entry.get("is_active", True),
+                "scope": entry.get("scope", "global"),
+                "added_date": None
             }
+            
+            # ✅ FIX: Proper date handling
+            if entry.get("added_date"):
+                try:
+                    if hasattr(entry["added_date"], 'isoformat'):
+                        formatted_entry["added_date"] = entry["added_date"].isoformat()
+                    else:
+                        formatted_entry["added_date"] = str(entry["added_date"])
+                except Exception:
+                    formatted_entry["added_date"] = None
             
             # Add optional fields if they exist
             if entry.get("notes"):
                 formatted_entry["notes"] = entry.get("notes")
-            if entry.get("expiry_date"):
-                formatted_entry["expiry_date"] = entry.get("expiry_date").isoformat()
-            if entry.get("max_requests_per_hour"):
-                formatted_entry["max_requests_per_hour"] = entry.get("max_requests_per_hour")
-            if entry.get("is_temporary"):
-                formatted_entry["is_temporary"] = entry.get("is_temporary")
-            if entry.get("dns_config"):
-                formatted_entry["dns_config"] = entry.get("dns_config")
+            if entry.get("group_id"):
+                formatted_entry["group_id"] = entry.get("group_id")
+            if entry.get("group_name"):
+                formatted_entry["group_name"] = entry.get("group_name")
             
             formatted_entries.append(formatted_entry)
         
         return {
             "domains": formatted_entries,
             "success": True,
-            "server_time": now_iso()  # vietnam ISO
+            "server_time": now_iso()
         }
     
     def add_entry(self, entry_data: Dict, client_ip: str) -> Dict:
@@ -668,7 +677,7 @@ class WhitelistService:
                 "domains": domains,
                 "count": len(domains),
                 "agent_id": agent_id,
-                "server_time": now_iso(),  # vietnam ISO
+                "server_time": now_iso(),  # ✅ FIX: Thêm dấu phẩy ở đây
                 "since": since_datetime.isoformat() if since_datetime else None
             }
             

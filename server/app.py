@@ -15,7 +15,7 @@ import logging
 #  Add current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
@@ -289,6 +289,32 @@ def register_main_routes(app, log_service, agent_service):
     @app.route('/agents')
     def agents_page():
         return render_template('agents.html', page_title="Agent Management")
+    
+    # ✅ ADD: Groups page route
+    @app.route('/groups')
+    def groups_page():
+        """Groups management page"""
+        return render_template('groups.html', page_title="Group Management")
+    
+    # ✅ ADD: Group detail page route
+    @app.route('/groups/<group_id>')
+    def group_detail(group_id):
+        """Group detail page - view agents in group, add/remove agents"""
+        try:
+            group_service = app.group_service
+            group = group_service.get_group(group_id)
+            
+            if not group:
+                return render_template('404.html', message="Group not found"), 404
+                
+            return render_template('group_detail.html', group=group, page_title=f"Group: {group.get('name', 'Unknown')}")
+            
+        except ValueError as e:
+            app.logger.warning(f"Group not found: {group_id} - {e}")
+            return render_template('404.html', message="Group not found"), 404
+        except Exception as e:
+            app.logger.error(f"Error loading group {group_id}: {e}")
+            return render_template('500.html', message=str(e)), 500
     
     @app.route('/whitelist')
     def whitelist_page():

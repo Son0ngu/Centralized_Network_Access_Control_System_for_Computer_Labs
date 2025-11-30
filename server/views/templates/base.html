@@ -37,8 +37,14 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if 'agents' in request.path %}active{% endif %}" href="/agents">
+                        <a class="nav-link {% if request.path == '/agents' %}active{% endif %}" href="/agents">
                             <i class="fas fa-laptop-code me-1"></i>Agents
+                        </a>
+                    </li>
+                    <!-- ✅ UPDATED: Groups now links to separate page -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/groups' in request.path %}active{% endif %}" href="/groups">
+                            <i class="fas fa-layer-group me-1"></i>Groups
                         </a>
                     </li>
                     <li class="nav-item">
@@ -90,10 +96,10 @@
     <!-- Socket.IO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.0/socket.io.js"></script>
     
-    
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
     </div>
- <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    
+    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

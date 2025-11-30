@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 
 from services.group_service import GroupService
 
@@ -12,8 +12,10 @@ class GroupController:
         self._register_routes()
 
     def _register_routes(self):
+        # API routes
         self.blueprint.add_url_rule('/groups', 'list_groups', self.list_groups, methods=['GET'])
         self.blueprint.add_url_rule('/groups', 'create_group', self.create_group, methods=['POST'])
+        self.blueprint.add_url_rule('/groups/<group_id>', 'get_group', self.get_group, methods=['GET'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'update_group', self.update_group, methods=['PATCH'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'delete_group', self.delete_group, methods=['DELETE'])
 
@@ -23,6 +25,17 @@ class GroupController:
             return jsonify({"success": True, "data": groups}), 200
         except Exception as exc:
             self.logger.error(f"Failed to list groups: {exc}")
+            return jsonify({"success": False, "error": str(exc)}), 500
+
+    def get_group(self, group_id: str):
+        """Get single group details"""
+        try:
+            group = self.service.get_group(group_id)
+            return jsonify({"success": True, "data": group}), 200
+        except ValueError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 404
+        except Exception as exc:
+            self.logger.error(f"Failed to get group {group_id}: {exc}")
             return jsonify({"success": False, "error": str(exc)}), 500
 
     def create_group(self):
