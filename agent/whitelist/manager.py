@@ -123,28 +123,36 @@ class WhitelistManager:
     
     def _sync_loop(self) -> None:
         """Background sync loop."""
+        logger.info("🚀 Starting initial whitelist sync...")
+        
         # Initial sync
         self.sync_now()
         
         while self._running:
             # Wait for next sync interval
+            logger.debug(f"⏰ Next sync in {self._sync_interval} seconds...")
             for _ in range(int(self._sync_interval)):
                 if not self._running:
                     break
                 sleep(1)
             
             if self._running:
+                logger.info(f"🔄 Periodic whitelist sync (interval: {self._sync_interval}s)")
                 self.sync_now()
     
     def sync_now(self) -> bool:
         """Perform immediate sync with server."""
         try:
+            agent_id = self.config.get("agent_id", "unknown")
+            
             # Build sync parameters
             params = {
-                "agent_id": self.config.get("agent_id", "unknown"),
-                "current_version": self._state._version if hasattr(self._state, '_version') else "",
+                "agent_id": agent_id,
+                "global_version": self._state._version if hasattr(self._state, '_version') and self._state._version else None,
                 "timestamp": now_iso()
             }
+            
+            logger.info(f"🔄 Syncing whitelist from server (agent_id: {agent_id})...")
             
             # Sync with server
             result = self._sync.sync_with_server(params)
@@ -152,26 +160,43 @@ class WhitelistManager:
             if result.get("success"):
                 data = result.get("data", {})
                 
+                # Log server response
+                domains_count = len(data.get("domains", []))
+                logger.info(f"📥 Received {domains_count} entries from server")
+                
+                # Debug: Log first few entries
+                if domains_count > 0:
+                    sample = data.get("domains", [])[:3]
+                    logger.debug(f"Sample entries: {sample}")
+                
                 # Update state
                 updated = self._state.update(data)
                 
                 self._stats["sync_count"] += 1
                 self._stats["last_sync"] = now()
                 
-                # Update firewall rules if available and state changed
-                if updated and self._firewall_manager:
-                    self._update_firewall_rules()
+                if updated:
+                    logger.info("✅ Whitelist state updated with new data")
+                    
+                    # Update firewall rules if available
+                    if self._firewall_manager:
+                        logger.info("🔥 Updating firewall rules...")
+                        self._update_firewall_rules()
+                    else:
+                        logger.debug("No firewall manager linked, skipping firewall update")
+                else:
+                    logger.debug("No changes in whitelist data (already up to date)")
                 
-                logger.debug("Whitelist sync completed successfully")
                 return True
             else:
                 self._stats["errors"] += 1
-                logger.warning(f"Whitelist sync failed: {result.get('error', 'Unknown')}")
+                error_msg = result.get('error', 'Unknown error')
+                logger.warning(f"❌ Whitelist sync failed: {error_msg}")
                 return False
             
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error(f"Sync error: {e}")
+            logger.error(f"❌ Sync error: {e}", exc_info=True)
             return False
     
     def is_allowed(self, domain: str, ip: Optional[str] = None) -> bool:
@@ -199,17 +224,29 @@ class WhitelistManager:
     def _update_firewall_rules(self) -> None:
         """Update firewall rules based on whitelist."""
         if not self._firewall_manager:
+            logger.debug("No firewall manager linked, skipping firewall update")
             return
         
         try:
             # Get all whitelisted domains and IPs
             domains = self._state.get_all_domains()
+            patterns = self._state.get_all_patterns()
             ips = self._state.get_all_ips()
             
-            # Update firewall
+            # Combine domains and patterns
+            all_domains = domains.union(patterns)
+            
+            logger.info(f"🔄 Updating firewall with {len(all_domains)} domains and {len(ips)} IPs")
+            
+            # Update firewall - it will resolve domains to IPs internally
             if hasattr(self._firewall_manager, 'update_whitelist'):
-                self._firewall_manager.update_whitelist(domains, ips)
-            logger.debug("Firewall rules updated from whitelist")
+                success = self._firewall_manager.update_whitelist(all_domains, ips)
+                if success:
+                    logger.info("✅ Firewall rules updated successfully")
+                else:
+                    logger.warning("⚠ Firewall update returned failure")
+            else:
+                logger.warning("Firewall manager doesn't support update_whitelist method")
             
         except Exception as e:
             logger.error(f"Failed to update firewall rules: {e}")

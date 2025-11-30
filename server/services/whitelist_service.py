@@ -503,7 +503,7 @@ class WhitelistService:
                 "domains": combined,
                 "timestamp": now_iso(),
                 "count": len(combined),
-                "type": "response_type",
+                "type": response_type,  # Fixed: was "response_type" (string literal) instead of response_type (variable)
                 "success": True,
                 "server_time": now_iso(),
                 "global_version": current_global_version,

@@ -42,18 +42,13 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.info(f"Registered successfully - Agent ID: {config.get('agent_id')}")
         
-        # 2. Initialize WhitelistManager
+        # 2. Initialize WhitelistManager (but don't start sync yet)
         logger.info("Step 2: Initializing whitelist manager...")
         from whitelist import WhitelistManager
         agent.whitelist = WhitelistManager(config)
         logger.info("Whitelist manager initialized")
         
-        # Start whitelist sync
-        if config.get("whitelist", {}).get("auto_sync", True):
-            agent.whitelist.start_sync()
-            logger.info(f"Whitelist sync started (interval: {config.get('whitelist', {}).get('sync_interval', 60)}s)")
-        
-        # 3. Initialize FirewallManager (if enabled and has admin)
+        # 3. Initialize FirewallManager (if enabled and has admin) - BEFORE starting sync
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
         
@@ -62,20 +57,34 @@ def initialize_components(config: Dict) -> bool:
             from firewall import FirewallManager
             agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
             
-            # Link firewall to whitelist
+            # Link firewall to whitelist BEFORE starting sync
             if agent.whitelist:
                 agent.whitelist.set_firewall_manager(agent.firewall)
                 logger.info("Firewall manager linked to whitelist")
             
-            logger.info("Firewall manager initialized")
+            # Enable whitelist-only mode if configured
+            firewall_mode = firewall_config.get("mode", "monitor")
+            if firewall_mode == "whitelist_only":
+                logger.info("🔒 Firewall mode: whitelist_only - Enabling Default Deny policy...")
+                if agent.firewall.enable_whitelist_mode():
+                    logger.info("✅ Default Deny policy enabled - All non-whitelisted traffic will be blocked")
+                else:
+                    logger.error("❌ Failed to enable Default Deny policy")
+            else:
+                logger.info(f"Firewall mode: {firewall_mode} (not whitelist_only)")
         else:
             if not firewall_config.get("enabled"):
                 logger.info("Step 3: Firewall disabled in config")
             else:
                 logger.warning("Step 3: Firewall enabled but no admin privileges")
         
-        # 4. Initialize LogSender
-        logger.info("Step 4: Initializing log sender...")
+        # 4. NOW start whitelist sync (after firewall is linked)
+        if config.get("whitelist", {}).get("auto_sync", True):
+            agent.whitelist.start_sync()
+            logger.info(f"Whitelist sync started (interval: {config.get('whitelist', {}).get('sync_interval', 60)}s)")
+        
+        # 5. Initialize LogSender
+        logger.info("Step 5: Initializing log sender...")
         from logging_module import LogSender
         
         server_url = config.get("server_url") or config.get("server", {}).get("url")
@@ -97,8 +106,8 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Log sender not initialized - missing server_url or agent_id")
         
-        # 5. Initialize HeartbeatSender
-        logger.info("Step 5: Initializing heartbeat sender...")
+        # 6. Initialize HeartbeatSender
+        logger.info("Step 6: Initializing heartbeat sender...")
         from services import HeartbeatSender
         
         if server_url and agent_id:
@@ -115,10 +124,10 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Heartbeat sender not initialized - missing server_url or agent_id")
         
-        # 6. Initialize PacketSniffer (if capture enabled)
+        # 7. Initialize PacketSniffer (if capture enabled)
         capture_config = config.get("capture", config.get("packet_capture", {}))
         if capture_config.get("enabled", True):
-            logger.info("Step 6: Initializing packet sniffer...")
+            logger.info("Step 7: Initializing packet sniffer...")
             try:
                 from capture import PacketSniffer
                 
@@ -133,7 +142,7 @@ def initialize_components(config: Dict) -> bool:
                 logger.warning(f"Could not initialize packet sniffer: {e}")
                 logger.warning("Continuing without packet capture...")
         else:
-            logger.info("Step 6: Packet capture disabled in config")
+            logger.info("Step 7: Packet capture disabled in config")
         
         # Mark agent as running
         agent.running = True

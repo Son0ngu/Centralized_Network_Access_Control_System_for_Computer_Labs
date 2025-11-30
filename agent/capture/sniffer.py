@@ -47,6 +47,11 @@ class PacketSniffer:
         self._capture_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._extractor = DomainExtractor()
+        
+        # Statistics
+        self.packet_count = 0
+        self.domain_count = 0
+        self._stats_lock = threading.Lock()
     
     def start(self) -> None:
         """Start capturing packets in background thread."""
@@ -149,6 +154,10 @@ class PacketSniffer:
             if not packet.haslayer(IP):
                 return
             
+            # Increment packet counter
+            with self._stats_lock:
+                self.packet_count += 1
+            
             ip_layer = packet[IP]
             src_ip = ip_layer.src
             dst_ip = ip_layer.dst
@@ -185,6 +194,11 @@ class PacketSniffer:
             
             # Create record if domain found or notable connection
             if domain or dst_port in [80, 443, 53]:
+                # Increment domain counter
+                if domain:
+                    with self._stats_lock:
+                        self.domain_count += 1
+                
                 record = {
                     "timestamp": now_iso(),
                     "domain": domain,

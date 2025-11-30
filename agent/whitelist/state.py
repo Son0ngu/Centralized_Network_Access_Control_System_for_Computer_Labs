@@ -43,34 +43,57 @@ class WhitelistState:
         """
         with self._lock:
             try:
-                # Extract domains
+                # Extract domains, patterns, and IPs
                 new_domains = set()
                 new_patterns = set()
                 new_ips = set()
                 
+                # Parse domains array from server response
+                # Server format: {"domains": [{"value": "...", "type": "domain|ip|pattern", ...}]}
                 for item in data.get("domains", []):
                     if isinstance(item, str):
-                        domain = item.lower().strip()
+                        # Simple string format
+                        value = item.lower().strip()
+                        entry_type = "domain"
                     elif isinstance(item, dict):
-                        domain = item.get("domain", "").lower().strip()
+                        # Object format from server: {"value": "...", "type": "..."}
+                        value = item.get("value", "").lower().strip()
+                        if not value:
+                            # Fallback to "domain" key for backward compatibility
+                            value = item.get("domain", "").lower().strip()
+                        entry_type = item.get("type", "domain").lower()
                     else:
                         continue
                     
-                    if domain:
-                        if "*" in domain or "?" in domain:
-                            new_patterns.add(domain)
-                        else:
-                            new_domains.add(domain)
+                    if not value:
+                        continue
+                    
+                    # Categorize based on type
+                    if entry_type == "ip":
+                        new_ips.add(value)
+                    elif entry_type == "pattern" or "*" in value or "?" in value:
+                        new_patterns.add(value)
+                    else:
+                        new_domains.add(value)
                 
-                # Extract IPs
+                # Also check for separate "ips" array (backward compatibility)
                 for ip in data.get("ips", []):
                     if isinstance(ip, str):
                         new_ips.add(ip.strip())
+                    elif isinstance(ip, dict):
+                        ip_value = ip.get("value", ip.get("ip", "")).strip()
+                        if ip_value:
+                            new_ips.add(ip_value)
+                
+                # Log what we parsed
+                logger.debug(f"Parsed from server: {len(new_domains)} domains, "
+                           f"{len(new_patterns)} patterns, {len(new_ips)} IPs")
                 
                 # Check if changed
                 if (new_domains == self._domains and 
                     new_patterns == self._patterns and 
                     new_ips == self._ips):
+                    logger.debug("No changes in whitelist data")
                     return False
                 
                 # Update state
@@ -78,18 +101,18 @@ class WhitelistState:
                 self._patterns = new_patterns
                 self._ips = new_ips
                 self._last_updated = now()
-                self._version = data.get("version", "")
+                self._version = str(data.get("global_version", data.get("version", "")))
                 self._checksum = self._calculate_checksum()
                 self._metadata = data.get("metadata", {})
                 
                 logger.info(
-                    f"Whitelist updated: {len(self._domains)} domains, "
+                    f"✅ Whitelist updated: {len(self._domains)} domains, "
                     f"{len(self._patterns)} patterns, {len(self._ips)} IPs"
                 )
                 return True
                 
             except Exception as e:
-                logger.error(f"Failed to update whitelist state: {e}")
+                logger.error(f"Failed to update whitelist state: {e}", exc_info=True)
                 return False
     
     def _calculate_checksum(self) -> str:
