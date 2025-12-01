@@ -79,11 +79,25 @@ def main():
         
         logger.info("Configuration loaded and validated")
         
-        # Auto-adjust configuration based on privileges
+        # Auto-adjust firewall configuration based on admin privileges
         admin_status = check_admin_privileges()
-        if config["firewall"]["enabled"] and not admin_status:
-            if config["firewall"]["mode"] in ["block", "whitelist_only"]:
-                logger.warning("No admin privileges - switching to monitor mode")
+        firewall_config = config.get("firewall", {})
+        current_mode = firewall_config.get("mode", "monitor")
+        
+        if admin_status:
+            # Has admin privileges - enable firewall enforcement
+            if current_mode == "monitor":
+                logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
+                config["firewall"]["enabled"] = True
+                config["firewall"]["mode"] = "whitelist_only"
+            else:
+                # Already in enforce mode, just ensure enabled
+                config["firewall"]["enabled"] = True
+                logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
+        else:
+            # No admin privileges - force monitor mode
+            if current_mode in ["block", "whitelist_only", "enforce"]:
+                logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
                 config["firewall"]["enabled"] = False
                 config["firewall"]["mode"] = "monitor"
         

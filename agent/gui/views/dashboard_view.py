@@ -438,11 +438,14 @@ class DashboardView(ctk.CTkFrame):
                 self._cards['mode'].set_icon(mode_config[0])
                 self._cards['mode'].set_color(mode_config[1])
                 self._cards['mode'].set_subtitle(mode_config[2])
+                # Log the actual mode
+                self._append_log(f"[MODE] Firewall mode: {mode_display} ({mode_config[2]})")
             else:
                 self._cards['mode'].set_value(mode_display)
                 self._cards['mode'].set_icon('👁️')
                 self._cards['mode'].set_color('#00d4ff')
                 self._cards['mode'].set_subtitle('Firewall disabled')
+                self._append_log(f"[MODE] Firewall mode: {mode_display} (Firewall disabled)")
             
         elif status == 'stopped':
             self._cards['status'].set_value("Stopped")
@@ -557,6 +560,11 @@ class DashboardView(ctk.CTkFrame):
     
     def _on_whitelist_synced(self, data: Dict):
         """Handle whitelist sync event."""
+        # Check if this is agent_ready event (not actual sync result)
+        if data.get('agent_ready'):
+            self._append_log("[INFO] Agent ready - whitelist sync enabled")
+            return
+        
         success = data.get('success', False)
         
         if success:
@@ -647,21 +655,17 @@ class DashboardView(ctk.CTkFrame):
             from datetime import datetime
             timestamp = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
         
-        # Get agent info
+        # Get hostname only - mode is not yet determined at this point
         hostname = "Unknown"
-        mode = "Monitor"
         try:
             import socket
             hostname = socket.gethostname()
-            if self._controller:
-                info = self._controller.get_agent_info()
-                mode = info.get('firewall_mode', 'monitor').title()
         except:
             pass
         
         self._log_textbox.configure(state="normal")
         
-        # Banner lines  
+        # Banner lines - mode will be shown when agent starts running
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
@@ -669,7 +673,7 @@ class DashboardView(ctk.CTkFrame):
             "╠" + "═" * 48 + "╣",
             f"║  📅 Time: {timestamp}".ljust(49) + "║",
             f"║  💻 Host: {hostname[:35]}".ljust(49) + "║",
-            f"║  🔥 Mode: {mode}".ljust(49) + "║",
+            "║  🔥 Mode: Detecting...".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
             "║  ⚙️  Initializing components...".ljust(49) + "║",
             "║  📡 Connecting to server...".ljust(49) + "║",

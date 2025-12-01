@@ -160,6 +160,33 @@ class MainWindow(ctk.CTkFrame):
         self._views["whitelist"] = WhitelistView(self._content_area)
         self._views["logs"] = LogsView(self._content_area)
         self._views["settings"] = SettingsView(self._content_area)
+        
+        # Connect agent_ready signal to update views
+        from ..controllers.agent_controller import AgentController
+        agent_ctrl = AgentController()
+        agent_ctrl.signals.connect('whitelist_synced', self._on_agent_ready)
+        agent_ctrl.signals.connect('status_changed', self._on_status_changed)
+    
+    def _on_status_changed(self, data: Dict):
+        """Handle agent status change - connect firewall manager."""
+        status = data.get('status', '')
+        if status == 'running':
+            # Connect firewall manager to firewall view
+            try:
+                from ..controllers.agent_controller import AgentController
+                agent_ctrl = AgentController()
+                if agent_ctrl._agent and agent_ctrl._agent.firewall:
+                    if "firewall" in self._views:
+                        self._views["firewall"].set_firewall_manager(agent_ctrl._agent.firewall)
+            except Exception as e:
+                pass  # Firewall may not be available
+    
+    def _on_agent_ready(self, data: Dict):
+        """Handle agent ready event - notify whitelist view."""
+        if data.get('agent_ready') and "whitelist" in self._views:
+            whitelist_view = self._views["whitelist"]
+            if hasattr(whitelist_view, 'set_agent_ready'):
+                whitelist_view.set_agent_ready(True)
     
     def _show_view(self, view_name: str):
         """Switch to specified view."""

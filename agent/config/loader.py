@@ -17,8 +17,13 @@ logger = logging.getLogger("config.loader")
 
 # Configuration file paths
 DEFAULT_CONFIG_FILE = "agent_config.json"
+
+# Get the agent directory (where this config module is located)
+_AGENT_DIR = Path(__file__).resolve().parent.parent
+
 CONFIG_PATHS: List[Path] = [
-    Path(DEFAULT_CONFIG_FILE),
+    _AGENT_DIR / DEFAULT_CONFIG_FILE,  # Agent directory (most reliable)
+    Path(DEFAULT_CONFIG_FILE),  # Current working directory
     Path.home() / ".firewall-controller" / DEFAULT_CONFIG_FILE,
     Path(os.environ.get("PROGRAMDATA", "C:\\ProgramData")) / "FirewallController" / DEFAULT_CONFIG_FILE,
 ]

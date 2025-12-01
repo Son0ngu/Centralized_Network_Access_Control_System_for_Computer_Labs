@@ -67,8 +67,46 @@ class WhitelistController:
             manager: WhitelistManager instance
         """
         self._whitelist_manager = manager
+        
+        # Register callback to be notified when sync completes (periodic sync)
+        if hasattr(manager, 'on_sync_complete'):
+            manager.on_sync_complete(self._on_manager_sync_complete)
+        
+        # First sync from current manager state (cached data)
         self._sync_from_manager()
+        
+        # Then trigger immediate server sync in background
+        # This ensures fresh data is loaded from server right away
+        self._trigger_server_sync()
+        
         logger.info("WhitelistController connected to WhitelistManager")
+    
+    def _on_manager_sync_complete(self) -> None:
+        """Called when WhitelistManager completes a sync (including periodic syncs)."""
+        logger.info("🔄 Manager sync complete, updating GUI...")
+        self._sync_from_manager()
+    
+    def _trigger_server_sync(self) -> None:
+        """Trigger immediate sync with server in background."""
+        if not self._whitelist_manager:
+            return
+            
+        def do_sync():
+            try:
+                logger.info("Triggering immediate whitelist sync from server...")
+                if hasattr(self._whitelist_manager, 'sync_now'):
+                    success = self._whitelist_manager.sync_now()
+                    if success:
+                        # Sync complete, update UI with fresh data
+                        self._sync_from_manager()
+                        logger.info("Immediate whitelist sync completed")
+                    else:
+                        logger.warning("Immediate whitelist sync failed")
+            except Exception as e:
+                logger.error(f"Error in immediate sync: {e}")
+        
+        # Run in background thread to not block UI
+        threading.Thread(target=do_sync, daemon=True, name="ImmediateWhitelistSync").start()
     
     def _sync_from_manager(self) -> None:
         """Sync local list from WhitelistManager (domains + IPs)."""
@@ -80,48 +118,42 @@ class WhitelistController:
                 state = self._whitelist_manager._state
                 
                 with self._lock_data:
-                    # Clear existing server entries
+                    # Clear ALL existing server entries (case-insensitive check)
                     self._local_ips = {k: v for k, v in self._local_ips.items() 
-                                      if v.get("source") != "server"}
+                                      if v.get("source", "").lower() != "server"}
                     
                     # Get domains from manager's state
                     domains = state.get_all_domains()
                     for domain in domains:
                         key = f"domain:{domain}"
-                        if key not in self._local_ips:
-                            self._local_ips[key] = {
-                                "ip": domain,
-                                "added_date": "Server",
-                                "status": "Active",
-                                "source": "server",
-                                "type": "domain"
-                            }
+                        self._local_ips[key] = {
+                            "ip": domain,
+                            "type": "Domain",
+                            "status": "Active",
+                            "source": "Server",
+                        }
                     
                     # Get patterns (wildcards) from manager's state
                     patterns = state.get_all_patterns()
                     for pattern in patterns:
                         key = f"pattern:{pattern}"
-                        if key not in self._local_ips:
-                            self._local_ips[key] = {
-                                "ip": pattern,
-                                "added_date": "Server",
-                                "status": "Active",
-                                "source": "server",
-                                "type": "pattern"
-                            }
+                        self._local_ips[key] = {
+                            "ip": pattern,
+                            "type": "Pattern",
+                            "status": "Active",
+                            "source": "Server",
+                        }
                     
                     # Get IPs from manager's state
                     ips = state.get_all_ips()
                     for ip in ips:
                         key = f"ip:{ip}"
-                        if key not in self._local_ips:
-                            self._local_ips[key] = {
-                                "ip": ip,
-                                "added_date": "Server",
-                                "status": "Active",
-                                "source": "server",
-                                "type": "ip"
-                            }
+                        self._local_ips[key] = {
+                            "ip": ip,
+                            "type": "IP",
+                            "status": "Active",
+                            "source": "Server",
+                        }
                 
                 total = len(domains) + len(patterns) + len(ips)
                 logger.info(f"Synced from manager: {len(domains)} domains, {len(patterns)} patterns, {len(ips)} IPs")
@@ -378,12 +410,19 @@ class WhitelistController:
     def get_stats(self) -> Dict:
         """Get whitelist statistics."""
         with self._lock_data:
+            # Count by type
+            domains = sum(1 for ip in self._local_ips.values() if ip.get("type") == "Domain")
+            patterns = sum(1 for ip in self._local_ips.values() if ip.get("type") == "Pattern")
+            ips = sum(1 for ip in self._local_ips.values() if ip.get("type") == "IP")
+            
             stats = {
                 "total_ips": len(self._local_ips),
                 "active": sum(1 for ip in self._local_ips.values() if ip.get("status") == "Active"),
                 "pending": sum(1 for ip in self._local_ips.values() if ip.get("status") == "Pending"),
-                "local": sum(1 for ip in self._local_ips.values() if ip.get("source") == "local"),
-                "server": sum(1 for ip in self._local_ips.values() if ip.get("source") == "server"),
+                "local": sum(1 for ip in self._local_ips.values() if ip.get("source") == "Local"),
+                "server": sum(1 for ip in self._local_ips.values() if ip.get("source") == "Server"),
+                "manager_domains": domains,
+                "manager_ips": ips + patterns,
             }
         
         # Get stats from manager if available
@@ -391,9 +430,6 @@ class WhitelistController:
             if hasattr(self._whitelist_manager, 'get_stats'):
                 manager_stats = self._whitelist_manager.get_stats()
                 stats.update({
-                    "manager_ips": manager_stats.get("ips_count", 0),
-                    "manager_domains": manager_stats.get("domains_count", 0),
-                    "last_sync": manager_stats.get("last_sync"),
                     "sync_count": manager_stats.get("sync_count", 0),
                 })
         

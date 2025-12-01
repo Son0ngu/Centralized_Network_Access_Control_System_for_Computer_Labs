@@ -21,11 +21,20 @@ from .components.data_table import DataTable
 class WhitelistView(ctk.CTkFrame):
     """Whitelist view for managing allowed domains/IPs."""
     
+    # Auto-sync interval in milliseconds (30 seconds)
+    AUTO_SYNC_INTERVAL = 30000
+    
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         
         # Get controller
         self._controller = get_whitelist_controller()
+        
+        # Auto-sync job ID
+        self._auto_sync_job = None
+        
+        # Flag to check if agent is ready for server sync
+        self._agent_ready = False
         
         # Setup UI
         self._setup_ui()
@@ -33,8 +42,11 @@ class WhitelistView(ctk.CTkFrame):
         # Register callbacks
         self._register_callbacks()
         
-        # Initial data load
+        # Initial data load (local only - no server sync yet)
         self.after(500, self._load_data)
+        
+        # Don't start auto-sync here - wait for agent to be ready
+        # Agent controller will call set_agent_ready() when registered
     
     def _setup_ui(self):
         """Setup whitelist UI."""
@@ -163,14 +175,14 @@ class WhitelistView(ctk.CTkFrame):
         stats_frame.pack(fill="x", pady=(0, 10))
         stats_frame.pack_propagate(False)
         
-        # Stats label
+        # Stats label - wider for more info
         self._stats_label = ctk.CTkLabel(
             stats_frame,
             text="📊 Loading statistics...",
             font=ctk.CTkFont(size=13),
-            text_color="#888888"
+            text_color="#aaaaaa"
         )
-        self._stats_label.pack(side="left", anchor="w")
+        self._stats_label.pack(side="left", anchor="w", fill="x", expand=True)
         
         # Search entry
         self._search_entry = ctk.CTkEntry(
@@ -192,12 +204,13 @@ class WhitelistView(ctk.CTkFrame):
         table_frame = ctk.CTkFrame(self, fg_color="#1a1a2e", corner_radius=12)
         table_frame.pack(fill="both", expand=True)
         
-        # DataTable with IP columns
+        # DataTable with IP columns - responsive with larger minsize
+        # Weight determines how columns share extra space (higher = more space)
         columns = [
-            {"key": "ip", "title": "IP Address", "width": 200},
-            {"key": "added_date", "title": "Added Date", "width": 150},
-            {"key": "status", "title": "Status", "width": 100},
-            {"key": "source", "title": "Source", "width": 100},
+            {"key": "ip", "title": "Domain / IP Address", "width": 400, "weight": 4},
+            {"key": "type", "title": "Type", "width": 120, "weight": 1},
+            {"key": "status", "title": "Status", "width": 120, "weight": 1},
+            {"key": "source", "title": "Source", "width": 120, "weight": 1},
         ]
         
         self._table = DataTable(
@@ -262,16 +275,21 @@ class WhitelistView(ctk.CTkFrame):
         """Update statistics label."""
         stats = self._controller.get_stats()
         
+        # Count by type
+        domains = stats.get('manager_domains', 0)
+        ips = stats.get('manager_ips', 0)
+        total = stats.get('total_ips', 0)
+        
         stats_text = (
-            f"📊 Total IPs: {stats.get('total_ips', 0)}  |  "
-            f"Active: {stats.get('active', 0)}  |  "
-            f"Pending: {stats.get('pending', 0)}  |  "
-            f"Server: {stats.get('manager_ips', 0)} IPs, {stats.get('manager_domains', 0)} Domains"
+            f"📊 Total: {total}  |  "
+            f"🌐 Domains: {domains}  |  "
+            f"🖥️ IPs: {ips}  |  "
+            f"✅ Active: {stats.get('active', 0)}"
         )
         
-        last_sync = stats.get('last_sync')
-        if last_sync:
-            stats_text += f"  |  Last Sync: {last_sync}"
+        sync_count = stats.get('sync_count', 0)
+        if sync_count > 0:
+            stats_text += f"  |  🔄 Syncs: {sync_count}"
         
         self._stats_label.configure(text=stats_text)
     
@@ -314,6 +332,11 @@ class WhitelistView(ctk.CTkFrame):
     
     def _on_sync(self):
         """Handle sync button click."""
+        # Check if agent is ready (has whitelist manager connected)
+        if self._controller._whitelist_manager is None:
+            self._show_error("Agent not started - please start agent first")
+            return
+        
         self._status_label.configure(text="☁️ Syncing with server...", text_color="#00d4ff")
         self._controller.refresh()
     
@@ -337,3 +360,72 @@ class WhitelistView(ctk.CTkFrame):
         
         # Update stats
         self._update_stats()
+    
+    def _start_auto_sync(self):
+        """Start auto-sync periodic task."""
+        if not self._agent_ready:
+            # Agent not ready yet, check again in 5 seconds
+            self.after(5000, self._check_and_start_auto_sync)
+            return
+        self._do_auto_sync()
+    
+    def _check_and_start_auto_sync(self):
+        """Check if agent is ready and start auto-sync."""
+        if not self.winfo_exists():
+            return
+        
+        # Check if whitelist manager is connected (agent has started)
+        if self._controller._whitelist_manager is not None:
+            self._agent_ready = True
+            self._do_auto_sync()
+        else:
+            # Try again in 5 seconds
+            self.after(5000, self._check_and_start_auto_sync)
+    
+    def set_agent_ready(self, ready: bool = True):
+        """Set agent ready status and start auto-sync if ready."""
+        self._agent_ready = ready
+        if ready and self._auto_sync_job is None:
+            self._start_auto_sync()
+    
+    def _do_auto_sync(self):
+        """Perform auto-sync and schedule next."""
+        try:
+            # Check if widget still exists
+            if not self.winfo_exists():
+                return
+            
+            # First sync from manager's local state (fast)
+            self._controller._sync_from_manager()
+            
+            # Update table with new data
+            data = self._controller.get_all_ips()
+            self._update_table(data)
+            
+            # Update stats
+            self._update_stats()
+            
+        except Exception as e:
+            # Silent fail - don't spam logs
+            pass
+        
+        # Schedule next auto-sync
+        try:
+            if self.winfo_exists():
+                self._auto_sync_job = self.after(self.AUTO_SYNC_INTERVAL, self._do_auto_sync)
+        except:
+            pass
+    
+    def _stop_auto_sync(self):
+        """Stop auto-sync periodic task."""
+        if self._auto_sync_job:
+            try:
+                self.after_cancel(self._auto_sync_job)
+            except:
+                pass
+            self._auto_sync_job = None
+    
+    def destroy(self):
+        """Override destroy to stop auto-sync."""
+        self._stop_auto_sync()
+        super().destroy()

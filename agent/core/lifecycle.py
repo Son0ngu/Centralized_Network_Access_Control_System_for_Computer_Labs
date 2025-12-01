@@ -71,13 +71,27 @@ def initialize_components(config: Dict) -> bool:
         )
         logger.info("Token Manager initialized with auto-refresh")
         
-        # 2. Initialize WhitelistManager (but don't start sync yet)
+        # 2. Initialize WhitelistManager and SYNC FIRST (before firewall)
         logger.info("Step 2: Initializing whitelist manager...")
         from whitelist import WhitelistManager
         agent.whitelist = WhitelistManager(config)
         logger.info("Whitelist manager initialized")
         
-        # 3. Initialize FirewallManager (if enabled and has admin) - BEFORE starting sync
+        # 2.5. SYNC WHITELIST IMMEDIATELY (before enabling firewall)
+        # This is critical - we need whitelist data BEFORE enabling Default Deny
+        if config.get("whitelist", {}).get("auto_sync", True):
+            logger.info("Step 2.5: Syncing whitelist from server (BEFORE firewall)...")
+            try:
+                sync_success = agent.whitelist.sync_now()
+                if sync_success:
+                    stats = agent.whitelist.get_stats()
+                    logger.info(f"✅ Whitelist synced: {stats.get('domain_count', 0)} domains, {stats.get('ip_count', 0)} IPs")
+                else:
+                    logger.warning("⚠️ Whitelist sync failed - firewall may block connections")
+            except Exception as e:
+                logger.warning(f"⚠️ Whitelist sync error: {e}")
+        
+        # 3. Initialize FirewallManager (if enabled and has admin)
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
         firewall_mode = firewall_config.get("mode", "monitor")
@@ -106,7 +120,7 @@ def initialize_components(config: Dict) -> bool:
             from firewall import FirewallManager
             agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
             
-            # Link firewall to whitelist BEFORE starting sync
+            # Link firewall to whitelist
             if agent.whitelist:
                 agent.whitelist.set_firewall_manager(agent.firewall)
                 logger.info("Firewall manager linked to whitelist")
@@ -114,7 +128,34 @@ def initialize_components(config: Dict) -> bool:
             # Enable whitelist-only mode if configured
             if firewall_mode == "whitelist_only":
                 logger.info("🔒 Firewall mode: whitelist_only - Enabling Default Deny policy...")
-                if agent.firewall.enable_whitelist_mode():
+                
+                # Collect server URLs for allow rules
+                server_config = config.get("server", {})
+                server_urls = []
+                if server_config.get("urls"):
+                    server_urls.extend(server_config["urls"])
+                if server_config.get("url"):
+                    server_urls.append(server_config["url"])
+                
+                # Collect ALL whitelist data from synced data
+                whitelist_ips = set()
+                whitelist_domains = set()
+                if agent.whitelist and hasattr(agent.whitelist, '_state'):
+                    # Get direct IPs
+                    whitelist_ips = agent.whitelist._state.get_all_ips()
+                    # Get domains to resolve
+                    whitelist_domains = agent.whitelist._state.get_all_domains()
+                    # Get patterns (wildcard domains)
+                    whitelist_domains.update(agent.whitelist._state.get_all_patterns())
+                    
+                logger.info(f"Whitelist data: {len(whitelist_ips)} IPs, {len(whitelist_domains)} domains/patterns")
+                
+                # Enable with server URLs, whitelist IPs AND domains
+                if agent.firewall.enable_whitelist_mode(
+                    server_urls=server_urls, 
+                    whitelist_ips=whitelist_ips,
+                    whitelist_domains=whitelist_domains
+                ):
                     logger.info("✅ Default Deny policy enabled - All non-whitelisted traffic will be blocked")
                 else:
                     logger.error("❌ Failed to enable Default Deny policy")
@@ -126,10 +167,10 @@ def initialize_components(config: Dict) -> bool:
             else:
                 logger.warning("Step 3: Firewall enabled but no admin privileges")
         
-        # 4. NOW start whitelist sync (after firewall is linked)
+        # 4. Start periodic whitelist sync (initial sync already done in Step 2.5)
         if config.get("whitelist", {}).get("auto_sync", True):
             agent.whitelist.start_sync()
-            logger.info(f"Whitelist sync started (interval: {config.get('whitelist', {}).get('sync_interval', 60)}s)")
+            logger.info(f"Whitelist periodic sync started (interval: {config.get('whitelist', {}).get('update_interval', 60)}s)")
         
         # 5. Initialize LogSender
         logger.info("Step 5: Initializing log sender...")
@@ -292,18 +333,30 @@ def cleanup(config: Optional[Dict] = None) -> None:
 
 
 def build_lifecycle_log(config: Dict, event_type: str, action: str, message: str) -> Dict:
-    """Build a lifecycle log entry."""
+    """Build a lifecycle log entry with proper field values."""
     from shared.time_utils import now_iso, uptime_string
+    
+    local_ip = get_local_ip()
     
     return {
         "timestamp": now_iso(),
         "event_type": event_type,
         "action": action,
         "message": message,
+        "level": "INFO",
         "agent_id": config.get("agent_id", "unknown"),
         "device_id": AGENT_DEVICE_ID,
         "hostname": AGENT_HOSTNAME,
-        "ip_address": get_local_ip(),
+        "ip_address": local_ip,
         "uptime": uptime_string(),
-        "firewall_mode": config.get("firewall", {}).get("mode", "monitor")
+        "firewall_mode": config.get("firewall", {}).get("mode", "monitor"),
+        # Lifecycle events use agent as source/destination
+        "source": "agent",
+        "source_ip": local_ip,
+        "dest_ip": "N/A",
+        "destination": "N/A",
+        "domain": "N/A",
+        "protocol": "N/A",
+        "port": "N/A",
+        "is_lifecycle_event": True
     }

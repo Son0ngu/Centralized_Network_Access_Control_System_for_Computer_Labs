@@ -168,7 +168,7 @@ exe_console = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='agent/miku.ico',
-    uac_admin=True,  # Request admin privileges
+    uac_admin=False,  # Request admin privileges
 )
 
 

@@ -498,10 +498,18 @@ class FirewallManager:
         
         return resolved_ips
     
-    def enable_whitelist_mode(self) -> bool:
+    def enable_whitelist_mode(self, server_urls: List[str] = None, whitelist_ips: Set[str] = None, whitelist_domains: Set[str] = None) -> bool:
         """
         Enable whitelist-only mode with Default Deny policy.
         Should be called during agent startup if firewall.mode == "whitelist_only".
+        
+        IMPORTANT: This adds allow rules for server URLs and essential IPs
+        BEFORE enabling Default Deny to prevent blocking server connections.
+        
+        Args:
+            server_urls: List of server URLs to allow (will resolve to IPs)
+            whitelist_ips: Set of whitelisted IPs from server sync
+            whitelist_domains: Set of domains to resolve to IPs
         
         Returns:
             True if enabled successfully
@@ -513,26 +521,128 @@ class FirewallManager:
             
             logger.info("🔒 Enabling whitelist-only mode...")
             
-            # Step 1: Enable Default Deny policy
+            # Step 1: Collect all IPs to allow BEFORE enabling Default Deny
+            all_allowed_ips = set()
+            
+            # 1a. Add essential IPs (DNS, localhost, gateway)
+            essential_ips = FirewallUtils.get_essential_ips()
+            all_allowed_ips.update(essential_ips)
+            self.essential_ips = essential_ips
+            logger.info(f"📝 Essential IPs: {len(essential_ips)}")
+            
+            # 1b. Resolve server URLs to IPs
+            if server_urls:
+                server_ips = self._resolve_server_urls(server_urls)
+                all_allowed_ips.update(server_ips)
+                logger.info(f"📝 Server IPs resolved: {len(server_ips)} - {server_ips}")
+            
+            # 1c. Add direct whitelist IPs from server sync
+            if whitelist_ips:
+                # Filter IPv4 only
+                whitelist_ipv4 = {ip for ip in whitelist_ips if FirewallUtils.is_valid_ipv4(ip)}
+                all_allowed_ips.update(whitelist_ipv4)
+                logger.info(f"📝 Whitelist direct IPs: {len(whitelist_ipv4)}")
+            
+            # 1d. Resolve whitelist domains to IPs
+            if whitelist_domains:
+                logger.info(f"📝 Resolving {len(whitelist_domains)} whitelist domains...")
+                domain_ips = self._resolve_domains_to_ips(whitelist_domains)
+                all_allowed_ips.update(domain_ips)
+                logger.info(f"📝 Whitelist domains resolved to: {len(domain_ips)} IPs")
+            
+            logger.info(f"📋 Total IPs to allow: {len(all_allowed_ips)}")
+            
+            # Step 2: Create allow rules FIRST (before Default Deny)
+            logger.info("Step 2: Creating ALLOW rules before enabling Default Deny...")
+            for ip in all_allowed_ips:
+                self.rules_manager.create_allow_rule(ip)
+            
+            # Step 3: NOW enable Default Deny policy (after rules are created)
+            logger.info("Step 3: Enabling Default Deny policy...")
             if not self.policy_manager.enable_default_deny():
                 logger.error("❌ Failed to enable Default Deny policy")
                 return False
             
-            # Step 2: Add essential IPs
-            essential_ips = FirewallUtils.get_essential_ips()
-            self.essential_ips = essential_ips
-            
-            # Create rules for essential IPs
-            for ip in essential_ips:
-                self.rules_manager.create_allow_rule(ip)
-            
             self.whitelist_mode_active = True
             
-            logger.info("✅ Whitelist-only mode enabled")
-            logger.info(f"📝 Essential IPs allowed: {len(essential_ips)}")
+            logger.info("✅ Whitelist-only mode enabled successfully")
+            logger.info(f"📝 Total ALLOW rules created: {len(all_allowed_ips)}")
+            logger.info("🔒 Default Deny policy is now active")
             
             return True
             
         except Exception as e:
             logger.error(f"Error enabling whitelist mode: {e}")
             return False
+    
+    def _resolve_domains_to_ips(self, domains: Set[str]) -> Set[str]:
+        """Resolve domain names to IP addresses."""
+        import socket
+        
+        ips = set()
+        for domain in domains:
+            try:
+                # Skip wildcards - they can't be resolved directly
+                if '*' in domain or '?' in domain:
+                    # For wildcards, try to resolve base domain
+                    base_domain = domain.replace('*.', '').replace('*', '')
+                    if base_domain:
+                        domain = base_domain
+                    else:
+                        continue
+                
+                # Remove protocol if present
+                domain = domain.replace('http://', '').replace('https://', '')
+                domain = domain.split('/')[0]  # Remove path
+                domain = domain.split(':')[0]  # Remove port
+                
+                if not domain:
+                    continue
+                
+                # Try to resolve
+                try:
+                    ip = socket.gethostbyname(domain)
+                    ips.add(ip)
+                    logger.debug(f"Resolved {domain} -> {ip}")
+                except socket.gaierror:
+                    # Try to get all IPs
+                    try:
+                        _, _, ip_list = socket.gethostbyname_ex(domain)
+                        for ip in ip_list:
+                            ips.add(ip)
+                            logger.debug(f"Resolved {domain} -> {ip}")
+                    except:
+                        logger.debug(f"Could not resolve domain: {domain}")
+            except Exception as e:
+                logger.debug(f"Error resolving {domain}: {e}")
+        
+        return ips
+    
+    def _resolve_server_urls(self, urls: List[str]) -> Set[str]:
+        """Resolve server URLs to IP addresses."""
+        import socket
+        from urllib.parse import urlparse
+        
+        ips = set()
+        for url in urls:
+            try:
+                parsed = urlparse(url)
+                hostname = parsed.hostname
+                if hostname:
+                    # Resolve hostname to IP
+                    try:
+                        ip = socket.gethostbyname(hostname)
+                        ips.add(ip)
+                        logger.debug(f"Resolved {hostname} -> {ip}")
+                    except socket.gaierror:
+                        # Try to get all IPs
+                        try:
+                            _, _, ip_list = socket.gethostbyname_ex(hostname)
+                            for ip in ip_list:
+                                ips.add(ip)
+                        except:
+                            logger.warning(f"Could not resolve {hostname}")
+            except Exception as e:
+                logger.warning(f"Error resolving {url}: {e}")
+        
+        return ips

@@ -71,9 +71,11 @@ class DataTable(ctk.CTkFrame):
         )
         self._body_frame.pack(fill="both", expand=True, padx=2, pady=(0, 2))
         
-        # Configure body grid
+        # Configure body grid with weight from column config
         for i, col in enumerate(self._columns):
-            self._body_frame.grid_columnconfigure(i, weight=1, minsize=col.get("width", 100))
+            weight = col.get("weight", 1)
+            minsize = col.get("width", 100)
+            self._body_frame.grid_columnconfigure(i, weight=weight, minsize=minsize, uniform="col")
         
         if self._show_actions:
             self._body_frame.grid_columnconfigure(len(self._columns), weight=0, minsize=100)
@@ -81,7 +83,9 @@ class DataTable(ctk.CTkFrame):
     def _create_header(self):
         """Create table header row."""
         for i, col in enumerate(self._columns):
-            self._header_frame.grid_columnconfigure(i, weight=1, minsize=col.get("width", 100))
+            weight = col.get("weight", 1)
+            minsize = col.get("width", 100)
+            self._header_frame.grid_columnconfigure(i, weight=weight, minsize=minsize, uniform="col")
             
             header_cell = ctk.CTkLabel(
                 self._header_frame,
@@ -105,19 +109,29 @@ class DataTable(ctk.CTkFrame):
     
     def set_data(self, data: List[Dict]):
         """Set table data and refresh display."""
-        self._data = data
-        self._refresh_table()
+        self._data = data if data else []
+        # Use after_idle to avoid Tkinter callback conflicts
+        try:
+            self.after_idle(self._refresh_table)
+        except Exception:
+            self._refresh_table()
     
     def add_row(self, row_data: Dict):
         """Add a single row to the table."""
         self._data.append(row_data)
-        self._refresh_table()
+        try:
+            self.after_idle(self._refresh_table)
+        except Exception:
+            self._refresh_table()
     
     def remove_row(self, index: int):
         """Remove row at index."""
         if 0 <= index < len(self._data):
             self._data.pop(index)
-            self._refresh_table()
+            try:
+                self.after_idle(self._refresh_table)
+            except Exception:
+                self._refresh_table()
     
     def remove_row_by_key(self, key: str, value: Any):
         """Remove row where key matches value."""
@@ -135,9 +149,18 @@ class DataTable(ctk.CTkFrame):
     
     def _refresh_table(self):
         """Refresh table display."""
-        # Clear existing rows
-        for widget in self._body_frame.winfo_children():
-            widget.destroy()
+        # Clear existing rows safely
+        try:
+            # Get all children first
+            children = list(self._body_frame.winfo_children())
+            for widget in children:
+                try:
+                    if widget.winfo_exists():
+                        widget.destroy()
+                except Exception:
+                    pass  # Widget already destroyed
+        except Exception:
+            pass
         
         self._row_widgets = []
         
@@ -152,18 +175,7 @@ class DataTable(ctk.CTkFrame):
         # Alternate row colors
         bg_color = "#1a1a2e" if row_idx % 2 == 0 else "#22223a"
         
-        # Row frame (for hover effect)
-        row_frame = ctk.CTkFrame(self._body_frame, fg_color=bg_color, corner_radius=0, height=self._row_height)
-        row_frame.grid(row=row_idx, column=0, columnspan=len(self._columns) + (1 if self._show_actions else 0), sticky="ew", pady=1)
-        row_frame.grid_propagate(False)
-        
-        # Configure row grid
-        for i in range(len(self._columns)):
-            row_frame.grid_columnconfigure(i, weight=1)
-        if self._show_actions:
-            row_frame.grid_columnconfigure(len(self._columns), weight=0)
-        
-        # Data cells
+        # Data cells - place directly in body_frame for proper grid alignment
         for col_idx, col in enumerate(self._columns):
             key = col.get("key", "")
             value = row_data.get(key, "")
@@ -174,27 +186,36 @@ class DataTable(ctk.CTkFrame):
             # Color based on status
             text_color = "#ffffff"
             if key == "status":
-                if value.lower() in ["active", "allowed", "online"]:
+                if str(value).lower() in ["active", "allowed", "online"]:
                     text_color = "#00ff88"
-                elif value.lower() in ["blocked", "denied", "offline"]:
+                elif str(value).lower() in ["blocked", "denied", "offline"]:
                     text_color = "#ff4444"
-                elif value.lower() in ["pending", "syncing"]:
+                elif str(value).lower() in ["pending", "syncing"]:
                     text_color = "#ffa500"
             
+            # Cell frame for background color
+            cell_frame = ctk.CTkFrame(self._body_frame, fg_color=bg_color, corner_radius=0, height=self._row_height)
+            cell_frame.grid(row=row_idx, column=col_idx, sticky="nsew", pady=(0, 1))
+            cell_frame.grid_propagate(False)
+            
             cell = ctk.CTkLabel(
-                row_frame,
+                cell_frame,
                 text=display_value,
                 font=ctk.CTkFont(size=12),
                 text_color=text_color,
                 anchor="w"
             )
-            cell.grid(row=0, column=col_idx, padx=10, pady=8, sticky="ew")
+            cell.pack(fill="both", expand=True, padx=10, pady=8)
             row_widgets.append(cell)
         
         # Action buttons
         if self._show_actions:
-            action_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
-            action_frame.grid(row=0, column=len(self._columns), padx=5, pady=5)
+            action_cell = ctk.CTkFrame(self._body_frame, fg_color=bg_color, corner_radius=0, height=self._row_height)
+            action_cell.grid(row=row_idx, column=len(self._columns), sticky="nsew", pady=(0, 1))
+            action_cell.grid_propagate(False)
+            
+            action_frame = ctk.CTkFrame(action_cell, fg_color="transparent")
+            action_frame.pack(expand=True)
             
             if self._on_delete:
                 delete_btn = ctk.CTkButton(

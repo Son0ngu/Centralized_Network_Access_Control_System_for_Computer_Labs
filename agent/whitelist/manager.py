@@ -56,6 +56,9 @@ class WhitelistManager:
         # Firewall integration
         self._firewall_manager = None
         
+        # Callbacks for sync completion
+        self._on_sync_callbacks: List[Callable[[], None]] = []
+        
         # Threading
         self._lock = threading.RLock()
         self._sync_thread: Optional[threading.Thread] = None
@@ -76,6 +79,19 @@ class WhitelistManager:
         }
         
         logger.info("WhitelistManager initialized")
+    
+    def on_sync_complete(self, callback: Callable[[], None]) -> None:
+        """Register callback to be called when sync completes."""
+        if callback not in self._on_sync_callbacks:
+            self._on_sync_callbacks.append(callback)
+    
+    def _notify_sync_complete(self) -> None:
+        """Notify all registered callbacks that sync is complete."""
+        for callback in self._on_sync_callbacks:
+            try:
+                callback()
+            except Exception as e:
+                logger.error(f"Error in sync callback: {e}")
     
     def _get_server_urls(self) -> List[str]:
         """Get list of server URLs."""
@@ -187,6 +203,9 @@ class WhitelistManager:
                         logger.debug("No firewall manager linked, skipping firewall update")
                 else:
                     logger.debug("No changes in whitelist data (already up to date)")
+                
+                # Notify callbacks (even if no changes, so GUI can refresh)
+                self._notify_sync_complete()
                 
                 return True
             else:

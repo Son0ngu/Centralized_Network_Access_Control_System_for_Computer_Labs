@@ -241,6 +241,7 @@ class AgentController:
             from config import get_config
             from core import get_agent, initialize_components, cleanup
             from shared.time_utils import sleep, uptime_string
+            from utils import check_admin_privileges
             
             # Get agent instance
             self._agent = get_agent()
@@ -253,6 +254,28 @@ class AgentController:
             from core import AGENT_DEVICE_ID
             self._config["device_id"] = AGENT_DEVICE_ID
             
+            # Auto-adjust firewall configuration based on admin privileges
+            admin_status = check_admin_privileges()
+            firewall_config = self._config.get("firewall", {})
+            current_mode = firewall_config.get("mode", "monitor")
+            
+            if admin_status:
+                # Has admin privileges - enable firewall enforcement
+                if current_mode == "monitor":
+                    logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
+                    self._config["firewall"]["enabled"] = True
+                    self._config["firewall"]["mode"] = "whitelist_only"
+                else:
+                    # Already in enforce mode, just ensure enabled
+                    self._config["firewall"]["enabled"] = True
+                    logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
+            else:
+                # No admin privileges - force monitor mode
+                if current_mode in ["block", "whitelist_only", "enforce"]:
+                    logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
+                    self._config["firewall"]["enabled"] = False
+                    self._config["firewall"]["mode"] = "monitor"
+            
             # Initialize components
             logger.info("Initializing components...")
             if not initialize_components(self._config):
@@ -264,6 +287,12 @@ class AgentController:
                 whitelist_ctrl = WhitelistController()
                 whitelist_ctrl.set_whitelist_manager(self._agent.whitelist)
                 logger.info("WhitelistController connected to WhitelistManager")
+                
+                # Check if initial sync was successful
+                stats = self._agent.whitelist.get_stats()
+                if stats.get('sync_count', 0) > 0:
+                    self.signals.emit('whitelist_synced', {'success': True})
+                    logger.info("Initial whitelist sync completed successfully")
             
             # Mark as running
             self._status = AgentStatus.RUNNING
@@ -271,6 +300,9 @@ class AgentController:
                 'status': 'running',
                 'message': 'Agent started successfully'
             })
+            
+            # Notify that agent is ready for server operations
+            self.signals.emit('whitelist_synced', {'agent_ready': True})
             
             logger.info("Agent running - entering main loop")
             

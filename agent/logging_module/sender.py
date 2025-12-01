@@ -148,20 +148,29 @@ class LogSender:
             else:
                 serialized[key] = value
         
+        # Check if this is a lifecycle event (startup/shutdown)
+        is_lifecycle = serialized.get("is_lifecycle_event", False)
+        
         # Ensure essential fields
         essential_fields = {
             "timestamp": now_iso(),
             "agent_id": self.agent_id,
             "level": "INFO",
             "action": "UNKNOWN",
-            "domain": "unknown",
-            "destination": "unknown",
-            "source_ip": "unknown",
-            "dest_ip": "unknown",
-            "protocol": "unknown",
-            "port": "unknown",
             "message": "Log entry"
         }
+        
+        # Network-related fields - only set defaults for non-lifecycle events
+        if not is_lifecycle:
+            network_fields = {
+                "domain": "unknown",
+                "destination": "unknown",
+                "source_ip": "unknown",
+                "dest_ip": "unknown",
+                "protocol": "unknown",
+                "port": "unknown"
+            }
+            essential_fields.update(network_fields)
         
         for field, default in essential_fields.items():
             if field not in serialized or not serialized[field]:
