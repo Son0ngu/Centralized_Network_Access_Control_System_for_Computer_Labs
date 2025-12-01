@@ -73,11 +73,22 @@ def try_register_with_server(server_url: str, agent_info: Dict, config: Dict) ->
         register_url = f"{server_url.rstrip('/')}/api/agents/register"
         logger.info(f"Attempting registration with: {register_url}")
         
+        # Build headers with API key for authentication
+        headers = {'Content-Type': 'application/json'}
+        
+        # Add API key if configured (required for secure registration)
+        api_key = config.get('auth', {}).get('api_key', '')
+        if api_key:
+            headers['X-API-Key'] = api_key
+            logger.debug("API key included in registration request")
+        else:
+            logger.warning("No API key configured - registration may fail if server requires authentication")
+        
         response = requests.post(
             register_url,
             json=agent_info,
             timeout=config['server'].get('connect_timeout', 15),
-            headers={'Content-Type': 'application/json'}
+            headers=headers
         )
         
         if response.status_code == 200:
@@ -87,9 +98,23 @@ def try_register_with_server(server_url: str, agent_info: Dict, config: Dict) ->
                 
                 # Save credentials globally
                 config['agent_id'] = agent_data.get('agent_id')
-                config['agent_token'] = agent_data.get('token')
+                config['agent_token'] = agent_data.get('token')  # Legacy token
                 config['user_id'] = agent_data.get('user_id')
                 config['server_url'] = server_url
+                
+                # NEW: Save JWT tokens if provided (Phase 2)
+                jwt_data = agent_data.get('jwt', {})
+                if jwt_data:
+                    config['jwt'] = {
+                        'access_token': jwt_data.get('access_token'),
+                        'refresh_token': jwt_data.get('refresh_token'),
+                        'token_type': jwt_data.get('token_type', 'Bearer'),
+                        'access_expires_at': jwt_data.get('access_expires_at'),
+                        'refresh_expires_at': jwt_data.get('refresh_expires_at'),
+                    }
+                    logger.info("JWT tokens received and stored")
+                else:
+                    logger.warning("No JWT tokens in registration response - using legacy auth")
                 
                 # Update agent state
                 agent_state['agent_id'] = config['agent_id']

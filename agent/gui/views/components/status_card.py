@@ -91,14 +91,16 @@ class StatusCard(ctk.CTkFrame):
         )
         self._title_label.pack(side="left", padx=(8, 0))
         
-        # Value (center, large)
+        # Value (center, large) - with wrapping support
         self._value_label = ctk.CTkLabel(
             self,
             text=self._value,
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color=self._color
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color=self._color,
+            wraplength=160,
+            justify="center"
         )
-        self._value_label.grid(row=1, column=0, sticky="nsew", padx=15)
+        self._value_label.grid(row=1, column=0, sticky="nsew", padx=10)
         
         # Subtitle (optional)
         self._subtitle_label = ctk.CTkLabel(

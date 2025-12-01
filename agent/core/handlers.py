@@ -93,15 +93,29 @@ def handle_domain_detection(
         firewall_mode = firewall_config.get("mode", "monitor")
         firewall_enabled = firewall_config.get("enabled", False)
         
-        if firewall_enabled and firewall_mode == "whitelist_only":
-            action = "ALLOWED" if (domain_allowed or ip_allowed) else "BLOCKED"
-            level = "INFO" if action == "ALLOWED" else "WARNING"
-        elif firewall_enabled and firewall_mode == "block":
-            action = "BLOCKED" if not (domain_allowed or ip_allowed) else "ALLOWED"
-            level = "WARNING" if action == "BLOCKED" else "INFO"
-        else:
+        # Check if traffic is whitelisted
+        is_whitelisted = domain_allowed or ip_allowed
+        
+        if not firewall_enabled:
+            # Firewall disabled - just monitor everything
             action = "MONITORED"
-            level = "INFO" if (domain_allowed or ip_allowed) else "WARNING"
+            level = "INFO" if is_whitelisted else "WARNING"
+        elif firewall_mode == "whitelist_only":
+            # WHITELIST_ONLY: Only allow whitelisted traffic, block everything else
+            action = "ALLOWED" if is_whitelisted else "BLOCKED"
+            level = "INFO" if action == "ALLOWED" else "BLOCKED"
+        elif firewall_mode == "block":
+            # BLOCK: Same as whitelist_only but with different naming semantics
+            action = "ALLOWED" if is_whitelisted else "BLOCKED" 
+            level = "INFO" if action == "ALLOWED" else "BLOCKED"
+        elif firewall_mode == "warn":
+            # WARN: Log warnings for non-whitelisted but don't block
+            action = "ALLOWED" if is_whitelisted else "WARNING"
+            level = "INFO" if is_whitelisted else "WARNING"
+        else:
+            # MONITOR (default): Just observe and log
+            action = "MONITORED"
+            level = "INFO" if is_whitelisted else "WARNING"
         
         # Create enhanced log record with UTC timestamps
         enhanced_record = {

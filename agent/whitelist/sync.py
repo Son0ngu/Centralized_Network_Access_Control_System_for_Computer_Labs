@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 import requests
 
 from shared.time_utils import now, now_iso, sleep
+from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("whitelist.sync")
 
@@ -20,12 +21,14 @@ class WhitelistSyncer:
         self,
         server_urls: List[str],
         agent_id: str,
+        config: Dict = None,
         connect_timeout: int = 10,
         read_timeout: int = 30,
         max_retries: int = 3
     ):
         self.server_urls = server_urls
         self.agent_id = agent_id
+        self.config = config or {}
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.max_retries = max_retries
@@ -42,9 +45,17 @@ class WhitelistSyncer:
         """Build sync endpoint URL."""
         return f"{base_url.rstrip('/')}/api/whitelist/agent-sync"
     
+    def _get_headers(self) -> Dict[str, str]:
+        """Get request headers with authentication."""
+        headers = {'User-Agent': 'FirewallController-Agent/2.2-Modular'}
+        auth_headers = get_auth_headers(self.config)
+        headers.update(auth_headers)
+        return headers
+    
     def sync_with_server(self, params: Dict) -> Dict:
         """Sync with server, trying fallback servers if needed."""
         last_error = None
+        headers = self._get_headers()
         
         # Try current server first
         for attempt in range(self.max_retries):
@@ -53,12 +64,17 @@ class WhitelistSyncer:
                     self.current_url,
                     params=params,
                     timeout=(self.connect_timeout, self.read_timeout),
-                    headers={'User-Agent': 'FirewallController-Agent/2.2-Modular'}
+                    headers=headers
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
                     return {"success": True, "data": data}
+                elif response.status_code == 401:
+                    # Authentication failed - might need token refresh
+                    last_error = "Authentication failed - token may be expired"
+                    logger.warning(f"Sync authentication failed: {response.text[:200]}")
+                    break  # Don't retry auth failures
                 else:
                     last_error = f"HTTP {response.status_code}: {response.text[:200]}"
                     logger.warning(f"Sync attempt {attempt + 1} failed: {last_error}")
@@ -93,7 +109,7 @@ class WhitelistSyncer:
                         sync_url,
                         params=params,
                         timeout=(self.connect_timeout, self.read_timeout),
-                        headers={'User-Agent': 'FirewallController-Agent/2.2-Modular'}
+                        headers=headers
                     )
                     
                     if response.status_code == 200:

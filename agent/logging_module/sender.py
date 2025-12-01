@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from shared.time_utils import now, now_iso, sleep
+from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("logging.sender")
 
@@ -28,6 +29,8 @@ class LogSender:
         Args:
             config: Configuration dictionary with server and sender settings
         """
+        self.config = config  # Store full config for JWT auth
+        
         # Server configuration
         self.server_urls = self._get_server_urls(config)
         
@@ -242,16 +245,24 @@ class LogSender:
             url = f"{self.server_urls[0].rstrip('/')}/api/logs"
             payload = {"logs": serialized_logs}
             
+            # Build headers with JWT authentication
+            headers = {"Content-Type": "application/json"}
+            auth_headers = get_auth_headers(self.config)
+            headers.update(auth_headers)
+            
             response = requests.post(
                 url=url,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 timeout=15
             )
             
             if response.status_code in (200, 201, 202):
                 logger.info(f"Sent {len(serialized_logs)} logs to server")
                 return True
+            elif response.status_code == 401:
+                logger.warning("Log send authentication failed - token may be expired")
+                return False
             else:
                 logger.error(f"Failed to send logs: HTTP {response.status_code}")
                 return False

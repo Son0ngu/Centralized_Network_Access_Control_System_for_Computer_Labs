@@ -1169,6 +1169,27 @@ function testRender() {
 function renderLogItem(log, index) {
     const logId = log._id || log.id || index.toString();
     
+    // 🎨 CHECK: Is this a lifecycle event (startup/shutdown)?
+    let eventType = log.event_type || '';
+    const message = (log.message || '').toLowerCase();
+    
+    // Also detect lifecycle events from message if event_type is not set
+    if (!eventType) {
+        if (message.includes('agent startup') || message.includes('agent started')) {
+            eventType = 'agent_startup';
+        } else if (message.includes('agent shutdown') || message.includes('agent stopped')) {
+            eventType = 'agent_shutdown';
+        }
+    }
+    
+    const isLifecycleEvent = ['agent_startup', 'agent_shutdown', 'agent_stopped'].includes(eventType);
+    
+    if (isLifecycleEvent) {
+        // Ensure event_type is set for rendering
+        log.event_type = eventType;
+        return renderLifecycleEvent(log, logId);
+    }
+    
     //  FIX: Enhanced protocol display
     let protocolDisplay = log.protocol || 'unknown';
     let portDisplay = log.port || 'unknown';
@@ -1271,6 +1292,160 @@ function renderLogItem(log, index) {
             ${log.message && log.message !== 'Log entry' ? `
                 <div class="log-details mt-2">
                     <i class="fas fa-comment-alt me-2"></i>${log.message}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * 🎨 RENDER LIFECYCLE EVENTS (Startup/Shutdown/Stopped)
+ * Beautiful cards for agent lifecycle events instead of showing "unknown" values
+ */
+function renderLifecycleEvent(log, logId) {
+    const eventType = log.event_type || 'agent_event';
+    const agentHost = getAgentDisplayName(log);
+    
+    // Define event styling based on type
+    let eventConfig = {
+        'agent_startup': {
+            icon: 'fa-rocket',
+            gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            title: '🚀 Agent Started',
+            badge: 'bg-success',
+            borderColor: '#38ef7d'
+        },
+        'agent_shutdown': {
+            icon: 'fa-power-off',
+            gradient: 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)',
+            title: '🔴 Agent Shutdown',
+            badge: 'bg-danger',
+            borderColor: '#f45c43'
+        },
+        'agent_stopped': {
+            icon: 'fa-stop-circle',
+            gradient: 'linear-gradient(135deg, #536976 0%, #292e49 100%)',
+            title: '⏹️ Agent Stopped',
+            badge: 'bg-secondary',
+            borderColor: '#536976'
+        }
+    };
+    
+    const config = eventConfig[eventType] || eventConfig['agent_shutdown'];
+    
+    // Build info cards for lifecycle data
+    const infoCards = [];
+    
+    if (log.hostname || log.host_name) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-desktop text-primary"></i>
+                <span><strong>Hostname:</strong> ${log.hostname || log.host_name}</span>
+            </div>
+        `);
+    }
+    
+    if (log.ip_address) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-network-wired text-info"></i>
+                <span><strong>IP Address:</strong> ${log.ip_address}</span>
+            </div>
+        `);
+    }
+    
+    if (log.firewall_mode) {
+        const modeColors = {
+            'monitor': 'text-warning',
+            'enforce': 'text-danger',
+            'whitelist_only': 'text-success'
+        };
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-shield-alt ${modeColors[log.firewall_mode] || 'text-secondary'}"></i>
+                <span><strong>Firewall Mode:</strong> ${log.firewall_mode}</span>
+            </div>
+        `);
+    }
+    
+    if (log.uptime) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-clock text-success"></i>
+                <span><strong>Uptime:</strong> ${log.uptime}</span>
+            </div>
+        `);
+    }
+    
+    if (log.agent_id) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-fingerprint text-secondary"></i>
+                <span><strong>Agent ID:</strong> <code>${log.agent_id.substring(0, 12)}...</code></span>
+            </div>
+        `);
+    }
+    
+    return `
+        <div class="log-item lifecycle-event p-3 border-bottom" data-log-id="${logId}" 
+             data-level="${(log.level || 'info').toLowerCase()}"
+             data-agent="${agentHost.toLowerCase()}"
+             style="border-left: 4px solid ${config.borderColor}; background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,1) 100%);">
+            
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <input type="checkbox" class="form-check-input log-checkbox" value="${logId}">
+                </div>
+                
+                <div class="col-auto">
+                    <div class="lifecycle-icon-wrapper" style="background: ${config.gradient}; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+                        <i class="fas ${config.icon} fa-lg text-white"></i>
+                    </div>
+                </div>
+                
+                <div class="col">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h6 class="mb-0 fw-bold">${config.title}</h6>
+                        <span class="badge ${config.badge}">${eventType.replace('agent_', '').toUpperCase()}</span>
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-3 text-muted small">
+                        <span><i class="fas fa-calendar-alt me-1"></i>${formatTimestamp(log.timestamp)}</span>
+                        <span><i class="fas fa-server me-1"></i>${agentHost}</span>
+                    </div>
+                    
+                    ${log.message ? `
+                        <div class="mt-2 p-2 rounded" style="background: rgba(0,0,0,0.03);">
+                            <i class="fas fa-comment-alt me-2 text-muted"></i>
+                            <span class="text-dark">${log.message}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="col-auto">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showLogDetails('${logId}')">
+                                <i class="fas fa-info-circle me-2"></i>View Details
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportSingleLog('${logId}')">
+                                <i class="fas fa-download me-2"></i>Export
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="clearSingleLog('${logId}')">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            ${infoCards.length > 0 ? `
+                <div class="lifecycle-info-grid mt-3 pt-3 border-top" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                    ${infoCards.join('')}
                 </div>
             ` : ''}
         </div>

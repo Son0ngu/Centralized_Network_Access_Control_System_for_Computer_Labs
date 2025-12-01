@@ -12,6 +12,9 @@ import logging
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, now_vietnam
 
+# Import auth middleware for JWT validation
+from middleware.auth import require_jwt
+
 class LogController:
     """Controller for log operations"""
     
@@ -33,12 +36,12 @@ class LogController:
                                    methods=['GET'], 
                                    view_func=self.get_statistics)
         
-        # POST /api/logs - Receive logs from agents
+        # POST /api/logs - Receive logs from agents (requires JWT)
         self.blueprint.add_url_rule('/logs', 
                                    methods=['POST'], 
-                                   view_func=self.receive_logs)
+                                   view_func=require_jwt(self.receive_logs))
         
-        # GET /api/logs - Get all logs
+        # GET /api/logs - Get all logs (admin - no auth for now)
         self.blueprint.add_url_rule('/logs', 
                                    methods=['GET'], 
                                    view_func=self.list_logs)

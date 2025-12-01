@@ -14,6 +14,9 @@ from services.agent_service import AgentService
 # Import time utilities - vietnam ONLY
 from time_utils import now_vietnam, now_iso
 
+# Import auth middleware for API key and JWT validation
+from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key
+
 class AgentController:
     """Controller for agent operations"""
     
@@ -30,8 +33,14 @@ class AgentController:
         #  FIX: Add missing '/agents' prefix to routes
         
         # Core agent management routes
-        self.blueprint.add_url_rule('/agents/register', 'register_agent', self.register_agent, methods=['POST'])
-        self.blueprint.add_url_rule('/agents/heartbeat', 'heartbeat', self.heartbeat, methods=['POST'])
+        # NOTE: /agents/register requires API key for security (Phase 1)
+        self.blueprint.add_url_rule('/agents/register', 'register_agent', 
+                                    require_api_key(permission='agent_register')(self.register_agent), 
+                                    methods=['POST'])
+        # NOTE: /agents/heartbeat requires JWT token (Phase 2)
+        self.blueprint.add_url_rule('/agents/heartbeat', 'heartbeat', 
+                                    require_jwt(self.heartbeat), 
+                                    methods=['POST'])
         self.blueprint.add_url_rule('/agents', 'list_agents', self.list_agents, methods=['GET'])  #  FIX: Add this route
         self.blueprint.add_url_rule('/agents/statistics', 'get_statistics', self.get_statistics, methods=['GET'])  #  FIX: Add agents prefix
         

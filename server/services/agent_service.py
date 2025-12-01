@@ -8,7 +8,7 @@ import secrets
 import uuid
 import traceback
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 from models.agent_model import AgentModel
 
 # Import time utilities - vietnam ONLY
@@ -24,12 +24,13 @@ from time_utils import (
 class AgentService:
     """Service class for agent business logic - vietnam ONLY"""
     
-    def __init__(self, agent_model: AgentModel, group_model, socketio=None):
+    def __init__(self, agent_model: AgentModel, group_model, socketio=None, jwt_service=None):
         """Initialize AgentService with proper parameters"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
         self.group_model = group_model
         self.socketio = socketio
+        self.jwt_service = jwt_service  # NEW: JWT service for token generation
         
         # Get database from model, not from parameter
         self.db = self.model.db
@@ -41,6 +42,11 @@ class AgentService:
         
         self.logger.info("AgentService initialized with vietnam timezone support")
         self.logger.info(f"Status thresholds: active≤{self.active_threshold}s, inactive≤{self.inactive_threshold}s")
+    
+    def set_jwt_service(self, jwt_service):
+        """Set JWT service (for late initialization)"""
+        self.jwt_service = jwt_service
+        self.logger.info("JWT service attached to AgentService")
 
     def _persist_status_change(self, agent: Dict, new_status: str) -> None:
         """Persist status change to database when calculated status differs"""
@@ -167,15 +173,36 @@ class AgentService:
                     "status": agent_registration_data.get("status") if not existing_agent else existing_agent.get("status"),
                     "timestamp": now_iso()  # vietnam ISO
                 })
-        
-            return {
+            
+            # Build response
+            response = {
                 "agent_id": agent_id,
                 "user_id": device_id,
-                "token": agent_token,
+                "token": agent_token,  # Legacy token for backward compatibility
                 "status": agent_registration_data.get("status") if not existing_agent else update_data.get("status", existing_agent.get("status")),
                 "message": f"Agent {'updated' if existing_agent else 'registered'} successfully",
                 "server_time": now_iso()  # vietnam ISO
             }
+            
+            # Generate JWT tokens if JWT service is available
+            if self.jwt_service:
+                try:
+                    jwt_tokens = self.jwt_service.generate_tokens(
+                        agent_id=agent_id,
+                        user_id=device_id,
+                        additional_claims={
+                            "hostname": hostname,
+                            "ip_address": agent_ip
+                        }
+                    )
+                    # Add JWT tokens to response
+                    response["jwt"] = jwt_tokens
+                    self.logger.info(f"JWT tokens generated for agent {agent_id}")
+                except Exception as jwt_error:
+                    self.logger.warning(f"Failed to generate JWT tokens: {jwt_error}")
+                    # Continue without JWT - fallback to legacy token
+            
+            return response
         
         except Exception as e:
             self.logger.error(f"Agent registration failed: {e}")

@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from shared.time_utils import now, now_iso
 from utils import check_admin_privileges, get_local_ip
 from .agent import get_agent, agent_state, AGENT_DEVICE_ID, AGENT_HOSTNAME
+from .token_manager import init_token_manager, get_token_manager
 
 logger = logging.getLogger("core.lifecycle")
 
@@ -42,6 +43,34 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.info(f"Registered successfully - Agent ID: {config.get('agent_id')}")
         
+        # 1.5. Initialize Token Manager for JWT auto-refresh
+        logger.info("Step 1.5: Initializing Token Manager...")
+        token_manager = init_token_manager(config)
+        
+        # Setup re-registration callback
+        def on_token_expired():
+            """Handle token expiry - trigger re-registration"""
+            logger.warning("JWT tokens expired - triggering re-registration")
+            if register_agent(config):
+                logger.info("Re-registration successful")
+                # Reset token manager with new tokens
+                token_manager.reset_reregistration_flag()
+                # Reload tokens from updated config
+                token_manager._load_tokens_from_config()
+            else:
+                logger.error("Re-registration failed")
+        
+        def on_token_refreshed():
+            """Handle successful token refresh"""
+            logger.debug("JWT tokens refreshed successfully")
+        
+        # Start auto-refresh with callbacks
+        token_manager.start_auto_refresh(
+            on_refreshed=on_token_refreshed,
+            on_expired=on_token_expired
+        )
+        logger.info("Token Manager initialized with auto-refresh")
+        
         # 2. Initialize WhitelistManager (but don't start sync yet)
         logger.info("Step 2: Initializing whitelist manager...")
         from whitelist import WhitelistManager
@@ -51,6 +80,26 @@ def initialize_components(config: Dict) -> bool:
         # 3. Initialize FirewallManager (if enabled and has admin) - BEFORE starting sync
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
+        firewall_mode = firewall_config.get("mode", "monitor")
+        
+        # 3.1. Auto-install WinPcap if whitelist_only mode with admin
+        if firewall_config.get("enabled") and admin_status and firewall_mode == "whitelist_only":
+            logger.info("Step 3.1: Checking WinPcap for packet capture...")
+            try:
+                from capture.winpcap_installer import ensure_winpcap_available, is_winpcap_installed
+                
+                if not is_winpcap_installed():
+                    logger.info("WinPcap not found - attempting auto-installation...")
+                    success, message = ensure_winpcap_available()
+                    if success:
+                        logger.info(f"✅ {message}")
+                    else:
+                        logger.warning(f"⚠️ WinPcap auto-install: {message}")
+                        logger.warning("Packet capture may not work without WinPcap/Npcap")
+                else:
+                    logger.info("✅ WinPcap/Npcap already installed")
+            except Exception as e:
+                logger.warning(f"WinPcap check/install failed: {e}")
         
         if firewall_config.get("enabled") and admin_status:
             logger.info("Step 3: Initializing firewall manager...")
@@ -63,7 +112,6 @@ def initialize_components(config: Dict) -> bool:
                 logger.info("Firewall manager linked to whitelist")
             
             # Enable whitelist-only mode if configured
-            firewall_mode = firewall_config.get("mode", "monitor")
             if firewall_mode == "whitelist_only":
                 logger.info("🔒 Firewall mode: whitelist_only - Enabling Default Deny policy...")
                 if agent.firewall.enable_whitelist_mode():
@@ -174,6 +222,12 @@ def cleanup(config: Optional[Dict] = None) -> None:
     logger.info("=" * 50)
     
     try:
+        # Stop token manager auto-refresh
+        token_manager = get_token_manager()
+        if token_manager:
+            logger.info("Stopping token manager...")
+            token_manager.stop_auto_refresh()
+        
         # Stop packet sniffer
         if hasattr(agent, 'sniffer') and agent.sniffer:
             logger.info("Stopping packet sniffer...")
@@ -217,6 +271,15 @@ def cleanup(config: Optional[Dict] = None) -> None:
             elif hasattr(agent.firewall, 'cleanup_whitelist_firewall'):
                 agent.firewall.cleanup_whitelist_firewall()
             agent.firewall = None
+        
+        # Cleanup WinPcap if we installed it
+        try:
+            from capture.winpcap_installer import cleanup_winpcap, was_installed_by_us
+            if was_installed_by_us():
+                logger.info("Cleaning up WinPcap (auto-installed)...")
+                cleanup_winpcap()
+        except Exception as e:
+            logger.warning(f"WinPcap cleanup failed: {e}")
         
         agent.running = False
         

@@ -40,6 +40,25 @@ class LogConsole(ctk.CTkFrame):
         "ALLOW": "#00ff88",
         "PACKET": "#00d4ff",
         "SYNC": "#9966ff",
+        "STARTUP": "#00d4ff",
+        "SHUTDOWN": "#ff6b6b",
+        "SUCCESS": "#00ff88",
+    }
+    
+    # Special event icons
+    LEVEL_ICONS = {
+        "DEBUG": "🔍",
+        "INFO": "ℹ️",
+        "WARNING": "⚠️",
+        "ERROR": "❌",
+        "CRITICAL": "🚨",
+        "BLOCK": "🚫",
+        "ALLOW": "✅",
+        "PACKET": "📡",
+        "SYNC": "🔄",
+        "STARTUP": "🚀",
+        "SHUTDOWN": "🛑",
+        "SUCCESS": "✅",
     }
     
     def __init__(

@@ -47,6 +47,7 @@ class WhitelistManager:
         self._sync = WhitelistSyncer(
             server_urls=server_urls,
             agent_id=agent_id,
+            config=config,  # Pass full config for JWT auth
             connect_timeout=self.server_config.get("connect_timeout", 10),
             read_timeout=self.server_config.get("read_timeout", 30),
             max_retries=self.whitelist_config.get("max_retries", 3)

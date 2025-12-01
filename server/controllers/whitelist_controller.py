@@ -12,6 +12,9 @@ from services.whitelist_service import WhitelistService
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, parse_agent_timestamp
 
+# Import auth middleware for JWT validation
+from middleware.auth import require_jwt, require_jwt_or_api_key
+
 class WhitelistController:
     """Controller for whitelist operations"""
     
@@ -26,12 +29,12 @@ class WhitelistController:
     def _register_routes(self):
         """Register all whitelist routes"""
         
-        # Agent sync endpoint - MOST IMPORTANT
+        # Agent sync endpoint - requires JWT token (Phase 2)
         self.blueprint.add_url_rule('/whitelist/agent-sync', 
                                    methods=['GET'], 
-                                   view_func=self.agent_sync)
+                                   view_func=require_jwt(self.agent_sync))
         
-        # Admin management endpoints
+        # Admin management endpoints (no auth for now - will add admin auth later)
         self.blueprint.add_url_rule('/whitelist', 
                                    methods=['GET'], 
                                    view_func=self.list_domains)

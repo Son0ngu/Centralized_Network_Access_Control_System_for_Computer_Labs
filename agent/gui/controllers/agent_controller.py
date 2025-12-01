@@ -362,6 +362,10 @@ class AgentController:
         
         return info
     
+    def get_stats(self) -> Dict:
+        """Get current agent statistics."""
+        return self._stats.copy()
+    
     def force_whitelist_sync(self) -> bool:
         """Force immediate whitelist sync."""
         if not self.is_running or not self._agent:

@@ -123,23 +123,27 @@ class DashboardView(ctk.CTkFrame):
         self._cards['status'] = AnimatedStatusCard(
             cards_frame,
             title="Agent Status",
-            value="🔴 Stopped",
-            icon="🤖",
+            value="Stopped",
+            icon="🔴",
             color="#ff4444",
-            subtitle="Not running"
+            subtitle="Not running",
+            width=180,
+            height=110
         )
-        self._cards['status'].grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        self._cards['status'].grid(row=0, column=0, padx=(0, 8), sticky="nsew")
         
         # Card 2: Firewall Mode
         self._cards['mode'] = StatusCard(
             cards_frame,
             title="Firewall Mode",
-            value="N/A",
-            icon="🔥",
+            value="—",
+            icon="🛡️",
             color="#888888",
-            subtitle="Mode not set"
+            subtitle="Mode not set",
+            width=180,
+            height=110
         )
-        self._cards['mode'].grid(row=0, column=1, padx=5, sticky="nsew")
+        self._cards['mode'].grid(row=0, column=1, padx=4, sticky="nsew")
         
         # Card 3: Whitelist Domains
         self._cards['domains'] = AnimatedStatusCard(
@@ -148,9 +152,11 @@ class DashboardView(ctk.CTkFrame):
             value="0",
             icon="📋",
             color="#00d4ff",
-            subtitle="domains + patterns"
+            subtitle="domains + patterns",
+            width=180,
+            height=110
         )
-        self._cards['domains'].grid(row=0, column=2, padx=5, sticky="nsew")
+        self._cards['domains'].grid(row=0, column=2, padx=4, sticky="nsew")
         
         # Card 4: Uptime
         self._cards['uptime'] = StatusCard(
@@ -159,9 +165,11 @@ class DashboardView(ctk.CTkFrame):
             value="0s",
             icon="⏱️",
             color="#ffa500",
-            subtitle="Agent runtime"
+            subtitle="Agent runtime",
+            width=180,
+            height=110
         )
-        self._cards['uptime'].grid(row=0, column=3, padx=(10, 0), sticky="nsew")
+        self._cards['uptime'].grid(row=0, column=3, padx=(8, 0), sticky="nsew")
     
     def _setup_realtime_metrics(self):
         """Setup real-time metrics row."""
@@ -179,9 +187,11 @@ class DashboardView(ctk.CTkFrame):
             value="0",
             icon="🌐",
             color="#00ff88",
-            subtitle="In whitelist"
+            subtitle="In whitelist",
+            width=180,
+            height=110
         )
-        self._cards['ips'].grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        self._cards['ips'].grid(row=0, column=0, padx=(0, 8), sticky="nsew")
         
         # Card 6: Packets/sec
         self._cards['packets'] = AnimatedStatusCard(
@@ -190,9 +200,11 @@ class DashboardView(ctk.CTkFrame):
             value="0",
             icon="📦",
             color="#9966ff",
-            subtitle="captured"
+            subtitle="captured",
+            width=180,
+            height=110
         )
-        self._cards['packets'].grid(row=0, column=1, padx=5, sticky="nsew")
+        self._cards['packets'].grid(row=0, column=1, padx=4, sticky="nsew")
         
         # Card 7: Server Connection
         self._cards['server'] = StatusCard(
@@ -201,9 +213,11 @@ class DashboardView(ctk.CTkFrame):
             value="Offline",
             icon="🔗",
             color="#ff4444",
-            subtitle="Connection status"
+            subtitle="Connection status",
+            width=180,
+            height=110
         )
-        self._cards['server'].grid(row=0, column=2, padx=5, sticky="nsew")
+        self._cards['server'].grid(row=0, column=2, padx=4, sticky="nsew")
         
         # Card 8: Last Sync
         self._cards['sync'] = StatusCard(
@@ -212,9 +226,11 @@ class DashboardView(ctk.CTkFrame):
             value="Never",
             icon="🔄",
             color="#888888",
-            subtitle="Whitelist sync"
+            subtitle="Whitelist sync",
+            width=180,
+            height=110
         )
-        self._cards['sync'].grid(row=0, column=3, padx=(10, 0), sticky="nsew")
+        self._cards['sync'].grid(row=0, column=3, padx=(8, 0), sticky="nsew")
     
     def _setup_activity_log(self):
         """Setup activity log section."""
@@ -389,7 +405,8 @@ class DashboardView(ctk.CTkFrame):
         message = data.get('message', '')
         
         if status == 'running':
-            self._cards['status'].set_value("🟢 Running")
+            self._cards['status'].set_value("Running")
+            self._cards['status'].set_icon("🟢")
             self._cards['status'].set_color("#00ff88")
             self._cards['status'].set_subtitle("Agent is active")
             self._status_indicator.configure(text="🟢 Running", text_color="#00ff88")
@@ -400,23 +417,43 @@ class DashboardView(ctk.CTkFrame):
             mode = info.get('firewall_mode', 'monitor')
             enabled = info.get('firewall_enabled', False)
             
+            # Format mode display - all 4 modes
+            mode_display = {
+                'monitor': 'Monitor',
+                'whitelist_only': 'Whitelist',
+                'block': 'Block',
+                'warn': 'Warn'
+            }.get(mode, mode.title())
+            
+            # Mode-specific icons and colors
+            mode_config = {
+                'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
+                'whitelist_only': ('🛡️', '#00ff88', 'Only whitelist allowed'),
+                'block': ('🚫', '#ff4444', 'Blocking non-whitelist'),
+                'warn': ('⚠️', '#ffa500', 'Warning on violations')
+            }.get(mode, ('👁️', '#888888', 'Unknown mode'))
+            
             if enabled:
-                self._cards['mode'].set_value(mode.title())
-                self._cards['mode'].set_color("#ffa500")
-                self._cards['mode'].set_subtitle("Firewall active")
+                self._cards['mode'].set_value(mode_display)
+                self._cards['mode'].set_icon(mode_config[0])
+                self._cards['mode'].set_color(mode_config[1])
+                self._cards['mode'].set_subtitle(mode_config[2])
             else:
-                self._cards['mode'].set_value("Monitor")
-                self._cards['mode'].set_color("#00d4ff")
-                self._cards['mode'].set_subtitle("Monitoring only")
+                self._cards['mode'].set_value(mode_display)
+                self._cards['mode'].set_icon('👁️')
+                self._cards['mode'].set_color('#00d4ff')
+                self._cards['mode'].set_subtitle('Firewall disabled')
             
         elif status == 'stopped':
-            self._cards['status'].set_value("🔴 Stopped")
+            self._cards['status'].set_value("Stopped")
+            self._cards['status'].set_icon("🔴")
             self._cards['status'].set_color("#ff4444")
             self._cards['status'].set_subtitle("Not running")
             self._status_indicator.configure(text="⚫ Stopped", text_color="#888888")
             self._update_button_state("stopped")
             
-            self._cards['mode'].set_value("N/A")
+            self._cards['mode'].set_value("—")
+            self._cards['mode'].set_icon("🛡️")
             self._cards['mode'].set_color("#888888")
             self._cards['mode'].set_subtitle("Mode not set")
             
@@ -424,17 +461,24 @@ class DashboardView(ctk.CTkFrame):
             self._cards['server'].set_value("Offline")
             self._cards['server'].set_color("#ff4444")
             
+            # Show stopped confirmation
+            self._append_stopped_banner()
+            
         elif status == 'starting':
-            self._cards['status'].set_value("🟡 Starting...")
+            self._cards['status'].set_value("Starting...")
+            self._cards['status'].set_icon("🟡")
             self._cards['status'].set_color("#ffa500")
             self._cards['status'].set_subtitle("Initializing")
             self._status_indicator.configure(text="🟡 Starting", text_color="#ffa500")
+            self._append_startup_banner()
             
         elif status == 'stopping':
-            self._cards['status'].set_value("🟡 Stopping...")
+            self._cards['status'].set_value("Stopping...")
+            self._cards['status'].set_icon("🟡")
             self._cards['status'].set_color("#ffa500")
             self._cards['status'].set_subtitle("Shutting down")
             self._status_indicator.configure(text="🟡 Stopping", text_color="#ffa500")
+            self._append_shutdown_banner()
         
         if message:
             self._append_log(f"[STATUS] {message}")
@@ -476,18 +520,40 @@ class DashboardView(ctk.CTkFrame):
     
     def _on_packet_captured(self, data: Dict):
         """Handle packet captured event."""
-        domain = data.get('domain', 'unknown')
+        domain = data.get('domain', '')
+        dest_ip = data.get('dest_ip', '')
         action = data.get('action', 'detected')
+        protocol = data.get('protocol', '')
+        port = data.get('port', '')
+        
+        # Skip empty/unknown entries
+        if not domain and not dest_ip:
+            return
         
         # Update packets count
         current = int(self._cards['packets'].get_value() or 0)
         self._cards['packets'].set_value(str(current + 1))
         
-        # Log the event
+        # Build display target
+        target = domain if domain and domain != 'unknown' else dest_ip
+        if not target or target == 'unknown':
+            return
+        
+        # Build protocol info
+        proto_info = ""
+        if protocol and protocol != 'unknown':
+            proto_info = f" ({protocol}"
+            if port and port != 'unknown':
+                proto_info += f":{port}"
+            proto_info += ")"
+        
+        # Log the event with better formatting
         if action.lower() == 'blocked':
-            self._append_log(f"[BLOCK] 🚫 {domain}")
+            self._append_log(f"🚫 BLOCKED: {target}{proto_info}")
+        elif action.lower() == 'allowed':
+            self._append_log(f"✅ ALLOWED: {target}{proto_info}")
         else:
-            self._append_log(f"[ALLOW] ✓ {domain}")
+            self._append_log(f"📡 {target}{proto_info}")
     
     def _on_whitelist_synced(self, data: Dict):
         """Handle whitelist sync event."""
@@ -521,6 +587,133 @@ class DashboardView(ctk.CTkFrame):
         self._log_textbox.configure(state="normal")
         self._log_textbox.insert("end", f"[{timestamp}] {message}\n")
         self._log_textbox.see("end")  # Auto-scroll to bottom
+        self._log_textbox.configure(state="disabled")
+    
+    def _append_shutdown_banner(self):
+        """Append a formatted shutdown banner to log."""
+        if not self._log_textbox:
+            return
+        
+        try:
+            from shared.time_utils import now_vietnam, uptime_string
+            timestamp = now_vietnam().strftime("%H:%M:%S %d/%m/%Y")
+            uptime = uptime_string()
+        except ImportError:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+            uptime = "N/A"
+        
+        # Get stats before shutdown
+        stats = {}
+        if self._controller:
+            stats = self._controller.get_stats()
+        
+        packets = stats.get('packets_captured', 0)
+        domains = stats.get('domains_count', 0) + stats.get('patterns_count', 0)
+        
+        self._log_textbox.configure(state="normal")
+        
+        # Banner lines
+        banner = [
+            "",
+            "╔" + "═" * 48 + "╗",
+            "║" + "  🛑 AGENT SHUTDOWN INITIATED".center(48) + "║",
+            "╠" + "═" * 48 + "╣",
+            f"║  📅 Time: {timestamp}".ljust(49) + "║",
+            f"║  ⏱️  Uptime: {uptime}".ljust(49) + "║",
+            f"║  📦 Packets: {packets}".ljust(49) + "║",
+            f"║  📋 Domains: {domains}".ljust(49) + "║",
+            "╠" + "═" * 48 + "╣",
+            "║  ⏳ Cleaning up resources...".ljust(49) + "║",
+            "╚" + "═" * 48 + "╝",
+            ""
+        ]
+        
+        for line in banner:
+            self._log_textbox.insert("end", f"{line}\n")
+        
+        self._log_textbox.see("end")
+        self._log_textbox.configure(state="disabled")
+    
+    def _append_startup_banner(self):
+        """Append a formatted startup banner to log."""
+        if not self._log_textbox:
+            return
+        
+        try:
+            from shared.time_utils import now_vietnam
+            timestamp = now_vietnam().strftime("%H:%M:%S %d/%m/%Y")
+        except ImportError:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+        
+        # Get agent info
+        hostname = "Unknown"
+        mode = "Monitor"
+        try:
+            import socket
+            hostname = socket.gethostname()
+            if self._controller:
+                info = self._controller.get_agent_info()
+                mode = info.get('firewall_mode', 'monitor').title()
+        except:
+            pass
+        
+        self._log_textbox.configure(state="normal")
+        
+        # Banner lines  
+        banner = [
+            "",
+            "╔" + "═" * 48 + "╗",
+            "║" + "  🚀 FIREWALL AGENT STARTING".center(48) + "║",
+            "╠" + "═" * 48 + "╣",
+            f"║  📅 Time: {timestamp}".ljust(49) + "║",
+            f"║  💻 Host: {hostname[:35]}".ljust(49) + "║",
+            f"║  🔥 Mode: {mode}".ljust(49) + "║",
+            "╠" + "═" * 48 + "╣",
+            "║  ⚙️  Initializing components...".ljust(49) + "║",
+            "║  📡 Connecting to server...".ljust(49) + "║",
+            "║  🛡️  Setting up firewall rules...".ljust(49) + "║",
+            "╚" + "═" * 48 + "╝",
+            ""
+        ]
+        
+        for line in banner:
+            self._log_textbox.insert("end", f"{line}\n")
+        
+        self._log_textbox.see("end")
+        self._log_textbox.configure(state="disabled")
+    
+    def _append_stopped_banner(self):
+        """Append a formatted stopped confirmation banner."""
+        if not self._log_textbox:
+            return
+        
+        try:
+            from shared.time_utils import now_vietnam
+            timestamp = now_vietnam().strftime("%H:%M:%S %d/%m/%Y")
+        except ImportError:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+        
+        self._log_textbox.configure(state="normal")
+        
+        banner = [
+            "",
+            "┌" + "─" * 48 + "┐",
+            "│" + "  ✅ AGENT STOPPED SUCCESSFULLY".center(48) + "│",
+            "├" + "─" * 48 + "┤",
+            f"│  📅 Time: {timestamp}".ljust(49) + "│",
+            "│  🧹 Resources cleaned up".ljust(49) + "│",
+            "│  🔓 Firewall rules cleared".ljust(49) + "│",
+            "└" + "─" * 48 + "┘",
+            ""
+        ]
+        
+        for line in banner:
+            self._log_textbox.insert("end", f"{line}\n")
+        
+        self._log_textbox.see("end")
         self._log_textbox.configure(state="disabled")
     
     def _clear_log(self):

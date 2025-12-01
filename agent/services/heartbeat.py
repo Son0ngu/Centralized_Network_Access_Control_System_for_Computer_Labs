@@ -13,6 +13,7 @@ import requests
 
 from shared.time_utils import now, now_iso, sleep
 from shared.os_info import get_os_details
+from core.token_manager import get_auth_headers, get_token_manager
 
 logger = logging.getLogger("services.heartbeat")
 
@@ -148,11 +149,16 @@ class HeartbeatSender:
             try:
                 url = f"{server_url.rstrip('/')}/api/agents/heartbeat"
                 
+                # Build headers with JWT authentication
+                headers = {'Content-Type': 'application/json'}
+                auth_headers = get_auth_headers(self.config)
+                headers.update(auth_headers)
+                
                 response = requests.post(
                     url,
                     json=heartbeat_data,
                     timeout=self.timeout,
-                    headers={'Content-Type': 'application/json'}
+                    headers=headers
                 )
                 
                 if response.status_code == 200:

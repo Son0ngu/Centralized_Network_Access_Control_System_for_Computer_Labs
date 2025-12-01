@@ -125,7 +125,8 @@ class LogService:
                     
                     # Copy additional fields if they exist
                     optional_fields = ['reason', 'firewall_mode', 'handled_by_firewall', 
-                                     'domain_check', 'ip_check', 'url', 'ip']
+                                     'domain_check', 'ip_check', 'url', 'ip',
+                                     'event_type', 'uptime', 'device_id', 'ip_address']
                     for field in optional_fields:
                         if field in log and log[field] is not None:
                             processed_log[field] = log[field]
@@ -191,7 +192,11 @@ class LogService:
                         'protocol': log.get('protocol', 'unknown'),
                         'port': str(log.get('port', 'unknown')),
                         'message': log.get('message', 'Log entry'),
-                        'agent_host': log.get('agent_host', 'Unknown Agent')
+                        'agent_host': log.get('agent_host', 'Unknown Agent'),
+                        'event_type': log.get('event_type'),  # Lifecycle events
+                        'uptime': log.get('uptime'),
+                        'ip_address': log.get('ip_address'),
+                        'firewall_mode': log.get('firewall_mode')
                     }
                     self.socketio.emit('new_log', broadcast_log)
             
@@ -319,7 +324,8 @@ class LogService:
                             formatted_log["timestamp"] = now_iso()
                     
                     # Add optional fields
-                    for field in ["reason", "firewall_mode", "handled_by_firewall", "display_time"]:
+                    for field in ["reason", "firewall_mode", "handled_by_firewall", "display_time",
+                                  "event_type", "uptime", "device_id", "ip_address"]:
                         if log.get(field):
                             formatted_log[field] = log[field]
                     
