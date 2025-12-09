@@ -135,10 +135,10 @@ class DashboardView(ctk.CTkFrame):
         # Card 2: Firewall Mode
         self._cards['mode'] = StatusCard(
             cards_frame,
-            title="Firewall Mode",
+            title="Mode",
             value="—",
-            icon="🛡️",
-            color="#888888",
+            icon="🛡",
+            color="#F472B6",
             subtitle="Mode not set",
             width=180,
             height=110
@@ -225,7 +225,7 @@ class DashboardView(ctk.CTkFrame):
             title="Last Sync",
             value="Never",
             icon="🔄",
-            color="#888888",
+            color="#3B82F6",
             subtitle="Whitelist sync",
             width=180,
             height=110
@@ -428,7 +428,7 @@ class DashboardView(ctk.CTkFrame):
             # Mode-specific icons and colors
             mode_config = {
                 'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
-                'whitelist_only': ('🛡️', '#00ff88', 'Only whitelist allowed'),
+                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed'),
                 'block': ('🚫', '#ff4444', 'Blocking non-whitelist'),
                 'warn': ('⚠️', '#ffa500', 'Warning on violations')
             }.get(mode, ('👁️', '#888888', 'Unknown mode'))
@@ -456,7 +456,7 @@ class DashboardView(ctk.CTkFrame):
             self._update_button_state("stopped")
             
             self._cards['mode'].set_value("—")
-            self._cards['mode'].set_icon("🛡️")
+            self._cards['mode'].set_icon("🛡")
             self._cards['mode'].set_color("#888888")
             self._cards['mode'].set_subtitle("Mode not set")
             
@@ -677,7 +677,7 @@ class DashboardView(ctk.CTkFrame):
             "╠" + "═" * 48 + "╣",
             "║  ⚙️  Initializing components...".ljust(49) + "║",
             "║  📡 Connecting to server...".ljust(49) + "║",
-            "║  🛡️  Setting up firewall rules...".ljust(49) + "║",
+            "║  🛡  Setting up firewall rules...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
             ""
         ]

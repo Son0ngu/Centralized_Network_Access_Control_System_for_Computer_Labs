@@ -197,7 +197,7 @@ exe_gui = EXE(
     a_gui.binaries,
     a_gui.datas,
     [],
-    name='SAINT_GUI',
+    name='SAINT-GUI',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

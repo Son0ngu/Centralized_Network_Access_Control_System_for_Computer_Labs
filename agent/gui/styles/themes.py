@@ -1,14 +1,3 @@
-"""
-Theme Manager - Centralized theme management for customtkinter.
-Vietnam ONLY - Enterprise Security Theme.
-
-Features:
-- Dark/Light mode support
-- Consistent styling across all widgets
-- Easy theme switching
-- Font management
-"""
-
 import customtkinter as ctk
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Callable, List

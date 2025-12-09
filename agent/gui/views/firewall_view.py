@@ -70,7 +70,7 @@ class FirewallView(ctk.CTkFrame):
         # Policy status
         self._policy_label = ctk.CTkLabel(
             stats_inner,
-            text="🛡️ Policy: Loading...",
+            text="🛡 Policy: Loading...",
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color="#ffffff"
         )
@@ -271,12 +271,12 @@ class FirewallView(ctk.CTkFrame):
             # Update policy label
             if "Deny" in policy_status or "Block" in policy_status:
                 self._policy_label.configure(
-                    text=f"🛡️ Policy: {policy_status}",
+                    text=f"🛡 Policy: {policy_status}",
                     text_color="#00ff88"
                 )
             else:
                 self._policy_label.configure(
-                    text=f"🛡️ Policy: {policy_status}",
+                    text=f"🛡 Policy: {policy_status}",
                     text_color="#ffa500"
                 )
             

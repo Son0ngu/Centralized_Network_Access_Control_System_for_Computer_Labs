@@ -33,7 +33,7 @@ flowchart TB
         GUI[/"🖼️ Agent GUI<br/>(CustomTkinter)"/]
         AGENT["🤖 Agent Core"]
         SNIFFER["📡 Packet Sniffer<br/>(Scapy)"]
-        FIREWALL["🛡️ Firewall Manager<br/>(Windows Firewall)"]
+        FIREWALL["🛡 Firewall Manager<br/>(Windows Firewall)"]
         WHITELIST["Whitelist Manager"]
         LOGSENDER["📤 Log Sender"]
         HEARTBEAT["💓 Heartbeat Sender"]
@@ -96,7 +96,7 @@ flowchart TD
     subgraph "🔧 Component Initialization"
         INIT_COMPONENTS --> INIT_TOKEN["🔑 Init Token Manager"]
         INIT_TOKEN --> INIT_WHITELIST["Init Whitelist Manager"]
-        INIT_WHITELIST --> INIT_FIREWALL{"🛡️ Firewall Enabled?"}
+        INIT_WHITELIST --> INIT_FIREWALL{"🛡 Firewall Enabled?"}
         
         INIT_FIREWALL --> |Yes| SETUP_FW["Setup Firewall Rules"]
         INIT_FIREWALL --> |No| SKIP_FW["Skip Firewall Setup"]
@@ -249,7 +249,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START([🎯 Determine Action]) --> CHECK_ENABLED{"🛡️ Firewall<br/>Enabled?"}
+    START([🎯 Determine Action]) --> CHECK_ENABLED{"🛡 Firewall<br/>Enabled?"}
     
     CHECK_ENABLED --> |No| MONITOR_MODE["action = MONITORED<br/>level = INFO/WARNING"]
     CHECK_ENABLED --> |Yes| CHECK_MODE{"Firewall Mode?"}
@@ -261,7 +261,7 @@ flowchart TD
         M_LEVEL --> |No| M_WARN["level = WARNING"]
     end
     
-    subgraph "🛡️ Mode: WHITELIST_ONLY"
+    subgraph "🛡 Mode: WHITELIST_ONLY"
         CHECK_MODE --> |whitelist_only| WO_CHECK{"Whitelisted?"}
         WO_CHECK --> |Yes| WO_ALLOW["action = ALLOWED<br/>level = INFO"]
         WO_CHECK --> |No| WO_BLOCK["action = BLOCKED<br/>level = BLOCKED"]
@@ -348,7 +348,7 @@ flowchart TD
     UPDATE_STATE["💾 Update Whitelist State"]
     UPDATE_STATE --> CALC_CHECKSUM["🔢 Calculate New Checksum"]
     
-    CALC_CHECKSUM --> CHECK_FW{"🛡️ Firewall<br/>Enabled?"}
+    CALC_CHECKSUM --> CHECK_FW{"🛡 Firewall<br/>Enabled?"}
     CHECK_FW --> |Yes| SYNC_FW["Sync Firewall Rules"]
     CHECK_FW --> |No| SYNC_COMPLETE
     
@@ -463,7 +463,7 @@ flowchart TD
         RE_LOGIN --> REG_START
     end
     
-    subgraph "🛡️ Token Manager"
+    subgraph "🛡 Token Manager"
         USE_JWT --> TM_GET["TokenManager.get_auth_headers()"]
         TM_GET --> TM_CHECK{"Token Valid?"}
         TM_CHECK --> |Yes| RETURN_HEADERS["Return Authorization Header"]
@@ -563,7 +563,7 @@ flowchart TD
         FLUSH_LOGS --> STOP_LOGSENDER["🛑 Stop Log Sender"]
     end
     
-    STOP_LOGSENDER --> CHECK_FW{"🛡️ Firewall<br/>Cleanup?"}
+    STOP_LOGSENDER --> CHECK_FW{"🛡 Firewall<br/>Cleanup?"}
     
     CHECK_FW --> |Yes| CLEANUP_FW["Cleanup Firewall Rules"]
     CHECK_FW --> |No| BUILD_SHUTDOWN
@@ -660,7 +660,7 @@ sequenceDiagram
     participant A as 🤖 Agent Core
     participant S as 📡 Sniffer
     participant WL as Whitelist
-    participant FW as 🛡️ Firewall
+    participant FW as 🛡 Firewall
     participant LS as 📤 LogSender
     participant HB as 💓 Heartbeat
     participant API as 🌐 Server API
@@ -758,7 +758,7 @@ sequenceDiagram
 | Mode | Icon | Action on Whitelist | Action on Non-Whitelist | Real Blocking | Use Case |
 |------|------|--------------------|-----------------------|---------------|----------|
 | `monitor` | 👁️ | MONITORED | MONITORED (WARNING) | No | Testing, Learning |
-| `whitelist_only` | 🛡️ | ALLOWED | BLOCKED | Yes | Production |
+| `whitelist_only` | 🛡 | ALLOWED | BLOCKED | Yes | Production |
 | `block` | 🚫 | ALLOWED | BLOCKED | Yes | Strict Security |
 | `warn` | ⚠️ | ALLOWED | WARNING | No | Soft Enforcement |
 

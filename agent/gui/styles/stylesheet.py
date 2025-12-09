@@ -1,10 +1,3 @@
-"""
-Stylesheet Module - CSS-like widget styling configurations.
-Vietnam ONLY - Enterprise Security Theme.
-
-Provides pre-configured widget styles that can be applied directly.
-"""
-
 from typing import Any, Dict
 import customtkinter as ctk
 

@@ -1,8 +1,3 @@
-"""
-GUI Styles module - Theming and styling for the application.
-Vietnam ONLY - Enterprise Security Theme.
-"""
-
 from .colors import (
     ColorPalette,
     DARK_PALETTE,

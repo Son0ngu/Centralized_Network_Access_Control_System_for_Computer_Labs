@@ -1,11 +1,5 @@
-"""
-Settings View - Agent configuration settings.
-Vietnam ONLY - Using customtkinter.
-"""
-
 import customtkinter as ctk
 import json
-import os
 from pathlib import Path
 
 

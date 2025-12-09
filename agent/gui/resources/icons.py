@@ -22,7 +22,7 @@ class IconSet:
     
     # === Navigation Icons ===
     dashboard: str = "📊"
-    firewall: str = "🛡️"
+    firewall: str = "🛡"
     whitelist: str = "📋"
     logs: str = "📝"
     settings: str = "⚙️"
@@ -56,7 +56,7 @@ class IconSet:
     upload: str = "⬆️"
     
     # === Security Icons ===
-    shield: str = "🛡️"
+    shield: str = "🛡"
     shield_check: str = "✅"
     shield_warning: str = "⚠️"
     lock: str = "🔒"
@@ -125,7 +125,7 @@ class IconSet:
     # === App Icons ===
     app_icon: str = "🔥"  # Firewall
     brand: str = "🔥"
-    logo: str = "🛡️"
+    logo: str = "🛡"
 
 
 # Global icon set instance
@@ -221,22 +221,24 @@ def get_action_icon(action: str) -> str:
 
 ASCII_LOGO = """
 ╔═══════════════════════════════════════════╗
-║   🔥 FIREWALL CONTROLLER AGENT 🛡️        ║
+║                S A I N T                  ║
+║   Security Agent Intelligence Network Tool║
 ║   Enterprise Security Management          ║
 ║   Vietnam ONLY Edition                    ║
 ╚═══════════════════════════════════════════╝
 """
 
 ASCII_LOGO_SMALL = """
-🔥 Firewall Controller 🛡️
+                S A I N T
+Security Agent Intelligence Network Tool
 """
 
 SPLASH_LOGO = """
-    ██████╗ ██╗    ██╗ █████╗ 
-    ██╔═══╝ ██║    ██║██╔══██╗
-    █████╗  ██║ █╗ ██║███████║
-    ██╔══╝  ██║███╗██║██╔══██║
-    ██║     ╚███╔███╔╝██║  ██║
-    ╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝
-    Firewall Controller Agent
+    ███████╗ █████╗ ██╗███╗   ██╗████████╗
+    ██╔════╝██╔══██╗██║████╗  ██║╚══██╔══╝
+    ███████╗███████║██║██╔██╗ ██║   ██║   
+    ╚════██║██╔══██║██║██║╚██╗██║   ██║   
+    ███████║██║  ██║██║██║ ╚████║   ██║   
+    ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   
+    Security Agent Intelligence Network Tool
 """

@@ -1,14 +1,3 @@
-"""
-Color Palette - Professional dark mode colors for security application.
-Vietnam ONLY - Enterprise Security Theme.
-
-Color Philosophy:
-- Dark backgrounds for reduced eye strain during monitoring
-- Cyan/Blue accents for professional tech feel
-- Green for success/allowed, Red for danger/blocked
-- Orange for warnings, Purple for special actions
-"""
-
 from dataclasses import dataclass
 from typing import Dict, Tuple
 

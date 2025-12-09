@@ -70,7 +70,7 @@ graph TB
             UC_S24["UC-S24: Dashboard Tenant Analytics"]
         end
         
-        subgraph POLICY_ENGINE["🛡️ Policy Engine"]
+        subgraph POLICY_ENGINE["🛡 Policy Engine"]
             UC_S25["UC-S25: Quản lý Firewall Policy Template"]
             UC_S26["UC-S26: Policy Compliance Check"]
             UC_S27["UC-S27: Policy Propagation"]
@@ -99,7 +99,7 @@ graph TB
             UC_A9["UC-A9: Traffic Pattern Analysis"]
         end
         
-        subgraph FIREWALL_CTRL["🛡️ Firewall Control Engine"]
+        subgraph FIREWALL_CTRL["🛡 Firewall Control Engine"]
             UC_A10["UC-A10: Kiểm tra Multi-Level Whitelist"]
             UC_A11["UC-A11: Áp dụng Firewall Mode"]
             UC_A12["UC-A12: Dynamic Rule Generation"]

@@ -10,6 +10,5 @@ def main():
     app = FirewallControllerApp()
     app.run()
 
-
 if __name__ == "__main__":
     main()

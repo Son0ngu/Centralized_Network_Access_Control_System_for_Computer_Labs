@@ -1,17 +1,9 @@
-"""
-Main Application class - manages GUI lifecycle.
-Vietnam ONLY - Using customtkinter + ttkbootstrap.
-
-Connects AgentController to CTk root for event processing.
-"""
-
 import customtkinter as ctk
 from .views.main_window import MainWindow
 from .controllers import AgentController
 
 
 class FirewallControllerApp:
-    """Main application wrapper managing GUI lifecycle."""
     
     _instance = None
     
@@ -39,11 +31,10 @@ class FirewallControllerApp:
         try:
             # Create root window
             self._root = ctk.CTk()
-            self._root.title("Firewall Controller Agent")
+            self._root.title("SAINT - Security Agent Intelligence Network Tool")
             self._root.geometry("1200x800")
             self._root.minsize(900, 600)
             
-            # Initialize AgentController and set root for event processing
             self._controller = AgentController()
             self._controller.set_root(self._root)
             

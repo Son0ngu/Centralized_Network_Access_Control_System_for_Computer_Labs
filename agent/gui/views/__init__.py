@@ -1,7 +1,3 @@
-"""
-Views module for GUI.
-"""
-
 from .main_window import MainWindow
 from .dashboard_view import DashboardView
 from .firewall_view import FirewallView

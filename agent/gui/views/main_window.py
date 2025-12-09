@@ -1,8 +1,3 @@
-"""
-Main Window with Sidebar navigation and stacked content views.
-Vietnam ONLY - Using customtkinter with Theme support.
-"""
-
 import customtkinter as ctk
 from typing import Dict, Optional
 
@@ -57,7 +52,7 @@ class MainWindow(ctk.CTkFrame):
         
         self._logo_label = ctk.CTkLabel(
             logo_frame,
-            text="Firewall Agent",
+            text="SAINT",
             font=self._theme.font("lg", "bold"),
             text_color=self._theme.colors.accent_primary
         )
@@ -66,7 +61,7 @@ class MainWindow(ctk.CTkFrame):
         # Subtitle
         subtitle = ctk.CTkLabel(
             logo_frame,
-            text="Enterprise Security",
+            text="Security Agent Intelligence Network Tool",
             font=self._theme.font("xs"),
             text_color=self._theme.colors.text_muted
         )
@@ -130,7 +125,7 @@ class MainWindow(ctk.CTkFrame):
         # Version info
         version_label = ctk.CTkLabel(
             self._sidebar,
-            text="v1.0.0 • Vietnam Only",
+            text="SAINT v1.0.0 • Vietnam Only",
             font=self._theme.font("xs"),
             text_color=self._theme.colors.text_disabled
         )
