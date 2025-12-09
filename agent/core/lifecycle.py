@@ -85,7 +85,7 @@ def initialize_components(config: Dict) -> bool:
                 sync_success = agent.whitelist.sync_now()
                 if sync_success:
                     stats = agent.whitelist.get_stats()
-                    logger.info(f"✅ Whitelist synced: {stats.get('domain_count', 0)} domains, {stats.get('ip_count', 0)} IPs")
+                    logger.info(f"Whitelist synced: {stats.get('domain_count', 0)} domains, {stats.get('ip_count', 0)} IPs")
                 else:
                     logger.warning("⚠️ Whitelist sync failed - firewall may block connections")
             except Exception as e:
@@ -106,12 +106,12 @@ def initialize_components(config: Dict) -> bool:
                     logger.info("WinPcap not found - attempting auto-installation...")
                     success, message = ensure_winpcap_available()
                     if success:
-                        logger.info(f"✅ {message}")
+                        logger.info(f"{message}")
                     else:
                         logger.warning(f"⚠️ WinPcap auto-install: {message}")
                         logger.warning("Packet capture may not work without WinPcap/Npcap")
                 else:
-                    logger.info("✅ WinPcap/Npcap already installed")
+                    logger.info("WinPcap/Npcap already installed")
             except Exception as e:
                 logger.warning(f"WinPcap check/install failed: {e}")
         
@@ -127,7 +127,7 @@ def initialize_components(config: Dict) -> bool:
             
             # Enable whitelist-only mode if configured
             if firewall_mode == "whitelist_only":
-                logger.info("🔒 Firewall mode: whitelist_only - Enabling Default Deny policy...")
+                logger.info("Firewall mode: whitelist_only - Enabling Default Deny policy...")
                 
                 # Collect server URLs for allow rules
                 server_config = config.get("server", {})
@@ -156,9 +156,9 @@ def initialize_components(config: Dict) -> bool:
                     whitelist_ips=whitelist_ips,
                     whitelist_domains=whitelist_domains
                 ):
-                    logger.info("✅ Default Deny policy enabled - All non-whitelisted traffic will be blocked")
+                    logger.info("Default Deny policy enabled - All non-whitelisted traffic will be blocked")
                 else:
-                    logger.error("❌ Failed to enable Default Deny policy")
+                    logger.error("Failed to enable Default Deny policy")
             else:
                 logger.info(f"Firewall mode: {firewall_mode} (not whitelist_only)")
         else:

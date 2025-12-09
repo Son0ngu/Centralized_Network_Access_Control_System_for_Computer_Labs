@@ -1,8 +1,3 @@
-"""
-High-Performance DNS Resolver with dnspython and aiodns.
-Vietnam ONLY - Clean implementation.
-"""
-
 import asyncio
 import atexit
 import concurrent.futures
@@ -16,19 +11,16 @@ from typing import Dict, List
 import aiodns
 import dns.resolver
 
-# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from shared.time_utils import now, is_cache_valid
+from shared.time_utils import now
 
-# Use absolute import for DNSRecord
 from cache.lru_cache import DNSRecord
 
 logger = logging.getLogger("network.dns")
 
-
 class OptimizedDNSResolver:
-    """High-performance DNS resolver with dnspython and aiodns."""
+    """DNS resolver with dnspython and aiodns."""
     
     def __init__(self, max_workers: int = 20, timeout: float = 5.0):
         self.max_workers = max_workers
@@ -48,7 +40,6 @@ class OptimizedDNSResolver:
             '8.8.4.4',   # Google
         ]
         
-        # Thread pool for parallel resolution
         self.executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix='DNSResolver'
@@ -172,7 +163,7 @@ class OptimizedDNSResolver:
         if not domains or self._shutdown:
             return {}
         
-        logger.info(f"⚡ Parallel DNS resolution for {len(domains)} domains")
+        logger.info(f"Parallel DNS resolution for {len(domains)} domains")
         start_time = now()
         
         # Submit all tasks to thread pool
@@ -200,7 +191,7 @@ class OptimizedDNSResolver:
                 results[domain] = self._fallback_resolve(domain)
         
         duration = now() - start_time
-        logger.info(f"✅ Parallel DNS resolution completed in {duration:.2f}s ({len(results)}/{len(domains)} domains)")
+        logger.info(f"Parallel DNS resolution completed in {duration:.2f}s ({len(results)}/{len(domains)} domains)")
         
         return results
     
@@ -209,7 +200,7 @@ class OptimizedDNSResolver:
         if not domains or self._shutdown:
             return {}
         
-        logger.info(f"⚡ Async DNS resolution for {len(domains)} domains")
+        logger.info(f"Async DNS resolution for {len(domains)} domains")
         start_time = now()
         
         # Create async tasks for all domains
@@ -228,7 +219,7 @@ class OptimizedDNSResolver:
                 results[domain] = result
         
         duration = now() - start_time
-        logger.info(f"✅ Async DNS resolution completed in {duration:.2f}s ({len(results)}/{len(domains)} domains)")
+        logger.info(f"Async DNS resolution completed in {duration:.2f}s ({len(results)}/{len(domains)} domains)")
         
         return results
     
@@ -274,14 +265,12 @@ class OptimizedDNSResolver:
         )
     
     async def _async_fallback_resolve(self, domain: str) -> DNSRecord:
-        """Async fallback resolution."""
         if self._shutdown:
             return self._fallback_resolve(domain)
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, self._fallback_resolve, domain)
     
     def _is_ip_address(self, address: str) -> bool:
-        """Check if string is a valid IP address."""
         try:
             ipaddress.ip_address(address)
             return True
@@ -289,7 +278,6 @@ class OptimizedDNSResolver:
             return False
     
     def shutdown(self):
-        """Shutdown the thread pool."""
         if self._shutdown:
             return
             

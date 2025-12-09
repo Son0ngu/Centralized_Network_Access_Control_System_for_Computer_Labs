@@ -1,8 +1,3 @@
-"""
-Domain extraction from network packets.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import re
 from typing import Optional
@@ -11,7 +6,6 @@ from scapy.layers.dns import DNS
 from scapy.layers.inet import TCP
 from scapy.packet import Packet
 
-# Optional imports - may not be available in all Scapy versions
 try:
     from scapy.layers.http import HTTPRequest
 except ImportError:

@@ -1,22 +1,14 @@
-"""
-Packet Sniffer - Network traffic capture and analysis.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import threading
 from typing import Callable, Dict, Optional
 
 from shared.time_utils import now_iso, sleep
 
-# Configure Scapy before importing
 from .scapy_config import configure_scapy, ensure_pcap_driver, apply_scapy_config
 
-# Initialize Scapy configuration
 configure_scapy()
 ensure_pcap_driver()
 
-# Now import Scapy modules
 from scapy.all import sniff
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.packet import Packet
@@ -30,31 +22,21 @@ logger = logging.getLogger("capture.sniffer")
 
 
 class PacketSniffer:
-    """
-    Captures and analyzes network packets to extract domain information.
-    Uses Scapy for packet capture on HTTP, HTTPS, and DNS traffic.
-    """
-    
     def __init__(self, callback: Callable[[Dict], None]):
-        """
-        Initialize packet sniffer.
-        
-        Args:
-            callback: Function to call with extracted packet info
-        """
+   
         self.callback = callback
         self.running = False
         self._capture_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._extractor = DomainExtractor()
         
-        # Statistics
+       
         self.packet_count = 0
         self.domain_count = 0
         self._stats_lock = threading.Lock()
     
     def start(self) -> None:
-        """Start capturing packets in background thread."""
+       
         if self.running:
             logger.warning("Packet sniffer is already running")
             return
@@ -72,7 +54,6 @@ class PacketSniffer:
         logger.info("Packet sniffer started")
     
     def stop(self) -> None:
-        """Stop capturing packets."""
         if not self.running:
             logger.warning("Packet sniffer is not running")
             return
@@ -92,7 +73,6 @@ class PacketSniffer:
         logger.info("Packet sniffer stopped")
     
     def _capture_loop(self) -> None:
-        """Main packet capture loop with error recovery."""
         max_retries = 3
         retry_count = 0
         
@@ -192,7 +172,6 @@ class PacketSniffer:
                 else:
                     protocol = f"UDP/{dst_port}"
             
-            # Create record if domain found or notable connection
             if domain or dst_port in [80, 443, 53]:
                 # Increment domain counter
                 if domain:

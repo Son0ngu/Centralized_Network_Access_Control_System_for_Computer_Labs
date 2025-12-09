@@ -243,7 +243,7 @@ class DashboardView(ctk.CTkFrame):
         
         log_title = ctk.CTkLabel(
             log_header,
-            text="📋 Activity Log",
+            text="Activity Log",
             font=ctk.CTkFont(size=16, weight="bold"),
             text_color="#ffffff"
         )
@@ -554,7 +554,7 @@ class DashboardView(ctk.CTkFrame):
         if action.lower() == 'blocked':
             self._append_log(f"🚫 BLOCKED: {target}{proto_info}")
         elif action.lower() == 'allowed':
-            self._append_log(f"✅ ALLOWED: {target}{proto_info}")
+            self._append_log(f"ALLOWED: {target}{proto_info}")
         else:
             self._append_log(f"📡 {target}{proto_info}")
     
@@ -630,7 +630,7 @@ class DashboardView(ctk.CTkFrame):
             f"║  📅 Time: {timestamp}".ljust(49) + "║",
             f"║  ⏱️  Uptime: {uptime}".ljust(49) + "║",
             f"║  📦 Packets: {packets}".ljust(49) + "║",
-            f"║  📋 Domains: {domains}".ljust(49) + "║",
+            f"║  Domains: {domains}".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
             "║  ⏳ Cleaning up resources...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
@@ -705,10 +705,10 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "┌" + "─" * 48 + "┐",
-            "│" + "  ✅ AGENT STOPPED SUCCESSFULLY".center(48) + "│",
+            "│" + "  AGENT STOPPED SUCCESSFULLY".center(48) + "│",
             "├" + "─" * 48 + "┤",
             f"│  📅 Time: {timestamp}".ljust(49) + "│",
-            "│  🧹 Resources cleaned up".ljust(49) + "│",
+            "│  Resources cleaned up".ljust(49) + "│",
             "│  🔓 Firewall rules cleared".ljust(49) + "│",
             "└" + "─" * 48 + "┘",
             ""

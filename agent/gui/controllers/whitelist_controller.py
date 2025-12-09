@@ -83,7 +83,7 @@ class WhitelistController:
     
     def _on_manager_sync_complete(self) -> None:
         """Called when WhitelistManager completes a sync (including periodic syncs)."""
-        logger.info("🔄 Manager sync complete, updating GUI...")
+        logger.info("Manager sync complete, updating GUI...")
         self._sync_from_manager()
     
     def _trigger_server_sync(self) -> None:

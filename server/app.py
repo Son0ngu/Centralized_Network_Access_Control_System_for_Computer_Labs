@@ -324,13 +324,13 @@ def register_main_routes(app, log_service, agent_service):
     def agents_page():
         return render_template('agents.html', page_title="Agent Management")
     
-    # ✅ ADD: Groups page route
+    # ADD: Groups page route
     @app.route('/groups')
     def groups_page():
         """Groups management page"""
         return render_template('groups.html', page_title="Group Management")
     
-    # ✅ ADD: Group detail page route
+    # ADD: Group detail page route
     @app.route('/groups/<group_id>')
     def group_detail(group_id):
         """Group detail page - view agents in group, add/remove agents"""

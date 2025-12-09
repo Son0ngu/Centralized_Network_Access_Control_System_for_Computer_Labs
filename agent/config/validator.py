@@ -1,8 +1,3 @@
-"""
-Configuration validator for the Firewall Controller Agent.
-Vietnam ONLY - Clean implementation.
-"""
-
 import ctypes
 import logging
 import subprocess
@@ -24,19 +19,14 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str], List[str]]
     errors: List[str] = []
     warnings: List[str] = []
     
-    # Server configuration
     _validate_server_config(config, errors, warnings)
     
-    # Firewall configuration
     _validate_firewall_config(config, errors, warnings)
     
-    # Logging configuration
     _validate_logging_config(config, warnings)
     
-    # Whitelist configuration
     _validate_whitelist_config(config, warnings)
     
-    # Heartbeat configuration
     _validate_heartbeat_config(config, warnings)
     
     return len(errors) == 0, errors, warnings

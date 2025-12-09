@@ -1,13 +1,3 @@
-"""
-WinPcap Auto Installer - Download, install and cleanup WinPcap automatically.
-Vietnam ONLY - Clean implementation.
-
-This module handles:
-1. Download WinPcap installer from official source
-2. Silent installation when running with admin privileges
-3. Automatic cleanup/uninstall when agent stops
-"""
-
 import atexit
 import ctypes
 import logging
@@ -24,14 +14,11 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger("capture.winpcap_installer")
 
-# WinPcap download URL (official 4.1.3 - last stable release)
 WINPCAP_DOWNLOAD_URL = "https://www.winpcap.org/install/bin/WinPcap_4_1_3.exe"
 WINPCAP_INSTALLER_NAME = "WinPcap_4_1_3.exe"
 
-# Alternative mirror URLs in case main URL fails
 WINPCAP_MIRROR_URLS = [
     "https://www.winpcap.org/install/bin/WinPcap_4_1_3.exe",
-    # Add backup mirrors if needed
 ]
 
 # Installation tracking
@@ -41,7 +28,6 @@ _install_lock = threading.Lock()
 
 
 def is_admin() -> bool:
-    """Check if running with administrator privileges."""
     try:
         return ctypes.windll.shell32.IsUserAnAdmin() != 0
     except Exception:
@@ -49,15 +35,8 @@ def is_admin() -> bool:
 
 
 def is_winpcap_installed() -> bool:
-    """
-    Check if WinPcap is already installed on the system.
-    
-    Returns:
-        bool: True if WinPcap/Npcap is installed
-    """
     if os.name != "nt":
         return True  # Not Windows, assume OK
-    
     # Check for wpcap.dll in common locations
     search_paths = [
         Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "wpcap.dll",
@@ -107,15 +86,7 @@ def is_winpcap_installed() -> bool:
 
 
 def download_winpcap(target_dir: Optional[str] = None) -> Optional[str]:
-    """
-    Download WinPcap installer to temporary directory.
-    
-    Args:
-        target_dir: Optional target directory. Uses temp if not specified.
-        
-    Returns:
-        str: Path to downloaded installer, or None on failure
-    """
+
     global _installer_path
     
     if target_dir is None:
@@ -184,15 +155,7 @@ def download_winpcap(target_dir: Optional[str] = None) -> Optional[str]:
 
 
 def install_winpcap_silent(installer_path: str) -> bool:
-    """
-    Install WinPcap silently (requires admin privileges).
-    
-    Args:
-        installer_path: Path to WinPcap installer executable
-        
-    Returns:
-        bool: True if installation successful
-    """
+
     global _winpcap_installed_by_us
     
     if not is_admin():
@@ -216,15 +179,12 @@ def install_winpcap_silent(installer_path: str) -> bool:
             creationflags=subprocess.CREATE_NO_WINDOW
         )
         
-        # Give it time to complete
         time.sleep(3)
         
-        # Verify installation
         if is_winpcap_installed():
-            logger.info("✅ WinPcap installed successfully")
+            logger.info("WinPcap installed successfully")
             _winpcap_installed_by_us = True
             
-            # Register cleanup on exit
             atexit.register(cleanup_winpcap)
             
             return True
@@ -241,12 +201,7 @@ def install_winpcap_silent(installer_path: str) -> bool:
 
 
 def uninstall_winpcap_silent() -> bool:
-    """
-    Uninstall WinPcap silently.
-    
-    Returns:
-        bool: True if uninstallation successful
-    """
+
     if not is_admin():
         logger.warning("Admin privileges required to uninstall WinPcap")
         return False
@@ -267,7 +222,6 @@ def uninstall_winpcap_silent() -> bool:
             break
     
     if not uninstaller:
-        # Try registry for uninstall string
         try:
             import winreg
             key = winreg.OpenKey(
@@ -294,11 +248,10 @@ def uninstall_winpcap_silent() -> bool:
             creationflags=subprocess.CREATE_NO_WINDOW
         )
         
-        # Give it time to complete
         time.sleep(2)
         
         if not is_winpcap_installed():
-            logger.info("✅ WinPcap uninstalled successfully")
+            logger.info("WinPcap uninstalled successfully")
             return True
         else:
             logger.warning("WinPcap may still be installed")
@@ -313,14 +266,10 @@ def uninstall_winpcap_silent() -> bool:
 
 
 def cleanup_winpcap() -> None:
-    """
-    Cleanup WinPcap installation and downloaded files.
-    Called automatically on exit if we installed WinPcap.
-    """
+
     global _winpcap_installed_by_us, _installer_path
     
     with _install_lock:
-        # Uninstall if we installed it
         if _winpcap_installed_by_us:
             logger.info("Cleaning up WinPcap (installed by agent)...")
             try:
@@ -330,7 +279,6 @@ def cleanup_winpcap() -> None:
             finally:
                 _winpcap_installed_by_us = False
         
-        # Remove downloaded installer
         if _installer_path and os.path.exists(_installer_path):
             try:
                 os.remove(_installer_path)
@@ -342,14 +290,7 @@ def cleanup_winpcap() -> None:
 
 
 def ensure_winpcap_available() -> Tuple[bool, str]:
-    """
-    Ensure WinPcap is available, downloading and installing if necessary.
-    
-    This is the main entry point for auto-installation.
-    
-    Returns:
-        Tuple[bool, str]: (success, message)
-    """
+
     global _winpcap_installed_by_us
     
     with _install_lock:

@@ -1,8 +1,3 @@
-"""
-Firewall Rules Manager - Rule CRUD operations.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import threading
 from typing import Set
@@ -12,9 +7,7 @@ from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.rules")
 
-
 class RulesManager:
-    """Manages Windows Firewall rules (create, delete, list)."""
     
     def __init__(self, rule_prefix: str = "FirewallController"):
         self.rule_prefix = rule_prefix
@@ -22,10 +15,9 @@ class RulesManager:
         self._rule_lock = threading.Lock()
     
     def create_allow_rule(self, ip: str) -> bool:
-        """Create simple allow rule for an IP."""
         try:
-            if not FirewallUtils.is_valid_ipv4(ip):
-                logger.warning(f"Invalid IPv4: {ip}")
+            if not FirewallUtils.is_valid_ip(ip):
+                logger.warning(f"Invalid IP: {ip}")
                 return False
             
             if ip in self.allowed_ips:
@@ -33,7 +25,8 @@ class RulesManager:
                 return True
             
             timestamp = int(now())
-            rule_name = f"{self.rule_prefix}_Allow_{ip.replace('.', '_')}_{timestamp}"
+            sanitized_ip = ip.replace('.', '_').replace(':', '_')
+            rule_name = f"{self.rule_prefix}_Allow_{sanitized_ip}_{timestamp}"
             
             result = FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "add", "rule",
@@ -49,10 +42,10 @@ class RulesManager:
             
             if result.returncode == 0:
                 self.allowed_ips.add(ip)
-                logger.debug(f"✓ Created allow rule for {ip}")
+                logger.debug(f"Created allow rule for {ip}")
                 return True
             else:
-                logger.error(f"✗ Failed to create allow rule for {ip}: {result.stderr}")
+                logger.error(f"Failed to create allow rule for {ip}: {result.stderr}")
                 return False
                 
         except Exception as e:
@@ -60,14 +53,12 @@ class RulesManager:
             return False
     
     def remove_allow_rule(self, ip: str) -> bool:
-        """Remove allow rule for an IP address."""
         try:
             if ip not in self.allowed_ips:
                 logger.debug(f"No allow rule exists for {ip}")
                 return True
             
-            # Find rule by IP pattern
-            rule_pattern = f"_{ip.replace('.', '_')}_"
+            rule_pattern = f"_{ip.replace('.', '_').replace(':', '_')}_"
             
             result = FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "show", "rule",
@@ -78,7 +69,6 @@ class RulesManager:
                 logger.error("Failed to list rules")
                 return False
             
-            # Find matching rule names
             rule_names_to_delete = []
             lines = result.stdout.split('\n')
             
@@ -90,7 +80,6 @@ class RulesManager:
                         rule_pattern in rule_name):
                         rule_names_to_delete.append(rule_name)
             
-            # Delete found rules
             success = True
             for rule_name in rule_names_to_delete:
                 result = FirewallUtils.run_netsh_command([
@@ -99,7 +88,7 @@ class RulesManager:
                 ])
                 
                 if result.returncode == 0:
-                    logger.debug(f"✓ Removed allow rule: {rule_name}")
+                    logger.debug(f"Removed allow rule: {rule_name}")
                 else:
                     logger.warning(f"Failed to remove rule {rule_name}: {result.stderr}")
                     success = False
@@ -114,9 +103,8 @@ class RulesManager:
             return False
     
     def create_allow_rules_batch(self, ips: Set[str]) -> bool:
-        """Create allow rules for multiple IPs."""
         try:
-            logger.info(f"📝 Creating ALLOW rules for {len(ips)} IPs...")
+            logger.info(f"Creating ALLOW rules for {len(ips)} IPs...")
             
             success_count = 0
             error_count = 0
@@ -136,7 +124,7 @@ class RulesManager:
                         error_count += 1
                         logger.error(f"Exception creating allow rule for {ip}: {e}")
             
-            logger.info(f"📝 Allow rules creation completed: {success_count} success, {error_count} errors")
+            logger.info(f"Allow rules creation completed: {success_count} success, {error_count} errors")
             return success_count > 0
             
         except Exception as e:
@@ -144,9 +132,7 @@ class RulesManager:
             return False
     
     def clear_all_rules(self) -> bool:
-        """Remove all firewall rules created by this manager."""
         try:
-            # List all rules
             result = FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "show", "rule", "name=all"
             ], timeout=60)
@@ -169,9 +155,8 @@ class RulesManager:
                 logger.info(f"No rules with prefix '{self.rule_prefix}' to clear")
                 return True
             
-            logger.info(f"🧹 Found {len(rule_names)} rules to clear")
+            logger.info(f"Found {len(rule_names)} rules to clear")
             
-            # Delete rules
             success = True
             for rule_name in rule_names:
                 result = FirewallUtils.run_netsh_command([
@@ -180,14 +165,14 @@ class RulesManager:
                 ])
                 
                 if result.returncode == 0:
-                    logger.debug(f"✓ Removed rule: {rule_name}")
+                    logger.debug(f"Removed rule: {rule_name}")
                 else:
                     logger.warning(f"Failed to remove rule {rule_name}: {result.stderr.strip()}")
                     success = False
             
             if success:
                 self.allowed_ips.clear()
-                logger.info(f"🧹 Cleared {len(rule_names)} rules successfully")
+                logger.info(f"Cleared {len(rule_names)} rules successfully")
             
             return success
             
@@ -196,7 +181,6 @@ class RulesManager:
             return False
     
     def load_existing_rules(self):
-        """Load existing firewall rules with our prefix."""
         try:
             logger.debug("Loading existing firewall rules...")
             
@@ -239,7 +223,7 @@ class RulesManager:
                             ip_parts = ip_part.split(',')
                             for part in ip_parts:
                                 part = part.strip()
-                                if FirewallUtils.is_valid_ipv4(part):
+                                if FirewallUtils.is_valid_ip(part):
                                     self.allowed_ips.add(part)
             
             logger.info(f"Loaded {len(self.allowed_ips)} existing allow rules")
@@ -248,7 +232,6 @@ class RulesManager:
             logger.warning(f"Could not load existing firewall rules: {e}")
     
     def get_rule_count(self) -> int:
-        """Get count of rules with our prefix."""
         try:
             result = FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "show", "rule", "name=all"

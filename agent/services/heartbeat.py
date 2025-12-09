@@ -1,8 +1,3 @@
-"""
-Heartbeat Sender - Send periodic heartbeats to server.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import platform
 import threading
@@ -13,21 +8,14 @@ import requests
 
 from shared.time_utils import now, now_iso, sleep
 from shared.os_info import get_os_details
-from core.token_manager import get_auth_headers, get_token_manager
+from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("services.heartbeat")
 
 
 class HeartbeatSender:
-    """Sends periodic heartbeats to server."""
     
     def __init__(self, config: Dict):
-        """
-        Initialize heartbeat sender.
-        
-        Args:
-            config: Configuration dictionary
-        """
         self.config = config
         self.heartbeat_config = config.get("heartbeat", {})
         self.server_config = config.get("server", {})
@@ -51,7 +39,6 @@ class HeartbeatSender:
         self._last_successful_heartbeat: Optional[float] = None
     
     def _get_server_urls(self) -> list:
-        """Get list of server URLs."""
         urls = []
         
         if isinstance(self.server_config.get("urls"), list):
@@ -65,12 +52,10 @@ class HeartbeatSender:
         return urls or ["http://localhost:5000"]
     
     def set_agent_credentials(self, agent_id: str, token: str) -> None:
-        """Set agent credentials for heartbeat."""
         self.agent_id = agent_id
         self.agent_token = token
     
     def start(self) -> None:
-        """Start heartbeat sender."""
         if not self.enabled:
             logger.info("Heartbeat sender disabled")
             return
@@ -93,14 +78,12 @@ class HeartbeatSender:
         logger.info(f"Heartbeat sender started (interval: {self.interval}s)")
     
     def stop(self) -> None:
-        """Stop heartbeat sender."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
         logger.info("Heartbeat sender stopped")
     
     def _heartbeat_loop(self) -> None:
-        """Main heartbeat loop."""
         while self._running:
             try:
                 success = self._send_heartbeat()
@@ -129,7 +112,6 @@ class HeartbeatSender:
                 sleep(self.retry_interval)
     
     def _send_heartbeat(self) -> bool:
-        """Send heartbeat to server."""
         metrics = self._collect_metrics()
         os_details = get_os_details()
         
@@ -183,7 +165,7 @@ class HeartbeatSender:
         return False
     
     def _collect_metrics(self) -> Dict:
-        """Collect system metrics (simplified, avoids PDH errors on Windows)."""
+        """Collect system metrics"""
         metrics = {
             "memory_percent": 0,
             "disk_percent": 0,

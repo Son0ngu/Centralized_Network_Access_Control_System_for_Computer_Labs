@@ -1,8 +1,3 @@
-"""
-Token Manager - Manage JWT tokens for authenticated requests.
-Vietnam ONLY - Clean and simple
-"""
-
 import logging
 import threading
 import time
@@ -12,17 +7,8 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-
 class TokenManager:
-    """Manages JWT tokens including storage and auto-refresh"""
-    
     def __init__(self, config: Dict):
-        """
-        Initialize Token Manager.
-        
-        Args:
-            config: Agent configuration dict containing 'jwt' and 'server' sections
-        """
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         
@@ -160,12 +146,7 @@ class TokenManager:
             return datetime.now(self._access_expires_at.tzinfo) >= self._access_expires_at
     
     def get_auth_header(self) -> Dict[str, str]:
-        """
-        Get Authorization header for requests.
-        
-        Returns:
-            Dict with Authorization header
-        """
+        #Get Authorization header for requests.
         token = self.access_token
         if token:
             return {'Authorization': f'Bearer {token}'}

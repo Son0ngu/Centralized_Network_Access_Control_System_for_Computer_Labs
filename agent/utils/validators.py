@@ -1,8 +1,3 @@
-"""
-Configuration Validator - Validate agent configuration at startup.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 from typing import Dict, List, Tuple
 

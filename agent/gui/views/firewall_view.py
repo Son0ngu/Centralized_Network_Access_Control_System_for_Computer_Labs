@@ -49,7 +49,7 @@ class FirewallView(ctk.CTkFrame):
         # Refresh button
         refresh_btn = ctk.CTkButton(
             header,
-            text="🔄 Refresh",
+            text="Refresh",
             width=100,
             height=36,
             font=ctk.CTkFont(size=13),
@@ -79,7 +79,7 @@ class FirewallView(ctk.CTkFrame):
         # Rule count
         self._rule_count_label = ctk.CTkLabel(
             stats_inner,
-            text="📝 Rules: --",
+            text="Rules: --",
             font=ctk.CTkFont(size=14),
             text_color="#aaaaaa"
         )
@@ -122,7 +122,7 @@ class FirewallView(ctk.CTkFrame):
         
         self._status_label = ctk.CTkLabel(
             status_frame,
-            text="✅ Ready",
+            text="Ready",
             font=ctk.CTkFont(size=12),
             text_color="#00ff88"
         )
@@ -136,13 +136,13 @@ class FirewallView(ctk.CTkFrame):
     def _refresh_rules(self):
         """Refresh firewall rules display."""
         try:
-            self._status_label.configure(text="🔄 Refreshing...", text_color="#ffa500")
+            self._status_label.configure(text="Refreshing...", text_color="#ffa500")
             
             # Run in background
             threading.Thread(target=self._load_rules, daemon=True).start()
             
         except Exception as e:
-            self._status_label.configure(text=f"❌ Error: {e}", text_color="#ff4444")
+            self._status_label.configure(text=f"Error: {e}", text_color="#ff4444")
     
     def _load_rules(self):
         """Load firewall rules (runs in background thread)."""
@@ -187,7 +187,7 @@ class FirewallView(ctk.CTkFrame):
             
         except Exception as e:
             self.after(0, lambda: self._status_label.configure(
-                text=f"❌ Load error: {e}", 
+                text=f"Load error: {e}", 
                 text_color="#ff4444"
             ))
     
@@ -281,7 +281,7 @@ class FirewallView(ctk.CTkFrame):
                 )
             
             # Update rule count
-            self._rule_count_label.configure(text=f"📝 Rules: {len(rules)}")
+            self._rule_count_label.configure(text=f"Rules: {len(rules)}")
             
             # Update mode
             if mode == "Whitelist Only":
@@ -294,12 +294,12 @@ class FirewallView(ctk.CTkFrame):
             
             # Update status
             self._status_label.configure(
-                text=f"✅ Loaded {len(rules)} rules",
+                text=f"Loaded {len(rules)} rules",
                 text_color="#00ff88"
             )
             
         except Exception as e:
-            self._status_label.configure(text=f"❌ UI error: {e}", text_color="#ff4444")
+            self._status_label.configure(text=f"UI error: {e}", text_color="#ff4444")
     
     def destroy(self):
         """Clean up when view is destroyed."""

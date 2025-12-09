@@ -318,10 +318,10 @@ function openEditGroupModal(groupId) {
     document.querySelector(`.color-option[data-color="${color}"]`)?.classList.add('selected');
     selectedColor = color;
     
-    // ✅ FIX: Load existing whitelist - handle both 'value' and 'domain' keys
+    // FIX: Load existing whitelist - handle both 'value' and 'domain' keys
     quickDomains = (group.whitelist || []).map(item => {
         if (typeof item === 'string') return item;
-        return item.value || item.domain || '';  // ✅ Check 'value' first, then 'domain'
+        return item.value || item.domain || '';  // Check 'value' first, then 'domain'
     }).filter(Boolean);
     renderQuickDomains();
     
@@ -345,7 +345,7 @@ async function saveGroup() {
         color: selectedColor
     };
     
-    // ✅ FIX: Always include whitelist, even if empty (for edit mode)
+    // FIX: Always include whitelist, even if empty (for edit mode)
     const isEdit = Boolean(groupId);
     
     if (isEdit || quickDomains.length > 0) {
@@ -355,7 +355,7 @@ async function saveGroup() {
             type: 'domain',
             category: 'general',
             added_at: now,
-            added_date: now  // ✅ FIX: Add added_date for display in whitelist page
+            added_date: now  // FIX: Add added_date for display in whitelist page
         }));
     }
     

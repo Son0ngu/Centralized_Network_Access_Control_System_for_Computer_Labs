@@ -1,8 +1,3 @@
-"""
-Whitelist State - State management for whitelist data.
-Vietnam ONLY - Clean implementation.
-"""
-
 import hashlib
 import json
 import logging
@@ -106,7 +101,7 @@ class WhitelistState:
                 self._metadata = data.get("metadata", {})
                 
                 logger.info(
-                    f"✅ Whitelist updated: {len(self._domains)} domains, "
+                    f"Whitelist updated: {len(self._domains)} domains, "
                     f"{len(self._patterns)} patterns, {len(self._ips)} IPs"
                 )
                 return True

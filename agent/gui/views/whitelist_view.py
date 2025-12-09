@@ -74,7 +74,7 @@ class WhitelistView(ctk.CTkFrame):
         # Title
         title = ctk.CTkLabel(
             header,
-            text="📋 IP Whitelist Manager",
+            text="IP Whitelist Manager",
             font=ctk.CTkFont(size=28, weight="bold"),
             text_color="#00d4ff"
         )
@@ -83,7 +83,7 @@ class WhitelistView(ctk.CTkFrame):
         # Refresh button
         refresh_btn = ctk.CTkButton(
             header,
-            text="🔄 Refresh",
+            text="Refresh",
             width=100,
             height=36,
             font=ctk.CTkFont(size=13),
@@ -187,7 +187,7 @@ class WhitelistView(ctk.CTkFrame):
         # Search entry
         self._search_entry = ctk.CTkEntry(
             stats_frame,
-            placeholder_text="🔍 Filter IPs...",
+            placeholder_text="Filter IPs...",
             width=200,
             height=32,
             font=ctk.CTkFont(size=12),
@@ -229,7 +229,7 @@ class WhitelistView(ctk.CTkFrame):
         
         self._status_label = ctk.CTkLabel(
             status_frame,
-            text="✅ Ready",
+            text="Ready",
             font=ctk.CTkFont(size=12),
             text_color="#00ff88"
         )
@@ -284,12 +284,12 @@ class WhitelistView(ctk.CTkFrame):
             f"📊 Total: {total}  |  "
             f"🌐 Domains: {domains}  |  "
             f"🖥️ IPs: {ips}  |  "
-            f"✅ Active: {stats.get('active', 0)}"
+            f"Active: {stats.get('active', 0)}"
         )
         
         sync_count = stats.get('sync_count', 0)
         if sync_count > 0:
-            stats_text += f"  |  🔄 Syncs: {sync_count}"
+            stats_text += f"  |  Syncs: {sync_count}"
         
         self._stats_label.configure(text=stats_text)
     
@@ -327,7 +327,7 @@ class WhitelistView(ctk.CTkFrame):
     
     def _on_refresh(self):
         """Handle refresh button click."""
-        self._status_label.configure(text="🔄 Refreshing...", text_color="#ffa500")
+        self._status_label.configure(text="Refreshing...", text_color="#ffa500")
         self._controller.refresh()
     
     def _on_sync(self):
@@ -347,16 +347,16 @@ class WhitelistView(ctk.CTkFrame):
     
     def _show_error(self, message: str):
         """Show error message in status bar."""
-        self._status_label.configure(text=f"❌ {message}", text_color="#ff4444")
+        self._status_label.configure(text=f"{message}", text_color="#ff4444")
         
         # Reset after 3 seconds
         self.after(3000, lambda: self._status_label.configure(
-            text="✅ Ready", text_color="#00ff88"
+            text="Ready", text_color="#00ff88"
         ))
     
     def _show_success(self, message: str):
         """Show success message in status bar."""
-        self._status_label.configure(text=f"✅ {message}", text_color="#00ff88")
+        self._status_label.configure(text=f"{message}", text_color="#00ff88")
         
         # Update stats
         self._update_stats()

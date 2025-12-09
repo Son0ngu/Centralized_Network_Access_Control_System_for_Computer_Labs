@@ -1,8 +1,3 @@
-"""
-Shared utilities module - Common utilities used across the agent.
-Vietnam ONLY - Clean implementation.
-"""
-
 from .time_utils import (
     now, now_vietnam, now_iso, now_server_compatible,
     sleep, is_cache_valid, cache_age,

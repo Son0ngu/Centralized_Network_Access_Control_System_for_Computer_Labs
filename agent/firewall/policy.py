@@ -1,8 +1,3 @@
-"""
-Firewall Policy Manager - Windows Firewall policy operations.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import subprocess
 from typing import Dict, Optional
@@ -11,16 +6,14 @@ from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.policy")
 
-
 class PolicyManager:
-    """Manages Windows Firewall policies (Default Deny/Allow)."""
     
     def __init__(self):
         self._original_policies: Dict[str, str] = {}
         self.default_deny_enabled = False
     
     def get_current_policy(self) -> Dict[str, str]:
-        """Get current firewall policy for all profiles."""
+        # Get current firewall policy for all profiles.
         try:
             result = FirewallUtils.run_netsh_command(
                 ["advfirewall", "show", "allprofiles"]
@@ -53,7 +46,6 @@ class PolicyManager:
             return {}
     
     def backup_current_policy(self):
-        """Backup current firewall policy before making changes."""
         try:
             self._original_policies = self.get_current_policy()
             logger.debug(f"Backed up original policies: {self._original_policies}")
@@ -62,9 +54,8 @@ class PolicyManager:
             self._original_policies = {}
     
     def enable_default_deny(self) -> bool:
-        """Enable Windows Firewall Default Deny policy for outbound connections."""
         try:
-            logger.info("🔒 Enabling Windows Firewall Default Deny policy...")
+            logger.info("Enabling Windows Firewall Default Deny policy...")
             
             current_policies = self.get_current_policy()
             logger.debug(f"Current firewall policies: {current_policies}")
@@ -73,9 +64,8 @@ class PolicyManager:
             success_count = 0
             
             for profile in profiles:
-                # Skip if already set to block
                 if current_policies.get(profile) == "block":
-                    logger.info(f"✓ {profile.title()} profile already set to block outbound")
+                    logger.info(f"{profile.title()} profile already set to block outbound")
                     success_count += 1
                     continue
                 
@@ -85,22 +75,22 @@ class PolicyManager:
                 ])
                 
                 if result.returncode == 0:
-                    logger.info(f"✓ {profile.title()} profile set to Default Deny")
+                    logger.info(f"{profile.title()} profile set to Default Deny")
                     success_count += 1
                 else:
-                    logger.error(f"✗ Failed to set {profile.title()} profile: {result.stderr}")
+                    logger.error(f"Failed to set {profile.title()} profile: {result.stderr}")
             
             if success_count >= 1:
                 if self.verify_default_deny():
                     self.default_deny_enabled = True
-                    logger.info("🔒 Default Deny policy enabled successfully")
+                    logger.info("Default Deny policy enabled successfully")
                     return True
                 else:
-                    logger.warning("⚠ Policy set but verification failed - proceeding anyway")
+                    logger.warning("Policy set but verification failed - proceeding anyway")
                     self.default_deny_enabled = True
                     return True
             else:
-                logger.error("✗ Failed to set any firewall profiles")
+                logger.error("Failed to set any firewall profiles")
                 return False
                 
         except Exception as e:
@@ -108,7 +98,6 @@ class PolicyManager:
             return False
     
     def verify_default_deny(self) -> bool:
-        """Verify that Default Deny policy is active."""
         try:
             result = FirewallUtils.run_netsh_command(
                 ["advfirewall", "show", "allprofiles"]
@@ -136,7 +125,6 @@ class PolicyManager:
                     if 'block' in line_lower:
                         profiles_verified += 1
             
-            # Fallback: check raw output
             if profiles_verified == 0:
                 if 'blockoutbound' in output or output.count('block') >= 2:
                     profiles_verified = 1
@@ -148,13 +136,12 @@ class PolicyManager:
             return False
     
     def restore_original_policy(self) -> bool:
-        """Restore original firewall policy."""
         try:
             if not self._original_policies:
                 logger.info("No original policy to restore, using defaults")
                 return self.restore_default_policy()
             
-            logger.info("🔓 Restoring original firewall policy...")
+            logger.info("Restoring original firewall policy...")
             success_count = 0
             
             for profile, action in self._original_policies.items():
@@ -166,10 +153,10 @@ class PolicyManager:
                 ])
                 
                 if result.returncode == 0:
-                    logger.info(f"✓ {profile.title()} profile restored to {action} outbound")
+                    logger.info(f"{profile.title()} profile restored to {action} outbound")
                     success_count += 1
                 else:
-                    logger.error(f"✗ Failed to restore {profile.title()} profile")
+                    logger.error(f"Failed to restore {profile.title()} profile")
             
             if success_count > 0:
                 self.default_deny_enabled = False
@@ -181,9 +168,8 @@ class PolicyManager:
             return False
     
     def restore_default_policy(self) -> bool:
-        """Restore Windows Firewall to default policy (allow outbound)."""
         try:
-            logger.info("🔓 Restoring Windows Firewall to default policy...")
+            logger.info("Restoring Windows Firewall to default policy...")
             
             profiles = ["domain", "private", "public"]
             success_count = 0
@@ -195,10 +181,10 @@ class PolicyManager:
                 ])
                 
                 if result.returncode == 0:
-                    logger.info(f"✓ {profile.title()} profile restored to default")
+                    logger.info(f"{profile.title()} profile restored to default")
                     success_count += 1
                 else:
-                    logger.error(f"✗ Failed to restore {profile.title()} profile: {result.stderr}")
+                    logger.error(f"Failed to restore {profile.title()} profile: {result.stderr}")
             
             if success_count > 0:
                 self.default_deny_enabled = False

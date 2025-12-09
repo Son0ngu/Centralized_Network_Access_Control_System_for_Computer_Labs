@@ -1,8 +1,3 @@
-"""
-Scapy configuration and driver setup.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import os
 import tempfile
@@ -11,7 +6,6 @@ from typing import Optional
 
 logger = logging.getLogger("capture.scapy_config")
 
-# Global cache directory
 _SCAPY_CACHE_DIR: Optional[str] = None
 
 

@@ -934,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             currentFilter.search = this.value;
-            console.log('🔍 Search filter changed to:', currentFilter.search);
+            console.log('Search filter changed to:', currentFilter.search);
             filterLogs(); // Use filterLogs for client-side search
         });
     }
@@ -1074,7 +1074,7 @@ try {
         const socket = io();
         
         socket.on('connect', function() {
-            console.log('🔌 Connected for real-time updates');
+            console.log('Connected for real-time updates');
         });
         
         socket.on('new_log', function(logData) {

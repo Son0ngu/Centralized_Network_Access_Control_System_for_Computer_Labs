@@ -261,7 +261,7 @@ function updateStatistics() {
 }
 
 /**
- * Render items list - ✅ FIX: Handle all key formats
+ * Render items list - FIX: Handle all key formats
  */
 function renderItems(items) {
     const container = document.getElementById('itemsContainer');
@@ -298,13 +298,13 @@ function renderItems(items) {
         const isActive = item.active !== false && item.is_active !== false;
         const itemType = item.type || 'domain';
         
-        // ✅ FIX: Handle all possible value keys
+        // FIX: Handle all possible value keys
         const value = item.value || item.domain || item.ip || item.url || item.port || item.process || '';
         
-        // ✅ FIX: Handle all possible ID keys
+        // FIX: Handle all possible ID keys
         const itemId = item._id || item.id || '';
         
-        // ✅ FIX: Check if item is from group (scope = 'group')
+        // FIX: Check if item is from group (scope = 'group')
         const scope = item.scope || 'global';
         const groupId = item.group_id || '';
         const groupName = item.group_name || (groupId && groupsData.find(g => g._id === groupId)?.name) || '';
@@ -319,7 +319,7 @@ function renderItems(items) {
             { class: 'inactive', text: 'Inactive', icon: 'times-circle' };
         const typeConfig = typeConfigs[itemType] || typeConfigs.domain;
         
-        // ✅ FIX: Better date handling - check multiple date fields
+        // FIX: Better date handling - check multiple date fields
         let created = '';
         const dateValue = item.added_date || item.added_at || item.created_at;
         if (dateValue) {
@@ -337,7 +337,7 @@ function renderItems(items) {
             }
         }
         
-        // ✅ FIX: Show "Recently added" if no date available
+        // FIX: Show "Recently added" if no date available
         const dateDisplay = created || 'Recently added';
 
         const itemElement = document.createElement('div');
@@ -433,7 +433,7 @@ function renderItems(items) {
     });
 }
 
-// ✅ ADD: escapeHtml function if not exists
+// ADD: escapeHtml function if not exists
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -442,7 +442,7 @@ function escapeHtml(text) {
 }
 
 /**
- * Handle item actions - ✅ FIX: Properly handle scope
+ * Handle item actions - FIX: Properly handle scope
  */
 async function handleItemAction(event) {
     const btn = event.currentTarget;
@@ -461,12 +461,12 @@ async function handleItemAction(event) {
 }
 
 /**
- * Remove item - ✅ FIX: Handle both global and group items
+ * Remove item - FIX: Handle both global and group items
  */
 async function removeItem(itemId, groupId = '', scope = 'global', itemType = '', itemValue = '') {
     if (!confirm('Are you sure you want to remove this item?')) return;
     
-    // ✅ FIX: If scope is 'group', remove from group whitelist
+    // FIX: If scope is 'group', remove from group whitelist
     if (scope === 'group' && groupId) {
         try {
             console.log('Removing group item:', { groupId, itemType, itemValue });
@@ -480,7 +480,7 @@ async function removeItem(itemId, groupId = '', scope = 'global', itemType = '',
         return;
     }
 
-    // ✅ FIX: For global items, must have valid ID
+    // FIX: For global items, must have valid ID
     if (!itemId) {
         showError('Cannot remove item: Missing ID');
         return;
@@ -729,7 +729,7 @@ function filterItems() {
 function showAddItemModal(type = 'domain') {
     const config = typeConfigs[type] || typeConfigs.domain;
     
-    // ✅ FIX: Use correct element IDs from HTML
+    // FIX: Use correct element IDs from HTML
     const modalTitleEl = document.getElementById('modalTitle');
     const valueLabelEl = document.getElementById('valueLabel');
     const valueInputEl = document.getElementById('valueInput');

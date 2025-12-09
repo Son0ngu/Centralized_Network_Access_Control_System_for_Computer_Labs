@@ -578,7 +578,7 @@ function renderGroups() {
             `;
         }).join('');
 
-        // ✅ UPDATED: Added Detail button
+        // UPDATED: Added Detail button
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <div class="group-name">
@@ -673,7 +673,7 @@ function renderGroups() {
         });
     });
     
-    // ✅ ADD: Detail button event listener
+    // ADD: Detail button event listener
     board.querySelectorAll('button[data-action="detail"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -683,7 +683,7 @@ function renderGroups() {
     });
 }
 
-// ✅ ADD: New function to navigate to group detail
+// ADD: New function to navigate to group detail
 function viewGroupDetail(groupId) {
     window.location.href = `/groups/${groupId}`;
 }
@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAgents();
     loadGroups();
     
-    // ✅ ADD: Scroll to groups section if hash is #groups
+    // ADD: Scroll to groups section if hash is #groups
     if (window.location.hash === '#groups') {
         setTimeout(() => {
             const groupsSection = document.getElementById('groups');

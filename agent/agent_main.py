@@ -1,26 +1,16 @@
-"""
-Firewall Controller Agent - Entry Point (Refactored)
-
-Simplified entry point with modular architecture.
-UTC ONLY - No timezone confusion.
-"""
-
 import logging
 import signal
 import sys
 
-# Setup logging first
 logging.basicConfig(
     level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("agent_main")
 
-# Import modules - use new paths
 from config import get_config
 from shared.time_utils import now, now_iso, uptime_string, sleep, debug_time_info
 
-# Import from new modular structure
 from core import (
     agent_state,
     AGENT_HOSTNAME,
@@ -36,26 +26,12 @@ from utils import (
     validate_configuration
 )
 
-
-# ========================================
-# SIGNAL HANDLERS
-# ========================================
-
 def signal_handler(sig, frame):
-    """Handle shutdown signals."""
     agent = get_agent()
     logger.info(f"Received signal {sig}, shutting down...")
     agent.stop()
 
-
-# ========================================
-# MAIN FUNCTION
-# ========================================
-
 def main():
-    """
-    Main function with UTC timestamps only.
-    """
     agent = get_agent()
     
     try:
@@ -146,13 +122,7 @@ def main():
     finally:
         cleanup(config if 'config' in dir() else None)
 
-
-# ========================================
-# ENTRY POINT
-# ========================================
-
 if __name__ == "__main__":
-    # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     

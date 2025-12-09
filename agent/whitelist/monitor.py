@@ -1,8 +1,3 @@
-"""
-Whitelist Monitor - Background monitoring for whitelist changes.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import threading
 from typing import Callable, Optional

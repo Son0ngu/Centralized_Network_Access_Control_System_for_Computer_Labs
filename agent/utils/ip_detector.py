@@ -1,8 +1,3 @@
-"""
-IP Detection Utility - Local IP and admin privilege detection.
-Vietnam ONLY - Clean implementation with UTC timestamps.
-"""
-
 import logging
 import platform
 import socket

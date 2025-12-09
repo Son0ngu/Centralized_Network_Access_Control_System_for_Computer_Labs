@@ -223,20 +223,20 @@ class WhitelistModel:
         
         entries = []
         for entry in cursor:
-            # ✅ FIX: Convert ObjectId to string properly
+            # FIX: Convert ObjectId to string properly
             if "_id" in entry:
                 entry["_id"] = str(entry["_id"])
             
             # Convert entry timezones for display - vietnam ONLY
             entry = self._convert_entry_timezones(entry)
             
-            # ✅ FIX: Ensure all required fields exist with defaults
+            # FIX: Ensure all required fields exist with defaults
             entry.setdefault("type", "domain")
             entry.setdefault("category", "uncategorized")
             entry.setdefault("is_active", True)
             entry.setdefault("priority", "normal")
             entry.setdefault("scope", "global")
-            entry.setdefault("value", "")  # ✅ Ensure value exists
+            entry.setdefault("value", "")  # Ensure value exists
             
             entries.append(entry)
         

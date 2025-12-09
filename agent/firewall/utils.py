@@ -1,8 +1,3 @@
-"""
-Firewall Utilities - Helper functions and validation.
-Vietnam ONLY - Clean implementation.
-"""
-
 import ipaddress
 import logging
 import socket
@@ -13,20 +8,17 @@ logger = logging.getLogger("firewall.utils")
 
 
 class FirewallUtils:
-    """Utility functions for firewall operations."""
-    
+
     @staticmethod
     def is_valid_ipv4(ip: str) -> bool:
-        """Check if string is a valid IPv4 address."""
         try:
             addr = ipaddress.ip_address(ip)
             return isinstance(addr, ipaddress.IPv4Address)
         except (ValueError, TypeError):
             return False
-    
+
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
-        """Check if string is a valid IP address (IPv4 or IPv6)."""
         try:
             ipaddress.ip_address(ip)
             return True
@@ -35,34 +27,48 @@ class FirewallUtils:
     
     @staticmethod
     def get_essential_ips() -> Set[str]:
-        """Get essential IPs - IPv4 only for firewall compatibility."""
-        essential = set()
+        essential: Set[str] = set()
         
-        # IPv4 localhost
-        essential.add("127.0.0.1")
+        # Localhost
+        essential.update(["127.0.0.1", "::1"])
         
-        # Common DNS servers (IPv4 only)
+        # Common DNS servers
         essential.update([
-            "8.8.8.8", "8.8.4.4",              # Google DNS
-            "1.1.1.1", "1.0.0.1",              # Cloudflare DNS
-            "208.67.222.222", "208.67.220.220", # OpenDNS
-            "9.9.9.9", "149.112.112.112"       # Quad9 DNS
+            # Google
+            "8.8.8.8", "8.8.4.4",
+            "2001:4860:4860::8888", "2001:4860:4860::8844",
+            # Cloudflare
+            "1.1.1.1", "1.0.0.1",
+            "2606:4700:4700::1111", "2606:4700:4700::1001",
+            # OpenDNS
+            "208.67.222.222", "208.67.220.220",
+            "2620:119:35::35", "2620:119:53::53",
+            # Quad9
+            "9.9.9.9", "149.112.112.112",
+            "2620:fe::fe", "2620:fe::9"
         ])
         
-        # Try to detect local network
+        # Try to detect local IPv4 network
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.connect(("8.8.8.8", 80))
                 local_ip = s.getsockname()[0]
                 essential.add(local_ip)
-                
-                # Add gateway
                 gateway_ip = '.'.join(local_ip.split('.')[:-1]) + '.1'
                 essential.add(gateway_ip)
-                
-                logger.debug(f"Detected local network: {local_ip}, gateway: {gateway_ip}")
+                logger.debug(f"Detected local IPv4 network: {local_ip}, gateway: {gateway_ip}")
         except Exception as e:
-            logger.debug(f"Could not detect local network: {e}")
+            logger.debug(f"Could not detect local IPv4 network: {e}")
+        
+        # Try to detect local IPv6 address
+        try:
+            with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s6:
+                s6.connect(("2001:4860:4860::8888", 80))
+                local_ip6 = s6.getsockname()[0]
+                essential.add(local_ip6)
+                logger.debug(f"Detected local IPv6 address: {local_ip6}")
+        except Exception as e:
+            logger.debug(f"Could not detect local IPv6 network: {e}")
         
         return essential
     
@@ -88,7 +94,6 @@ class FirewallUtils:
     
     @staticmethod
     def run_netsh_command(args: list, timeout: int = 30) -> subprocess.CompletedProcess:
-        """Run netsh command with standard settings."""
         command = ["netsh"] + args
         
         return subprocess.run(
@@ -101,16 +106,25 @@ class FirewallUtils:
     
     @staticmethod
     def test_ip_connectivity(ip: str, ports: list = None, timeout: int = 3) -> bool:
-        """Test connectivity to an IP address."""
         if ports is None:
             ports = [80, 443, 53]
         
         try:
+            addr = ipaddress.ip_address(ip)
+            family = socket.AF_INET6 if isinstance(addr, ipaddress.IPv6Address) else socket.AF_INET
+        except ValueError:
+            logger.debug(f"Connectivity test skipped - invalid IP: {ip}")
+            return False
+        
+        try:
             for port in ports:
                 try:
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    with socket.socket(family, socket.SOCK_STREAM) as sock:
                         sock.settimeout(timeout)
-                        result = sock.connect_ex((ip, port))
+                        if family == socket.AF_INET6:
+                            result = sock.connect_ex((ip, port, 0, 0))
+                        else:
+                            result = sock.connect_ex((ip, port))
                         if result == 0:
                             return True
                 except Exception:

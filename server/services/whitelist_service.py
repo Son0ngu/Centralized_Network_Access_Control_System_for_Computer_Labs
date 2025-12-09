@@ -42,12 +42,12 @@ class WhitelistService:
         # Format entries for response
         formatted_entries = []
         for entry in entries:
-            # ✅ FIX: Ensure all required fields are present
+            # FIX: Ensure all required fields are present
             formatted_entry = {
-                "_id": entry.get("_id"),  # ✅ Keep _id for frontend
-                "id": entry.get("_id"),   # ✅ Also add id for compatibility
+                "_id": entry.get("_id"),  # Keep _id for frontend
+                "id": entry.get("_id"),   # Also add id for compatibility
                 "type": entry.get("type", "domain"),
-                "value": entry.get("value", ""),  # ✅ Always use 'value'
+                "value": entry.get("value", ""),  # Always use 'value'
                 "category": entry.get("category", "uncategorized"),
                 "priority": entry.get("priority", "normal"),
                 "added_by": entry.get("added_by", "unknown"),
@@ -56,7 +56,7 @@ class WhitelistService:
                 "added_date": None
             }
             
-            # ✅ FIX: Proper date handling
+            # FIX: Proper date handling
             if entry.get("added_date"):
                 try:
                     if hasattr(entry["added_date"], 'isoformat'):
@@ -677,7 +677,7 @@ class WhitelistService:
                 "domains": domains,
                 "count": len(domains),
                 "agent_id": agent_id,
-                "server_time": now_iso(),  # ✅ FIX: Thêm dấu phẩy ở đây
+                "server_time": now_iso(),  # FIX: Thêm dấu phẩy ở đây
                 "since": since_datetime.isoformat() if since_datetime else None
             }
             

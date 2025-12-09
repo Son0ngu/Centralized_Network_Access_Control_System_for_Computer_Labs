@@ -234,7 +234,7 @@
                             <div class="d-flex align-items-center">
                                 {% if item is mapping %}
                                     {% set item_type = item.get('type', 'domain') %}
-                                    {# ✅ FIX: Check 'value' first, then 'domain' #}
+                                    {# FIX: Check 'value' first, then 'domain' #}
                                     {% set item_value = item.get('value') or item.get('domain', '') %}
                                     {% set item_category = item.get('category', 'general') %}
                                 {% else %}

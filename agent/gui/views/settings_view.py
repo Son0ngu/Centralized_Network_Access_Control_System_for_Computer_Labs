@@ -82,13 +82,13 @@ class SettingsView(ctk.CTkFrame):
     def _show_save_success(self):
         """Show save success message."""
         if hasattr(self, '_status_label'):
-            self._status_label.configure(text="✅ Settings saved successfully!", text_color="#00ff88")
+            self._status_label.configure(text="Settings saved successfully!", text_color="#00ff88")
             self.after(3000, lambda: self._status_label.configure(text=""))
     
     def _show_save_error(self, error: str):
         """Show save error message."""
         if hasattr(self, '_status_label'):
-            self._status_label.configure(text=f"❌ Error: {error}", text_color="#ff4444")
+            self._status_label.configure(text=f"Error: {error}", text_color="#ff4444")
     
     def _setup_ui(self):
         """Setup settings UI."""
@@ -222,7 +222,7 @@ class SettingsView(ctk.CTkFrame):
         # ========================================
         # NETWORK SETTINGS
         # ========================================
-        self._create_section(content, "🔌 Network Settings")
+        self._create_section(content, "Network Settings")
         
         network_frame = ctk.CTkFrame(content, corner_radius=12, fg_color="#1a1a2e")
         network_frame.pack(fill="x", pady=(0, 20))

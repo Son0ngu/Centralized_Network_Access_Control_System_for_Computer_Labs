@@ -125,7 +125,7 @@ def close_mongo_client():
     if _mongo_client:
         _mongo_client.close()
         _mongo_client = None
-        logger.info(f"🔌 [{now_iso()}] MongoDB client closed")
+        logger.info(f"[{now_iso()}] MongoDB client closed")
 
 def get_config() -> Config:
     """Get configuration instance."""

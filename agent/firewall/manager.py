@@ -1,8 +1,3 @@
-"""
-Firewall Manager - Main class for Windows Firewall management.
-Vietnam ONLY - Modular implementation using Default Deny policy.
-"""
-
 import logging
 from typing import Dict, List, Optional, Set
 
@@ -15,13 +10,7 @@ logger = logging.getLogger("firewall.manager")
 
 
 class FirewallManager:
-    """
-    Simplified Firewall Manager using Windows Default Deny Policy.
-    NO BLOCK RULES - Only ALLOW rules + Default Deny Policy.
-    """
-    
     def __init__(self, rule_prefix: str = "FirewallController"):
-        """Initialize the firewall manager with Default Deny approach."""
         self.rule_prefix = rule_prefix
         
         # Initialize sub-managers
@@ -34,7 +23,7 @@ class FirewallManager:
         
         # Check admin privileges
         if not FirewallUtils.has_admin_privileges():
-            logger.warning("⚠ Firewall operations require administrator privileges")
+            logger.warning("Firewall operations require administrator privileges")
         
         # Load existing rules and backup policy
         try:
@@ -48,7 +37,7 @@ class FirewallManager:
                     self.whitelist_mode_active = True
                     logger.info("Detected existing whitelist-only firewall mode")
             
-            logger.info(f"✅ FirewallManager initialized with prefix: {self.rule_prefix}")
+            logger.info(f"FirewallManager initialized with prefix: {self.rule_prefix}")
             
         except Exception as e:
             logger.error(f"Error during initialization: {e}")
@@ -60,27 +49,27 @@ class FirewallManager:
     def setup_whitelist_firewall(self, whitelisted_ips: Set[str], essential_ips: Set[str] = None) -> bool:
         """Setup whitelist-based firewall using Windows Default Deny policy."""
         try:
-            logger.info("🔒 Setting up whitelist firewall with DEFAULT DENY policy...")
+            logger.info("Setting up whitelist firewall with DEFAULT DENY policy...")
             
             if not whitelisted_ips:
-                logger.error("❌ No whitelisted IPs provided")
+                logger.error("No whitelisted IPs provided")
                 return False
             
             # Get essential IPs if not provided
             if essential_ips is None:
                 essential_ips = FirewallUtils.get_essential_ips()
             
-            # Filter IPv4 only
-            whitelisted_ips_v4 = {ip for ip in whitelisted_ips if FirewallUtils.is_valid_ipv4(ip)}
-            essential_ips_v4 = {ip for ip in essential_ips if FirewallUtils.is_valid_ipv4(ip)}
+            # Allow both IPv4 and IPv6
+            whitelisted_ips_valid = {ip for ip in whitelisted_ips if FirewallUtils.is_valid_ip(ip)}
+            essential_ips_valid = {ip for ip in essential_ips if FirewallUtils.is_valid_ip(ip)}
             
-            all_allowed_ips = whitelisted_ips_v4.union(essential_ips_v4)
+            all_allowed_ips = whitelisted_ips_valid.union(essential_ips_valid)
             
-            logger.info(f"📋 Total IPv4 IPs to allow: {len(all_allowed_ips)}")
+            logger.info(f"Total IPs to allow: {len(all_allowed_ips)}")
             
             # Step 1: Enable Default Deny policy
             if not self.policy_manager.enable_default_deny():
-                logger.error("❌ Failed to enable Default Deny policy")
+                logger.error("Failed to enable Default Deny policy")
                 return False
             
             # Step 2: Create allow rules
@@ -88,15 +77,15 @@ class FirewallManager:
             
             if success:
                 self.whitelist_mode_active = True
-                self.essential_ips = essential_ips_v4
+                self.essential_ips = essential_ips_valid
                 
-                logger.info("✅ Whitelist firewall with Default Deny setup completed!")
-                logger.info("🔒 Windows Firewall Policy: DENY all outbound by default")
-                logger.info(f"📝 Created {len(all_allowed_ips)} ALLOW rules for whitelisted traffic")
+                logger.info("Whitelist firewall with Default Deny setup completed!")
+                logger.info("Windows Firewall Policy: DENY all outbound by default")
+                logger.info(f"Created {len(all_allowed_ips)} ALLOW rules for whitelisted traffic")
                 
                 return True
             else:
-                logger.error("❌ Failed to create allow rules")
+                logger.error("Failed to create allow rules")
                 return False
                 
         except Exception as e:
@@ -110,8 +99,8 @@ class FirewallManager:
     def add_ip_to_whitelist(self, ip: str, reason: str = "dynamic_addition") -> bool:
         """Add IP to whitelist dynamically."""
         try:
-            if not FirewallUtils.is_valid_ipv4(ip):
-                logger.warning(f"Invalid IPv4: {ip}")
+            if not FirewallUtils.is_valid_ip(ip):
+                logger.warning(f"Invalid IP: {ip}")
                 return False
             
             if ip in self.allowed_ips:
@@ -121,9 +110,9 @@ class FirewallManager:
             success = self.rules_manager.create_allow_rule(ip)
             
             if success:
-                logger.info(f"✓ Added {ip} to whitelist ({reason})")
+                logger.info(f"Added {ip} to whitelist ({reason})")
             else:
-                logger.error(f"✗ Failed to add {ip} to whitelist")
+                logger.error(f"Failed to add {ip} to whitelist")
             
             return success
                 
@@ -132,7 +121,6 @@ class FirewallManager:
             return False
     
     def remove_ip_from_whitelist(self, ip: str) -> bool:
-        """Remove IP from whitelist."""
         try:
             if ip not in self.allowed_ips:
                 logger.debug(f"IP {ip} not in whitelist")
@@ -141,9 +129,9 @@ class FirewallManager:
             success = self.rules_manager.remove_allow_rule(ip)
             
             if success:
-                logger.info(f"✓ Removed {ip} from whitelist")
+                logger.info(f"Removed {ip} from whitelist")
             else:
-                logger.error(f"✗ Failed to remove {ip} from whitelist")
+                logger.error(f"Failed to remove {ip} from whitelist")
             
             return success
                 
@@ -161,7 +149,7 @@ class FirewallManager:
                 logger.debug("No IP changes to sync")
                 return True
             
-            logger.info(f"🔄 Syncing: +{len(added_ips)} IPs, -{len(removed_ips)} IPs")
+            logger.info(f"Syncing: +{len(added_ips)} IPs, -{len(removed_ips)} IPs")
             
             success_count = 0
             error_count = 0
@@ -180,7 +168,7 @@ class FirewallManager:
                 else:
                     error_count += 1
             
-            logger.info(f"🔄 Sync completed: {success_count} changes, {error_count} errors")
+            logger.info(f"Sync completed: {success_count} changes, {error_count} errors")
             return error_count == 0
             
         except Exception as e:
@@ -194,23 +182,23 @@ class FirewallManager:
     def cleanup_whitelist_firewall(self) -> bool:
         """Clean up whitelist firewall and restore original policy."""
         try:
-            logger.info("🧹 Cleaning up whitelist firewall...")
+            logger.info("Cleaning up whitelist firewall...")
             
             # Step 1: Remove all our allow rules
             rules_success = self.rules_manager.clear_all_rules()
             
             # Step 2: Restore original Windows Firewall policy
             if self.policy_manager.restore_original_policy():
-                logger.info("✓ Windows Firewall policy restored to original state")
+                logger.info("Windows Firewall policy restored to original state")
             else:
-                logger.warning("⚠ Failed to restore original policy, using defaults")
+                logger.warning("Failed to restore original policy, using defaults")
                 self.policy_manager.restore_default_policy()
             
             # Step 3: Clear state
             self.essential_ips.clear()
             self.whitelist_mode_active = False
             
-            logger.info("✅ Whitelist firewall cleanup completed")
+            logger.info("Whitelist firewall cleanup completed")
             return rules_success
             
         except Exception as e:
@@ -224,7 +212,7 @@ class FirewallManager:
     def cleanup_all_rules(self) -> bool:
         """Complete cleanup for whitelist-only mode (legacy compatibility)."""
         try:
-            logger.info("🧹 Performing complete firewall cleanup...")
+            logger.info("Performing complete firewall cleanup...")
             
             # Step 1: Remove all our allow rules
             rules_success = self.rules_manager.clear_all_rules()
@@ -239,9 +227,9 @@ class FirewallManager:
             success = rules_success and policy_success
             
             if success:
-                logger.info("✅ Complete firewall cleanup successful")
+                logger.info("Complete firewall cleanup successful")
             else:
-                logger.warning("⚠ Some cleanup operations failed")
+                logger.warning("Some cleanup operations failed")
             
             return success
             
@@ -302,7 +290,7 @@ class FirewallManager:
     def validate_firewall_state(self) -> Dict:
         """Validate current firewall state."""
         try:
-            logger.info("🔍 Validating firewall state...")
+            logger.info("Validating firewall state...")
             
             validation_result = {
                 "whitelist_mode_active": self.whitelist_mode_active,
@@ -325,7 +313,7 @@ class FirewallManager:
             if not self.essential_ips:
                 validation_result["issues"].append("No essential IPs configured")
             
-            logger.info(f"🔍 Validation complete: {len(validation_result['issues'])} issues found")
+            logger.info(f"Validation complete: {len(validation_result['issues'])} issues found")
             
             return validation_result
             
@@ -336,14 +324,14 @@ class FirewallManager:
     def test_whitelist_connectivity(self, sample_ips: List[str]) -> Dict[str, bool]:
         """Test connectivity to sample whitelisted IPs."""
         try:
-            logger.info(f"🔌 Testing connectivity to {len(sample_ips)} sample IPs...")
+            logger.info(f"Testing connectivity to {len(sample_ips)} sample IPs...")
             
             results = {}
             for ip in sample_ips[:5]:  # Test max 5 IPs
                 results[ip] = FirewallUtils.test_ip_connectivity(ip)
             
             success_count = sum(1 for success in results.values() if success)
-            logger.info(f"🔌 Connectivity test: {success_count}/{len(results)} IPs accessible")
+            logger.info(f"Connectivity test: {success_count}/{len(results)} IPs accessible")
             
             return results
             
@@ -407,7 +395,7 @@ class FirewallManager:
             True if update successful
         """
         try:
-            logger.info(f"🔄 Updating firewall whitelist: {len(domains)} domains, {len(ips)} IPs")
+            logger.info(f"Updating firewall whitelist: {len(domains)} domains, {len(ips)} IPs")
             
             # Get current allowed IPs
             old_ips = self.allowed_ips.copy()
@@ -417,18 +405,18 @@ class FirewallManager:
             
             # Add direct IPs from whitelist
             for ip in ips:
-                if FirewallUtils.is_valid_ipv4(ip):
+                if FirewallUtils.is_valid_ip(ip):
                     new_ips.add(ip)
             
-            # Resolve domains to IPs
+            # Resolve domains to IPs (IPv4/IPv6)
             resolved_ips = self._resolve_domains_to_ips(domains)
             new_ips.update(resolved_ips)
             
-            logger.info(f"📋 Total IPs after resolution: {len(new_ips)} ({len(resolved_ips)} from DNS)")
+            logger.info(f"Total IPs after resolution: {len(new_ips)} ({len(resolved_ips)} from DNS)")
             
             # If no IPs, don't update (safety)
             if not new_ips:
-                logger.warning("⚠ No valid IPs to whitelist, keeping current rules")
+                logger.warning("No valid IPs to whitelist, keeping current rules")
                 return False
             
             # Setup whitelist firewall if not already active
@@ -458,40 +446,41 @@ class FirewallManager:
             return resolved_ips
         
         try:
-            # Try to use OptimizedDNSResolver if available
-            try:
-                from network import OptimizedDNSResolver
-                resolver = OptimizedDNSResolver(max_workers=10, timeout=5.0)
-                
-                # Resolve in parallel
-                results = resolver.resolve_multiple_parallel(list(domains))
-                
-                for domain, record in results.items():
-                    if record.ipv4:
-                        for ip in record.ipv4:
-                            if FirewallUtils.is_valid_ipv4(ip):
+                # Try to use OptimizedDNSResolver if available
+                try:
+                    from network import OptimizedDNSResolver
+                    resolver = OptimizedDNSResolver(max_workers=10, timeout=5.0)
+                    
+                    # Resolve in parallel
+                    results = resolver.resolve_multiple_parallel(list(domains))
+                    
+                    for domain, record in results.items():
+                        for ip in (record.ipv4 or []):
+                            if FirewallUtils.is_valid_ip(ip):
                                 resolved_ips.add(ip)
-                                
-                logger.info(f"✓ Resolved {len(domains)} domains -> {len(resolved_ips)} IPs (optimized)")
-                
-            except ImportError:
-                # Fallback to simple socket resolution
-                import socket
-                
-                for domain in domains:
-                    try:
-                        # Get all addresses
-                        results = socket.getaddrinfo(domain, None, socket.AF_INET)
-                        for result in results:
-                            ip = result[4][0]
-                            if FirewallUtils.is_valid_ipv4(ip):
+                        for ip in (getattr(record, "ipv6", []) or []):
+                            if FirewallUtils.is_valid_ip(ip):
                                 resolved_ips.add(ip)
-                    except socket.gaierror:
-                        logger.debug(f"Could not resolve: {domain}")
-                    except Exception as e:
-                        logger.debug(f"Error resolving {domain}: {e}")
-                
-                logger.info(f"✓ Resolved {len(domains)} domains -> {len(resolved_ips)} IPs (socket)")
+                    
+                    logger.info(f"Resolved {len(domains)} domains -> {len(resolved_ips)} IPs (optimized)")
+                    
+                except ImportError:
+                    # Fallback to socket resolution (IPv4 + IPv6)
+                    import socket
+                    
+                    for domain in domains:
+                        try:
+                            results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                            for result in results:
+                                ip = result[4][0]
+                                if FirewallUtils.is_valid_ip(ip):
+                                    resolved_ips.add(ip)
+                        except socket.gaierror:
+                            logger.debug(f"Could not resolve: {domain}")
+                        except Exception as e:
+                            logger.debug(f"Error resolving {domain}: {e}")
+                    
+                    logger.info(f"Resolved {len(domains)} domains -> {len(resolved_ips)} IPs (socket)")
                 
         except Exception as e:
             logger.error(f"Error in DNS resolution: {e}")
@@ -519,7 +508,7 @@ class FirewallManager:
                 logger.info("Whitelist mode already active")
                 return True
             
-            logger.info("🔒 Enabling whitelist-only mode...")
+            logger.info("Enabling whitelist-only mode...")
             
             # Step 1: Collect all IPs to allow BEFORE enabling Default Deny
             all_allowed_ips = set()
@@ -528,29 +517,28 @@ class FirewallManager:
             essential_ips = FirewallUtils.get_essential_ips()
             all_allowed_ips.update(essential_ips)
             self.essential_ips = essential_ips
-            logger.info(f"📝 Essential IPs: {len(essential_ips)}")
+            logger.info(f"Essential IPs: {len(essential_ips)}")
             
             # 1b. Resolve server URLs to IPs
             if server_urls:
                 server_ips = self._resolve_server_urls(server_urls)
                 all_allowed_ips.update(server_ips)
-                logger.info(f"📝 Server IPs resolved: {len(server_ips)} - {server_ips}")
+                logger.info(f"Server IPs resolved: {len(server_ips)} - {server_ips}")
             
             # 1c. Add direct whitelist IPs from server sync
             if whitelist_ips:
-                # Filter IPv4 only
-                whitelist_ipv4 = {ip for ip in whitelist_ips if FirewallUtils.is_valid_ipv4(ip)}
-                all_allowed_ips.update(whitelist_ipv4)
-                logger.info(f"📝 Whitelist direct IPs: {len(whitelist_ipv4)}")
+                whitelist_valid = {ip for ip in whitelist_ips if FirewallUtils.is_valid_ip(ip)}
+                all_allowed_ips.update(whitelist_valid)
+                logger.info(f"Whitelist direct IPs: {len(whitelist_valid)}")
             
             # 1d. Resolve whitelist domains to IPs
             if whitelist_domains:
-                logger.info(f"📝 Resolving {len(whitelist_domains)} whitelist domains...")
+                logger.info(f"Resolving {len(whitelist_domains)} whitelist domains...")
                 domain_ips = self._resolve_domains_to_ips(whitelist_domains)
                 all_allowed_ips.update(domain_ips)
-                logger.info(f"📝 Whitelist domains resolved to: {len(domain_ips)} IPs")
+                logger.info(f"Whitelist domains resolved to: {len(domain_ips)} IPs")
             
-            logger.info(f"📋 Total IPs to allow: {len(all_allowed_ips)}")
+            logger.info(f"Total IPs to allow: {len(all_allowed_ips)}")
             
             # Step 2: Create allow rules FIRST (before Default Deny)
             logger.info("Step 2: Creating ALLOW rules before enabling Default Deny...")
@@ -560,14 +548,14 @@ class FirewallManager:
             # Step 3: NOW enable Default Deny policy (after rules are created)
             logger.info("Step 3: Enabling Default Deny policy...")
             if not self.policy_manager.enable_default_deny():
-                logger.error("❌ Failed to enable Default Deny policy")
+                logger.error("Failed to enable Default Deny policy")
                 return False
             
             self.whitelist_mode_active = True
             
-            logger.info("✅ Whitelist-only mode enabled successfully")
-            logger.info(f"📝 Total ALLOW rules created: {len(all_allowed_ips)}")
-            logger.info("🔒 Default Deny policy is now active")
+            logger.info("Whitelist-only mode enabled successfully")
+            logger.info(f"Total ALLOW rules created: {len(all_allowed_ips)}")
+            logger.info("Default Deny policy is now active")
             
             return True
             
@@ -576,43 +564,43 @@ class FirewallManager:
             return False
     
     def _resolve_domains_to_ips(self, domains: Set[str]) -> Set[str]:
-        """Resolve domain names to IP addresses."""
+        """Resolve domain names to IP addresses (IPv4 + IPv6)."""
         import socket
+        import ipaddress
         
         ips = set()
         for domain in domains:
             try:
                 # Skip wildcards - they can't be resolved directly
                 if '*' in domain or '?' in domain:
-                    # For wildcards, try to resolve base domain
                     base_domain = domain.replace('*.', '').replace('*', '')
                     if base_domain:
                         domain = base_domain
                     else:
                         continue
                 
-                # Remove protocol if present
+                # Remove protocol and port/path
                 domain = domain.replace('http://', '').replace('https://', '')
-                domain = domain.split('/')[0]  # Remove path
-                domain = domain.split(':')[0]  # Remove port
+                domain = domain.split('/')[0]
+                domain = domain.split(':')[0]
                 
                 if not domain:
                     continue
                 
-                # Try to resolve
                 try:
-                    ip = socket.gethostbyname(domain)
-                    ips.add(ip)
-                    logger.debug(f"Resolved {domain} -> {ip}")
-                except socket.gaierror:
-                    # Try to get all IPs
-                    try:
-                        _, _, ip_list = socket.gethostbyname_ex(domain)
-                        for ip in ip_list:
+                    results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                    for result in results:
+                        ip = result[4][0]
+                        try:
+                            ipaddress.ip_address(ip)
                             ips.add(ip)
                             logger.debug(f"Resolved {domain} -> {ip}")
-                    except:
-                        logger.debug(f"Could not resolve domain: {domain}")
+                        except ValueError:
+                            continue
+                except socket.gaierror:
+                    logger.debug(f"Could not resolve domain: {domain}")
+                except Exception as e:
+                    logger.debug(f"Error resolving {domain}: {e}")
             except Exception as e:
                 logger.debug(f"Error resolving {domain}: {e}")
         

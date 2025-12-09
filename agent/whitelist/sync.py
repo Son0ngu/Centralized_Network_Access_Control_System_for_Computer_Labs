@@ -1,8 +1,3 @@
-"""
-Server synchronization for whitelist manager.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 from typing import Dict, List, Optional
 

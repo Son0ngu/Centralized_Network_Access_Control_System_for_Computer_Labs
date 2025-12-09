@@ -1,8 +1,3 @@
-"""
-System information utilities for accurate OS detection.
-Fixes Windows 11 mislabeling in Registry for builds >= 22000.
-"""
-
 import logging
 import platform
 import sys
@@ -10,21 +5,12 @@ from typing import Dict
 
 logger = logging.getLogger("shared.os_info")
 
-# Windows-specific imports
 if sys.platform == "win32":
     import winreg
 
 
 def _detect_windows_info() -> Dict[str, str]:
-    """
-    Collect Windows version details.
-    
-    Corrects the 'Windows 10' mislabeling in Registry for Windows 11 builds.
-    Windows 11 has build numbers >= 22000.
-    
-    Returns:
-        dict: Windows version information with 'name' and 'version' keys
-    """
+
     info = {"name": "Windows", "version": platform.version()}
 
     try:
@@ -67,16 +53,7 @@ def _detect_windows_info() -> Dict[str, str]:
 
 
 def get_os_details() -> Dict[str, str]:
-    """
-    Get operating system details.
-    
-    Returns:
-        dict: OS information with keys:
-            - platform: OS platform (Windows, Linux, Darwin)
-            - name: OS name (e.g., "Windows 11 Pro")
-            - version: OS version string
-            - arch: System architecture (AMD64, x86_64, etc.)
-    """
+
     system = platform.system() or "Unknown"
     arch = platform.machine() or "Unknown"
 
@@ -89,15 +66,5 @@ def get_os_details() -> Dict[str, str]:
 
     if system == "Windows":
         os_info.update(_detect_windows_info())
-    elif system == "Linux":
-        try:
-            import distro
-            os_info["name"] = distro.name(pretty=True)
-            os_info["version"] = distro.version()
-        except ImportError:
-            pass
-    elif system == "Darwin":
-        os_info["name"] = "macOS"
-        os_info["version"] = platform.mac_ver()[0]
 
     return os_info

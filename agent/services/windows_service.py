@@ -1,8 +1,3 @@
-"""
-Windows Service Runner - Run agent as Windows service.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import sys
 
@@ -12,13 +7,6 @@ logger = logging.getLogger("services.windows")
 
 
 def run_as_service(main_func, cleanup_func):
-    """
-    Enhanced Windows Service implementation.
-    
-    Args:
-        main_func: Main function to run
-        cleanup_func: Cleanup function to call on stop
-    """
     try:
         import servicemanager
         import win32event
@@ -79,8 +67,8 @@ def run_as_service(main_func, cleanup_func):
             
     except ImportError as e:
         logger.error("Windows service modules not available. Install pywin32:")
-        logger.error("   pip install pywin32")
-        logger.error("   python Scripts/pywin32_postinstall.py -install")
+        logger.error("pip install pywin32")
+        logger.error("python Scripts/pywin32_postinstall.py -install")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Service error: {e}")

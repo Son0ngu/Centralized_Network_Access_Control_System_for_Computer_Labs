@@ -1,8 +1,3 @@
-"""
-Packet Detection Handler - Process detected network traffic.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 from typing import Callable, Dict, Optional
 
@@ -16,16 +11,7 @@ logger = logging.getLogger("core.handlers")
 
 
 def create_domain_handler(config: Dict, agent) -> Callable[[Dict], None]:
-    """
-    Create a domain detection handler function.
-    
-    Args:
-        config: Configuration dictionary
-        agent: Agent instance
-        
-    Returns:
-        Callable handler function
-    """
+
     def handler(record: Dict) -> None:
         handle_domain_detection(
             record=record,
@@ -43,9 +29,7 @@ def handle_domain_detection(
     whitelist,
     log_sender
 ):
-    """
-    Handle detected domain/IP traffic with UTC timestamps.
-    """
+
     try:
         # Extract packet information
         domain = record.get("domain")
@@ -54,11 +38,9 @@ def handle_domain_detection(
         protocol = record.get("protocol", "TCP")
         port = record.get("port", "unknown")
         
-        # Use consolidated IP detection if src_ip not available
         if src_ip == "unknown" or not src_ip:
             src_ip = get_local_ip()
         
-        # Enhanced protocol detection
         if port != "unknown":
             port_str = str(port)
             if port_str == "443":
@@ -88,12 +70,10 @@ def handle_domain_detection(
                 return_on_error=False
             )
         
-        # Determine action based on firewall mode
         firewall_config = config.get("firewall", {})
         firewall_mode = firewall_config.get("mode", "monitor")
         firewall_enabled = firewall_config.get("enabled", False)
-        
-        # Check if traffic is whitelisted
+
         is_whitelisted = domain_allowed or ip_allowed
         
         if not firewall_enabled:

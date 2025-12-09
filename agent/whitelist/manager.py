@@ -154,7 +154,7 @@ class WhitelistManager:
                 sleep(1)
             
             if self._running:
-                logger.info(f"🔄 Periodic whitelist sync (interval: {self._sync_interval}s)")
+                logger.info(f"Periodic whitelist sync (interval: {self._sync_interval}s)")
                 self.sync_now()
     
     def sync_now(self) -> bool:
@@ -169,7 +169,7 @@ class WhitelistManager:
                 "timestamp": now_iso()
             }
             
-            logger.info(f"🔄 Syncing whitelist from server (agent_id: {agent_id})...")
+            logger.info(f"Syncing whitelist from server (agent_id: {agent_id})...")
             
             # Sync with server
             result = self._sync.sync_with_server(params)
@@ -193,7 +193,7 @@ class WhitelistManager:
                 self._stats["last_sync"] = now()
                 
                 if updated:
-                    logger.info("✅ Whitelist state updated with new data")
+                    logger.info("Whitelist state updated with new data")
                     
                     # Update firewall rules if available
                     if self._firewall_manager:
@@ -211,12 +211,12 @@ class WhitelistManager:
             else:
                 self._stats["errors"] += 1
                 error_msg = result.get('error', 'Unknown error')
-                logger.warning(f"❌ Whitelist sync failed: {error_msg}")
+                logger.warning(f"Whitelist sync failed: {error_msg}")
                 return False
             
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error(f"❌ Sync error: {e}", exc_info=True)
+            logger.error(f"Sync error: {e}", exc_info=True)
             return False
     
     def is_allowed(self, domain: str, ip: Optional[str] = None) -> bool:
@@ -256,15 +256,15 @@ class WhitelistManager:
             # Combine domains and patterns
             all_domains = domains.union(patterns)
             
-            logger.info(f"🔄 Updating firewall with {len(all_domains)} domains and {len(ips)} IPs")
+            logger.info(f"Updating firewall with {len(all_domains)} domains and {len(ips)} IPs")
             
             # Update firewall - it will resolve domains to IPs internally
             if hasattr(self._firewall_manager, 'update_whitelist'):
                 success = self._firewall_manager.update_whitelist(all_domains, ips)
                 if success:
-                    logger.info("✅ Firewall rules updated successfully")
+                    logger.info("Firewall rules updated successfully")
                 else:
-                    logger.warning("⚠ Firewall update returned failure")
+                    logger.warning("Firewall update returned failure")
             else:
                 logger.warning("Firewall manager doesn't support update_whitelist method")
             

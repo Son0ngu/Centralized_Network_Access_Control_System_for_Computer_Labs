@@ -211,7 +211,7 @@ class WhitelistController:
         try:
             self.logger.info(f"Attempting to delete domain: {domain_id}")
             
-            # ✅ FIX: Validate domain_id format
+            # FIX: Validate domain_id format
             if not domain_id or len(domain_id) < 10:
                 return jsonify({
                     "success": False,

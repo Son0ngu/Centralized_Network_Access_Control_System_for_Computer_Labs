@@ -1,8 +1,3 @@
-"""
-Error Handler Utility - Safe execution and critical operation handling.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 from functools import wraps
 from typing import Any, Callable, Optional
@@ -11,10 +6,7 @@ logger = logging.getLogger("utils.error_handler")
 
 
 class CriticalErrorHandler:
-    """
-    Proper error handling for critical paths.
-    """
-    
+
     @staticmethod
     def safe_execute(
         func: Callable,

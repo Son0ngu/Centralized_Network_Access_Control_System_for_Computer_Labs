@@ -1,8 +1,3 @@
-"""
-Agent Registration - Server registration logic.
-Vietnam ONLY - Clean implementation.
-"""
-
 import logging
 import platform
 import socket
@@ -10,7 +5,6 @@ from typing import Dict
 
 import requests
 
-# Change imports
 from shared.time_utils import now, now_iso
 from shared.os_info import get_os_details
 
@@ -20,12 +14,8 @@ from utils.error_handler import CriticalErrorHandler
 
 logger = logging.getLogger("core.registry")
 
-
 @CriticalErrorHandler.critical_operation("Agent Registration")
 def register_agent(config: Dict) -> bool:
-    """
-    Register agent with server using UTC timestamps.
-    """
     try:
         # Collect agent information
         local_ip = get_local_ip()
@@ -50,7 +40,6 @@ def register_agent(config: Dict) -> bool:
             "registration_timestamp": now()
         }
         
-        # Try registration with multiple servers
         server_urls = config['server'].get('urls', [config['server']['url']])
         
         for server_url in server_urls:
@@ -66,9 +55,6 @@ def register_agent(config: Dict) -> bool:
 
 
 def try_register_with_server(server_url: str, agent_info: Dict, config: Dict) -> bool:
-    """
-    Try to register with a specific server.
-    """
     try:
         register_url = f"{server_url.rstrip('/')}/api/agents/register"
         logger.info(f"Attempting registration with: {register_url}")

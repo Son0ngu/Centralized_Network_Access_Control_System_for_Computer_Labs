@@ -1,8 +1,4 @@
-"""
-LRU Cache - Least Recently Used cache implementation.
-Vietnam ONLY - Clean implementation.
-"""
-
+# """High-performance LRU Cache implementation. Phần này đang cải tiến"""
 import logging
 import threading
 from collections import OrderedDict
@@ -13,34 +9,25 @@ from shared.time_utils import now, is_cache_valid
 
 logger = logging.getLogger("cache.lru_cache")
 
-
 @dataclass
 class DNSRecord:
-    """DNS resolution result."""
     ipv4: Tuple[str, ...]
     ipv6: Tuple[str, ...]
     cname: Optional[str]
     ttl: int
     resolved_at: float
 
-
 @dataclass
 class CacheValue:
-    """Generic cache value with metadata."""
+    """Generic cache value with metadata.""" 
     value: Any
     created_at: float
     ttl: float
 
-
 class LRUCache:
-    """
-    Thread-safe LRU Cache with TTL support.
-    """
-    
     def __init__(self, max_size: int = 1000, default_ttl: float = 300.0):
         """
         Initialize LRU Cache.
-        
         Args:
             max_size: Maximum number of items in cache
             default_ttl: Default time-to-live in seconds
@@ -141,7 +128,6 @@ class LRUCache:
     
     def __contains__(self, key: str) -> bool:
         return self.get(key) is not None
-
 
 # Alias for backward compatibility
 HighPerformanceLRUCache = LRUCache

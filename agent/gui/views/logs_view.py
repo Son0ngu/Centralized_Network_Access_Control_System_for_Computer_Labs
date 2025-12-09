@@ -52,7 +52,7 @@ class LogsView(ctk.CTkFrame):
         # Title
         title = ctk.CTkLabel(
             header,
-            text="📝 Activity Logs",
+            text="Activity Logs",
             font=ctk.CTkFont(size=28, weight="bold"),
             text_color="#00d4ff"
         )
@@ -90,7 +90,7 @@ class LogsView(ctk.CTkFrame):
         # Search
         self._search_entry = ctk.CTkEntry(
             controls,
-            placeholder_text="🔍 Search logs...",
+            placeholder_text="Search logs...",
             width=250,
             height=32,
             font=ctk.CTkFont(size=12),

@@ -1,8 +1,3 @@
-"""
-Log Sender - Send logs from agent to central server.
-Vietnam ONLY - Clean implementation.
-"""
-
 import json
 import logging
 import queue
@@ -20,16 +15,10 @@ logger = logging.getLogger("logging.sender")
 
 
 class LogSender:
-    """Sends logs to central server with batching and queuing."""
     
     def __init__(self, config: Dict):
-        """
-        Initialize log sender.
-        
-        Args:
-            config: Configuration dictionary with server and sender settings
-        """
-        self.config = config  # Store full config for JWT auth
+
+        self.config = config 
         
         # Server configuration
         self.server_urls = self._get_server_urls(config)
@@ -39,15 +28,12 @@ class LogSender:
         self.batch_size = config.get("batch_size", 100)
         self.send_interval = config.get("send_interval", 2)
         
-        # Initialize queue and state
         self.log_queue: queue.Queue = queue.Queue(maxsize=self.max_queue_size)
         self.running = False
         self._sender_thread: Optional[threading.Thread] = None
         
-        # Agent identification
         self.agent_id = config.get("agent_id") or self._generate_agent_id()
         
-        # Tracking
         self.last_send_time = now()
         self._send_lock = threading.Lock()
         
@@ -55,7 +41,6 @@ class LogSender:
         logger.info(f"Will send logs to: {', '.join(self.server_urls)}")
     
     def _get_server_urls(self, config: Dict) -> List[str]:
-        """Extract server URLs from configuration."""
         server_config = config.get("server", {})
         
         if "urls" in server_config and server_config["urls"]:
@@ -69,7 +54,6 @@ class LogSender:
         return [primary_url, "http://localhost:5000"]
     
     def start(self) -> None:
-        """Start sender thread."""
         if self.running:
             return
         
@@ -100,15 +84,6 @@ class LogSender:
         logger.info("Log sender stopped")
     
     def queue_log(self, log_data: Dict) -> bool:
-        """
-        Add log to queue for sending.
-        
-        Args:
-            log_data: Log data dictionary
-            
-        Returns:
-            True if queued successfully
-        """
         try:
             serialized_log = self._serialize_log(log_data.copy())
             
@@ -201,7 +176,6 @@ class LogSender:
                 sleep(5)
     
     def _flush_queue(self) -> None:
-        """Flush all remaining logs."""
         logs = []
         try:
             while not self.log_queue.empty():
@@ -214,7 +188,6 @@ class LogSender:
             self._send_batch(logs)
     
     def _send_logs(self) -> None:
-        """Send a batch of logs from queue."""
         logs = []
         batch_size = min(self.batch_size, self.log_queue.qsize())
         
@@ -230,12 +203,10 @@ class LogSender:
             self._send_batch(logs)
     
     def _send_batch(self, logs: List[Dict]) -> bool:
-        """Send batch of logs to server."""
         if not self.server_urls:
             logger.error("Server URL not configured")
             return False
         
-        # Ensure JSON serializable
         serialized_logs = []
         for log in logs:
             try:

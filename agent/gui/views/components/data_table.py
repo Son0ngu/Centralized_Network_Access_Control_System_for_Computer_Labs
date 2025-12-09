@@ -302,7 +302,7 @@ class SearchableDataTable(ctk.CTkFrame):
         
         self._search_entry = ctk.CTkEntry(
             search_frame,
-            placeholder_text="🔍 Search...",
+            placeholder_text="Search...",
             width=300,
             height=35,
             corner_radius=8,

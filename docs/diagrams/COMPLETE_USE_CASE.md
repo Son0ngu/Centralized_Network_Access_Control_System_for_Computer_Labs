@@ -52,7 +52,7 @@ graph TB
             UC_S12["UC-S12: Xem/Xóa Group"]
         end
         
-        subgraph WHITELIST_MGMT["📋 Whitelist Management - Multi-Level"]
+        subgraph WHITELIST_MGMT["Whitelist Management - Multi-Level"]
             UC_S13["UC-S13: Quản lý Global Whitelist"]
             UC_S14["UC-S14: Quản lý Tenant Whitelist"]
             UC_S15["UC-S15: Quản lý Group Whitelist"]
@@ -76,7 +76,7 @@ graph TB
             UC_S27["UC-S27: Policy Propagation"]
         end
         
-        subgraph REALTIME["⚡ Real-time Communication"]
+        subgraph REALTIME["Real-time Communication"]
             UC_S28["UC-S28: Socket.IO Events (tenant-channel)"]
             UC_S29["UC-S29: Dashboard Live Updates"]
             UC_S30["UC-S30: Notification System"]
@@ -84,7 +84,7 @@ graph TB
     end
 
     subgraph AGENT["🖥️ AGENT SYSTEM - Tenant-Aware"]
-        subgraph LIFECYCLE["🔄 Agent Lifecycle"]
+        subgraph LIFECYCLE["Agent Lifecycle"]
             UC_A1["UC-A1: Khởi động Agent"]
             UC_A2["UC-A2: Đăng ký với Server (tenant context)"]
             UC_A3["UC-A3: Token Auto-Refresh"]
@@ -108,7 +108,7 @@ graph TB
             UC_A15["UC-A15: Default Deny Policy"]
         end
         
-        subgraph SYNC_OPS["🔄 Synchronization"]
+        subgraph SYNC_OPS["Synchronization"]
             UC_A16["UC-A16: Đồng bộ Whitelist (periodic)"]
             UC_A17["UC-A17: Đồng bộ Policy Templates"]
             UC_A18["UC-A18: Gửi Logs Batch lên Server"]
@@ -485,7 +485,7 @@ def register_agent(config: Dict) -> bool:
 
 ---
 
-## 📝 Key Preconditions & Postconditions (Multi-Tenant)
+## Key Preconditions & Postconditions (Multi-Tenant)
 
 ### UC-P1: Tạo Organization
 - **Preconditions**: Super Admin authenticated; subscription plan selected
@@ -588,7 +588,7 @@ def register_agent(config: Dict) -> bool:
 
 ---
 
-## 📝 Key Preconditions & Postconditions
+## Key Preconditions & Postconditions
 
 ### UC-S4: Đăng ký Agent mới
 - **Preconditions**: API Key hợp lệ tồn tại trong MongoDB; server sẵn sàng.

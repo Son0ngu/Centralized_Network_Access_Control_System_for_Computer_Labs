@@ -1,8 +1,3 @@
-"""
-Configuration loader for the Firewall Controller Agent.
-Vietnam ONLY - Clean implementation.
-"""
-
 import json
 import logging
 import os
@@ -175,32 +170,25 @@ def _load_from_env() -> Dict[str, Any]:
 
 def _convert_value(value: str) -> Any:
     """Convert string value to appropriate type."""
-    # Boolean
     if value.lower() in ["true", "yes", "1"]:
         return True
     elif value.lower() in ["false", "no", "0"]:
         return False
-    # None/null
     elif value.lower() in ["none", "null"]:
         return None
-    # Integer
     elif value.isdigit():
         return int(value)
-    # Float
     elif value.replace(".", "", 1).isdigit() and value.count(".") == 1:
         return float(value)
-    # JSON
     else:
         try:
             return json.loads(value)
         except json.JSONDecodeError:
             return value
 
-
 def _deep_copy(d: Dict) -> Dict:
     """Create a deep copy of a dictionary."""
     return json.loads(json.dumps(d))
-
 
 def _deep_update(base_dict: Dict, update_dict: Dict) -> None:
     """Recursively update a dictionary with another dictionary."""

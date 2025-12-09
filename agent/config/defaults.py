@@ -1,11 +1,5 @@
-"""
-Default configuration values for the Firewall Controller Agent.
-Vietnam ONLY - Clean implementation.
-"""
-
 from typing import Any, Dict
 
-# Default configuration for the entire application
 DEFAULT_CONFIG: Dict[str, Any] = {
     # Server connection configuration
     "server": {
