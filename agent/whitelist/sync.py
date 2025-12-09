@@ -3,15 +3,14 @@ from typing import Dict, List, Optional
 
 import requests
 
-from shared.time_utils import now, now_iso, sleep
+from shared.time_utils import sleep
 from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("whitelist.sync")
 
 
 class WhitelistSyncer:
-    """Handles whitelist synchronization with server."""
-    
+
     def __init__(
         self,
         server_urls: List[str],
@@ -31,13 +30,11 @@ class WhitelistSyncer:
     
     @property
     def current_url(self) -> str:
-        """Get current server URL."""
         if self.server_urls:
             return self._build_sync_url(self.server_urls[self.current_server_index])
         return ""
     
     def _build_sync_url(self, base_url: str) -> str:
-        """Build sync endpoint URL."""
         return f"{base_url.rstrip('/')}/api/whitelist/agent-sync"
     
     def _get_headers(self) -> Dict[str, str]:

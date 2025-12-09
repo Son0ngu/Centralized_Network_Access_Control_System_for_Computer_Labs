@@ -1,8 +1,3 @@
-"""
-Whitelist Manager - Core whitelist management functionality.
-Vietnam ONLY - Clean implementation.
-"""
-
 import fnmatch
 import hashlib
 import json
@@ -16,24 +11,14 @@ import requests
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
 
 from .state import WhitelistState
-from .sync import WhitelistSyncer  # Fix: Changed from WhitelistSync
+from .sync import WhitelistSyncer  
 
 logger = logging.getLogger("whitelist.manager")
 
 
 class WhitelistManager:
-    """
-    Manages domain whitelist with server synchronization.
-    Vietnam ONLY - Clean implementation.
-    """
-    
     def __init__(self, config: Dict):
-        """
-        Initialize WhitelistManager.
-        
-        Args:
-            config: Configuration dictionary
-        """
+
         self.config = config
         self.whitelist_config = config.get("whitelist", {})
         self.server_config = config.get("server", {})
@@ -128,26 +113,22 @@ class WhitelistManager:
         logger.info(f"Whitelist sync started (interval: {self._sync_interval}s)")
     
     def stop_sync(self) -> None:
-        """Stop background sync thread."""
         self._running = False
         if self._sync_thread:
             self._sync_thread.join(timeout=5)
         logger.info("Whitelist sync stopped")
     
     def stop_periodic_updates(self) -> None:
-        """Alias for stop_sync for backward compatibility."""
         self.stop_sync()
     
     def _sync_loop(self) -> None:
-        """Background sync loop."""
-        logger.info("🚀 Starting initial whitelist sync...")
+        logger.info("Starting initial whitelist sync...")
         
         # Initial sync
         self.sync_now()
         
         while self._running:
-            # Wait for next sync interval
-            logger.debug(f"⏰ Next sync in {self._sync_interval} seconds...")
+            logger.debug(f"Next sync in {self._sync_interval} seconds...")
             for _ in range(int(self._sync_interval)):
                 if not self._running:
                     break

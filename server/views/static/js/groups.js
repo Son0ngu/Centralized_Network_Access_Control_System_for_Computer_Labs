@@ -9,7 +9,7 @@ let currentView = 'grid';
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Groups page initialized');
+    console.log('Groups page initialized');
     
     loadGroups();
     loadAgents();

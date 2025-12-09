@@ -5,16 +5,13 @@ from typing import Dict, Optional
 
 import netifaces
 
-from shared.time_utils import now, now_iso, now_server_compatible, is_cache_valid, cache_age
+from agent.shared.time_utils import now, now_iso, now_server_compatible, is_cache_valid, cache_age
 
 logger = logging.getLogger("utils.ip_detector")
 
 
 class IPDetector:
-    """
-    IP detection with caching and multiple detection methods.
-    """
-    
+
     def __init__(self):
         self._cached_local_ip: Optional[str] = None
         self._cached_admin_status: Optional[bool] = None
@@ -93,7 +90,6 @@ class IPDetector:
         return "127.0.0.1"
     
     def get_admin_status(self, force_refresh: bool = False) -> bool:
-        """Check if running with admin privileges."""
         if not force_refresh and self._cached_admin_status is not None:
             return self._cached_admin_status
         
@@ -115,7 +111,6 @@ class IPDetector:
             return False
     
     def get_cache_debug_info(self) -> Dict:
-        """Get cache debug information."""
         return {
             "cached_ip": self._cached_local_ip,
             "last_check_timestamp": self._last_ip_check,
@@ -131,15 +126,12 @@ _ip_detector = IPDetector()
 
 
 def get_local_ip(force_refresh: bool = False) -> str:
-    """Helper function for backward compatibility."""
     return _ip_detector.get_local_ip(force_refresh)
 
 
 def check_admin_privileges(force_refresh: bool = False) -> bool:
-    """Helper function for backward compatibility."""
     return _ip_detector.get_admin_status(force_refresh)
 
 
 def get_ip_detector() -> IPDetector:
-    """Get the global IP detector instance."""
     return _ip_detector

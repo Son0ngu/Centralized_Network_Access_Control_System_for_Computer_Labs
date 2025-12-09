@@ -8,7 +8,7 @@ const groupId = document.getElementById('groupId').value;
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Group detail page initialized for:', groupId);
+    console.log('Group detail page initialized for:', groupId);
     
     loadGroupAgents();
     setupEventListeners();

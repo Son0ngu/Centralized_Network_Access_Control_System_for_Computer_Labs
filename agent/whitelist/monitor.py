@@ -2,25 +2,14 @@ import logging
 import threading
 from typing import Callable, Optional
 
-# Fix: Add now_iso to import
 from shared.time_utils import now, now_iso, sleep
 
 logger = logging.getLogger("whitelist.monitor")
 
 
 class WhitelistMonitor:
-    """
-    Background monitor for whitelist changes and sync.
-    """
-    
     def __init__(self, sync_callback: Callable, interval: float = 60.0):
-        """
-        Initialize whitelist monitor.
-        
-        Args:
-            sync_callback: Function to call for sync
-            interval: Check interval in seconds
-        """
+
         self._sync_callback = sync_callback
         self._interval = interval
         self._running = False
@@ -45,17 +34,14 @@ class WhitelistMonitor:
         logger.info(f"Whitelist monitor started (interval: {self._interval}s)")
     
     def stop(self) -> None:
-        """Stop the monitor."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
         logger.info("Whitelist monitor stopped")
     
     def _monitor_loop(self) -> None:
-        """Main monitor loop."""
         while self._running:
             try:
-                # Call sync callback
                 success = self._sync_callback()
                 
                 if success:
@@ -75,7 +61,7 @@ class WhitelistMonitor:
                 sleep(1)
     
     def get_status(self) -> dict:
-        """Get monitor status."""
+
         return {
             "running": self._running,
             "interval": self._interval,

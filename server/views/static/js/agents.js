@@ -1156,7 +1156,7 @@ function startPeriodicStatusCheck() {
 
 // Add to DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Agents page initialized');
+    console.log('Agents page initialized');
     loadAgents();
     loadGroups();
     

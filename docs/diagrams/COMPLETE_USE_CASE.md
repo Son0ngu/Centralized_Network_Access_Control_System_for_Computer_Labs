@@ -385,7 +385,7 @@ MongoDB Queries Pattern:
 
 ---
 
-## 🚀 Migration Path to Multi-Tenant
+## Migration Path to Multi-Tenant
 
 ### Phase 1: Database Schema Changes (Breaking Changes)
 ```javascript

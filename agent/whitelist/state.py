@@ -2,21 +2,16 @@ import hashlib
 import json
 import logging
 import threading
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Optional, Set
 
-# Fix: Add now_server_compatible to import
-from shared.time_utils import now, now_iso, now_server_compatible
+from shared.time_utils import now,now_server_compatible
 
 logger = logging.getLogger("whitelist.state")
 
 
 class WhitelistState:
-    """
-    Thread-safe whitelist state management.
-    """
-    
     def __init__(self):
-        """Initialize whitelist state."""
+
         self._lock = threading.RLock()
         self._domains: Set[str] = set()
         self._patterns: Set[str] = set()
@@ -27,24 +22,13 @@ class WhitelistState:
         self._metadata: Dict[str, Any] = {}
     
     def update(self, data: Dict) -> bool:
-        """
-        Update whitelist state from server data.
-        
-        Args:
-            data: Whitelist data from server
-            
-        Returns:
-            True if state was updated, False otherwise
-        """
+
         with self._lock:
             try:
-                # Extract domains, patterns, and IPs
                 new_domains = set()
                 new_patterns = set()
                 new_ips = set()
                 
-                # Parse domains array from server response
-                # Server format: {"domains": [{"value": "...", "type": "domain|ip|pattern", ...}]}
                 for item in data.get("domains", []):
                     if isinstance(item, str):
                         # Simple string format
@@ -120,15 +104,7 @@ class WhitelistState:
         return hashlib.md5(data.encode()).hexdigest()
     
     def is_domain_allowed(self, domain: str) -> bool:
-        """
-        Check if domain is in whitelist.
-        
-        Args:
-            domain: Domain to check
-            
-        Returns:
-            True if domain is allowed
-        """
+
         with self._lock:
             domain = domain.lower().strip()
             
@@ -169,22 +145,18 @@ class WhitelistState:
             }
     
     def get_all_domains(self) -> Set[str]:
-        """Get all domains."""
         with self._lock:
             return self._domains.copy()
     
     def get_all_patterns(self) -> Set[str]:
-        """Get all patterns."""
         with self._lock:
             return self._patterns.copy()
     
     def get_all_ips(self) -> Set[str]:
-        """Get all IPs."""
         with self._lock:
             return self._ips.copy()
     
     def clear(self) -> None:
-        """Clear all whitelist data."""
         with self._lock:
             self._domains.clear()
             self._patterns.clear()

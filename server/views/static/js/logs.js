@@ -1311,7 +1311,7 @@ function renderLifecycleEvent(log, logId) {
         'agent_startup': {
             icon: 'fa-rocket',
             gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            title: '🚀 Agent Started',
+            title: 'Agent Started',
             badge: 'bg-success',
             borderColor: '#38ef7d'
         },

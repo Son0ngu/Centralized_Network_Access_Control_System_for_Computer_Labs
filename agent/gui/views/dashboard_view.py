@@ -669,7 +669,7 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
-            "║" + "  🚀 FIREWALL AGENT STARTING".center(48) + "║",
+            "║" + "  FIREWALL AGENT STARTING".center(48) + "║",
             "╠" + "═" * 48 + "╣",
             f"║  📅 Time: {timestamp}".ljust(49) + "║",
             f"║  💻 Host: {hostname[:35]}".ljust(49) + "║",

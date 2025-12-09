@@ -7,15 +7,6 @@ logger = logging.getLogger("utils.validators")
 
 
 def validate_configuration(config: Dict) -> bool:
-    """
-    Validate configuration at startup.
-    
-    Args:
-        config: Configuration dictionary to validate
-        
-    Returns:
-        True if configuration is valid, False on critical errors
-    """
     logger.info("Validating configuration...")
     errors: List[str] = []      # Critical errors - agent will not start
     warnings: List[str] = []    # Non-critical issues
@@ -65,7 +56,6 @@ def validate_configuration(config: Dict) -> bool:
 
 
 def _validate_server_config(config: Dict) -> Tuple[List[str], List[str]]:
-    """Validate server configuration."""
     errors = []
     warnings = []
     
@@ -74,7 +64,6 @@ def _validate_server_config(config: Dict) -> Tuple[List[str], List[str]]:
     if not server_config.get("url") and not server_config.get("urls"):
         errors.append("Server URL is required (either 'url' or 'urls')")
     
-    # Validate URLs format
     urls_to_check = server_config.get("urls", [])
     if server_config.get("url"):
         urls_to_check.append(server_config["url"])
@@ -87,7 +76,6 @@ def _validate_server_config(config: Dict) -> Tuple[List[str], List[str]]:
 
 
 def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
-    """Validate firewall configuration."""
     errors = []
     warnings = []
     
@@ -98,7 +86,6 @@ def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
     if current_mode not in valid_modes:
         errors.append(f"Invalid firewall mode: {current_mode}. Valid modes: {valid_modes}")
     
-    # Admin privileges check for firewall modes
     admin_required_modes = ["block", "whitelist_only"]
     if current_mode in admin_required_modes:
         if not check_admin_privileges():
@@ -111,7 +98,6 @@ def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
 
 
 def _validate_logging_config(config: Dict) -> Tuple[List[str], List[str]]:
-    """Validate logging configuration."""
     errors = []
     warnings = []
     
@@ -127,7 +113,6 @@ def _validate_logging_config(config: Dict) -> Tuple[List[str], List[str]]:
 
 
 def _validate_whitelist_config(config: Dict) -> List[str]:
-    """Validate whitelist configuration."""
     warnings = []
     
     whitelist_config = config.get("whitelist", {})
@@ -140,7 +125,6 @@ def _validate_whitelist_config(config: Dict) -> List[str]:
 
 
 def _validate_heartbeat_config(config: Dict) -> List[str]:
-    """Validate heartbeat configuration."""
     warnings = []
     
     heartbeat_config = config.get("heartbeat", {})

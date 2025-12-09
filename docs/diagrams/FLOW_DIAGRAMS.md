@@ -83,7 +83,7 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    START([🚀 Agent Start]) --> LOAD_CONFIG["📄 Load Configuration<br/>(agent_config.json)"]
+    START([Agent Start]) --> LOAD_CONFIG["📄 Load Configuration<br/>(agent_config.json)"]
     
     LOAD_CONFIG --> VALIDATE["Validate Configuration"]
     VALIDATE --> |Invalid| ERROR_CONFIG["Log Error & Exit"]
@@ -307,7 +307,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    TRIGGER([Sync Trigger]) --> CHECK_INTERVAL{"⏰ Sync Interval<br/>Elapsed?"}
+    TRIGGER([Sync Trigger]) --> CHECK_INTERVAL{"Sync Interval<br/>Elapsed?"}
     
     CHECK_INTERVAL --> |No| SKIP_SYNC["Skip Sync"]
     CHECK_INTERVAL --> |Yes| BUILD_REQUEST
@@ -484,7 +484,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph "💓 Agent Heartbeat"
-        HB_TRIGGER([⏰ Heartbeat Timer]) --> COLLECT_METRICS
+        HB_TRIGGER([Heartbeat Timer]) --> COLLECT_METRICS
         
         COLLECT_METRICS["📊 Collect Metrics"]
         COLLECT_METRICS --> CPU["CPU Usage"]
@@ -599,7 +599,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph "🖼️ GUI Application"
-        APP_START([🚀 GUI Start]) --> INIT_CTK["Init CustomTkinter"]
+        APP_START([GUI Start]) --> INIT_CTK["Init CustomTkinter"]
         INIT_CTK --> LOAD_VIEWS["Load Views"]
         LOAD_VIEWS --> CONNECT_CTRL["Connect Controllers"]
         CONNECT_CTRL --> MAIN_WINDOW["Show Main Window"]
@@ -668,7 +668,7 @@ sequenceDiagram
     participant WS as Socket.IO
     participant WEB as 🖥️ Web UI
 
-    Note over U,WEB: 🚀 STARTUP PHASE
+    Note over U,WEB: STARTUP PHASE
     U->>GUI: Click Start
     GUI->>A: start_agent()
     A->>A: load_config()

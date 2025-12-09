@@ -4,6 +4,8 @@ import socket
 import subprocess
 from typing import Set
 
+from agent.utils.ip_detector import check_admin_privileges, get_local_ip
+
 logger = logging.getLogger("firewall.utils")
 
 
@@ -48,15 +50,15 @@ class FirewallUtils:
             "2620:fe::fe", "2620:fe::9"
         ])
         
-        # Try to detect local IPv4 network
+        # Try to detect local IPv4 via shared IPDetector
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.connect(("8.8.8.8", 80))
-                local_ip = s.getsockname()[0]
+            local_ip = get_local_ip()
+            if local_ip:
                 essential.add(local_ip)
-                gateway_ip = '.'.join(local_ip.split('.')[:-1]) + '.1'
-                essential.add(gateway_ip)
-                logger.debug(f"Detected local IPv4 network: {local_ip}, gateway: {gateway_ip}")
+                if '.' in local_ip:
+                    gateway_ip = '.'.join(local_ip.split('.')[:-1]) + '.1'
+                    essential.add(gateway_ip)
+                    logger.debug(f"Detected local IPv4 network: {local_ip}, gateway: {gateway_ip}")
         except Exception as e:
             logger.debug(f"Could not detect local IPv4 network: {e}")
         
@@ -76,18 +78,7 @@ class FirewallUtils:
     def has_admin_privileges() -> bool:
         """Check if the application is running with administrator privileges."""
         try:
-            command = ["netsh", "advfirewall", "show", "currentprofile"]
-            
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            
-            return result.returncode == 0
-            
+            return check_admin_privileges()
         except Exception as e:
             logger.error(f"Error checking admin privileges: {e}")
             return False

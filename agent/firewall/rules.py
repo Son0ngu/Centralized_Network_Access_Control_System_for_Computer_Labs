@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Set
 
-from shared.time_utils import now, now_iso, sleep
+from agent.shared.time_utils import now, now_iso, sleep
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.rules")
