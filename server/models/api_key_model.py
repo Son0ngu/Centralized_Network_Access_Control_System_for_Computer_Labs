@@ -1,6 +1,6 @@
 """
 API Key Model - handles API key data operations for agent authentication.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

@@ -1,6 +1,6 @@
 """
 JWT Service - Token generation, validation, and refresh for agent authentication.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import os

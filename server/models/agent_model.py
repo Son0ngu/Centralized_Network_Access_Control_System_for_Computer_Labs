@@ -1,6 +1,6 @@
 """
 Agent Model - handles agent data operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

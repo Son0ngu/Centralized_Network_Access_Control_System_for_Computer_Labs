@@ -1,6 +1,6 @@
 """
 API Key Controller - handles API key HTTP requests for admin management.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

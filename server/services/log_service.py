@@ -1,6 +1,6 @@
 """
 Log Service - Business logic for log operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

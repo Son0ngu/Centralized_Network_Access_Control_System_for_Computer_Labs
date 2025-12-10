@@ -1,14 +1,3 @@
-"""
-Icon Resources - Unicode/Emoji icons for menu items and UI elements.
-Vietnam ONLY - Enterprise Security Theme.
-
-Using Unicode characters instead of image files for:
-- Smaller bundle size
-- No asset management needed
-- Works on all systems with proper fonts
-- Easy to customize colors
-"""
-
 from dataclasses import dataclass
 from typing import Dict
 
@@ -71,13 +60,13 @@ class IconSet:
     server: str = "🖥️"
     connection: str = "🔗"
     disconnected: str = "🔌"
-    ip_address: str = "📍"
+    ip_address: str = "🖥️"
     dns: str = "🌍"
     packet: str = "📦"
     traffic: str = "📶"
     
     # === System Icons ===
-    computer: str = "💻"
+    computer: str = "🖥️"
     cpu: str = "⚡"
     memory: str = "🧠"
     disk: str = "💿"
@@ -107,7 +96,7 @@ class IconSet:
     
     # === Console Icons ===
     console: str = "📟"
-    terminal: str = "💻"
+    terminal: str = "🖥️"
     command: str = ">"
     
     # === Theme Icons ===
@@ -224,7 +213,7 @@ ASCII_LOGO = """
 ║                S A I N T                  ║
 ║   Security Agent Intelligence Network Tool║
 ║   Enterprise Security Management          ║
-║   Vietnam ONLY Edition                    ║
+║   Edition                    ║
 ╚═══════════════════════════════════════════╝
 """
 

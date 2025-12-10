@@ -1,6 +1,6 @@
 """
 Main Flask application with MVC architecture
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 #  QUAN TRỌNG: Monkey patch PHẢI ở đầu tiên, trước tất cả imports khác

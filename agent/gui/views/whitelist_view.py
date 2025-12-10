@@ -1,20 +1,8 @@
-"""
-Whitelist View - Domain/IP whitelist management with CRUD operations.
-Vietnam ONLY - Using customtkinter.
-
-Features:
-- DataTable displaying IP list
-- Add IP input and button
-- Delete action per row
-- Refresh and sync buttons
-- Statistics display
-"""
-
 import customtkinter as ctk
 import threading
 from typing import Dict, List, Optional
 
-from ..controllers.whitelist_controller import WhitelistController, get_whitelist_controller
+from ..controllers.whitelist_controller import get_whitelist_controller
 from .components.data_table import DataTable
 
 
@@ -52,9 +40,6 @@ class WhitelistView(ctk.CTkFrame):
         """Setup whitelist UI."""
         # Header
         self._create_header()
-        
-        # Add IP section
-        self._create_add_section()
         
         # Stats section
         self._create_stats_section()
@@ -106,68 +91,6 @@ class WhitelistView(ctk.CTkFrame):
             command=self._on_sync
         )
         sync_btn.pack(side="right", padx=(0, 10))
-    
-    def _create_add_section(self):
-        """Create add IP input section."""
-        add_frame = ctk.CTkFrame(self, fg_color="#1a1a2e", corner_radius=12, height=70)
-        add_frame.pack(fill="x", pady=(0, 15))
-        add_frame.pack_propagate(False)
-        
-        # Inner container
-        inner = ctk.CTkFrame(add_frame, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=20, pady=15)
-        
-        # Label
-        label = ctk.CTkLabel(
-            inner,
-            text="Add New IP:",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#ffffff"
-        )
-        label.pack(side="left")
-        
-        # IP input
-        self._ip_entry = ctk.CTkEntry(
-            inner,
-            placeholder_text="Enter IP address (e.g., 192.168.1.1)",
-            width=300,
-            height=40,
-            font=ctk.CTkFont(size=13),
-            corner_radius=8,
-            border_color="#3d3d54",
-            fg_color="#0a0a12"
-        )
-        self._ip_entry.pack(side="left", padx=(15, 0))
-        
-        # Bind Enter key
-        self._ip_entry.bind("<Return>", lambda e: self._on_add_ip())
-        
-        # Add button
-        add_btn = ctk.CTkButton(
-            inner,
-            text="➕ Add IP",
-            width=100,
-            height=40,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            fg_color="#00ff88",
-            hover_color="#00cc6f",
-            text_color="#000000",
-            command=self._on_add_ip
-        )
-        add_btn.pack(side="left", padx=(10, 0))
-        
-        # Clear button
-        clear_btn = ctk.CTkButton(
-            inner,
-            text="✖️ Clear",
-            width=80,
-            height=40,
-            font=ctk.CTkFont(size=13),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
-            command=self._on_clear_input
-        )
-        clear_btn.pack(side="left", padx=(5, 0))
     
     def _create_stats_section(self):
         """Create statistics section."""
@@ -283,7 +206,7 @@ class WhitelistView(ctk.CTkFrame):
         stats_text = (
             f"📊 Total: {total}  |  "
             f"🌐 Domains: {domains}  |  "
-            f"🖥️ IPs: {ips}  |  "
+            f"📍 IPs: {ips}  |  "
             f"Active: {stats.get('active', 0)}"
         )
         
@@ -293,26 +216,6 @@ class WhitelistView(ctk.CTkFrame):
         
         self._stats_label.configure(text=stats_text)
     
-    def _on_add_ip(self):
-        """Handle add IP button click."""
-        ip = self._ip_entry.get().strip()
-        
-        if not ip:
-            self._show_error("Please enter an IP address")
-            return
-        
-        # Validate first
-        is_valid, error = WhitelistController.validate_ip(ip)
-        if not is_valid:
-            self._show_error(error)
-            return
-        
-        # Add IP
-        self._controller.add_ip(ip)
-        
-        # Clear input
-        self._ip_entry.delete(0, "end")
-    
     def _on_delete_row(self, row_data: Dict):
         """Handle delete button click."""
         ip = row_data.get("ip", "")
@@ -320,10 +223,6 @@ class WhitelistView(ctk.CTkFrame):
         if ip:
             # Confirm dialog would be nice, but for now just delete
             self._controller.remove_ip(ip)
-    
-    def _on_clear_input(self):
-        """Clear IP input field."""
-        self._ip_entry.delete(0, "end")
     
     def _on_refresh(self):
         """Handle refresh button click."""

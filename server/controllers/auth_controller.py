@@ -1,6 +1,6 @@
 """
 Auth Controller - handles authentication endpoints (token refresh, logout).
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

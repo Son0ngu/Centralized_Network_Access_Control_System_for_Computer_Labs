@@ -1,15 +1,3 @@
-"""
-Configuration and Database Client for Firewall Controller Server
-vietnam ONLY - Clean and simple
-"""
-
-# Ensure eventlet monkey patch happens even when this module is imported
-# directly (before app.py). Otherwise, logging's global RLock is created
-# before being greened, triggering "RLock(s) were not greened" warnings.
-import eventlet
-
-eventlet.monkey_patch()
-
 import os
 import secrets
 import logging
@@ -88,7 +76,7 @@ def get_mongo_client(config):
     
     if _mongo_client is None:
         try:
-            logger.info(f" [{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
+            logger.info(f"🔗 [{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
             
             # FIX: Optimized connection settings để reduce Win32 exceptions
             _mongo_client = MongoClient(
@@ -125,7 +113,7 @@ def close_mongo_client():
     if _mongo_client:
         _mongo_client.close()
         _mongo_client = None
-        logger.info(f"[{now_iso()}] MongoDB client closed")
+        logger.info(f"🔌 [{now_iso()}] MongoDB client closed")
 
 def get_config() -> Config:
     """Get configuration instance."""

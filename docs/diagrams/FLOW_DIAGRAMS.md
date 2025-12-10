@@ -553,7 +553,7 @@ flowchart TD
     SIG_STOP --> SET_FLAG
     SVC_STOP --> SET_FLAG
     
-    SET_FLAG["🚩 Set Stop Flag"]
+    SET_FLAG["🖥️ Set Stop Flag"]
     SET_FLAG --> STOP_SNIFFER["🛑 Stop Packet Sniffer"]
     
     subgraph "Cleanup Sequence"

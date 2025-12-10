@@ -1,6 +1,6 @@
 """
 GUI Resources module - Icons and assets.
-Vietnam ONLY - Enterprise Security Theme.
+- Enterprise Security Theme.
 """
 
 from .icons import (

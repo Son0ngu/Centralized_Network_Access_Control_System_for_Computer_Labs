@@ -1,6 +1,6 @@
 """
 Agent Service - Business logic for agent operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
@@ -36,7 +36,7 @@ class AgentService:
         self.db = self.model.db
         self.pending_group = self.group_model.ensure_pending_group()
         
-        # vietnam ONLY - no timezone complexity
+        # - no timezone complexity
         self.active_threshold = 300      # 5 minutes
         self.inactive_threshold = 1800   # 30 minutes
         

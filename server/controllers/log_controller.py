@@ -1,6 +1,6 @@
 """
 Log Controller - handles log HTTP requests
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 from datetime import timedelta
 from flask import Blueprint, request, jsonify, Response

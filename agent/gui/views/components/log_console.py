@@ -1,6 +1,6 @@
 """
 Log Console Component - Terminal-style log viewer.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
 - Terminal-like appearance (black bg, green text)

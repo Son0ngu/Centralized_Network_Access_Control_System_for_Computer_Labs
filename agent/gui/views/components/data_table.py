@@ -1,6 +1,6 @@
 """
 Data Table Component - Reusable table widget for displaying data.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
 - Scrollable table with headers

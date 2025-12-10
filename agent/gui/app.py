@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import os
 from .views.main_window import MainWindow
 from .controllers import AgentController
 
@@ -31,6 +32,14 @@ class FirewallControllerApp:
         try:
             # Create root window
             self._root = ctk.CTk()
+            
+            # Set icon for Windows
+            try:
+                icon_path = os.path.join(os.path.dirname(__file__), "..", "miku.ico")
+                self._root.iconbitmap(icon_path)
+            except Exception:
+                pass
+            
             self._root.title("SAINT - Security Agent Intelligence Network Tool")
             self._root.geometry("1200x800")
             self._root.minsize(900, 600)

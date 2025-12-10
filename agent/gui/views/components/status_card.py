@@ -1,6 +1,6 @@
 """
 Status Card Component - Beautiful card widget for displaying metrics.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
 - Icon support (emoji or image)

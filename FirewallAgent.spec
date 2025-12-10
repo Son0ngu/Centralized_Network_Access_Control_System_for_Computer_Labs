@@ -2,7 +2,7 @@
 
 """
 PyInstaller Spec File for Firewall Controller Agent GUI
-Vietnam ONLY - Enterprise Security
+- Enterprise Security
 
 This spec file creates two executables:
 1. SAINT.exe - Console mode (for service/CLI)

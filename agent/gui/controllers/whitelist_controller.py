@@ -1,9 +1,9 @@
 """
 Whitelist Controller - Manages whitelist CRUD operations for GUI.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
-- Add/Remove IP addresses
+- View/Remove IP addresses
 - Refresh whitelist display
 - Integration with WhitelistManager
 - Thread-safe operations
@@ -11,9 +11,7 @@ Features:
 
 import logging
 import threading
-import re
-from typing import Callable, Dict, List, Optional, Tuple
-from datetime import datetime
+from typing import Callable, Dict, List
 
 logger = logging.getLogger("gui.whitelist_controller")
 
@@ -23,7 +21,6 @@ class WhitelistController:
     Controller for whitelist management in GUI.
     
     Provides methods for:
-    - add_ip(ip): Add IP to local list (note: server sync manages actual whitelist)
     - remove_ip(ip): Remove IP from local list
     - get_all_ips(): Get all whitelisted IPs
     - refresh(): Trigger sync and refresh data
@@ -203,130 +200,6 @@ class WhitelistController:
                 callback(message)
             except Exception as e:
                 logger.error(f"Error in success callback: {e}")
-    
-    # ========== Validation ==========
-    
-    @staticmethod
-    def validate_ip(ip: str) -> Tuple[bool, str]:
-        """
-        Validate IP address format.
-        
-        Args:
-            ip: IP address string
-            
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        if not ip:
-            return False, "IP address cannot be empty"
-        
-        ip = ip.strip()
-        
-        # IPv4 pattern
-        ipv4_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
-        
-        # IPv6 pattern (simplified)
-        ipv6_pattern = r'^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$'
-        
-        # CIDR notation for IPv4
-        cidr_pattern = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
-        
-        if re.match(ipv4_pattern, ip):
-            # Validate octets
-            parts = ip.split(".")
-            for part in parts:
-                if int(part) > 255:
-                    return False, f"Invalid IPv4 octet: {part}"
-            return True, ""
-        
-        if re.match(cidr_pattern, ip):
-            # Validate CIDR
-            ip_part, cidr_part = ip.split("/")
-            parts = ip_part.split(".")
-            for part in parts:
-                if int(part) > 255:
-                    return False, f"Invalid IPv4 octet: {part}"
-            if int(cidr_part) > 32:
-                return False, f"Invalid CIDR: /{cidr_part}"
-            return True, ""
-        
-        if re.match(ipv6_pattern, ip):
-            return True, ""
-        
-        # Check for simplified IPv6
-        if ":" in ip and not "." in ip:
-            return True, ""  # Simplified check
-        
-        return False, f"Invalid IP format: {ip}"
-    
-    # ========== CRUD Operations ==========
-    
-    def add_ip(self, ip: str) -> bool:
-        """
-        Add IP address to whitelist.
-        
-        Args:
-            ip: IP address to add
-            
-        Returns:
-            True if successful
-        """
-        ip = ip.strip()
-        
-        # Validate
-        is_valid, error = self.validate_ip(ip)
-        if not is_valid:
-            self._notify_error(f"Invalid IP: {error}")
-            return False
-        
-        # Check duplicate
-        with self._lock_data:
-            if ip in self._local_ips:
-                self._notify_error(f"IP already exists: {ip}")
-                return False
-        
-        def add_worker():
-            try:
-                # Add to local list
-                with self._lock_data:
-                    try:
-                        from shared.time_utils import now_vietnam
-                        added_date = now_vietnam().strftime("%Y-%m-%d %H:%M")
-                    except ImportError:
-                        added_date = datetime.now().strftime("%Y-%m-%d %H:%M")
-                    
-                    self._local_ips[ip] = {
-                        "ip": ip,
-                        "added_date": added_date,
-                        "status": "Pending",
-                        "source": "local"
-                    }
-                
-                # If WhitelistManager supports adding IPs, call it
-                if self._whitelist_manager:
-                    if hasattr(self._whitelist_manager, 'add_ip'):
-                        self._whitelist_manager.add_ip(ip)
-                    elif hasattr(self._whitelist_manager, '_state'):
-                        # Direct state manipulation (not recommended in production)
-                        self._whitelist_manager._state._ips.add(ip)
-                
-                # Update status
-                with self._lock_data:
-                    if ip in self._local_ips:
-                        self._local_ips[ip]["status"] = "Active"
-                
-                self._notify_data_changed()
-                self._notify_success(f"IP added: {ip}")
-                logger.info(f"IP added to whitelist: {ip}")
-                
-            except Exception as e:
-                self._notify_error(f"Failed to add IP: {e}")
-                logger.error(f"Failed to add IP {ip}: {e}")
-        
-        # Run in thread
-        thread = threading.Thread(target=add_worker, daemon=True)
-        thread.start()
-        return True
     
     def remove_ip(self, ip: str) -> bool:
         """

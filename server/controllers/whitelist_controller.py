@@ -1,6 +1,6 @@
 """
 Whitelist Controller - handles whitelist HTTP requests
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

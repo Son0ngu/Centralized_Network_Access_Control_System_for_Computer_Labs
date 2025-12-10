@@ -1,6 +1,6 @@
 """
 Authentication Middleware - API Key and JWT validation for agent requests.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging

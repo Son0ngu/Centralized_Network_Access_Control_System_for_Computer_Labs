@@ -1,6 +1,6 @@
 """
 Agent Controller - Bridge between GUI and Core Agent.
-Vietnam ONLY - Clean implementation.
+- Clean implementation.
 
 Uses threading + callback pattern for non-blocking GUI.
 customtkinter uses after() for thread-safe UI updates.

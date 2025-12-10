@@ -1,6 +1,6 @@
 """
 Lifecycle management - Agent initialization and cleanup.
-Vietnam ONLY - Clean implementation.
+- Clean implementation.
 """
 
 import logging

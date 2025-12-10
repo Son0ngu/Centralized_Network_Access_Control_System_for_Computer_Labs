@@ -1,6 +1,6 @@
 """
 Middleware module for authentication and authorization.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 from .auth import (

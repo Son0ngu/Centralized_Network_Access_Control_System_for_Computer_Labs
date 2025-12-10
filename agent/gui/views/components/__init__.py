@@ -1,6 +1,6 @@
 """
 GUI Components module - Reusable UI widgets.
-Vietnam ONLY - Clean implementation.
+- Clean implementation.
 """
 
 from .status_card import StatusCard, AnimatedStatusCard

@@ -1,6 +1,6 @@
 """
 Dashboard View - Shows agent status overview with real-time data.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
 - StatusCard components for metrics display
@@ -672,7 +672,7 @@ class DashboardView(ctk.CTkFrame):
             "║" + "  FIREWALL AGENT STARTING".center(48) + "║",
             "╠" + "═" * 48 + "╣",
             f"║  📅 Time: {timestamp}".ljust(49) + "║",
-            f"║  💻 Host: {hostname[:35]}".ljust(49) + "║",
+            f"║  🖥️ Host: {hostname[:35]}".ljust(49) + "║",
             "║  🔥 Mode: Detecting...".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
             "║  ⚙️  Initializing components...".ljust(49) + "║",

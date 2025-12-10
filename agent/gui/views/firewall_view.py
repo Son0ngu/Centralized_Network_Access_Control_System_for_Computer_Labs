@@ -1,6 +1,6 @@
 """
 Firewall View - Firewall rules management.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 """
 
 import customtkinter as ctk

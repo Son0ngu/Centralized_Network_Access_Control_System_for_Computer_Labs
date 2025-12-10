@@ -1,6 +1,6 @@
 """
 Logs View - View agent activity logs with terminal-style console.
-Vietnam ONLY - Using customtkinter.
+- Using customtkinter.
 
 Features:
 - Real-time log display
@@ -187,7 +187,7 @@ class LogsView(ctk.CTkFrame):
         """Add welcome/sample logs."""
         self._log_console.append_log("=" * 60, "INFO")
         self._log_console.append_log("  Firewall Agent Log Console", "INFO")
-        self._log_console.append_log("  Vietnam ONLY - Enterprise Security", "INFO")
+        self._log_console.append_log("  - Enterprise Security", "INFO")
         self._log_console.append_log("=" * 60, "INFO")
         self._log_console.append_log("", "INFO")
         self._log_console.append_log("Log console initialized and ready", "INFO")

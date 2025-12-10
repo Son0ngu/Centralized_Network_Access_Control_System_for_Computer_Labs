@@ -1,6 +1,6 @@
 """
 Whitelist Model - handles whitelist data operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 import datetime
 from typing import Dict, List, Optional

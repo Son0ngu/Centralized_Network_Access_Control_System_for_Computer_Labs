@@ -1,6 +1,6 @@
 """
 API Key Service - Business logic for API key operations.
-Vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
