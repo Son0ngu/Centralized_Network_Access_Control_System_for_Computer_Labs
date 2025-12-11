@@ -1,38 +1,10 @@
-"""
-Data Table Component - Reusable table widget for displaying data.
-- Using customtkinter.
-
-Features:
-- Scrollable table with headers
-- Action buttons per row (Delete, Edit)
-- Sortable columns
-- Search/filter support
-"""
-
 import customtkinter as ctk
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from datetime import datetime
 
 
 class DataTable(ctk.CTkFrame):
-    """
-    A reusable data table widget.
-    
-    Usage:
-        table = DataTable(
-            parent,
-            columns=[
-                {"key": "ip", "title": "IP Address", "width": 150},
-                {"key": "date", "title": "Added Date", "width": 120},
-                {"key": "status", "title": "Status", "width": 80},
-            ],
-            on_delete=lambda row: print(f"Delete {row}")
-        )
-        table.set_data([
-            {"ip": "192.168.1.1", "date": "2024-01-01", "status": "Active"},
-        ])
-    """
-    
+
     def __init__(
         self,
         parent,
@@ -274,10 +246,7 @@ class DataTable(ctk.CTkFrame):
 
 
 class SearchableDataTable(ctk.CTkFrame):
-    """
-    DataTable with integrated search functionality.
-    """
-    
+
     def __init__(
         self,
         parent,

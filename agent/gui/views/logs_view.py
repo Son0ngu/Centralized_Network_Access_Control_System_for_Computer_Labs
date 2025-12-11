@@ -1,15 +1,3 @@
-"""
-Logs View - View agent activity logs with terminal-style console.
-- Using customtkinter.
-
-Features:
-- Real-time log display
-- Terminal-style appearance (black bg, green text)
-- Log level filtering
-- Search functionality
-- Export capability
-"""
-
 import customtkinter as ctk
 import logging
 from typing import Optional

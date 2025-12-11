@@ -1,15 +1,3 @@
-"""
-Log Console Component - Terminal-style log viewer.
-- Using customtkinter.
-
-Features:
-- Terminal-like appearance (black bg, green text)
-- Auto-scroll to bottom
-- Log level coloring
-- Search/filter capability
-- Custom logging.Handler integration
-"""
-
 import customtkinter as ctk
 import logging
 import queue
@@ -19,16 +7,7 @@ from datetime import datetime
 
 
 class LogConsole(ctk.CTkFrame):
-    """
-    Terminal-style log console widget.
-    
-    Features:
-    - Hacker/admin style (black background, green text)
-    - Auto-scroll to bottom
-    - Color-coded log levels
-    - Max lines limit to prevent memory issues
-    """
-    
+
     # Log level colors
     LEVEL_COLORS = {
         "DEBUG": "#888888",
@@ -207,14 +186,7 @@ class LogConsole(ctk.CTkFrame):
         level: str = "INFO",
         timestamp: Optional[str] = None
     ):
-        """
-        Append a log message (thread-safe).
-        
-        Args:
-            message: Log message
-            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            timestamp: Optional timestamp, defaults to current time
-        """
+
         if timestamp is None:
             try:
                 from shared.time_utils import now_vietnam
@@ -290,15 +262,7 @@ class LogConsole(ctk.CTkFrame):
 
 
 class GUILogHandler(logging.Handler):
-    """
-    Custom logging.Handler that sends logs to LogConsole.
-    
-    Usage:
-        console = LogConsole(parent)
-        handler = GUILogHandler(console)
-        logging.getLogger().addHandler(handler)
-    """
-    
+
     def __init__(self, log_console: LogConsole):
         super().__init__()
         self._console = log_console
@@ -322,11 +286,7 @@ class GUILogHandler(logging.Handler):
 
 
 class QueueLogHandler(logging.Handler):
-    """
-    Logging handler that puts logs in a queue.
-    Useful for thread-safe communication with GUI.
-    """
-    
+
     def __init__(self, log_queue: queue.Queue):
         super().__init__()
         self._queue = log_queue

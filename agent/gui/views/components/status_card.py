@@ -1,33 +1,8 @@
-"""
-Status Card Component - Beautiful card widget for displaying metrics.
-- Using customtkinter.
-
-Features:
-- Icon support (emoji or image)
-- Title and value display
-- Color theming
-- Optional trend indicator
-- Animated value updates
-"""
-
 import customtkinter as ctk
 from typing import Optional
 
 
 class StatusCard(ctk.CTkFrame):
-    """
-    A beautiful card widget for displaying status metrics.
-    
-    Usage:
-        card = StatusCard(
-            parent,
-            title="Active Rules",
-            value="15",
-            icon="🔥",
-            color="#00d4ff"
-        )
-    """
-    
     def __init__(
         self,
         parent,
@@ -151,16 +126,7 @@ class StatusCard(ctk.CTkFrame):
         self.set_color(color)
 
 
-class AnimatedStatusCard(StatusCard):
-    """
-    StatusCard with animated value transitions.
-    
-    Features:
-    - Smooth number transitions
-    - Pulse animation on update
-    - Trend indicators (up/down arrows)
-    """
-    
+class AnimatedStatusCard(StatusCard):    
     def __init__(
         self,
         parent,
@@ -203,13 +169,7 @@ class AnimatedStatusCard(StatusCard):
             self._trend_label.place(relx=0.85, rely=0.5, anchor="center")
     
     def set_value(self, value: str, animate: bool = None):
-        """
-        Update value with optional animation.
-        
-        Args:
-            value: New value to display
-            animate: Override default animation setting
-        """
+  
         should_animate = animate if animate is not None else self._animate
         
         # Update trend indicator
@@ -287,11 +247,7 @@ class AnimatedStatusCard(StatusCard):
 
 
 class StatusCardGrid(ctk.CTkFrame):
-    """
-    A grid container for multiple StatusCards.
-    Automatically arranges cards in a responsive grid.
-    """
-    
+
     def __init__(
         self,
         parent,
@@ -325,21 +281,7 @@ class StatusCardGrid(ctk.CTkFrame):
         subtitle: str = "",
         animated: bool = False
     ) -> StatusCard:
-        """
-        Add a new card to the grid.
-        
-        Args:
-            card_id: Unique identifier for the card
-            title: Card title
-            value: Initial value
-            icon: Emoji icon
-            color: Accent color
-            subtitle: Optional subtitle
-            animated: Use AnimatedStatusCard
-            
-        Returns:
-            The created StatusCard instance
-        """
+
         CardClass = AnimatedStatusCard if animated else StatusCard
         
         card = CardClass(
@@ -378,11 +320,7 @@ class StatusCardGrid(ctk.CTkFrame):
         return self._cards.get(card_id)
     
     def update_card(self, card_id: str, **kwargs):
-        """
-        Update a card's properties.
-        
-        Supported kwargs: value, title, icon, color, subtitle
-        """
+    
         card = self._cards.get(card_id)
         if not card:
             return
@@ -399,11 +337,6 @@ class StatusCardGrid(ctk.CTkFrame):
             card.set_subtitle(kwargs['subtitle'])
     
     def update_all(self, data: dict):
-        """
-        Update multiple cards at once.
-        
-        Args:
-            data: Dict of {card_id: {property: value, ...}, ...}
-        """
+ 
         for card_id, props in data.items():
             self.update_card(card_id, **props)

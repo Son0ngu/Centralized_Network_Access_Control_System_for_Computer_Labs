@@ -1,14 +1,3 @@
-"""
-Dashboard View - Shows agent status overview with real-time data.
-- Using customtkinter.
-
-Features:
-- StatusCard components for metrics display
-- Real-time data binding from AgentController
-- Periodic stats refresh using after()
-- Activity log with auto-scroll
-"""
-
 import customtkinter as ctk
 from typing import Dict, Optional
 

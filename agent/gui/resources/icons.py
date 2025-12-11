@@ -4,10 +4,6 @@ from typing import Dict
 
 @dataclass(frozen=True)
 class IconSet:
-    """
-    Collection of icons used throughout the application.
-    Using emoji/unicode for cross-platform compatibility.
-    """
     
     # === Navigation Icons ===
     dashboard: str = "📊"

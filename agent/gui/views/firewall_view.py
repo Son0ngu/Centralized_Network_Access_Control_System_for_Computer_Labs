@@ -1,8 +1,3 @@
-"""
-Firewall View - Firewall rules management.
-- Using customtkinter.
-"""
-
 import customtkinter as ctk
 import threading
 from typing import Dict, List, Optional
