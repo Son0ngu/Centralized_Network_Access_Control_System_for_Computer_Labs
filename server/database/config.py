@@ -1,8 +1,3 @@
-"""
-Configuration and Database Client for Firewall Controller Server
-vietnam ONLY - Clean and simple
-"""
-
 import os
 import secrets
 import logging

@@ -1,16 +1,14 @@
 """
 Agent Service - Business logic for agent operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
-import time
 import secrets
 import uuid
 import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from bson import ObjectId
 from models.agent_model import AgentModel
 
 # Import time utilities - vietnam ONLY
@@ -26,23 +24,57 @@ from time_utils import (
 class AgentService:
     """Service class for agent business logic - vietnam ONLY"""
     
-    def __init__(self, agent_model: AgentModel, socketio=None):
+    def __init__(self, agent_model: AgentModel, group_model, socketio=None, jwt_service=None):
         """Initialize AgentService with proper parameters"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
+        self.group_model = group_model
         self.socketio = socketio
+        self.jwt_service = jwt_service  # NEW: JWT service for token generation
         
         # Get database from model, not from parameter
         self.db = self.model.db
-        self.commands_collection = self.db.agent_commands
+        self.pending_group = self.group_model.ensure_pending_group()
         
-        # vietnam ONLY - no timezone complexity
+        # - no timezone complexity
         self.active_threshold = 300      # 5 minutes
         self.inactive_threshold = 1800   # 30 minutes
         
         self.logger.info("AgentService initialized with vietnam timezone support")
         self.logger.info(f"Status thresholds: active≤{self.active_threshold}s, inactive≤{self.inactive_threshold}s")
+    
+    def set_jwt_service(self, jwt_service):
+        """Set JWT service (for late initialization)"""
+        self.jwt_service = jwt_service
+        self.logger.info("JWT service attached to AgentService")
 
+    def _persist_status_change(self, agent: Dict, new_status: str) -> None:
+        """Persist status change to database when calculated status differs"""
+        try:
+            agent_id = agent.get("agent_id")
+            previous_status = agent.get("status")
+
+            if not agent_id or not new_status:
+                return
+
+            if previous_status == new_status:
+                return
+
+            updated = self.model.update_agent(agent_id, {"status": new_status})
+            if updated:
+                self.logger.info(
+                    "Persisted status change for %s: %s -> %s",
+                    agent.get("hostname", agent_id),
+                    previous_status,
+                    new_status,
+                )
+            else:
+                self.logger.warning(
+                    "Failed to persist status change for %s", agent.get("hostname", agent_id)
+                )
+        except Exception as exc:
+            self.logger.error(f"Error persisting status for {agent.get('agent_id')}: {exc}")
+            
     def register_agent(self, agent_data: Dict, client_ip: str) -> Dict:
         """Register a new agent using hostname+IP as identifier - vietnam ONLY"""
         try:
@@ -58,15 +90,23 @@ class AgentService:
             if agent_ip == "127.0.0.1" and client_ip != "127.0.0.1":
                 agent_ip = client_ip
         
-            # Check for existing agent by hostname + IP
-            query = {"$or": [
-                {"ip_address": agent_ip}, 
-                {"hostname": hostname},
-                {"$and": [{"hostname": hostname}, {"ip_address": agent_ip}]}
-            ]}
-            
-            agents = self.model.get_all_agents(query, limit=1)
-            existing_agent = agents[0] if agents else None
+            device_id = agent_data.get("device_id")
+            if not device_id:
+                raise ValueError("Device ID is required for agent registration")
+
+            # Prefer device_id to detect existing agents, fallback to hostname/IP for legacy records
+            existing_agent = self.model.find_by_device_id(device_id)
+            if not existing_agent:
+                query = {"$or": [
+                    {"ip_address": agent_ip},
+                    {"hostname": hostname},
+                    {"$and": [{"hostname": hostname}, {"ip_address": agent_ip}]}
+                ]}
+
+                agents = self.model.get_all_agents(query, limit=1)
+                legacy_agent = agents[0] if agents else None
+                if legacy_agent and not legacy_agent.get("device_id"):
+                    existing_agent = legacy_agent
             
             # Use vietnam time for all timestamps
             current_time = now_vietnam()
@@ -76,14 +116,22 @@ class AgentService:
                 agent_id = existing_agent.get("agent_id")
                 update_data = {
                     "hostname": hostname,
+                    "device_id": device_id,
                     "ip_address": agent_ip,
                     "platform": agent_data.get("platform"),
                     "os_info": agent_data.get("os_info"),
                     "agent_version": agent_data.get("agent_version"),
                     "last_heartbeat": current_time,
                     "updated_date": current_time,
-                    "status": "active"
+                    
                 }
+                if existing_agent.get("status") not in ["pending", "disabled"]:
+                    update_data["status"] = "active"
+
+                if not existing_agent.get("group_id"):
+                    update_data["group_id"] = str(self.pending_group.get("_id"))
+                if not existing_agent.get("display_name"):
+                    update_data["display_name"] = hostname
                 
                 self.model.update_agent(agent_id, update_data)
                 agent_token = existing_agent.get("agent_token")
@@ -99,7 +147,9 @@ class AgentService:
                 
                 agent_registration_data = {
                     "agent_id": agent_id,
+                    "device_id": device_id,
                     "hostname": hostname,
+                    "display_name": hostname,
                     "ip_address": agent_ip,
                     "platform": agent_data.get("platform"),
                     "os_info": agent_data.get("os_info"),
@@ -107,7 +157,8 @@ class AgentService:
                     "agent_token": agent_token,
                     "registered_date": current_time,
                     "last_heartbeat": current_time,
-                    "status": "active"
+                    "status": "pending",
+                    "group_id": str(self.pending_group.get("_id")),
                 }
                 
                 self.model.register_agent(agent_registration_data)
@@ -119,18 +170,39 @@ class AgentService:
                     "agent_id": agent_id,
                     "hostname": hostname,
                     "ip_address": agent_ip,
-                    "status": "active",
+                    "status": agent_registration_data.get("status") if not existing_agent else existing_agent.get("status"),
                     "timestamp": now_iso()  # vietnam ISO
                 })
-        
-            return {
+            
+            # Build response
+            response = {
                 "agent_id": agent_id,
-                "user_id": agent_ip,
-                "token": agent_token,
-                "status": "active",
+                "user_id": device_id,
+                "token": agent_token,  # Legacy token for backward compatibility
+                "status": agent_registration_data.get("status") if not existing_agent else update_data.get("status", existing_agent.get("status")),
                 "message": f"Agent {'updated' if existing_agent else 'registered'} successfully",
                 "server_time": now_iso()  # vietnam ISO
             }
+            
+            # Generate JWT tokens if JWT service is available
+            if self.jwt_service:
+                try:
+                    jwt_tokens = self.jwt_service.generate_tokens(
+                        agent_id=agent_id,
+                        user_id=device_id,
+                        additional_claims={
+                            "hostname": hostname,
+                            "ip_address": agent_ip
+                        }
+                    )
+                    # Add JWT tokens to response
+                    response["jwt"] = jwt_tokens
+                    self.logger.info(f"JWT tokens generated for agent {agent_id}")
+                except Exception as jwt_error:
+                    self.logger.warning(f"Failed to generate JWT tokens: {jwt_error}")
+                    # Continue without JWT - fallback to legacy token
+            
+            return response
         
         except Exception as e:
             self.logger.error(f"Agent registration failed: {e}")
@@ -153,6 +225,19 @@ class AgentService:
                 hostname = agent.get('hostname', 'Unknown')
                 last_heartbeat = agent.get('last_heartbeat')
                 
+                agent.setdefault('display_name', hostname)
+
+                current_status = agent.get("status")
+
+                if current_status in ["pending", "disabled"]:
+                    if last_heartbeat:
+                        try:
+                            last_dt = parse_agent_timestamp(last_heartbeat)
+                            agent['time_since_heartbeat'] = (current_time - last_dt).total_seconds() / 60
+                        except Exception:
+                            agent['time_since_heartbeat'] = None
+                    continue
+
                 if last_heartbeat:
                     self.logger.info(f"{hostname}: Processing heartbeat {last_heartbeat} (type: {type(last_heartbeat)})")
                     
@@ -186,6 +271,7 @@ class AgentService:
                             status = 'offline'
                             self.logger.info(f"{hostname}: {time_diff_seconds:.2f}s > {self.inactive_threshold}s → OFFLINE")
                         
+                        self._persist_status_change(agent, status)
                         agent['status'] = status
                         agent['time_since_heartbeat'] = time_diff_seconds / 60
                         agent['last_heartbeat'] = last_heartbeat_vietnam
@@ -196,10 +282,12 @@ class AgentService:
                     except Exception as e:
                         self.logger.error(f"{hostname}: Error processing heartbeat: {e}")
                         self.logger.error(f"{hostname}: Traceback: {traceback.format_exc()}")
+                        self._persist_status_change(agent, 'offline')
                         agent['status'] = 'offline'
                         agent['time_since_heartbeat'] = 999
                 else:
                     self.logger.info(f"{hostname}: No heartbeat found")
+                    self._persist_status_change(agent, 'offline')
                     agent['status'] = 'offline'
                     agent['time_since_heartbeat'] = None
 
@@ -220,7 +308,8 @@ class AgentService:
             active = len([a for a in agents if a.get('status') == 'active'])
             inactive = len([a for a in agents if a.get('status') == 'inactive'])
             offline = len([a for a in agents if a.get('status') == 'offline'])
-            
+            pending = len([a for a in agents if a.get('status') == 'pending'])
+
             # Calculate percentages
             active_percentage = (active / total * 100) if total > 0 else 0
             
@@ -229,6 +318,7 @@ class AgentService:
                 'active': active,
                 'inactive': inactive,
                 'offline': offline,
+                'pending': pending,
                 'active_percentage': round(active_percentage, 1),
                 'health_status': 'good' if active_percentage > 70 else 'warning' if active_percentage > 30 else 'critical',
                 'last_calculated': now_iso(),  # vietnam ISO
@@ -248,6 +338,7 @@ class AgentService:
                 'active': 0, 
                 'inactive': 0, 
                 'offline': 0,
+                'pending': 0,
                 'active_percentage': 0,
                 'health_status': 'error',
                 'last_calculated': now_iso(),
@@ -265,6 +356,11 @@ class AgentService:
             if agent.get("agent_token") != token:
                 raise ValueError("Invalid token")
             
+            incoming_device_id = heartbeat_data.get("device_id")
+            stored_device_id = agent.get("device_id")
+            if stored_device_id and incoming_device_id and stored_device_id != incoming_device_id:
+                raise ValueError("Device ID mismatch")
+            
             # Parse agent timestamp using vietnam parsing
             agent_timestamp = heartbeat_data.get("timestamp")
             if agent_timestamp:
@@ -279,10 +375,14 @@ class AgentService:
                 heartbeat_time = now_vietnam()
         
             # Update heartbeat with parsed timestamp
+            new_status = agent.get("status")
+            if new_status not in ["pending", "disabled"]:
+                new_status = heartbeat_data.get("status", "active")
+
             update_data = {
                 "client_ip": client_ip,
                 "metrics": heartbeat_data.get("metrics", {}),
-                "status": heartbeat_data.get("status", "active"),
+                "status": new_status,
                 "agent_version": heartbeat_data.get("agent_version"),
                 "last_heartbeat_data": heartbeat_data,
                 "platform": heartbeat_data.get("platform"),
@@ -290,6 +390,9 @@ class AgentService:
                 "last_heartbeat": heartbeat_time
             }
             
+            if incoming_device_id and not stored_device_id:
+                update_data["device_id"] = incoming_device_id
+                
             self.logger.info(f"Setting heartbeat for {agent_id}: {heartbeat_time}")
             
             success = self.model.update_heartbeat(agent_id, update_data)
@@ -315,9 +418,8 @@ class AgentService:
             
             return {
                 "agent_id": agent_id,
-                "status": "active",
+                "status": new_status,
                 "next_heartbeat": int(next_heartbeat_time.timestamp() * 1000),
-                "server_commands": [],
                 "server_time": now_iso()  # vietnam ISO
             }
             
@@ -417,21 +519,7 @@ class AgentService:
                 actual_status = 'offline'
                 time_since_heartbeat = None
             
-            # Get recent commands
-            recent_commands = list(self.commands_collection.find(
-                {"agent_id": agent_id}
-            ).sort("created_at", -1).limit(5))
-            
-            commands = []
-            for cmd in recent_commands:
-                commands.append({
-                    "command_id": str(cmd["_id"]),
-                    "command_type": cmd.get("command_type"),
-                    "status": cmd.get("status"),
-                    "created_at": cmd.get("created_at").isoformat() if cmd.get("created_at") else None
-                })
-            
-            # Format timestamps for display - vietnam only
+            # Format timestamps for display 
             registered_date = agent.get("registered_date")
             last_heartbeat = agent.get("last_heartbeat")
             
@@ -447,7 +535,6 @@ class AgentService:
                 "registered_date": format_datetime(registered_date) if registered_date else None,
                 "last_heartbeat": format_datetime(last_heartbeat) if last_heartbeat else None,
                 "time_since_heartbeat": time_since_heartbeat,
-                "recent_commands": commands,
                 "server_time": now_iso()  # vietnam ISO
             }
             
@@ -462,10 +549,6 @@ class AgentService:
             agent = self.model.find_by_agent_id(agent_id)
             if not agent:
                 raise ValueError("Agent not found")
-            
-            # Delete related commands
-            deleted_commands = self.commands_collection.delete_many({"agent_id": agent_id})
-            self.logger.info(f"Deleted {deleted_commands.deleted_count} commands for agent {agent_id}")
             
             # Delete agent
             success = self.model.delete_agent(agent_id)
@@ -482,361 +565,65 @@ class AgentService:
         except Exception as e:
             self.logger.error(f"Error deleting agent {agent_id}: {e}")
             raise
+    
+    def update_display_name(self, agent_id: str, display_name: str) -> bool:
+        if not display_name:
+            raise ValueError("display_name is required")
+        updated = self.model.update_agent(agent_id, {"display_name": display_name})
+        if not updated:
+            raise ValueError("Agent not found or not updated")
+        return True
 
-    def ping_agent(self, agent_id: str) -> Dict:
-        """Ping an agent to check connectivity - vietnam ONLY"""
+    def move_agent_to_group(self, agent_id: str, group_id: str) -> Dict:
+        """Move agent to a new group"""
         try:
-            self.logger.info(f"Pinging agent: {agent_id}")
-            
-            # Check if agent exists
             agent = self.model.find_by_agent_id(agent_id)
             if not agent:
                 raise ValueError("Agent not found")
-            
-            # Get agent info
-            hostname = agent.get("hostname", "Unknown")
-            ip_address = agent.get("ip_address", "unknown")
-            
-            # Try to ping agent's IP address
-            ping_result = self._ping_ip_address(ip_address)
-            
-            # Use vietnam time for updates
-            current_time = now_vietnam()
-            
-            if ping_result["success"]:
-                # Success - update agent status to active
-                self.model.update_agent(agent_id, {
-                    "status": "active",
-                    "last_ping": current_time,
-                    "ping_response_time": ping_result["response_time"]
-                })
-                
-                return {
-                    "success": True,
-                    "agent_id": agent_id,
-                    "hostname": hostname,
-                    "ip_address": ip_address,
-                    "response_time": ping_result["response_time"],
-                    "method": "ip_ping",
-                    "message": f"Agent {hostname} is reachable",
-                    "timestamp": now_iso()  # vietnam ISO
-                }
-            else:
-                # Failed - mark as inactive but don't fail completely
-                self.model.update_agent(agent_id, {
-                    "status": "inactive",
-                    "last_ping_attempt": current_time,
-                    "last_ping_error": ping_result["error"]
-                })
-                
-                return {
-                    "success": False,
-                    "agent_id": agent_id,
-                    "hostname": hostname,
-                    "ip_address": ip_address,
-                    "response_time": None,
-                    "method": "ip_ping",
-                    "error": ping_result["error"],
-                    "message": f"Agent {hostname} is not reachable",
-                    "timestamp": now_iso()  # vietnam ISO
-                }
-                
-        except ValueError as ve:
-            self.logger.error(f"Ping validation error: {ve}")
-            raise
-        except Exception as e:
-            self.logger.error(f"Error pinging agent {agent_id}: {e}")
-            raise
 
-    def _ping_ip_address(self, ip_address: str) -> Dict:
-        """Ping an IP address using system ping command"""
-        try:
-            import subprocess
-            import platform
-            
-            if not ip_address or ip_address == "unknown":
-                return {
-                    "success": False,
-                    "response_time": None,
-                    "error": "Invalid IP address"
-                }
-            
-            # Cross-platform ping command
-            system = platform.system().lower()
-            
-            if system == "windows":
-                # Windows ping command
-                cmd = ["ping", "-n", "1", "-w", "3000", ip_address]  # 1 packet, 3 second timeout
-            else:
-                # Linux/macOS ping command
-                cmd = ["ping", "-c", "1", "-W", "3", ip_address]     # 1 packet, 3 second timeout
-            
-            self.logger.debug(f"Executing ping command: {' '.join(cmd)}")
-            
-            start_time = time.time()
-            
-            # Execute ping command
-            result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
-                timeout=5  # Total timeout 5 seconds
-            )
-            
-            end_time = time.time()
-            response_time = round((end_time - start_time), 3)
-            
-            if result.returncode == 0:
-                # Ping successful
-                self.logger.debug(f"Ping successful to {ip_address}: {response_time}s")
-                return {
-                    "success": True,
-                    "response_time": response_time,
-                    "output": result.stdout.strip()
-                }
-            else:
-                # Ping failed
-                error_msg = result.stderr.strip() or result.stdout.strip() or "Ping failed"
-                self.logger.debug(f"Ping failed to {ip_address}: {error_msg}")
-                return {
-                    "success": False,
-                    "response_time": response_time,
-                    "error": error_msg
-                }
-                
-        except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "response_time": 5.0,
-                "error": "Ping timeout (5 seconds)"
-            }
-        except FileNotFoundError:
-            return {
-                "success": False,
-                "response_time": None,
-                "error": "Ping command not found on system"
-            }
-        except Exception as e:
-            self.logger.error(f"Error executing ping: {e}")
-            return {
-                "success": False,
-                "response_time": None,
-                "error": f"Ping execution error: {str(e)}"
-            }
+            group = self.group_model.find_by_id(group_id)
+            if not group:
+                raise ValueError("Group not found")
 
-    def send_command(self, agent_id: str, command_data: Dict, created_by: str) -> str:
-        """Send command to agent - vietnam ONLY"""
-        try:
-            # Check if agent exists
-            agent = self.model.find_by_agent_id(agent_id)
-            if not agent:
-                raise ValueError("Agent not found")
+            #  FIX: Convert ObjectId to string immediately
+            group_id_str = str(group.get("_id"))
             
-            # Generate command ID
-            command_id = str(uuid.uuid4())
-            
-            # Create command document
-            current_time = now_vietnam()
+            # Preserve the agent's current status unless we need to change it based on the destination group.
+            current_status = agent.get("status") or "pending"
+            is_pending_group = group.get("is_system") and group.get("name") == "pending"
+            leaving_pending_group = current_status == "pending" and not is_pending_group
 
-            command_doc = {
-                "_id": ObjectId(),
-                "command_id": command_id,
+            # Force "pending" when explicitly moving into the pending group. When leaving the pending system group, immediately mark the agent as active so it will be picked up by the normal status calculation logic on the next refresh.
+            if is_pending_group:
+                status_to_set = "pending"
+            elif leaving_pending_group:
+                status_to_set = "active"
+            else:
+                status_to_set = None
+
+            final_status = status_to_set or current_status
+
+            # Update agent group (status is only updated when necessary)
+            success = self.model.update_agent_group(agent_id, group_id_str, status_to_set)
+
+            if not success:
+                raise ValueError("Failed to move agent to group")
+
+            #  FIX: Return serializable dict
+            return {
                 "agent_id": agent_id,
-                "command_type": command_data.get("command_type"),
-                "parameters": command_data.get("parameters", {}),
-                "status": "pending",
-                "created_by": created_by,
-                "created_at": current_time,
-                "updated_at": current_time,
-                "expires_at": current_time + timedelta(hours=1)  # Commands expire after 1 hour
-            }
-            
-            # Insert command
-            result = self.commands_collection.insert_one(command_doc)
-            
-            if result.inserted_id:
-                self.logger.info(f"Command {command_id} created for agent {agent_id}")
-                return command_id
-            else:
-                raise Exception("Failed to create command")
-                
-        except Exception as e:
-            self.logger.error(f"Error sending command to agent {agent_id}: {e}")
-            raise
-
-    def get_pending_commands(self, agent_id: str, token: str) -> List[Dict]:
-        """Get pending commands for agent - vietnam ONLY"""
-        try:
-            # Validate agent and token
-            agent = self.model.find_by_agent_id(agent_id)
-            if not agent:
-                raise ValueError("Agent not found")
-            
-            if agent.get("agent_token") != token:
-                raise ValueError("Invalid token")
-            
-            # Get pending commands
-            current_time = now_vietnam()
-            
-            commands = list(self.commands_collection.find({
-                "agent_id": agent_id,
-                "status": "pending",
-                "expires_at": {"$gte": current_time}
-            }).sort("created_at", 1))
-            
-            # Format commands for agent
-            formatted_commands = []
-            for cmd in commands:
-                formatted_cmd = {
-                    "command_id": cmd.get("command_id"),
-                    "command_type": cmd.get("command_type"),
-                    "parameters": cmd.get("parameters", {}),
-                    "created_at": cmd.get("created_at").isoformat() if cmd.get("created_at") else None
-                }
-                formatted_commands.append(formatted_cmd)
-            
-            return formatted_commands
-            
-        except Exception as e:
-            self.logger.error(f"Error getting pending commands for agent {agent_id}: {e}")
-            raise
-
-    def update_command_result(self, agent_id: str, token: str, command_id: str, 
-                         status: str, result: str = None, execution_time: float = None):
-        """Update command execution result - vietnam ONLY"""
-        try:
-            # Validate agent and token
-            agent = self.model.find_by_agent_id(agent_id)
-            if not agent:
-                raise ValueError("Agent not found")
-            
-            if agent.get("agent_token") != token:
-                raise ValueError("Invalid token")
-            
-            # Update command timestamps
-            current_time = now_vietnam()
-            
-            update_data = {
-                "status": status,
-                "updated_at": current_time,
-                "completed_at": current_time,
-                "execution_time": execution_time
-            }
-            
-            if result:
-                update_data["result"] = result
-            
-            result = self.commands_collection.update_one(
-                {"command_id": command_id, "agent_id": agent_id},
-                {"$set": update_data}
-            )
-            
-            if result.modified_count > 0:
-                self.logger.info(f"Command {command_id} updated with status: {status}")
-            else:
-                self.logger.warning(f"Command {command_id} not found or not updated")
-                
-        except Exception as e:
-            self.logger.error(f"Error updating command result: {e}")
-            raise
-
-    def list_commands(self, filters: Dict = None, limit: int = 50, skip: int = 0) -> Dict:
-        """List commands with filtering - vietnam ONLY"""
-        try:
-            query = {}
-            
-            if filters:
-                if filters.get("agent_id"):
-                    query["agent_id"] = filters["agent_id"]
-                if filters.get("status"):
-                    query["status"] = filters["status"]
-                if filters.get("command_type"):
-                    query["command_type"] = filters["command_type"]
-            
-            # Get total count
-            total = self.commands_collection.count_documents(query)
-            
-            # Get commands
-            commands = list(self.commands_collection.find(query)
-                           .sort("created_at", -1)
-                           .skip(skip)
-                           .limit(limit))
-            
-            # Format commands
-            formatted_commands = []
-            for cmd in commands:
-                # Get agent info
-                agent = self.model.find_by_agent_id(cmd.get("agent_id"))
-                
-                formatted_cmd = {
-                    "command_id": cmd.get("command_id"),
-                    "agent_id": cmd.get("agent_id"),
-                    "hostname": agent.get("hostname") if agent else "Unknown",
-                    "command_type": cmd.get("command_type"),
-                    "status": cmd.get("status"),
-                    "created_by": cmd.get("created_by"),
-                    "created_at": format_datetime(cmd.get("created_at")) if cmd.get("created_at") else None,
-                    "completed_at": format_datetime(cmd.get("completed_at")) if cmd.get("completed_at") else None,
-                    "execution_time": cmd.get("execution_time"),
-                    "result": cmd.get("result")
-                }
-                formatted_commands.append(formatted_cmd)
-            
-            return {
-                "commands": formatted_commands,
-                "total": total,
-                "timestamp": now_iso()  # vietnam ISO
+                "hostname": agent.get("hostname"),
+                "display_name": agent.get("display_name"),
+                "ip_address": agent.get("ip_address"),
+                "group_id": group_id_str,  
+                "group_name": group.get("name"),
+                "status": final_status,
+                "last_heartbeat": agent.get("last_heartbeat"),
+                "platform": agent.get("platform"),
+                "os_info": agent.get("os_info"),
+                "agent_version": agent.get("agent_version")
             }
             
         except Exception as e:
-            self.logger.error(f"Error listing commands: {e}")
+            self.logger.error(f"Error moving agent to group: {e}")
             raise
-
-    def debug_timezone_issue(self) -> Dict:
-        """Debug timezone calculation issue - vietnam ONLY"""
-        try:
-            agents = self.model.get_all_agents(limit=5)
-            current_time = now_vietnam()
-            
-            debug_data = {
-                "server_time": current_time.isoformat(),
-                "timezone": "vietnam",
-                "thresholds": {
-                    "active_seconds": self.active_threshold,
-                    "inactive_seconds": self.inactive_threshold
-                },
-                "agents": []
-            }
-            
-            for agent in agents:
-                last_heartbeat = agent.get("last_heartbeat")
-                agent_debug = {
-                    "agent_id": agent.get("agent_id"),
-                    "hostname": agent.get("hostname"),
-                    "last_heartbeat_raw": str(last_heartbeat),
-                    "last_heartbeat_type": str(type(last_heartbeat))
-                }
-                
-                if last_heartbeat:
-                    try:
-                        last_heartbeat_vietnam = parse_agent_timestamp(last_heartbeat)
-                        time_diff = (current_time - last_heartbeat_vietnam).total_seconds()
-                        adjusted_diff = max(time_diff, 0.0)
-
-                        agent_debug.update({
-                            "last_heartbeat_vietnam": last_heartbeat_vietnam.isoformat(),
-                            "time_diff_seconds": adjusted_diff,
-                            "raw_time_diff_seconds": time_diff,
-                            "calculated_status": "active" if adjusted_diff < self.active_threshold else
-                                               "inactive" if adjusted_diff < self.inactive_threshold else "offline"
-                        })
-                    except Exception as exc:
-                        agent_debug["error"] = str(exc)
-                
-                debug_data["agents"].append(agent_debug)
-            
-            return debug_data
-            
-        except Exception as e:
-            self.logger.error(f"Error in debug_timezone_issue: {e}")
-            return {"error": str(e), "timestamp": now_iso()}

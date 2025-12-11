@@ -284,10 +284,12 @@
     margin-bottom: 1.5rem;
 }
 
+/* Scope badges */
 .domain-type-badge {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 10px;
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
@@ -296,8 +298,13 @@
     color: white;
 }
 
-.domain-type-badge.agent {
+.domain-type-badge.group {
     background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+}
+
+.domain-type-badge.agent {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
 }
 
@@ -318,4 +325,17 @@
     color: #6c757d;
     font-style: italic;
     margin-top: 0.25rem;
+}
+
+/* Bulk import modal improvements */
+#bulkGroupSelectGroup {
+    transition: all 0.3s ease;
+}
+
+#bulkGroupSelectGroup.show {
+    display: block !important;
+}
+
+.modal-body .row .col-md-4 {
+    transition: all 0.3s ease;
 }

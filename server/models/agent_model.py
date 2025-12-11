@@ -1,6 +1,6 @@
 """
 Agent Model - handles agent data operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
@@ -27,6 +27,8 @@ class AgentModel:
         try:
             # Unique index on agent_id
             self.collection.create_index([("agent_id", ASCENDING)], unique=True)
+            # Unique device_id when provided
+            self.collection.create_index([("device_id", ASCENDING)], unique=True, sparse=True)
             # Indexes for queries
             self.collection.create_index([("hostname", ASCENDING)])
             self.collection.create_index([("ip_address", ASCENDING)])
@@ -34,6 +36,7 @@ class AgentModel:
             self.collection.create_index([("status", ASCENDING)])
             # Compound index for hostname + IP combination
             self.collection.create_index([("hostname", ASCENDING), ("ip_address", ASCENDING)])
+            self.collection.create_index([("group_id", ASCENDING)])
             self.logger.info("Agent indexes created successfully")
         except Exception as e:
             self.logger.warning(f"Error creating indexes: {e}")
@@ -47,7 +50,9 @@ class AgentModel:
                 "registered_date": current_time,
                 "updated_date": current_time,
                 "last_heartbeat": current_time,
-                "status": "active"
+                "status": agent_data.get("status", "pending"),
+                "group_id": agent_data.get("group_id"),
+                "display_name": agent_data.get("display_name", agent_data.get("hostname")),
             })
             
             result = self.collection.insert_one(agent_data)
@@ -74,6 +79,17 @@ class AgentModel:
             self.logger.error(f"Error updating agent {agent_id}: {e}")
             return False
     
+    def update_agent_group(self, agent_id: str, group_id: str, status: Optional[str] = None) -> bool:
+        try:
+            payload = {"group_id": group_id, "updated_date": now_vietnam()}
+            if status:
+                payload["status"] = status
+            result = self.collection.update_one({"agent_id": agent_id}, {"$set": payload})
+            return result.modified_count > 0
+        except Exception as exc:
+            self.logger.error(f"Error updating agent group {agent_id}: {exc}")
+            return False
+        
     def update_heartbeat(self, agent_id: str, update_data: Dict) -> bool:
         """Update agent heartbeat - vietnam ONLY"""
         try:
@@ -105,6 +121,13 @@ class AgentModel:
             self.logger.error(f"Error finding agent {agent_id}: {e}")
             return None
     
+    def count_by_group(self, group_id: str) -> int:
+        try:
+            return self.collection.count_documents({"group_id": group_id})
+        except Exception as exc:
+            self.logger.error(f"Error counting agents for group {group_id}: {exc}")
+            return 0
+        
     def find_by_hostname(self, hostname: str) -> List[Dict]:
         """Find agents by hostname"""
         try:
@@ -112,7 +135,15 @@ class AgentModel:
         except Exception as e:
             self.logger.error(f"Error finding agents by hostname {hostname}: {e}")
             return []
-    
+        
+    def find_by_device_id(self, device_id: str) -> Optional[Dict]:
+        """Find agent by device ID"""
+        try:
+            return self.collection.find_one({"device_id": device_id})
+        except Exception as e:
+            self.logger.error(f"Error finding agent by device ID {device_id}: {e}")
+            return None
+        
     def get_all_agents(self, query: Dict = None, limit: int = 100, skip: int = 0) -> List[Dict]:
         """Get all agents with optional filtering"""
         try:

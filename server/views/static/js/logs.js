@@ -10,6 +10,7 @@ let currentFilter = {
     limit: 100
 };
 let currentClearAction = null;
+let agentsData = [];
 
 function normalizeAgentField(value) {
     if (value === null || value === undefined) return '';
@@ -186,75 +187,173 @@ async function updateStatistics() {
  */
 async function loadLogs() {
     try {
-        console.log(' Loading logs with filter:', currentFilter);
+        console.log('Loading logs with filter:', currentFilter);
         
         const params = new URLSearchParams();
-        if (currentFilter.level) params.append('level', currentFilter.level);
-        if (currentFilter.agent) params.append('agent_id', currentFilter.agent);
-        if (currentFilter.search) params.append('search', currentFilter.search);
-        if (currentFilter.time !== 'all') params.append('time_range', currentFilter.time);
+        
+        // Add all filter parameters
+        if (currentFilter.level) {
+            params.append('level', currentFilter.level);
+            console.log('  Level filter:', currentFilter.level);
+        }
+        
+        if (currentFilter.agent) {
+            params.append('agent_id', currentFilter.agent);
+            console.log('  Agent filter:', currentFilter.agent);
+        }
+        
+        if (currentFilter.search) {
+            params.append('search', currentFilter.search);
+            console.log('  Search filter:', currentFilter.search);
+        }
+        
+        if (currentFilter.time && currentFilter.time !== 'all') {
+            params.append('time_range', currentFilter.time);
+            console.log('  Time filter:', currentFilter.time);
+        }
+        
         params.append('limit', currentFilter.limit);
+        console.log('  Limit:', currentFilter.limit);
         
         const url = `/api/logs?${params.toString()}`;
-        console.log(' Fetching from URL:', url);
+        console.log('Fetching from URL:', url);
         
         const response = await fetch(url);
-        console.log(' Response status:', response.status);
-        console.log(' Response headers:', response.headers.get('content-type'));
+        console.log('Response status:', response.status);
         
         if (response.ok) {
             const responseText = await response.text();
-            console.log(' Raw response length:', responseText.length);
-            console.log(' Raw response start:', responseText.substring(0, 200));
+            console.log('📦 Raw response length:', responseText.length);
             
             try {
                 const data = JSON.parse(responseText);
-                console.log(' Parsed JSON successfully');
-                console.log(' Response structure:', {
+                console.log('Parsed JSON successfully');
+                console.log('Response structure:', {
                     success: data.success,
                     hasLogs: !!data.logs,
                     logsLength: data.logs ? data.logs.length : 0,
-                    total: data.total,
-                    keys: Object.keys(data)
+                    total: data.total
                 });
                 
                 if (data.logs && Array.isArray(data.logs)) {
                     logsData = data.logs;
-                    console.log(' Logs data assigned:', logsData.length, 'items');
+                    console.log('Logs data assigned:', logsData.length, 'items');
                     
                     if (logsData.length > 0) {
-                        console.log(' First log sample:', JSON.stringify(logsData[0], null, 2));
+                        console.log('First log sample:', JSON.stringify(logsData[0], null, 2));
                     }
                     
                     renderLogs(logsData);
                     await updateStatistics();
                 } else {
-                    console.error(' No valid logs array in response');
-                    console.log(' Full response:', data);
+                    console.error('No valid logs array in response');
+                    console.log('📄 Full response:', data);
                     showError('Invalid response format - no logs array');
                 }
             } catch (parseError) {
-                console.error(' JSON parse error:', parseError);
-                console.log(' Response text:', responseText.substring(0, 500));
+                console.error('JSON parse error:', parseError);
+                console.log('📄 Response text:', responseText.substring(0, 500));
                 showError('Failed to parse server response');
             }
         } else {
             const errorText = await response.text();
-            console.error(' Failed to load logs:', response.status, errorText);
+            console.error('Failed to load logs:', response.status, errorText);
             showError(`Failed to load logs: ${response.status}`);
         }
         
     } catch (error) {
-        console.error(' Error loading logs:', error);
+        console.error('Error loading logs:', error);
         showError('Error loading logs: ' + error.message);
         await updateStatistics();
     }
 }
 
 /**
+ * Load agents for filter dropdown
+ */
+async function loadAgentsForFilter() {
+    try {
+        console.log('Loading agents for filter...');
+        const response = await fetch('/api/agents');
+        
+        if (response.ok) {
+            const data = await response.json();
+            agentsData = data.agents || [];
+            console.log(' Loaded agents:', agentsData.length);
+            
+            populateAgentFilter();
+        } else {
+            console.error('Failed to load agents:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading agents:', error);
+    }
+}
+
+/**
+ * Populate agent filter dropdown
+ */
+function populateAgentFilter() {
+    const agentFilter = document.getElementById('agent-filter');
+    if (!agentFilter) return;
+    
+    const currentValue = agentFilter.value;
+    
+    // Clear and add default option
+    agentFilter.innerHTML = '<option value="">All Agents</option>';
+    
+    // Sort agents by hostname
+    const sortedAgents = [...agentsData].sort((a, b) => {
+        const nameA = (a.hostname || a.display_name || a.agent_id || '').toLowerCase();
+        const nameB = (b.hostname || b.display_name || b.agent_id || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+    
+    // Add agent options
+    sortedAgents.forEach(agent => {
+        const option = document.createElement('option');
+        const agentId = agent.agent_id || agent._id || '';
+        const displayName = agent.hostname || agent.display_name || agentId;
+        const status = agent.status || 'unknown';
+        
+        option.value = agentId;
+        option.textContent = `${displayName} (${status})`;
+        
+        // Add icon based on status
+        if (status === 'active') {
+            option.textContent = `${displayName}`;
+        } else if (status === 'offline') {
+            option.textContent = ` ${displayName}`;
+        } else if (status === 'pending') {
+            option.textContent = `⏳ ${displayName}`;
+        }
+        
+        agentFilter.appendChild(option);
+    });
+    
+    // Restore previous selection
+    if (currentValue) {
+        agentFilter.value = currentValue;
+    }
+    
+    console.log(`Populated agent filter with ${sortedAgents.length} agents`);
+}
+
+/**
  *  Filter change handler
  */
 function onFilterChange() {
+    console.log('Filter changed, current state:', currentFilter);
+    
+    const levelFilter = document.getElementById('level-filter');
+    const agentFilter = document.getElementById('agent-filter');
+    const searchInput = document.getElementById('log-search');
+    
+    currentFilter.level = levelFilter ? levelFilter.value : '';
+    currentFilter.agent = agentFilter ? agentFilter.value : '';
+    currentFilter.search = searchInput ? searchInput.value : '';
+    
+    console.log('Reloading logs with filter:', currentFilter);
     loadLogs();
 }
 
@@ -817,7 +916,7 @@ function showNotification(type, message) {
  *  SINGLE INITIALIZATION
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log(' Initializing logs management...');
+    console.log('Initializing logs management...');
     
     // Time filter pills
     document.querySelectorAll('.time-pill').forEach(pill => {
@@ -825,39 +924,47 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.time-pill.active')?.classList.remove('active');
             this.classList.add('active');
             currentFilter.time = this.dataset.time;
+            console.log('Time filter changed to:', currentFilter.time);
             onFilterChange();
         });
     });
     
-    // Search and filters
+    // Search input
     const searchInput = document.getElementById('log-search');
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             currentFilter.search = this.value;
-            filterLogs();
+            console.log('Search filter changed to:', currentFilter.search);
+            filterLogs(); // Use filterLogs for client-side search
         });
     }
     
+    // Level filter
     const levelFilter = document.getElementById('level-filter');
     if (levelFilter) {
         levelFilter.addEventListener('change', function() {
             currentFilter.level = this.value;
+            console.log('Level filter changed to:', currentFilter.level);
             onFilterChange();
         });
     }
     
+    // Agent filter
     const agentFilter = document.getElementById('agent-filter');
     if (agentFilter) {
         agentFilter.addEventListener('change', function() {
             currentFilter.agent = this.value;
+            console.log('Agent filter changed to:', currentFilter.agent);
             onFilterChange();
         });
     }
     
+    // Limit select
     const limitSelect = document.getElementById('limit-select');
     if (limitSelect) {
         limitSelect.addEventListener('change', function() {
             currentFilter.limit = parseInt(this.value);
+            console.log('Limit changed to:', currentFilter.limit);
             loadLogs();
         });
     }
@@ -947,18 +1054,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load initial data
-    console.log(' Loading initial data...');
-    loadLogs();
+    console.log('Loading initial data...');
+    loadAgentsForFilter()
+        .then(() => {
+            console.log('Agent filter loaded successfully');
+            loadLogs();
+        })
+        .catch(error => {
+            console.error('Error loading agents:', error);
+            loadLogs(); // Load logs anyway
+        });
     
-    // Emergency fallback
-    setTimeout(() => {
-        if (!logsData || logsData.length === 0) {
-            console.log('🚨 No logs loaded after 3 seconds, running emergency test');
-            emergencyTest();
-        }
-    }, 3000);
-    
-    console.log(' Logs management initialized');
+    console.log('Logs management initialized');
 });
 
 // Socket.IO for real-time updates
@@ -967,7 +1074,7 @@ try {
         const socket = io();
         
         socket.on('connect', function() {
-            console.log('🔌 Connected for real-time updates');
+            console.log('Connected for real-time updates');
         });
         
         socket.on('new_log', function(logData) {
@@ -1061,6 +1168,27 @@ function testRender() {
 
 function renderLogItem(log, index) {
     const logId = log._id || log.id || index.toString();
+    
+    // 🎨 CHECK: Is this a lifecycle event (startup/shutdown)?
+    let eventType = log.event_type || '';
+    const message = (log.message || '').toLowerCase();
+    
+    // Also detect lifecycle events from message if event_type is not set
+    if (!eventType) {
+        if (message.includes('agent startup') || message.includes('agent started')) {
+            eventType = 'agent_startup';
+        } else if (message.includes('agent shutdown') || message.includes('agent stopped')) {
+            eventType = 'agent_shutdown';
+        }
+    }
+    
+    const isLifecycleEvent = ['agent_startup', 'agent_shutdown', 'agent_stopped'].includes(eventType);
+    
+    if (isLifecycleEvent) {
+        // Ensure event_type is set for rendering
+        log.event_type = eventType;
+        return renderLifecycleEvent(log, logId);
+    }
     
     //  FIX: Enhanced protocol display
     let protocolDisplay = log.protocol || 'unknown';
@@ -1164,6 +1292,160 @@ function renderLogItem(log, index) {
             ${log.message && log.message !== 'Log entry' ? `
                 <div class="log-details mt-2">
                     <i class="fas fa-comment-alt me-2"></i>${log.message}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * 🎨 RENDER LIFECYCLE EVENTS (Startup/Shutdown/Stopped)
+ * Beautiful cards for agent lifecycle events instead of showing "unknown" values
+ */
+function renderLifecycleEvent(log, logId) {
+    const eventType = log.event_type || 'agent_event';
+    const agentHost = getAgentDisplayName(log);
+    
+    // Define event styling based on type
+    let eventConfig = {
+        'agent_startup': {
+            icon: 'fa-rocket',
+            gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            title: 'Agent Started',
+            badge: 'bg-success',
+            borderColor: '#38ef7d'
+        },
+        'agent_shutdown': {
+            icon: 'fa-power-off',
+            gradient: 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)',
+            title: '🔴 Agent Shutdown',
+            badge: 'bg-danger',
+            borderColor: '#f45c43'
+        },
+        'agent_stopped': {
+            icon: 'fa-stop-circle',
+            gradient: 'linear-gradient(135deg, #536976 0%, #292e49 100%)',
+            title: '⏹️ Agent Stopped',
+            badge: 'bg-secondary',
+            borderColor: '#536976'
+        }
+    };
+    
+    const config = eventConfig[eventType] || eventConfig['agent_shutdown'];
+    
+    // Build info cards for lifecycle data
+    const infoCards = [];
+    
+    if (log.hostname || log.host_name) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-desktop text-primary"></i>
+                <span><strong>Hostname:</strong> ${log.hostname || log.host_name}</span>
+            </div>
+        `);
+    }
+    
+    if (log.ip_address) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-network-wired text-info"></i>
+                <span><strong>IP Address:</strong> ${log.ip_address}</span>
+            </div>
+        `);
+    }
+    
+    if (log.firewall_mode) {
+        const modeColors = {
+            'monitor': 'text-warning',
+            'enforce': 'text-danger',
+            'whitelist_only': 'text-success'
+        };
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-shield-alt ${modeColors[log.firewall_mode] || 'text-secondary'}"></i>
+                <span><strong>Firewall Mode:</strong> ${log.firewall_mode}</span>
+            </div>
+        `);
+    }
+    
+    if (log.uptime) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-clock text-success"></i>
+                <span><strong>Uptime:</strong> ${log.uptime}</span>
+            </div>
+        `);
+    }
+    
+    if (log.agent_id) {
+        infoCards.push(`
+            <div class="lifecycle-info-item">
+                <i class="fas fa-fingerprint text-secondary"></i>
+                <span><strong>Agent ID:</strong> <code>${log.agent_id.substring(0, 12)}...</code></span>
+            </div>
+        `);
+    }
+    
+    return `
+        <div class="log-item lifecycle-event p-3 border-bottom" data-log-id="${logId}" 
+             data-level="${(log.level || 'info').toLowerCase()}"
+             data-agent="${agentHost.toLowerCase()}"
+             style="border-left: 4px solid ${config.borderColor}; background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,1) 100%);">
+            
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <input type="checkbox" class="form-check-input log-checkbox" value="${logId}">
+                </div>
+                
+                <div class="col-auto">
+                    <div class="lifecycle-icon-wrapper" style="background: ${config.gradient}; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+                        <i class="fas ${config.icon} fa-lg text-white"></i>
+                    </div>
+                </div>
+                
+                <div class="col">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h6 class="mb-0 fw-bold">${config.title}</h6>
+                        <span class="badge ${config.badge}">${eventType.replace('agent_', '').toUpperCase()}</span>
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-3 text-muted small">
+                        <span><i class="fas fa-calendar-alt me-1"></i>${formatTimestamp(log.timestamp)}</span>
+                        <span><i class="fas fa-server me-1"></i>${agentHost}</span>
+                    </div>
+                    
+                    ${log.message ? `
+                        <div class="mt-2 p-2 rounded" style="background: rgba(0,0,0,0.03);">
+                            <i class="fas fa-comment-alt me-2 text-muted"></i>
+                            <span class="text-dark">${log.message}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="col-auto">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showLogDetails('${logId}')">
+                                <i class="fas fa-info-circle me-2"></i>View Details
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportSingleLog('${logId}')">
+                                <i class="fas fa-download me-2"></i>Export
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="clearSingleLog('${logId}')">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            ${infoCards.length > 0 ? `
+                <div class="lifecycle-info-grid mt-3 pt-3 border-top" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                    ${infoCards.join('')}
                 </div>
             ` : ''}
         </div>

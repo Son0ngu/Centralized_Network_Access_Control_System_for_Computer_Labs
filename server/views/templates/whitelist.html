@@ -157,14 +157,14 @@
 <!-- Search and Filter -->
 <div class="card search-card">
     <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col-md-4">
+        <div class="row align-items-center g-3">
+            <div class="col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="fas fa-search text-muted"></i>
                     </span>
-                    <input type="text" class="form-control border-start-0" 
-                           placeholder="Search whitelist items..." 
+                    <input type="text" class="form-control border-start-0"
+                           placeholder="Search whitelist items..."
                            id="item-search">
                 </div>
             </div>
@@ -186,18 +186,16 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select class="form-select" id="scope-filter">
-                    <option value="">All Scopes</option>
-                    <option value="global">Global</option>
-                    <option value="agent">Agent Specific</option>
+                <select class="form-select" id="group-filter">
+                    <option value="">All Groups</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <div class="d-flex gap-2">
                     <button class="btn btn-outline-success flex-fill" id="refreshBtn">
                         <i class="fas fa-sync-alt me-1"></i>Refresh
                     </button>
-                    <button class="btn btn-outline-primary" id="bulkActionsBtn">
+                    <button class="btn btn-outline-primary flex-fill" id="bulkActionsBtn">
                         <i class="fas fa-tasks me-1"></i>Bulk
                     </button>
                 </div>
@@ -264,30 +262,33 @@
             </div>
             <div class="modal-body p-4">
                 <form id="addItemForm">
+                    <!-- FIX: Correct ID for hidden type field -->
                     <input type="hidden" name="item_type" id="itemType">
                     
                     <div class="mb-3">
+                        <!-- FIX: Correct ID for label -->
                         <label class="form-label fw-semibold" id="valueLabel">Value</label>
+                        <!-- FIX: Correct ID for input -->
                         <input type="text" class="form-control" name="value" id="valueInput" required>
                         <div class="form-text" id="valueHelp">
                             <i class="fas fa-info-circle me-1"></i>
+                            <!-- FIX: Correct ID for example text -->
                             <span id="valueExample">Enter the value</span>
                         </div>
-                        <div class="input-example" id="inputExample"></div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Scope</label>
                         <select class="form-select" name="scope" id="scopeSelect">
                             <option value="global">Global (All Agents)</option>
-                            <option value="agent">Agent Specific</option>
+                            <option value="group">Group</option>
                         </select>
                     </div>
                     
-                    <div class="mb-3" id="agentSelectGroup" style="display: none;">
-                        <label class="form-label fw-semibold">Target Agent</label>
-                        <select class="form-select" name="agent_id">
-                            <option value="">Select an agent...</option>
+                    <div class="mb-3" id="groupSelectGroup" style="display: none;">
+                        <label class="form-label fw-semibold">Target Group</label>
+                        <select class="form-select" name="group_id" id="groupSelect">
+                            <option value="">Select a group...</option>
                         </select>
                     </div>
                     
@@ -382,7 +383,7 @@
                 </div>
                 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Default Type</label>
                             <select class="form-select" id="bulkType">
@@ -395,12 +396,20 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Scope</label>
                             <select class="form-select" id="bulkScope">
                                 <option value="global">Global (All Agents)</option>
-                                <option value="agent">Agent Specific</option>
+                                <option value="group">Group</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3" id="bulkGroupSelectGroup" style="display: none;">
+                            <label class="form-label fw-semibold">Target Group</label>
+                            <select class="form-select" id="bulkGroupSelect">
+                                <option value="">Select a group...</option>
                             </select>
                         </div>
                     </div>

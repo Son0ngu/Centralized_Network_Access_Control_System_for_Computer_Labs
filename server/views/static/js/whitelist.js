@@ -1,5 +1,7 @@
 let itemsData = [];
 let selectedItems = new Set();
+let groupsData = [];
+let selectedGroupId = '';
 
 // Type configurations
 const typeConfigs = {
@@ -44,6 +46,50 @@ const typeConfigs = {
         help: 'Executable names with optional wildcards'
     }
 };
+
+async function loadGroups() {
+    try {
+        const response = await fetch('/api/groups');
+        if (!response.ok) throw new Error('Failed to load groups');
+        const data = await response.json();
+        groupsData = data.data || [];
+        populateGroupSelects();
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        showError('Unable to load groups: ' + error.message);
+    }
+}
+
+function populateGroupSelects() {
+    const filterSelect = document.getElementById('group-filter');
+    const modalSelect = document.getElementById('groupSelect');
+    const bulkGroupSelect = document.getElementById('bulkGroupSelect'); // Add bulk import group select
+
+    [filterSelect, modalSelect, bulkGroupSelect].forEach(select => {
+        if (!select) return;
+        const current = select.value;
+        let placeholder = 'All Groups';
+        
+        if (select.id === 'groupSelect' || select.id === 'bulkGroupSelect') {
+            placeholder = 'Select a group...';
+        }
+        
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        groupsData.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group._id;
+            option.textContent = group.name;
+            select.appendChild(option);
+        });
+        if (current) {
+            select.value = current;
+        }
+    });
+
+    if (selectedGroupId && filterSelect) {
+        filterSelect.value = selectedGroupId;
+    }
+}
 
 /**
  * Enhanced error handling for API responses
@@ -153,12 +199,15 @@ async function bulkDeleteItems() {
 async function loadItems() {
     try {
         console.log(' Loading whitelist items...');
-        const response = await fetch('/api/whitelist').catch(err => ({ ok: false, statusText: err.message }));
+        const query = selectedGroupId ? `?group_id=${selectedGroupId}` : '';
+        const response = await fetch(`/api/whitelist${query}`).catch(err => ({ ok: false, statusText: err.message }));
         if (response.ok) {
             const data = await handleApiResponse(response);
             
             //  FIX: Handle different response formats
-            if (data.domains && Array.isArray(data.domains)) {
+            if (selectedGroupId && data.merged && Array.isArray(data.merged)) {
+                itemsData = data.merged;
+            } else if (data.domains && Array.isArray(data.domains)) {
                 itemsData = data.domains;
             } else if (data.items && Array.isArray(data.items)) {
                 itemsData = data.items;
@@ -212,7 +261,7 @@ function updateStatistics() {
 }
 
 /**
- * Render items list
+ * Render items list - FIX: Handle all key formats
  */
 function renderItems(items) {
     const container = document.getElementById('itemsContainer');
@@ -237,7 +286,6 @@ function renderItems(items) {
             </div>
         `;
 
-        // Add event listeners for empty state buttons
         container.querySelectorAll('[data-type]').forEach(btn => {
             btn.addEventListener('click', () => showAddItemModal(btn.dataset.type));
         });
@@ -247,29 +295,65 @@ function renderItems(items) {
     container.innerHTML = '';
 
     items.forEach((item, index) => {
-        const isActive = item.active !== false;
+        const isActive = item.active !== false && item.is_active !== false;
         const itemType = item.type || 'domain';
-        const value = item.value || item.domain || item.ip || item.url || item.port || item.process;
-        const itemId = item.id || item._id || value;
+        
+        // FIX: Handle all possible value keys
+        const value = item.value || item.domain || item.ip || item.url || item.port || item.process || '';
+        
+        // FIX: Handle all possible ID keys
+        const itemId = item._id || item.id || '';
+        
+        // FIX: Check if item is from group (scope = 'group')
+        const scope = item.scope || 'global';
+        const groupId = item.group_id || '';
+        const groupName = item.group_name || (groupId && groupsData.find(g => g._id === groupId)?.name) || '';
+        
+        if (!value) {
+            console.warn('Item has no value:', item);
+            return; // Skip items without value
+        }
+        
         const statusInfo = isActive ?
             { class: 'active', text: 'Active', icon: 'check-circle' } :
             { class: 'inactive', text: 'Inactive', icon: 'times-circle' };
         const typeConfig = typeConfigs[itemType] || typeConfigs.domain;
-        const created = item.added_date ? new Date(item.added_date).toLocaleDateString() : 'Unknown';
+        
+        // FIX: Better date handling - check multiple date fields
+        let created = '';
+        const dateValue = item.added_date || item.added_at || item.created_at;
+        if (dateValue) {
+            try {
+                const dateObj = new Date(dateValue);
+                if (!isNaN(dateObj.getTime())) {
+                    created = dateObj.toLocaleDateString('vi-VN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                }
+            } catch (e) {
+                console.warn('Invalid date:', dateValue);
+            }
+        }
+        
+        // FIX: Show "Recently added" if no date available
+        const dateDisplay = created || 'Recently added';
 
         const itemElement = document.createElement('div');
         itemElement.className = 'p-4 border-bottom item-row';
-        itemElement.dataset.value = (value || '').toLowerCase();
+        itemElement.dataset.value = value.toLowerCase();
         itemElement.dataset.status = isActive ? 'active' : 'inactive';
         itemElement.dataset.type = itemType;
-        itemElement.dataset.scope = (item.scope || 'global').toLowerCase();
+        itemElement.dataset.scope = scope.toLowerCase();
+        itemElement.dataset.group = groupId;
 
         itemElement.innerHTML = `
             <div class="row align-items-center">
                 <div class="col-md-1">
                     <div class="form-check">
                         <input class="form-check-input item-checkbox" type="checkbox" 
-                               value="${itemId}">
+                               value="${itemId}" ${!itemId ? 'disabled' : ''}>
                     </div>
                 </div>
                 <div class="col-md-7">
@@ -280,33 +364,29 @@ function renderItems(items) {
                         <div>
                             <h6 class="mb-2 fw-bold">
                                 <i class="fas fa-shield-alt me-2"></i>
-                                ${value}
+                                ${escapeHtml(value)}
                             </h6>
-                            <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex align-items-center mb-2 flex-wrap gap-1">
                                 <span class="domain-status ${statusInfo.class}">
                                     <span class="pulse-indicator ${statusInfo.class}"></span>
                                     ${statusInfo.text}
                                 </span>
-                                <span class="type-badge ${itemType} ms-2">
+                                <span class="type-badge ${itemType}">
                                     ${itemType.toUpperCase()}
                                 </span>
-                                <span class="domain-type-badge ${item.scope || 'global'} ms-2">
-                                    ${item.scope === 'agent' ? 'Agent Specific' : 'Global'}
+                                <span class="domain-type-badge ${scope}">
+                                    ${scope === 'group' ? `Group: ${escapeHtml(groupName) || 'Unknown'}` : 'Global'}
                                 </span>
                             </div>
-                            <div class="row text-muted">
-                                <div class="col-md-6">
-                                    <small>
-                                        <i class="fas fa-calendar me-1"></i>
-                                        Added: ${created}
-                                    </small>
+                            <div class="row text-muted small">
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Added: ${dateDisplay}
                                 </div>
-                                ${item.agent_id ? `
-                                    <div class="col-md-6">
-                                        <small>
-                                            <i class="fas fa-laptop-code me-1"></i>
-                                            Agent: ${item.agent_id}
-                                        </small>
+                                ${item.category && item.category !== 'uncategorized' ? `
+                                    <div class="col-auto">
+                                        <i class="fas fa-tag me-1"></i>
+                                        ${escapeHtml(item.category)}
                                     </div>
                                 ` : ''}
                             </div>
@@ -314,7 +394,7 @@ function renderItems(items) {
                                 <div class="mt-2">
                                     <small class="text-muted">
                                         <i class="fas fa-sticky-note me-1"></i>
-                                        ${item.notes}
+                                        ${escapeHtml(item.notes)}
                                     </small>
                                 </div>
                             ` : ''}
@@ -326,7 +406,12 @@ function renderItems(items) {
                         <button class="btn btn-outline-danger btn-action"
                                 data-action="remove"
                                 data-item-id="${itemId}"
-                                title="Remove this item">
+                                data-group-id="${groupId}"
+                                data-scope="${scope}"
+                                data-item-type="${itemType}"
+                                data-item-value="${escapeHtml(value)}"
+                                title="Remove this item"
+                                ${!itemId && scope === 'global' ? 'disabled' : ''}>
                             <i class="fas fa-trash-alt me-1"></i>
                             <span>Remove</span>
                         </button>
@@ -338,85 +423,141 @@ function renderItems(items) {
         container.appendChild(itemElement);
     });
     
-    // Add event listeners for action buttons
+    // Add event listeners
     container.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', handleItemAction);
     });
     
-    // Add event listeners for checkboxes
     container.querySelectorAll('.item-checkbox').forEach(cb => {
         cb.addEventListener('change', updateSelectedItems);
     });
 }
 
-/**
- * Show add item modal for specific type
- */
-function showAddItemModal(type = 'domain') {
-    const config = typeConfigs[type] || typeConfigs.domain;
-    const modal = new bootstrap.Modal(document.getElementById('addItemModal'));
-    
-    // Update modal content based on type
-    document.getElementById('modalTitle').innerHTML = `
-        <i class="fas fa-${config.icon} me-2"></i>${config.title}
-    `;
-    document.getElementById('itemType').value = type;
-    document.getElementById('valueLabel').textContent = config.label;
-    document.getElementById('valueInput').placeholder = config.placeholder;
-    document.getElementById('valueExample').textContent = config.help;
-    document.getElementById('inputExample').textContent = config.example;
-    
-    // Load agents for agent-specific items
-    loadAgentsForSelect();
-    
-    modal.show();
+// ADD: escapeHtml function if not exists
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**
- * Show bulk import modal
- */
-function showBulkImportModal() {
-    const modal = new bootstrap.Modal(document.getElementById('bulkImportModal'));
-    modal.show();
-}
-
-/**
- * Handle item actions -  FIXED to call actual APIs
+ * Handle item actions - FIX: Properly handle scope
  */
 async function handleItemAction(event) {
-    const action = event.currentTarget.dataset.action;
-    const itemId = event.currentTarget.dataset.itemId;
-    console.log('🎯 Item action:', { action, itemId });
+    const btn = event.currentTarget;
+    const action = btn.dataset.action;
+    const itemId = btn.dataset.itemId;
+    const groupId = btn.dataset.groupId;
+    const scope = btn.dataset.scope;
+    const itemType = btn.dataset.itemType;
+    const itemValue = btn.dataset.itemValue;
+    
+    console.log('Item action:', { action, itemId, groupId, scope, itemType, itemValue });
 
-        if (action === 'remove') {
-        await removeItem(itemId);
+    if (action === 'remove') {
+        await removeItem(itemId, groupId, scope, itemType, itemValue);
     }
 }
 
 /**
- * Remove item -  FIXED to call API
+ * Remove item - FIX: Handle both global and group items
  */
-async function removeItem(itemId) {
+async function removeItem(itemId, groupId = '', scope = 'global', itemType = '', itemValue = '') {
     if (!confirm('Are you sure you want to remove this item?')) return;
     
+    // FIX: If scope is 'group', remove from group whitelist
+    if (scope === 'group' && groupId) {
+        try {
+            console.log('Removing group item:', { groupId, itemType, itemValue });
+            await removeGroupItem(groupId, itemType, itemValue);
+            showSuccess('Item removed from group whitelist');
+            await Promise.all([loadGroups(), loadItems()]);
+        } catch (error) {
+            console.error('Error removing group item:', error);
+            showError('Failed to remove group item: ' + error.message);
+        }
+        return;
+    }
+
+    // FIX: For global items, must have valid ID
+    if (!itemId) {
+        showError('Cannot remove item: Missing ID');
+        return;
+    }
+
     try {
-        console.log(' Removing item:', itemId);
+        console.log('Removing global item:', itemId);
         
         const response = await fetch(`/api/whitelist/${itemId}`, {
             method: 'DELETE'
         });
         
-        const result = await handleApiResponse(response);
-        console.log(' Remove result:', result);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
         
-        showSuccess(result.message || 'Item removed successfully');
+        const result = await response.json();
+        console.log('Remove result:', result);
         
-        // Reload data from server
-        await loadItems();
+        if (result.success) {
+            showSuccess(result.message || 'Item removed successfully');
+            await loadItems();
+        } else {
+            throw new Error(result.error || 'Failed to remove item');
+        }
         
     } catch (error) {
-        console.error(' Error removing item:', error);
+        console.error('Error removing item:', error);
         showError('Failed to remove item: ' + error.message);
+    }
+}
+
+async function addItemToGroup(groupId, itemData) {
+    const group = groupsData.find(g => g._id === groupId);
+    if (!group) {
+        await loadGroups();
+    }
+
+    const currentGroup = groupsData.find(g => g._id === groupId);
+    const whitelist = currentGroup?.whitelist ? [...currentGroup.whitelist] : [];
+    whitelist.push({
+        value: itemData.value,
+        type: itemData.type,
+        category: itemData.description || 'uncategorized',
+        notes: itemData.notes || ''
+    });
+
+    await updateGroupWhitelist(groupId, whitelist);
+}
+
+async function removeGroupItem(groupId, itemType, itemValue) {
+    const group = groupsData.find(g => g._id === groupId);
+    if (!group) {
+        await loadGroups();
+    }
+
+    const currentGroup = groupsData.find(g => g._id === groupId);
+    const whitelist = (currentGroup?.whitelist || []).filter(entry => {
+        const entryValue = typeof entry === 'string' ? entry : entry.value;
+        const entryType = typeof entry === 'string' ? 'domain' : entry.type || 'domain';
+        return !(entryValue === itemValue && entryType === itemType);
+    });
+
+    await updateGroupWhitelist(groupId, whitelist);
+}
+
+async function updateGroupWhitelist(groupId, whitelist) {
+    const response = await fetch(`/api/groups/${groupId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whitelist })
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update group whitelist');
     }
 }
 
@@ -442,35 +583,40 @@ async function addItem() {
             active: formData.get('active') === 'on'
         };
         
-        if (formData.get('scope') === 'agent') {
-            itemData.agent_id = formData.get('agent_id');
+        console.log('Sending item data:', itemData);
+        
+        if (itemData.scope === 'group') {
+            const targetGroupId = formData.get('group_id') || selectedGroupId;
+            if (!targetGroupId) {
+                throw new Error('Please choose a target group');
+            }
+
+            await addItemToGroup(targetGroupId, itemData);
+            showSuccess(`${itemData.value} added to group whitelist`);
+            await Promise.all([loadGroups(), loadItems()]);
+        } else {
+            const response = await fetch('/api/whitelist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(itemData)
+            });
+
+            const result = await handleApiResponse(response);
+            console.log('API response:', result);
+
+            showSuccess(result.message || `${itemData.type.toUpperCase()} ${itemData.value} added successfully!`);
+
+            // Reset form and close modal
+            form.reset();
+            bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+
+            await loadItems();
         }
         
-        console.log(' Sending item data:', itemData);
-        
-        //  FIX: Actually call the API instead of manipulating local array
-        const response = await fetch('/api/whitelist', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(itemData)
-        });
-        
-        const result = await handleApiResponse(response);
-        console.log(' API response:', result);
-        
-        showSuccess(result.message || `${itemData.type.toUpperCase()} ${itemData.value} added successfully!`);
-        
-        // Reset form and close modal
-        form.reset();
-        bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
-        
-        //  FIX: Reload data from server instead of manipulating local array
-        await loadItems();
-        
     } catch (error) {
-        console.error(' Error adding item:', error);
+        console.error('Error adding item:', error);
         showError('Failed to add item: ' + error.message);
     } finally {
         button.innerHTML = originalText;
@@ -555,26 +701,88 @@ function filterItems() {
     const searchTerm = document.getElementById('item-search').value.toLowerCase();
     const typeFilter = document.getElementById('type-filter').value;
     const statusFilter = document.getElementById('status-filter').value;
-    const scopeFilter = document.getElementById('scope-filter').value;
+    const groupFilter = document.getElementById('group-filter').value;
     const itemRows = document.querySelectorAll('.item-row');
-
+    
     itemRows.forEach(row => {
         const value = row.dataset.value;
         const type = row.dataset.type;
         const status = row.dataset.status;
-        const scope = row.dataset.scope || 'global';
-        
+        const group = row.dataset.group || '';
+
         const matchesSearch = value.includes(searchTerm);
         const matchesType = !typeFilter || type === typeFilter;
         const matchesStatus = !statusFilter || status === statusFilter;
-        const matchesScope = !scopeFilter || scope === scopeFilter;
-        
-        if (matchesSearch && matchesType && matchesStatus && matchesScope) {
+        const matchesGroup = !groupFilter || group === groupFilter;
+
+        if (matchesSearch && matchesType && matchesStatus && matchesGroup) {
             row.style.display = 'block';
         } else {
             row.style.display = 'none';
         }
     });
+}
+
+/**
+ * Show Add Item Modal with pre-selected type
+ */
+function showAddItemModal(type = 'domain') {
+    const config = typeConfigs[type] || typeConfigs.domain;
+    
+    // FIX: Use correct element IDs from HTML
+    const modalTitleEl = document.getElementById('modalTitle');
+    const valueLabelEl = document.getElementById('valueLabel');
+    const valueInputEl = document.getElementById('valueInput');
+    const valueExampleEl = document.getElementById('valueExample');
+    const itemTypeEl = document.getElementById('itemType');
+    const formEl = document.getElementById('addItemForm');
+    
+    // Update modal title and labels
+    if (modalTitleEl) {
+        modalTitleEl.innerHTML = `<i class="fas fa-${config.icon} me-2"></i>${config.title}`;
+    }
+    if (valueLabelEl) {
+        valueLabelEl.textContent = config.label;
+    }
+    if (valueInputEl) {
+        valueInputEl.placeholder = config.placeholder;
+    }
+    if (valueExampleEl) {
+        valueExampleEl.textContent = config.example;
+    }
+    
+    // Set hidden type field
+    if (itemTypeEl) {
+        itemTypeEl.value = type;
+    }
+    
+    // Reset form
+    if (formEl) {
+        formEl.reset();
+    }
+    
+    // Set type again after reset
+    if (itemTypeEl) {
+        itemTypeEl.value = type;
+    }
+    
+    // Show modal
+    const modalEl = document.getElementById('addItemModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+/**
+ * Show Bulk Import Modal
+ */
+function showBulkImportModal() {
+    const modalEl = document.getElementById('bulkImportModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 }
 
 /**
@@ -600,21 +808,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('item-search').addEventListener('input', filterItems);
     document.getElementById('type-filter').addEventListener('change', filterItems);
     document.getElementById('status-filter').addEventListener('change', filterItems);
-    document.getElementById('scope-filter').addEventListener('change', filterItems);
-    
+    document.getElementById('group-filter').addEventListener('change', function() {
+        selectedGroupId = this.value;
+        loadItems();
+    });
+
     // Control buttons
-    document.getElementById('refreshBtn').addEventListener('click', refreshItems);
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadGroups();
+        refreshItems();
+    });
     document.getElementById('bulkActionsBtn').addEventListener('click', toggleBulkActionsPanel);
     document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteItems);
     
-    // Scope selection handler
+    // REMOVED: Agent-specific handling, only keep Global and Group
     document.getElementById('scopeSelect').addEventListener('change', function() {
-        const agentGroup = document.getElementById('agentSelectGroup');
-        if (this.value === 'agent') {
-            agentGroup.style.display = 'block';
-        } else {
-            agentGroup.style.display = 'none';
-        }
+        const groupSelect = document.getElementById('groupSelectGroup');
+        groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
+    });
+    
+    // NEW: Bulk scope selection handler
+    document.getElementById('bulkScope').addEventListener('change', function() {
+        const bulkGroupSelect = document.getElementById('bulkGroupSelectGroup');
+        bulkGroupSelect.style.display = this.value === 'group' ? 'block' : 'none';
     });
     
     // Bulk import method toggle
@@ -634,10 +850,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Load initial data
-    loadItems();
+    loadGroups().then(() => {
+        const filter = document.getElementById('group-filter');
+        if (filter) {
+            selectedGroupId = filter.value;
+        }
+        loadItems();
+    });
     
     // Auto-refresh every 60 seconds
     setInterval(loadItems, 60000);
     
-    console.log(' Enhanced whitelist management initialized');
+    console.log('Enhanced whitelist management initialized');
 });

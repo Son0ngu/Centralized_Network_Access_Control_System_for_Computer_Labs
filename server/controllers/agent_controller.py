@@ -1,17 +1,21 @@
 """
 Agent Controller - handles agent HTTP requests
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
 from datetime import datetime
+from bson import ObjectId
 from flask import Blueprint, request, jsonify
 from typing import Dict, Tuple
 from models.agent_model import AgentModel
 from services.agent_service import AgentService
 
 # Import time utilities - vietnam ONLY
-from time_utils import now_vietnam, now_iso, to_vietnam, parse_agent_timestamp
+from time_utils import now_vietnam, now_iso
+
+# Import auth middleware for API key and JWT validation
+from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key
 
 class AgentController:
     """Controller for agent operations"""
@@ -29,23 +33,22 @@ class AgentController:
         #  FIX: Add missing '/agents' prefix to routes
         
         # Core agent management routes
-        self.blueprint.add_url_rule('/agents/register', 'register_agent', self.register_agent, methods=['POST'])
-        self.blueprint.add_url_rule('/agents/heartbeat', 'heartbeat', self.heartbeat, methods=['POST'])
+        # NOTE: /agents/register requires API key for security (Phase 1)
+        self.blueprint.add_url_rule('/agents/register', 'register_agent', 
+                                    require_api_key(permission='agent_register')(self.register_agent), 
+                                    methods=['POST'])
+        # NOTE: /agents/heartbeat requires JWT token (Phase 2)
+        self.blueprint.add_url_rule('/agents/heartbeat', 'heartbeat', 
+                                    require_jwt(self.heartbeat), 
+                                    methods=['POST'])
         self.blueprint.add_url_rule('/agents', 'list_agents', self.list_agents, methods=['GET'])  #  FIX: Add this route
         self.blueprint.add_url_rule('/agents/statistics', 'get_statistics', self.get_statistics, methods=['GET'])  #  FIX: Add agents prefix
         
         # Individual agent routes
         self.blueprint.add_url_rule('/agents/<agent_id>', 'get_agent', self.get_agent, methods=['GET'])
         self.blueprint.add_url_rule('/agents/<agent_id>', 'delete_agent', self.delete_agent, methods=['DELETE'])
-        
-        # Agent command routes
-        self.blueprint.add_url_rule('/agents/<agent_id>/command', 'send_command', self.send_command, methods=['POST'])
-        self.blueprint.add_url_rule('/agents/commands', 'list_commands', self.list_commands, methods=['GET'])
-        self.blueprint.add_url_rule('/agents/command/result', 'update_command_result', self.update_command_result, methods=['POST'])
-        self.blueprint.add_url_rule('/agents/<agent_id>/commands', 'get_agent_commands', self.get_agent_commands, methods=['GET'])
-        
-        # Utility routes
-        self.blueprint.add_url_rule('/agents/<agent_id>/ping', 'ping_agent', self.ping_agent, methods=['POST'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/display-name', 'update_display_name', self.update_display_name, methods=['PATCH'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/group', 'update_group', self.update_group, methods=['PATCH'])
         
         #  DEBUG: Add debug routes (optional - remove in production)
         self.blueprint.add_url_rule('/agents/debug/status', 'debug_status', self.debug_status, methods=['GET'])
@@ -103,10 +106,26 @@ class AgentController:
         
         return filters
     
+    def _serialize_agent(self, agent: Dict) -> Dict:
+        """Ensure agent dict is JSON serializable."""
+        if not agent:
+            return {}
+
+        serialized = {}
+        for key, value in agent.items():
+            if isinstance(value, ObjectId):
+                serialized[key] = str(value)
+            elif isinstance(value, datetime):
+                serialized[key] = value.isoformat()
+            else:
+                serialized[key] = value
+
+        return serialized
+    
     def register_agent(self):
         """Register a new agent"""
         try:
-            data = self._validate_json_request(['hostname'])
+            data = self._validate_json_request(['hostname', 'device_id'])
             client_ip = request.remote_addr or data.get("ip_address", "unknown")
             
             # Call service method
@@ -145,26 +164,38 @@ class AgentController:
                 client_ip
             )
             
-            #  IMPROVED: Enhanced SocketIO broadcast với detailed info - vietnam only
+            # ENHANCED: Broadcast với detailed status info
             if self.socketio:
                 agent = self.model.find_by_agent_id(data['agent_id'])
                 
-                #  THÊM: Calculate time since last heartbeat for broadcast
-                current_time = now_iso()
-                time_since_last = 0  # Just received
+                # Calculate time since last heartbeat
+                current_time = now_vietnam()
+                last_heartbeat = agent.get("last_heartbeat") if agent else None
+                time_since_last = 0  # Just received, so 0
                 
-                self.socketio.emit("agent_heartbeat", {
+                # Determine actual status based on heartbeat timing
+                if agent:
+                    # Use service thresholds
+                    actual_status = result.get('status', 'active')
+                else:
+                    actual_status = 'active'
+                
+                broadcast_data = {
                     "agent_id": data['agent_id'],
                     "hostname": agent.get("hostname") if agent else "Unknown",
-                    "status": "active",
-                    "last_heartbeat": current_time,
+                    "status": actual_status,  # Use calculated status
+                    "last_heartbeat": now_iso(),
                     "time_since_heartbeat": time_since_last,
                     "metrics": data.get("metrics", {}),
                     "client_ip": client_ip,
-                    "timestamp": current_time,
+                    "timestamp": now_iso(),
                     "agent_version": data.get("agent_version"),
-                    "platform": data.get("platform")
-                })
+                    "platform": data.get("platform"),
+                    "group_id": str(agent.get("group_id")) if agent and agent.get("group_id") else None
+                }
+                
+                self.logger.info(f"Broadcasting heartbeat: {data['agent_id']} - {actual_status}")
+                self.socketio.emit("agent_heartbeat", broadcast_data)
             
             return self._success_response(result)
             
@@ -181,7 +212,7 @@ class AgentController:
             self.logger.info(" List agents called")
             
             pagination = self._get_pagination_params()
-            filters = self._get_filter_params(['status', 'hostname'])
+            filters = self._get_filter_params(['status', 'hostname','group_id'])
             
             agents_with_status = self.service.get_agents_with_status()
             self.logger.info(f" Found {len(agents_with_status)} agents")
@@ -196,6 +227,9 @@ class AgentController:
                 hostname_filter = filters["hostname"].lower()
                 filtered_agents = [a for a in filtered_agents if hostname_filter in a.get('hostname', '').lower()]
             
+            if filters.get("group_id"):
+                filtered_agents = [a for a in filtered_agents if str(a.get('group_id')) == filters['group_id']]
+
             # Apply pagination
             total_count = len(filtered_agents)
             agents_list = filtered_agents[pagination['skip']:pagination['skip']+pagination['limit']]
@@ -220,16 +254,18 @@ class AgentController:
                 formatted_agent = {
                     "agent_id": agent.get("agent_id"),
                     "hostname": agent.get("hostname", "Unknown"),
+                    "display_name": agent.get("display_name") or agent.get("hostname", "Unknown"),
                     "ip_address": agent.get("ip_address", "Unknown"),
                     "platform": agent.get("platform", "Unknown"),
                     "os_info": agent.get("os_info", "Unknown"),
                     "agent_version": agent.get("agent_version", "Unknown"),
                     "status": agent.get("status"),
+                    "group_id": str(agent.get("group_id")) if agent.get("group_id") else None,
                     "registered_date": registered_date_iso,
                     "last_heartbeat": last_heartbeat_iso,
                     "time_since_heartbeat": agent.get("time_since_heartbeat"),
                     "metrics": agent.get("metrics"),
-                    "user_id": agent.get("ip_address")
+                    "user_id": agent.get("device_id") or agent.get("ip_address")
                 }
                 
                 formatted_agents.append(formatted_agent)
@@ -295,192 +331,47 @@ class AgentController:
             self.logger.error(f"Error deleting agent {agent_id}: {e}")
             return self._error_response("Internal server error", 500)
 
-    def send_command(self, agent_id: str):
-        """Send command to specific agent"""
+    def update_display_name(self, agent_id: str):
+        """Update agent display name"""
         try:
-            data = self._validate_json_request(['command_type'])
+            data = self._validate_json_request(['display_name'])
+            self.service.update_display_name(agent_id, data.get('display_name'))
+            return self._success_response(message="Display name updated")
+        except ValueError as e:
+            return self._error_response(str(e), 400)
+        except Exception as e:
+            self.logger.error(f"Error updating display name: {e}")
+            return self._error_response("Failed to update display name", 500)
+
+    def update_group(self, agent_id: str):
+        """Move agent to a new group"""
+        try:
+            data = self._validate_json_request(['group_id'])
+            agent = self.service.move_agent_to_group(agent_id, data.get('group_id'))
             
-            # Call service method
-            command_id = self.service.send_command(agent_id, data, "admin")
+            # Serialize ObjectId before returning
+            serialized_agent = self._serialize_agent(agent)
             
-            # Broadcast command creation via SocketIO - vietnam only
+            # IMPROVED: Broadcast via SocketIO
             if self.socketio:
-                agent = self.model.find_by_agent_id(agent_id)
-                self.socketio.emit("command_created", {
-                    "command_id": command_id,
+                self.socketio.emit("agent_group_updated", {
                     "agent_id": agent_id,
-                    "hostname": agent.get("hostname") if agent else "Unknown",
-                    "command_type": data["command_type"],
-                    "created_by": "admin",
-                    "created_at": now_iso()
+                    "hostname": serialized_agent.get("hostname"),
+                    "group_id": serialized_agent.get("group_id"),
+                    "status": serialized_agent.get("status"),
+                    "timestamp": now_iso()
                 })
             
-            return self._success_response({
-                "command_id": command_id
-            }, "Command sent to agent", 201)
+            return self._success_response(
+                data=serialized_agent,
+                message="Agent moved to group successfully"
+            )
             
         except ValueError as e:
-            status_code = 404 if "not found" in str(e) else 400
-            return self._error_response(str(e), status_code)
+            return self._error_response(str(e), 400)
         except Exception as e:
-            self.logger.error(f"Error sending command: {e}")
-            return self._error_response("Failed to send command to agent", 500)
-    
-    def get_commands(self):
-        """Get commands for agent (agent endpoint)"""
-        try:
-            agent_id = request.args.get('agent_id')
-            token = request.args.get('token')
-            
-            if not agent_id or not token:
-                return self._error_response("Agent ID and token are required", 400)
-            
-            # Call service method
-            commands = self.service.get_pending_commands(agent_id, token)
-            
-            return self._success_response(commands)
-            
-        except ValueError as e:
-            status_code = 404 if "not found" in str(e) else 401 if "token" in str(e) else 400
-            return self._error_response(str(e), status_code)
-        except Exception as e:
-            self.logger.error(f"Error getting commands: {e}")
-            return self._error_response("Failed to retrieve commands", 500)
-    
-    def list_commands(self):
-        """List all commands (admin endpoint)"""
-        try:
-            # Get filters and pagination
-            agent_id = request.args.get('agent_id')
-            status = request.args.get('status')
-            command_type = request.args.get('command_type')
-            pagination = self._get_pagination_params()
-            
-            filters = {}
-            if agent_id:
-                filters["agent_id"] = agent_id
-            if status:
-                filters["status"] = status
-            if command_type:
-                filters["command_type"] = command_type
-            
-            # Call service method
-            result = self.service.list_commands(
-                filters=filters,
-                limit=pagination['limit'],
-                skip=pagination['skip']
-            )
-            
-            # Add pagination info
-            result['pagination'] = {
-                "total": result['total'],
-                "limit": pagination['limit'],
-                "skip": pagination['skip'],
-                "page": pagination['page']
-            }
-            
-            return self._success_response(result)
-            
-        except Exception as e:
-            self.logger.error(f"Error listing commands: {e}")
-            return self._error_response("Failed to list commands", 500)
-    
-    def get_agent_commands(self, agent_id: str):
-        """Get commands for specific agent (admin endpoint)"""
-        try:
-            # Get filters and pagination
-            status = request.args.get('status')
-            pagination = self._get_pagination_params()
-            
-            filters = {"agent_id": agent_id}
-            if status:
-                filters["status"] = status
-            
-            # Call service method
-            result = self.service.list_commands(
-                filters=filters,
-                limit=pagination['limit'],
-                skip=pagination['skip']
-            )
-            
-            return self._success_response(result)
-            
-        except Exception as e:
-            self.logger.error(f"Error getting commands for agent {agent_id}: {e}")
-            return self._error_response("Failed to get agent commands", 500)
-    
-    def update_command_result(self):
-        """Update command execution result"""
-        try:
-            data = self._validate_json_request(['agent_id', 'token', 'command_id', 'status'])
-            
-            # Call service method
-            self.service.update_command_result(
-                data['agent_id'],
-                data['token'],
-                data['command_id'],
-                data['status'],
-                data.get('result'),
-                data.get('execution_time')
-            )
-            
-            # Broadcast update via SocketIO - vietnam only
-            if self.socketio:
-                agent = self.model.find_by_agent_id(data['agent_id'])
-                self.socketio.emit("command_status_update", {
-                    "command_id": data['command_id'],
-                    "agent_id": data['agent_id'],
-                    "hostname": agent.get("hostname") if agent else "Unknown",
-                    "status": data["status"],
-                    "completed_at": now_iso()
-                })
-            
-            return self._success_response(message="Command result updated")
-            
-        except Exception as e:
-            self.logger.error(f"Error updating command result: {e}")
-            return self._error_response("Failed to update command result", 500)
-
-    def debug_status(self):
-        """Debug endpoint để kiểm tra status calculation - vietnam only"""
-        try:
-            current_time = now_vietnam()
-            agents = self.model.get_all_agents({}, limit=100)
-            
-            debug_info = {
-                "server_time": current_time.isoformat(),
-                "thresholds": {
-                    "active": self.service.active_threshold,
-                    "inactive": self.service.inactive_threshold
-                },
-                "agents": []
-            }
-            
-            for agent in agents:
-                last_heartbeat = agent.get("last_heartbeat")
-                if last_heartbeat:
-                    if isinstance(last_heartbeat, str):
-                        last_heartbeat_vietnam = parse_agent_timestamp(last_heartbeat)
-                    elif isinstance(last_heartbeat, datetime):
-                        last_heartbeat_vietnam = to_vietnam(last_heartbeat)
-                    else:
-                        last_heartbeat_vietnam = parse_agent_timestamp(str(last_heartbeat))
-
-                    time_diff = (current_time - last_heartbeat_vietnam).total_seconds()
-                    
-                    debug_info["agents"].append({
-                        "hostname": agent.get("hostname"),
-                        "last_heartbeat": last_heartbeat_vietnam.isoformat(),
-                        "time_since_heartbeat": time_diff,
-                        "status": "active" if time_diff < self.service.active_threshold else 
-                                 "inactive" if time_diff < self.service.inactive_threshold else "offline"
-                    })
-            
-            return self._success_response(debug_info)
-            
-        except Exception as e:
-            self.logger.error(f"Error in debug status: {e}")
-            return self._error_response("Debug failed", 500)
+            self.logger.error(f"Error updating agent group: {e}")
+            return self._error_response("Failed to update agent group", 500)
 
     def get_statistics(self):
         """Get agent statistics"""
@@ -493,81 +384,53 @@ class AgentController:
             self.logger.error(f"Error getting statistics: {e}")
             return self._error_response("Failed to get statistics", 500)
 
+    def debug_status(self):
+        """Return debug information for troubleshooting"""
+        try:
+            stats = self.service.calculate_statistics()
+            sample_agents = [
+                self._serialize_agent(agent)
+                for agent in self.model.get_all_agents(limit=5)
+            ]
+
+            debug_info = {
+                "controller": "AgentController",
+                "socketio_enabled": bool(self.socketio),
+                "thresholds": {
+                    "active_seconds": getattr(self.service, "active_threshold", None),
+                    "inactive_seconds": getattr(self.service, "inactive_threshold", None)
+                },
+                "statistics": stats,
+                "sample_agents": sample_agents,
+                "timestamp": now_iso()
+            }
+
+            return self._success_response(debug_info, "Debug status retrieved")
+        except Exception as e:
+            self.logger.error(f"Error in debug_status: {e}")
+            return self._error_response("Failed to retrieve debug status", 500)
+
     def debug_direct_call(self):
-        """Debug endpoint - direct service call"""
+        """Simple endpoint to verify controller accessibility"""
         try:
-            self.logger.info(" DEBUG: Direct get_agents_with_status call")
-            
-            # Call service method directly
-            agents = self.service.get_agents_with_status()
-            
-            debug_data = []
-            for agent in agents:
-                debug_data.append({
-                    'hostname': agent.get('hostname'),
-                    'last_heartbeat': agent.get('last_heartbeat'),
-                    'last_heartbeat_type': str(type(agent.get('last_heartbeat'))),
-                    'status': agent.get('status'),
-                    'time_since_heartbeat': agent.get('time_since_heartbeat'),
-                    'calculated_directly': True
-                })
-            
-            return jsonify({
-                'success': True,
-                'method_used': 'get_agents_with_status (direct)',
-                'total': len(agents),
-                'debug_data': debug_data
-            })
-            
-        except Exception as e:
-            self.logger.error(f"Debug direct call error: {e}")
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
-
-    # Add method:
-    def debug_timezone_issue(self):
-        """Debug timezone calculation issue - now vietnam only"""
-        try:
-            debug_result = self.service.debug_timezone_issue()
-            return jsonify({
-                'success': True,
-                'debug_data': debug_result
-            })
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
-
-    def ping_agent(self, agent_id: str):
-        """Ping agent to check connectivity"""
-        try:
-            self.logger.info(f" Ping request for agent: {agent_id}")
-            
-            # Call service method
-            result = self.service.ping_agent(agent_id)
-            
-            # Broadcast ping result via SocketIO - vietnam only
-            if self.socketio:
-                agent = self.model.find_by_agent_id(agent_id)
-                self.socketio.emit("agent_ping_result", {
-                    "agent_id": agent_id,
-                    "hostname": agent.get("hostname") if agent else "Unknown",
-                    "ping_successful": result.get("success", False),
-                    "response_time": result.get("response_time"),
+            return self._success_response(
+                {
+                    "message": "Agent controller is reachable",
+                    "routes": [
+                        "/agents/register",
+                        "/agents/heartbeat",
+                        "/agents",
+                        "/agents/statistics",
+                        "/agents/<agent_id>",
+                        "/agents/<agent_id>/display-name",
+                        "/agents/<agent_id>/group",
+                        "/agents/debug/status",
+                        "/agents/debug/direct"
+                    ],
                     "timestamp": now_iso()
-                })
-            
-            if result.get("success"):
-                return self._success_response(result, "Agent ping successful")
-            else:
-                return self._error_response(result.get("error", "Ping failed"), 408)
-        
-        except ValueError as e:
-            return self._error_response(str(e), 404)
+                },
+                "Debug endpoint is active"
+            )
         except Exception as e:
-            self.logger.error(f"Error pinging agent {agent_id}: {e}")
-            return self._error_response("Failed to ping agent", 500)
-
+            self.logger.error(f"Error in debug_direct_call: {e}")
+            return self._error_response("Debug endpoint failed", 500)

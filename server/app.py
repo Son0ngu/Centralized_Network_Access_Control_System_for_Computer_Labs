@@ -1,10 +1,11 @@
 """
 Main Flask application with MVC architecture
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 #  QUAN TRỌNG: Monkey patch PHẢI ở đầu tiên, trước tất cả imports khác
 import eventlet
+
 eventlet.monkey_patch()
 
 import os
@@ -14,7 +15,7 @@ import logging
 #  Add current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
@@ -28,14 +29,29 @@ from time_utils import now_iso, format_datetime, parse_agent_timestamp
 from models.whitelist_model import WhitelistModel
 from models.agent_model import AgentModel
 from models.log_model import LogModel
+from models.group_model import GroupModel
 
 from services.whitelist_service import WhitelistService
 from services.agent_service import AgentService
 from services.log_service import LogService
+from services.group_service import GroupService
 
 from controllers.whitelist_controller import WhitelistController
 from controllers.agent_controller import AgentController
 from controllers.log_controller import LogController
+from controllers.group_controller import GroupController
+from controllers.api_key_controller import APIKeyController
+from controllers.auth_controller import AuthController
+
+# API Key components
+from models.api_key_model import APIKeyModel
+from services.api_key_service import APIKeyService
+
+# JWT components
+from services.jwt_service import JWTService, init_jwt_service
+
+# Auth middleware
+from middleware.auth import init_auth_middleware, require_api_key, require_jwt
 
 # Setup logging
 logging.basicConfig(
@@ -124,9 +140,9 @@ def create_app():
     
     #  FIX: Initialize MVC components and get services
     try:
-        log_service, agent_service = register_controllers(app, socketio, db)
-        
-        if log_service is None or agent_service is None:
+        log_service, agent_service, group_service, api_key_service = register_controllers(app, socketio, db)
+
+        if log_service is None or agent_service is None or group_service is None or api_key_service is None:
             raise RuntimeError("Failed to initialize services")
             
         app.logger.info(" MVC components initialized successfully")
@@ -145,6 +161,8 @@ def create_app():
     app.socketio = socketio
     app.log_service = log_service
     app.agent_service = agent_service
+    app.group_service = group_service
+    app.api_key_service = api_key_service  # NEW: Store API key service
     
     #  Mark as initialized
     _app_initialized = True
@@ -166,7 +184,8 @@ def initialize_database_indexes(app, db):
         whitelist_model = WhitelistModel(db)
         log_model = LogModel(db) 
         agent_model = AgentModel(db)
-        
+        group_model = GroupModel(db)
+
         app.logger.info(" Database indexes initialized successfully")
         
     except Exception as e:
@@ -185,28 +204,54 @@ def register_controllers(app, socketio, db):
         whitelist_model = WhitelistModel(db)
         agent_model = AgentModel(db)
         log_model = LogModel(db)
-        
+        group_model = GroupModel(db)
+        api_key_model = APIKeyModel(db)  # NEW: API Key model
+
         logger.info(" Models initialized")
         
+        # Initialize JWT service first (needed by agent_service)
+        jwt_service = init_jwt_service(db)
+        logger.info(" JWT service initialized")
+        
         #  Initialize services
-        whitelist_service = WhitelistService(whitelist_model, socketio)
-        agent_service = AgentService(agent_model, socketio)
-        log_service = LogService(log_model, socketio)
+        group_service = GroupService(group_model, agent_model)
+        whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio)
+        agent_service = AgentService(agent_model, group_model, socketio, jwt_service)  # Pass JWT service
+        log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
+        api_key_service = APIKeyService(api_key_model, socketio)  # API Key service
         
         logger.info(" Services initialized")
+        
+        # Initialize auth middleware with both API Key and JWT services
+        init_auth_middleware(api_key_service, jwt_service)
+        logger.info(" Auth middleware initialized")
+        
+        # Create default API key if none exist
+        default_key = api_key_service.create_default_key_if_none()
+        if default_key:
+            logger.warning("=" * 60)
+            logger.warning("SAVE THIS API KEY - IT WON'T BE SHOWN AGAIN!")
+            logger.warning(f"API Key: {default_key.get('api_key')}")
+            logger.warning("=" * 60)
         
         #  Initialize controllers
         whitelist_controller = WhitelistController(whitelist_model, whitelist_service, socketio)
         agent_controller = AgentController(agent_model, agent_service, socketio)
         log_controller = LogController(log_model, log_service, socketio)
-        
+        group_controller = GroupController(group_service)
+        api_key_controller = APIKeyController(api_key_model, api_key_service, socketio)
+        auth_controller = AuthController(jwt_service, agent_model, socketio)  # NEW: Auth controller
+
         logger.info(" Controllers initialized")
         
         #  Register blueprints with proper URL prefixes
         app.register_blueprint(whitelist_controller.blueprint, url_prefix='/api')
         app.register_blueprint(agent_controller.blueprint, url_prefix='/api')
         app.register_blueprint(log_controller.blueprint, url_prefix='/api')
-        
+        app.register_blueprint(group_controller.blueprint, url_prefix='/api')
+        app.register_blueprint(api_key_controller.blueprint, url_prefix='/api')
+        app.register_blueprint(auth_controller.blueprint, url_prefix='/api')  # NEW: Auth routes
+
         logger.info(" All controllers registered successfully")
         
         #  Debug: Log registered routes
@@ -217,14 +262,13 @@ def register_controllers(app, socketio, db):
                 logger.info(f"  {methods:15} {rule.rule}")
         
         #  FIX: Return services để dùng trong main routes
-        return log_service, agent_service
+        return log_service, agent_service, group_service, api_key_service
         
     except Exception as e:
         logger.error(f" Error registering controllers: {e}")
         import traceback
         traceback.print_exc()
-        return None, None
-
+        return None, None, None, None
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""
     
@@ -280,6 +324,32 @@ def register_main_routes(app, log_service, agent_service):
     def agents_page():
         return render_template('agents.html', page_title="Agent Management")
     
+    # ADD: Groups page route
+    @app.route('/groups')
+    def groups_page():
+        """Groups management page"""
+        return render_template('groups.html', page_title="Group Management")
+    
+    # ADD: Group detail page route
+    @app.route('/groups/<group_id>')
+    def group_detail(group_id):
+        """Group detail page - view agents in group, add/remove agents"""
+        try:
+            group_service = app.group_service
+            group = group_service.get_group(group_id)
+            
+            if not group:
+                return render_template('404.html', message="Group not found"), 404
+                
+            return render_template('group_detail.html', group=group, page_title=f"Group: {group.get('name', 'Unknown')}")
+            
+        except ValueError as e:
+            app.logger.warning(f"Group not found: {group_id} - {e}")
+            return render_template('404.html', message="Group not found"), 404
+        except Exception as e:
+            app.logger.error(f"Error loading group {group_id}: {e}")
+            return render_template('500.html', message=str(e)), 500
+    
     @app.route('/whitelist')
     def whitelist_page():
         return render_template('whitelist.html', page_title="Whitelist Management")
@@ -287,6 +357,11 @@ def register_main_routes(app, log_service, agent_service):
     @app.route('/logs')
     def logs_page():
         return render_template('logs.html', page_title="System Logs")
+    
+    @app.route('/api-keys')
+    def api_keys_page():
+        """API Keys management page - Admin only"""
+        return render_template('api_keys.html', page_title="API Keys Management")
     
     @app.route('/api/health')
     def health_check():

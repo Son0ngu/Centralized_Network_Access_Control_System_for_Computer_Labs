@@ -1,6 +1,6 @@
 """
 Log Controller - handles log HTTP requests
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 from datetime import timedelta
 from flask import Blueprint, request, jsonify, Response
@@ -11,6 +11,9 @@ import logging
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, now_vietnam
+
+# Import auth middleware for JWT validation
+from middleware.auth import require_jwt
 
 class LogController:
     """Controller for log operations"""
@@ -33,12 +36,12 @@ class LogController:
                                    methods=['GET'], 
                                    view_func=self.get_statistics)
         
-        # POST /api/logs - Receive logs from agents
+        # POST /api/logs - Receive logs from agents (requires JWT)
         self.blueprint.add_url_rule('/logs', 
                                    methods=['POST'], 
-                                   view_func=self.receive_logs)
+                                   view_func=require_jwt(self.receive_logs))
         
-        # GET /api/logs - Get all logs
+        # GET /api/logs - Get all logs (admin - no auth for now)
         self.blueprint.add_url_rule('/logs', 
                                    methods=['GET'], 
                                    view_func=self.list_logs)
@@ -94,11 +97,19 @@ class LogController:
             limit = int(request.args.get('limit', 100))
             offset = int(request.args.get('offset', 0))
             
+            # DEBUG: Log the filters being applied
+            self.logger.info(f"List logs called with filters: {filters}")
+            
             # Call service method
             result = self.service.get_all_logs(filters, limit, offset)
             
-            return jsonify(result), 200
+            response_data = {
+                **result,
+                'applied_filters': filters  # Echo back filters for debugging
+            }
             
+            return jsonify(response_data), 200
+        
         except Exception as e:
             self.logger.error(f"Error listing logs: {e}")
             return self._error_response("Failed to list logs", 500)
@@ -267,6 +278,10 @@ class LogController:
         
         if request.args.get('search'):
             filters['search'] = request.args.get('search')
+        
+        # Time range filter
+        if request.args.get('time_range'):
+            filters['time_range'] = request.args.get('time_range')
         
         # Date filters
         if request.args.get('start_date'):

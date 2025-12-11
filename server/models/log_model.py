@@ -1,6 +1,6 @@
 """
 Log Model - handles log data operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 from typing import Dict, List, Optional

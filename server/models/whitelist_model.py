@@ -1,12 +1,12 @@
 """
 Whitelist Model - handles whitelist data operations
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from bson import ObjectId
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from pymongo.collection import Collection
 from pymongo.database import Database
 import logging
@@ -22,10 +22,47 @@ class WhitelistModel:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.db = db
         self.collection: Collection = db.whitelist
-        
+        self.meta_collection: Collection = db.whitelist_meta
+
         # Create indexes for better performance
         self._create_indexes()
-    
+        self._ensure_global_meta()
+
+    def _ensure_global_meta(self):
+        try:
+            existing = self.meta_collection.find_one({"scope": "global"})
+            if not existing:
+                now = now_vietnam()
+                self.meta_collection.insert_one({
+                    "scope": "global",
+                    "version": 1,
+                    "updated_at": now,
+                })
+        except Exception as exc:
+            self.logger.warning(f"Failed to ensure whitelist meta: {exc}")
+
+    def get_global_version(self) -> int:
+        meta = self.meta_collection.find_one({"scope": "global"})
+        if not meta:
+            self._ensure_global_meta()
+            meta = self.meta_collection.find_one({"scope": "global"})
+        return int(meta.get("version", 1)) if meta else 1
+
+    def bump_global_version(self) -> int:
+        try:
+            result = self.meta_collection.find_one_and_update(
+                {"scope": "global"},
+                {"$inc": {"version": 1}, "$set": {"updated_at": now_vietnam()}},
+                return_document=ReturnDocument.AFTER,
+            )
+            if not result:
+                self._ensure_global_meta()
+                result = self.meta_collection.find_one({"scope": "global"})
+            return int(result.get("version", 1)) if result else 1
+        except Exception as exc:
+            self.logger.warning(f"Failed to bump global version: {exc}")
+            return self.get_global_version()
+        
     def _create_indexes(self):
         """Create necessary indexes with enhanced conflict handling"""
         try:
@@ -52,7 +89,9 @@ class WhitelistModel:
                 {"field": "type", "direction": 1, "sparse": False},
                 {"field": "added_date", "direction": -1, "sparse": False},
                 {"field": "is_active", "direction": 1, "sparse": False},
-                {"field": "expiry_date", "direction": 1, "sparse": True}
+                {"field": "expiry_date", "direction": 1, "sparse": True},
+                {"field": "scope", "direction": 1, "sparse": False},
+                {"field": "group_id", "direction": 1, "sparse": True}
             ]
             
             #  FIX: Check and create indexes only if needed
@@ -140,7 +179,8 @@ class WhitelistModel:
             #  FIX: Set essential defaults BEFORE validation
             entry_data.setdefault("is_active", True)
             entry_data.setdefault("type", "domain")
-            
+            entry_data.setdefault("scope", "global")
+
             #  FIX: Validate value field early
             if not entry_data.get("value"):
                 raise ValueError("Value field is required")
@@ -153,6 +193,8 @@ class WhitelistModel:
             result = self.collection.insert_one(entry_data)
             
             if result.inserted_id:
+                if entry_data.get("scope", "global") == "global":
+                    self.bump_global_version()
                 self.logger.info(f" Successfully inserted: {entry_data['value']} with ID: {result.inserted_id}")
                 return str(result.inserted_id)
             else:
@@ -167,10 +209,11 @@ class WhitelistModel:
         """Find all whitelist entries with proper sorting - vietnam ONLY"""
         query = query or {}
         
-        #  FIX: Add active filter by default
+        # FIX: Add active filter by default
         if "is_active" not in query:
             query["is_active"] = True
-        
+        query.setdefault("scope", "global")
+
         # Clean up expired entries first
         self.cleanup_expired_entries()
         
@@ -180,16 +223,20 @@ class WhitelistModel:
         
         entries = []
         for entry in cursor:
-            entry["_id"] = str(entry["_id"])
+            # FIX: Convert ObjectId to string properly
+            if "_id" in entry:
+                entry["_id"] = str(entry["_id"])
             
             # Convert entry timezones for display - vietnam ONLY
             entry = self._convert_entry_timezones(entry)
             
-            #  FIX: Ensure all required fields exist
+            # FIX: Ensure all required fields exist with defaults
             entry.setdefault("type", "domain")
             entry.setdefault("category", "uncategorized")
             entry.setdefault("is_active", True)
             entry.setdefault("priority", "normal")
+            entry.setdefault("scope", "global")
+            entry.setdefault("value", "")  # Ensure value exists
             
             entries.append(entry)
         
@@ -315,9 +362,12 @@ class WhitelistModel:
     def delete_entry(self, entry_id: str) -> bool:
         """Delete entry by ID"""
         try:
+            entry = self.collection.find_one({"_id": ObjectId(entry_id)})
             result = self.collection.delete_one({"_id": ObjectId(entry_id)})
             if result.deleted_count > 0:
                 self.logger.info(f"Deleted entry: {entry_id}")
+                if entry and entry.get("scope", "global") == "global":
+                    self.bump_global_version()
                 return True
             else:
                 self.logger.warning(f"Entry not found for deletion: {entry_id}")
@@ -331,7 +381,9 @@ class WhitelistModel:
         try:
             # Add updated timestamp
             update_data["updated_at"] = now_vietnam()
-            
+
+            entry = self.collection.find_one({"_id": ObjectId(entry_id)})
+
             result = self.collection.update_one(
                 {"_id": ObjectId(entry_id)},
                 {"$set": update_data}
@@ -339,6 +391,8 @@ class WhitelistModel:
             
             if result.modified_count > 0:
                 self.logger.info(f"Updated entry: {entry_id}")
+                if entry and entry.get("scope", "global") == "global":
+                    self.bump_global_version()
                 return True
             else:
                 self.logger.warning(f"No changes made to entry: {entry_id}")
@@ -389,10 +443,13 @@ class WhitelistModel:
             self.logger.error(f"Error finding entry by ID: {e}")
             return None
 
-    def get_entries_for_sync(self, since_date=None) -> List[Dict]:
+    def get_entries_for_sync(self, since_date=None, scope: str = "global", group_id: str = None) -> List[Dict]:
         """Get entries for agent synchronization - vietnam ONLY"""
         try:
-            query = {"is_active": True}
+            query = {"is_active": True, "scope": scope}
+
+            if scope == "group" and group_id:
+                query["group_id"] = group_id
             
             if since_date:
                 since_vietnam = parse_agent_timestamp(since_date)
@@ -438,10 +495,13 @@ class WhitelistModel:
                 entry["updated_at"] = current_time
                 entry.setdefault("is_active", True)
                 entry.setdefault("type", "domain")
+                entry.setdefault("scope", "global")
             
             result = self.collection.insert_many(entries)
             
             self.logger.info(f"Bulk inserted {len(result.inserted_ids)} entries")
+            if any(entry.get("scope", "global") == "global" for entry in entries):
+                self.bump_global_version()
             return [str(id) for id in result.inserted_ids]
             
         except Exception as e:

@@ -78,113 +78,152 @@
 </div>
 
 <!-- Filter controls -->
-<div class="row align-items-center">
-    <div class="col-md-4">
-        <input type="text" class="form-control" id="log-search" placeholder="Search logs...">
-    </div>
-    <div class="col-md-2">
-        <select class="form-select" id="level-filter">
-            <option value="">All Levels</option>
-            <option value="ALLOWED">Allowed</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="WARNING">Warning</option>
-            <option value="ERROR">Error</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select class="form-select" id="agent-filter">
-            <option value="">All Agents</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select class="form-select" id="limit-select">
-            <option value="50">50 logs</option>
-            <option value="100" selected>100 logs</option>
-            <option value="200">200 logs</option>
-            <option value="500">500 logs</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <button class="btn btn-outline-primary w-100" id="refreshBtn">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
+<div class="card filter-card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <!-- Search Input -->
+            <div class="col-lg-4 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0" id="log-search" 
+                           placeholder="Search logs...">
+                </div>
+            </div>
+            
+            <!-- Level Filter -->
+            <div class="col-lg-2 col-md-3 col-6">
+                <select class="form-select" id="level-filter">
+                    <option value="">All Levels</option>
+                    <option value="ALLOWED">Allowed</option>
+                    <option value="BLOCKED">Blocked</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="ERROR">Error</option>
+                    <option value="INFO">Info</option>
+                </select>
+            </div>
+            
+            <!-- Agent Filter -->
+            <div class="col-lg-2 col-md-3 col-6">
+                <select class="form-select" id="agent-filter">
+                    <option value="">All Agents</option>
+                </select>
+            </div>
+            
+            <!-- Limit Select -->
+            <div class="col-lg-3 col-md-6">
+                <select class="form-select" id="limit-select">
+                    <option value="50">50 logs</option>
+                    <option value="100" selected>100 logs</option>
+                    <option value="200">200 logs</option>
+                    <option value="500">500 logs</option>
+                </select>
+            </div>
+            
+            <!-- Refresh Button -->
+            <div class="col-lg-1 col-md-12">
+                <button class="btn btn-outline-primary w-100" id="refreshBtn" title="Refresh logs">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Time filter pills -->
+        <div class="time-filter-pills">
+            <div class="time-pill active" data-time="all">
+                <i class="fas fa-infinity me-1"></i>All Time
+            </div>
+            <div class="time-pill" data-time="1h">
+                <i class="fas fa-clock me-1"></i>Last Hour
+            </div>
+            <div class="time-pill" data-time="24h">
+                <i class="fas fa-calendar-day me-1"></i>Last 24 Hours
+            </div>
+            <div class="time-pill" data-time="7d">
+                <i class="fas fa-calendar-week me-1"></i>Last 7 Days
+            </div>
+            <div class="time-pill" data-time="30d">
+                <i class="fas fa-calendar-alt me-1"></i>Last 30 Days
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Logs header -->
-<div class="card-header bg-light">
-    <div class="row align-items-center">
-        <div class="col-md-6">
-            <h6 class="mb-0">
-                <input type="checkbox" class="form-check-input me-2" id="selectAllLogs" onchange="selectAllLogs()">
-                Log Entries
-                <span class="text-muted ms-2" id="logCount">Loading...</span>
-            </h6>
-        </div>
-        <div class="col-md-6 text-end">
-            <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-secondary" id="exportBtn">
-                    <i class="fas fa-download"></i> Export
-                </button>
-                <button class="btn btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="fas fa-trash"></i> Clear
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" id="clearSelectedBtn">Clear Selected</a></li>
-                    <li><a class="dropdown-item" href="#" id="clearOldLogsBtn">Clear Old Logs</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" id="clearAllLogsBtn">Clear All Logs</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Clear Warning Alert -->
-<div class="clear-warning" id="clearWarning">
-    <div class="d-flex align-items-center">
-        <i class="fas fa-exclamation-triangle text-warning me-3 fa-2x"></i>
-        <div class="flex-grow-1">
-            <h6 class="mb-1 fw-bold"> Clear Logs Warning</h6>
-            <p class="mb-0" id="clearWarningText">
-                You are about to permanently delete logs. This action cannot be undone.
-            </p>
-        </div>
-        <div class="ms-3">
-            <button class="btn btn-outline-secondary btn-sm me-2" id="cancelClearBtn">Cancel</button>
-            <button class="btn btn-danger btn-sm" id="confirmClearBtn">
-                <i class="fas fa-trash me-1"></i>Confirm Delete
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Bulk Actions (Hidden by default) -->
-<div class="bulk-actions" id="bulkActions">
-    <div class="row align-items-center">
-        <div class="col-md-8">
-            <span class="fw-semibold text-muted">
-                <span id="selectedCount">0</span> logs selected
-            </span>
-        </div>
-        <div class="col-md-4 text-end">
-            <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" id="bulkDetailsBtn">
-                    <i class="fas fa-eye me-1"></i>View Details
-                </button>
-                <button class="btn btn-outline-success" id="bulkExportBtn">
-                    <i class="fas fa-download me-1"></i>Export Selected
-                </button>
-                <button class="btn btn-outline-danger" id="bulkClearBtn">
-                    <i class="fas fa-trash me-1"></i>Clear Selected
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Logs List -->
 <div class="card">
+    <div class="card-header bg-light">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h6 class="mb-0">
+                    <input type="checkbox" class="form-check-input me-2" id="selectAllLogs">
+                    Log Entries
+                    <span class="text-muted ms-2" id="logCount">Loading...</span>
+                </h6>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" id="exportBtn">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button class="btn btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="clearSelectedBtn">Clear Selected</a></li>
+                        <li><a class="dropdown-item" href="#" id="clearOldLogsBtn">Clear Old Logs</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" id="clearAllLogsBtn">Clear All Logs</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Warning Alert -->
+    <div class="clear-warning" id="clearWarning">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle text-warning me-3 fa-2x"></i>
+            <div class="flex-grow-1">
+                <h6 class="mb-1 fw-bold"> Clear Logs Warning</h6>
+                <p class="mb-0" id="clearWarningText">
+                    You are about to permanently delete logs. This action cannot be undone.
+                </p>
+            </div>
+            <div class="ms-3">
+                <button class="btn btn-outline-secondary btn-sm me-2" id="cancelClearBtn">Cancel</button>
+                <button class="btn btn-danger btn-sm" id="confirmClearBtn">
+                    <i class="fas fa-trash me-1"></i>Confirm Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions (Hidden by default) -->
+    <div class="bulk-actions" id="bulkActions">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <span class="fw-semibold text-muted">
+                    <span id="selectedCount">0</span> logs selected
+                </span>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" id="bulkDetailsBtn">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </button>
+                    <button class="btn btn-outline-success" id="bulkExportBtn">
+                        <i class="fas fa-download me-1"></i>Export Selected
+                    </button>
+                    <button class="btn btn-outline-danger" id="bulkClearBtn">
+                        <i class="fas fa-trash me-1"></i>Clear Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs List -->
     <div class="card-body p-0">
         <div id="logsContainer">
             <div class="text-center py-5">

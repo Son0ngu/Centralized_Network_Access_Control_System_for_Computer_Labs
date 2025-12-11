@@ -1,6 +1,6 @@
 """
 Whitelist Controller - handles whitelist HTTP requests
-vietnam ONLY - Clean and simple
+- Clean and simple
 """
 
 import logging
@@ -11,6 +11,9 @@ from services.whitelist_service import WhitelistService
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, parse_agent_timestamp
+
+# Import auth middleware for JWT validation
+from middleware.auth import require_jwt, require_jwt_or_api_key
 
 class WhitelistController:
     """Controller for whitelist operations"""
@@ -26,12 +29,12 @@ class WhitelistController:
     def _register_routes(self):
         """Register all whitelist routes"""
         
-        # Agent sync endpoint - MOST IMPORTANT
+        # Agent sync endpoint - requires JWT token (Phase 2)
         self.blueprint.add_url_rule('/whitelist/agent-sync', 
                                    methods=['GET'], 
-                                   view_func=self.agent_sync)
+                                   view_func=require_jwt(self.agent_sync))
         
-        # Admin management endpoints
+        # Admin management endpoints (no auth for now - will add admin auth later)
         self.blueprint.add_url_rule('/whitelist', 
                                    methods=['GET'], 
                                    view_func=self.list_domains)
@@ -75,7 +78,9 @@ class WhitelistController:
             # Get query parameters
             since = request.args.get('since')
             agent_id = request.args.get('agent_id')
-            
+            global_version = request.args.get('global_version')
+            group_version = request.args.get('group_version')
+
             self.logger.debug(f"Agent sync request - since: {since}, agent_id: {agent_id}")
             
             # FIX: Better parameter validation using time_utils - vietnam ONLY
@@ -88,7 +93,12 @@ class WhitelistController:
                     # Continue without since filter
             
             # Call service method
-            result = self.service.get_agent_sync_data(since_datetime, agent_id)
+            result = self.service.get_agent_sync_data(
+                since_datetime,
+                agent_id,
+                int(global_version) if global_version else None,
+                int(group_version) if group_version else None,
+            )
             
             # FIX: Ensure response format is correct
             if not isinstance(result, dict):
@@ -125,6 +135,14 @@ class WhitelistController:
     def list_domains(self):
         """List all whitelist domains - vietnam ONLY"""
         try:
+            agent_id = request.args.get('agent_id')
+            group_id = request.args.get('group_id')
+
+            if agent_id or group_id:
+                scoped = self.service.get_scoped_whitelist(agent_id=agent_id, group_id=group_id)
+                status_code = 200 if scoped.get("success") else 400
+                return jsonify(scoped), status_code
+            
             # Get pagination parameters
             limit = min(int(request.args.get('limit', 100)), 1000)
             offset = int(request.args.get('offset', 0))
@@ -144,44 +162,63 @@ class WhitelistController:
             return self._error_response("Failed to list domains", 500)
     
     def add_domain(self):
-        """Add new domain to whitelist - vietnam ONLY"""
+        """Add new entry to whitelist (domains, IPs, URLs, etc.)"""
         try:
             if not request.is_json:
                 return self._error_response("Request must be JSON", 400)
             
-            data = request.get_json()
-            if not data or 'value' not in data:
-                return self._error_response("Domain value is required", 400)
-            
-            domain_value = data['value'].strip().lower()
-            if not domain_value:
-                return self._error_response("Domain value cannot be empty", 400)
-            
-            # Call service method
-            result = self.service.add_domain(domain_value, data.get('category', 'general'))
+            data = request.get_json() or {}
+            entry_value = data.get('value', '').strip().lower()
+            if not entry_value:
+                return self._error_response("Value is required", 400)
+
+            # Normalize entry payload and client IP for auditing
+            entry_type = data.get('type', 'domain')
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if client_ip and ',' in client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+
+            # Call unified service to handle all whitelist types
+            result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip)
+
+            response_body = {
+                "success": True,
+                "timestamp": now_iso(),
+                **result
+            }
             
             # Broadcast update via SocketIO - vietnam ONLY
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
                     'action': 'added',
-                    'domain': domain_value,
+                    'type': entry_type,
+                    'value': entry_value,
                     'category': data.get('category', 'general'),
                     'timestamp': now_iso()  # vietnam ISO
                 })
             
-            # Add vietnam timestamp to response
-            if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
-            
-            return jsonify(result), 201 if result.get('success') else 400
+            return jsonify(response_body), 201
+
+        except ValueError as e:
+            return self._error_response(str(e), 400)
             
         except Exception as e:
-            self.logger.error(f"Error adding domain: {e}")
+            self.logger.error(f"Error adding entry: {e}")
             return self._error_response("Failed to add domain", 500)
     
     def delete_domain(self, domain_id: str):
         """Delete domain from whitelist - vietnam ONLY"""
         try:
+            self.logger.info(f"Attempting to delete domain: {domain_id}")
+            
+            # FIX: Validate domain_id format
+            if not domain_id or len(domain_id) < 10:
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid domain ID format",
+                    "timestamp": now_iso()
+                }), 400
+            
             # Call service method
             result = self.service.delete_domain(domain_id)
             
@@ -190,18 +227,24 @@ class WhitelistController:
                 self.socketio.emit('whitelist_updated', {
                     'action': 'deleted',
                     'domain_id': domain_id,
-                    'timestamp': now_iso()  # vietnam ISO
+                    'timestamp': now_iso()
                 })
             
             # Add vietnam timestamp to response
             if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
+                result["timestamp"] = now_iso()
             
-            return jsonify(result), 200 if result.get('success') else 404
+            status_code = 200 if result.get('success') else 404
+            return jsonify(result), status_code
             
         except Exception as e:
             self.logger.error(f"Error deleting domain {domain_id}: {e}")
-            return self._error_response("Failed to delete domain", 500)
+            return jsonify({
+                "success": False,
+                "error": f"Failed to delete domain: {str(e)}",
+                "timestamp": now_iso()
+            }), 500
+
     
     def import_domains(self):
         """Import multiple domains - vietnam ONLY"""
