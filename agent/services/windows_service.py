@@ -15,7 +15,7 @@ def run_as_service(main_func, cleanup_func):
         
         class AgentService(win32serviceutil.ServiceFramework):
             _svc_name_ = "SAINT"
-            _svc_display_name_ = "SAINT - Security Agent Intelligence Network Tool"
+            _svc_display_name_ = "SAINT - Security Agent Integrated Network Tool"
             _svc_description_ = "Network traffic monitoring and domain whitelist enforcement"
             
             def __init__(self, args):

@@ -40,7 +40,7 @@ class FirewallControllerApp:
             except Exception:
                 pass
             
-            self._root.title("SAINT - Security Agent Intelligence Network Tool")
+            self._root.title("SAINT - Security Agent Integrated Network Tool")
             self._root.geometry("1200x800")
             self._root.minsize(900, 600)
             

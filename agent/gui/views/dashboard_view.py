@@ -612,14 +612,14 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
-            "║" + "  🛑 AGENT SHUTDOWN INITIATED".center(48) + "║",
+            "║" + "  AGENT SHUTDOWN INITIATED".center(48) + "║",
             "╠" + "═" * 48 + "╣",
-            f"║  📅 Time: {timestamp}".ljust(49) + "║",
-            f"║  ⏱️  Uptime: {uptime}".ljust(49) + "║",
-            f"║  📦 Packets: {packets}".ljust(49) + "║",
+            f"║  Time: {timestamp}".ljust(49) + "║",
+            f"║  Uptime: {uptime}".ljust(49) + "║",
+            f"║  Packets: {packets}".ljust(49) + "║",
             f"║  Domains: {domains}".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
-            "║  ⏳ Cleaning up resources...".ljust(49) + "║",
+            "║  Cleaning up resources...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
             ""
         ]
@@ -656,7 +656,7 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
-            "║" + "  FIREWALL AGENT STARTING".center(48) + "║",
+            "║" + "  SECURITY AGENT STARTING".center(48) + "║",
             "╠" + "═" * 48 + "╣",
             f"║  Time: {timestamp}".ljust(49) + "║",
             f"║  Host: {hostname[:35]}".ljust(49) + "║",
@@ -694,9 +694,9 @@ class DashboardView(ctk.CTkFrame):
             "┌" + "─" * 48 + "┐",
             "│" + "  AGENT STOPPED SUCCESSFULLY".center(48) + "│",
             "├" + "─" * 48 + "┤",
-            f"│  📅 Time: {timestamp}".ljust(49) + "│",
+            f"│  Time: {timestamp}".ljust(49) + "│",
             "│  Resources cleaned up".ljust(49) + "│",
-            "│  🔓 Firewall rules cleared".ljust(49) + "│",
+            "│  Firewall rules cleared".ljust(49) + "│",
             "└" + "─" * 48 + "┘",
             ""
         ]

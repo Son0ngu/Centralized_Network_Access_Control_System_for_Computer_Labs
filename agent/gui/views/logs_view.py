@@ -155,6 +155,8 @@ class LogsView(ctk.CTkFrame):
         
         # Add to root logger
         root_logger = logging.getLogger()
+        # Ensure we actually receive INFO/DEBUG messages from all modules
+        root_logger.setLevel(logging.DEBUG)
         root_logger.addHandler(self._log_handler)
         
         # Also add to specific loggers
@@ -170,14 +172,15 @@ class LogsView(ctk.CTkFrame):
         
         for logger_name in loggers_to_capture:
             logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.DEBUG)
             if self._log_handler not in logger.handlers:
                 logger.addHandler(self._log_handler)
     
     def _add_welcome_logs(self):
         """Add welcome/sample logs."""
         self._log_console.append_log("=" * 60, "INFO")
-        self._log_console.append_log("  Firewall Agent Log Console", "INFO")
-        self._log_console.append_log("  - Enterprise Security", "INFO")
+        self._log_console.append_log("  SECURITY AGENT Log Console", "INFO")
+        self._log_console.append_log("  - Education Security", "INFO")
         self._log_console.append_log("=" * 60, "INFO")
         self._log_console.append_log("", "INFO")
         self._log_console.append_log("Log console initialized and ready", "INFO")
@@ -186,7 +189,9 @@ class LogsView(ctk.CTkFrame):
     def _on_filter_change(self, value: str):
         """Handle filter change."""
         self._status_label.configure(text=f"📟 Filter: {value}")
-    
+        if hasattr(self, "_log_console"):
+            self._log_console.set_filter_level(value)
+
     def _on_clear(self):
         """Handle clear button."""
         self._log_console.clear()

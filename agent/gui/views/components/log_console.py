@@ -111,19 +111,6 @@ class LogConsole(ctk.CTkFrame):
         )
         self._line_count_label.pack(side="left", padx=(15, 0))
         
-        # Clear button
-        clear_btn = ctk.CTkButton(
-            toolbar,
-            text="🗑️ Clear",
-            width=70,
-            height=28,
-            font=ctk.CTkFont(size=11),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
-            command=self.clear
-        )
-        clear_btn.pack(side="right")
-        
         # Pause button
         self._pause_btn = ctk.CTkButton(
             toolbar,
@@ -163,7 +150,50 @@ class LogConsole(ctk.CTkFrame):
     
     def _on_level_change(self, value: str):
         """Handle level filter change."""
-        self._filter_level = value
+        self.set_filter_level(value)
+
+    def set_filter_level(self, level: str):
+        """Update the active filter level and redraw existing logs."""
+        self._filter_level = level.upper()
+        self._rebuild_from_history()
+    
+    def _passes_filter(self, level: str) -> bool:
+        """Return True if the level should be shown under the current filter."""
+        if self._filter_level == "ALL":
+            return True
+        level_order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if level in level_order and self._filter_level in level_order:
+            return level_order.index(level) >= level_order.index(self._filter_level)
+        return True
+
+    def _write_line(self, log_entry: Dict):
+        """Render a single log entry into the console without mutating history."""
+        level = log_entry.get("level", "INFO")
+        timestamp = log_entry.get("timestamp", "")
+        message = log_entry.get("message", "")
+
+        # Color currently unused by CTkTextbox but retained for future styling
+        self.LEVEL_COLORS.get(level, "#00ff88")
+
+        formatted_line = f"[{timestamp}] [{level:8}] {message}\n"
+        self._console.insert("end", formatted_line)
+        self._line_count += 1
+
+    def _rebuild_from_history(self):
+        """Re-render the console from stored history applying the current filter."""
+        self._console.configure(state="normal")
+        self._console.delete("1.0", "end")
+        self._line_count = 0
+
+        for entry in self._history:
+            if self._passes_filter(entry.get("level", "INFO")):
+                self._write_line(entry)
+
+        self._console.see("end")
+        self._console.configure(state="disabled")
+
+        if hasattr(self, '_line_count_label'):
+            self._line_count_label.configure(text=f"{self._line_count} lines")
     
     def _start_queue_processor(self):
         """Start background queue processor."""
@@ -218,22 +248,12 @@ class LogConsole(ctk.CTkFrame):
             self._history.pop(0)
         
         # Apply level filter
-        if self._filter_level != "ALL":
-            level_order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-            if level in level_order:
-                filter_idx = level_order.index(self._filter_level)
-                log_idx = level_order.index(level)
-                if log_idx < filter_idx:
-                    return
-        
-        # Format line
-        color = self.LEVEL_COLORS.get(level, "#00ff88")
-        formatted_line = f"[{timestamp}] [{level:8}] {message}\n"
+        if not self._passes_filter(level):
+            return
         
         # Append to console
         self._console.configure(state="normal")
-        self._console.insert("end", formatted_line)
-        self._line_count += 1
+        self._write_line(log_entry)
         
         # Trim if exceeds max lines
         if self._line_count > self._max_lines:
