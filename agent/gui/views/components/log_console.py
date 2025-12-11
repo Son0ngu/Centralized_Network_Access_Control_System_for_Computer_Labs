@@ -58,6 +58,7 @@ class LogConsole(ctk.CTkFrame):
         self._line_count = 0
         self._paused = False
         self._filter_level = "ALL"
+        self._history: List[Dict[str, str]] = []
         
         # Message queue for thread-safe logging
         self._log_queue: queue.Queue = queue.Queue()
@@ -204,6 +205,17 @@ class LogConsole(ctk.CTkFrame):
     def _append_log_internal(self, log_entry: Dict):
         """Internal method to append log to console."""
         level = log_entry.get("level", "INFO")
+        timestamp = log_entry.get("timestamp", "")
+        message = log_entry.get("message", "")
+
+        # Always retain full history for export (independent of UI filter)
+        self._history.append({
+            "timestamp": timestamp,
+            "level": level,
+            "message": message,
+        })
+        if len(self._history) > self._max_lines:
+            self._history.pop(0)
         
         # Apply level filter
         if self._filter_level != "ALL":
@@ -213,9 +225,6 @@ class LogConsole(ctk.CTkFrame):
                 log_idx = level_order.index(level)
                 if log_idx < filter_idx:
                     return
-        
-        timestamp = log_entry.get("timestamp", "")
-        message = log_entry.get("message", "")
         
         # Format line
         color = self.LEVEL_COLORS.get(level, "#00ff88")
@@ -245,11 +254,16 @@ class LogConsole(ctk.CTkFrame):
         self._console.delete("1.0", "end")
         self._console.configure(state="disabled")
         self._line_count = 0
+        self._history = []
         
         if hasattr(self, '_line_count_label'):
             self._line_count_label.configure(text="0 lines")
         
         self.append_log("Console cleared", "INFO")
+
+    def get_history(self) -> List[Dict[str, str]]:
+        """Return a copy of the log history for export."""
+        return list(self._history)
     
     def write(self, message: str):
         """Write method for compatibility with logging handlers."""

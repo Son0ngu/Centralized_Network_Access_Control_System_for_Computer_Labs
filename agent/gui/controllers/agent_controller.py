@@ -212,7 +212,7 @@ class AgentController:
             logger.info("Agent worker starting...")
             
             # Import agent components
-            from config import get_config
+            from config import reload_config
             from core import get_agent, initialize_components, cleanup
             from shared.time_utils import sleep, uptime_string
             from utils import check_admin_privileges
@@ -221,8 +221,8 @@ class AgentController:
             self._agent = get_agent()
             
             # Load configuration
-            logger.info("Loading configuration...")
-            self._config = get_config()
+            logger.info("Reloading configuration from disk...")
+            self._config = reload_config()
             
             # Ensure device ID
             from core import AGENT_DEVICE_ID

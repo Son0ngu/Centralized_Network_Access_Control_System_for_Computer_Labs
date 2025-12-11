@@ -1,5 +1,7 @@
 import customtkinter as ctk
 import logging
+import csv
+from tkinter import filedialog
 from typing import Optional
 
 from .components.log_console import LogConsole, GUILogHandler
@@ -191,9 +193,39 @@ class LogsView(ctk.CTkFrame):
     
     def _on_export(self):
         """Handle export button."""
-        # TODO: Implement export functionality
-        self._log_console.append_log("Export feature coming soon...", "INFO")
-        self._status_label.configure(text="📟 Export not yet implemented")
+        try:
+            path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+                initialfile="logs.csv",
+                title="Save logs as CSV"
+            )
+
+            if not path:
+                self._status_label.configure(text="📟 Export canceled")
+                return
+
+            rows = self._log_console.get_history() if hasattr(self, "_log_console") else []
+            if not rows:
+                self._status_label.configure(text="📟 No logs to export")
+                return
+
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["timestamp", "level", "message"])
+                for entry in rows:
+                    writer.writerow([
+                        entry.get("timestamp", ""),
+                        entry.get("level", ""),
+                        entry.get("message", ""),
+                    ])
+
+            self._log_console.append_log(f"Exported {len(rows)} log lines to {path}", "INFO")
+            self._status_label.configure(text=f"📟 Exported {len(rows)} lines")
+        except Exception as e:
+            self._log_console.append_log(f"Export failed: {e}", "ERROR")
+            if hasattr(self, '_status_label'):
+                self._status_label.configure(text="📟 Export failed")
     
     def append_log(self, message: str, level: str = "INFO"):
         """

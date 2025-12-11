@@ -141,7 +141,7 @@ class DashboardView(ctk.CTkFrame):
             value="0",
             icon="📋",
             color="#00d4ff",
-            subtitle="domains + patterns",
+            subtitle="domains",
             width=180,
             height=110
         )
@@ -288,9 +288,8 @@ class DashboardView(ctk.CTkFrame):
                 
                 # Update domain/pattern counts
                 domains = stats.get('domains_count', 0)
-                patterns = stats.get('patterns_count', 0)
-                self._cards['domains'].set_value(str(domains + patterns))
-                self._cards['domains'].set_subtitle(f"{domains} domains, {patterns} patterns")
+                self._cards['domains'].set_value(str(domains))
+                self._cards['domains'].set_subtitle(f"{domains} domains")
                 
                 # Update IP count
                 ips = stats.get('ips_count', 0)
@@ -479,9 +478,8 @@ class DashboardView(ctk.CTkFrame):
         """Handle stats update from agent."""
         # Update domain/pattern counts
         domains = data.get('domains_count', 0)
-        patterns = data.get('patterns_count', 0)
-        self._cards['domains'].set_value(str(domains + patterns))
-        self._cards['domains'].set_subtitle(f"{domains} domains, {patterns} patterns")
+        self._cards['domains'].set_value(str(domains))
+        self._cards['domains'].set_subtitle(f"{domains} domains")
         
         # Update IP count
         ips = data.get('ips_count', 0)
@@ -660,13 +658,13 @@ class DashboardView(ctk.CTkFrame):
             "╔" + "═" * 48 + "╗",
             "║" + "  FIREWALL AGENT STARTING".center(48) + "║",
             "╠" + "═" * 48 + "╣",
-            f"║  📅 Time: {timestamp}".ljust(49) + "║",
-            f"║  🖥️ Host: {hostname[:35]}".ljust(49) + "║",
-            "║  🔥 Mode: Detecting...".ljust(49) + "║",
+            f"║  Time: {timestamp}".ljust(49) + "║",
+            f"║  Host: {hostname[:35]}".ljust(49) + "║",
+            "║  Mode: Detecting...".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
-            "║  ⚙️  Initializing components...".ljust(49) + "║",
-            "║  📡 Connecting to server...".ljust(49) + "║",
-            "║  🛡  Setting up firewall rules...".ljust(49) + "║",
+            "║   Initializing components...".ljust(49) + "║",
+            "║   Connecting to server...".ljust(49) + "║",
+            "║   Setting up firewall rules...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
             ""
         ]

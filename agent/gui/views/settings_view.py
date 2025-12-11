@@ -213,35 +213,7 @@ class SettingsView(ctk.CTkFrame):
         )
         log_menu.pack(side="left")
         
-        # ========================================
-        # NETWORK SETTINGS
-        # ========================================
-        self._create_section(content, "Network Settings")
-        
-        network_frame = ctk.CTkFrame(content, corner_radius=12, fg_color="#1a1a2e")
-        network_frame.pack(fill="x", pady=(0, 20))
-        
-        # Auto-detect IP
-        auto_ip_row = ctk.CTkFrame(network_frame, fg_color="transparent")
-        auto_ip_row.pack(fill="x", padx=20, pady=10)
-        
-        auto_ip_label = ctk.CTkLabel(auto_ip_row, text="Auto-detect Public IP:", width=150, anchor="w")
-        auto_ip_label.pack(side="left")
-        
-        self._auto_ip_switch = ctk.CTkSwitch(auto_ip_row, text="", onvalue=True, offvalue=False)
-        self._auto_ip_switch.select()
-        self._auto_ip_switch.pack(side="left")
-        
-        # Enable Npcap auto-install
-        npcap_row = ctk.CTkFrame(network_frame, fg_color="transparent")
-        npcap_row.pack(fill="x", padx=20, pady=10)
-        
-        npcap_label = ctk.CTkLabel(npcap_row, text="Auto-install Npcap:", width=150, anchor="w")
-        npcap_label.pack(side="left")
-        
-        self._npcap_switch = ctk.CTkSwitch(npcap_row, text="", onvalue=True, offvalue=False)
-        self._npcap_switch.select()
-        self._npcap_switch.pack(side="left")
+        # (Network settings removed in UI)
         
         # ========================================
         # SAVE BUTTON & STATUS
