@@ -88,7 +88,8 @@ async function loadGroupAgents() {
 
 async function loadAllAgents() {
     try {
-        const response = await fetch('/api/agents');
+        // Ask server to exclude agents already in this group so the picker only shows available ones
+        const response = await fetch(`/api/agents?exclude_group_id=${groupId}`);
         if (!response.ok) throw new Error('Failed to load agents');
         
         const data = await response.json();
