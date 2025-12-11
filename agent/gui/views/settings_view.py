@@ -47,7 +47,10 @@ class SettingsView(ctk.CTkFrame):
             if 'server_url' in self._entries:
                 if 'server' not in self._config:
                     self._config['server'] = {}
-                self._config['server']['url'] = self._entries['server_url'].get()
+                url_value = self._entries['server_url'].get()
+                self._config['server']['url'] = url_value
+                # Keep urls list in sync so runtime respects the chosen endpoint
+                self._config['server']['urls'] = [url_value]
             
             if 'heartbeat_interval' in self._entries:
                 if 'heartbeat' not in self._config:
