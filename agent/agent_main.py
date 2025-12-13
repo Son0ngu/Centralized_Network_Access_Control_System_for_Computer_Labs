@@ -13,7 +13,6 @@ from shared.time_utils import now, now_iso, uptime_string, sleep, debug_time_inf
 
 from core import (
     agent_state,
-    AGENT_HOSTNAME,
     AGENT_DEVICE_ID,
     get_agent,
     initialize_components,
@@ -21,7 +20,6 @@ from core import (
     build_lifecycle_log
 )
 from utils import (
-    get_local_ip,
     check_admin_privileges,
     validate_configuration
 )
@@ -35,18 +33,15 @@ def main():
     agent = get_agent()
     
     try:
-        logger.info("Starting Secure Firewall Controller Agent...")
+        logger.info("Starting ...")
         
-        # Debug time info in debug mode
         if logger.isEnabledFor(logging.DEBUG):
             debug_info = debug_time_info()
             logger.debug(f"Time info: {debug_info}")
         
-        # Load and validate configuration
         logger.info("Loading configuration...")
         config = get_config()
         
-        # Ensure device ID is available
         config["device_id"] = AGENT_DEVICE_ID
         
         if not validate_configuration(config):
@@ -55,19 +50,16 @@ def main():
         
         logger.info("Configuration loaded and validated")
         
-        # Auto-adjust firewall configuration based on admin privileges
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
         current_mode = firewall_config.get("mode", "monitor")
         
         if admin_status:
-            # Has admin privileges - enable firewall enforcement
             if current_mode == "monitor":
                 logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
                 config["firewall"]["enabled"] = True
                 config["firewall"]["mode"] = "whitelist_only"
             else:
-                # Already in enforce mode, just ensure enabled
                 config["firewall"]["enabled"] = True
                 logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
         else:
@@ -102,7 +94,6 @@ def main():
         agent_state['startup_completed'] = True
         logger.info(f"Agent startup completed successfully (startup time: {uptime_string()})")
         
-        # Main loop with UTC timestamps
         loop_count = 0
         last_status_log = now()
         

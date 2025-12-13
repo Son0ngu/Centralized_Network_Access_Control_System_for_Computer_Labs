@@ -130,5 +130,4 @@ class Agent:
         self.running = False
 
 def get_agent() -> Agent:
-    """Get the global agent instance."""
     return Agent()

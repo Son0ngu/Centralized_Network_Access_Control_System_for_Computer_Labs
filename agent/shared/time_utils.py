@@ -1,10 +1,3 @@
-"""
-Time Utilities for Firewall Controller Agent.
-
-Simplified time management - Vietnam timezone only.
-All timestamps use Asia/Ho_Chi_Minh (UTC+7).
-"""
-
 import logging
 import time
 from datetime import datetime, timedelta, timezone, tzinfo
