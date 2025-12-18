@@ -4,10 +4,6 @@ from typing import Dict
 
 @dataclass(frozen=True)
 class IconSet:
-    """
-    Collection of icons used throughout the application.
-    Using emoji/unicode for cross-platform compatibility.
-    """
     
     # === Navigation Icons ===
     dashboard: str = "📊"
@@ -211,15 +207,15 @@ def get_action_icon(action: str) -> str:
 ASCII_LOGO = """
 ╔═══════════════════════════════════════════╗
 ║                S A I N T                  ║
-║   Security Agent Intelligence Network Tool║
-║   Enterprise Security Management          ║
+║   Security Agent Integrated Network Tool║
+║   Education Security Management          ║
 ║   Edition                    ║
 ╚═══════════════════════════════════════════╝
 """
 
 ASCII_LOGO_SMALL = """
                 S A I N T
-Security Agent Intelligence Network Tool
+Security Agent Integrated Network Tool
 """
 
 SPLASH_LOGO = """
@@ -229,5 +225,5 @@ SPLASH_LOGO = """
     ╚════██║██╔══██║██║██║╚██╗██║   ██║   
     ███████║██║  ██║██║██║ ╚████║   ██║   
     ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   
-    Security Agent Intelligence Network Tool
+    Security Agent Integrated Network Tool
 """

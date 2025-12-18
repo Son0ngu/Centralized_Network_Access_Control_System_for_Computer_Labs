@@ -63,6 +63,15 @@ def load_config() -> Dict[str, Any]:
         "load_duration": now() - load_start_time,
         "config_source": _get_config_source(file_config, env_config)
     }
+
+    # Ensure server URLs honor the explicitly configured primary URL
+    # If a single server url is provided but the defaults injected a urls list,
+    # align the list so runtime components (LogSender, API clients) use the user choice.
+    server_cfg = config.get("server", {})
+    primary_url = server_cfg.get("url")
+    if primary_url:
+        server_cfg["urls"] = [primary_url]
+        config["server"] = server_cfg
     
     # Validate configuration
     is_valid, errors, warnings = validate_config(config)

@@ -1,9 +1,10 @@
 import customtkinter as ctk
 import threading
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from ..controllers.whitelist_controller import get_whitelist_controller
 from .components.data_table import DataTable
+from network.dns_resolver import OptimizedDNSResolver
 
 
 class WhitelistView(ctk.CTkFrame):
@@ -17,6 +18,9 @@ class WhitelistView(ctk.CTkFrame):
         
         # Get controller
         self._controller = get_whitelist_controller()
+
+        # Shared DNS resolver for domain/IP lookups
+        self._dns_resolver = OptimizedDNSResolver()
         
         # Auto-sync job ID
         self._auto_sync_job = None
@@ -107,12 +111,23 @@ class WhitelistView(ctk.CTkFrame):
         )
         self._stats_label.pack(side="left", anchor="w", fill="x", expand=True)
         
+        # Display mode toggle
+        self._show_resolved = ctk.BooleanVar(value=False)
+        toggle_switch = ctk.CTkSwitch(
+            stats_frame,
+            text="Resolved IPs",
+            variable=self._show_resolved,
+            command=self._on_toggle_resolved,
+            font=ctk.CTkFont(size=12)
+        )
+        toggle_switch.pack(side="right", padx=(10, 5))
+        
         # Search entry
         self._search_entry = ctk.CTkEntry(
             stats_frame,
             placeholder_text="Filter IPs...",
-            width=200,
-            height=32,
+            width=100,
+            height=28,
             font=ctk.CTkFont(size=12),
             corner_radius=6,
             border_color="#3d3d54",
@@ -139,8 +154,8 @@ class WhitelistView(ctk.CTkFrame):
         self._table = DataTable(
             table_frame,
             columns=columns,
-            on_delete=self._on_delete_row,
-            show_actions=True
+            on_delete=None,
+            show_actions=False
         )
         self._table.pack(fill="both", expand=True, padx=10, pady=10)
     
@@ -176,18 +191,35 @@ class WhitelistView(ctk.CTkFrame):
         filter_text = ""
         if hasattr(self, '_search_entry'):
             filter_text = self._search_entry.get().lower()
-        
-        # Filter data
-        filtered_data = []
-        for ip_data in data:
-            ip = ip_data.get("ip", "")
-            
-            # Apply filter
-            if filter_text and filter_text not in ip.lower():
-                continue
-            
-            filtered_data.append(ip_data)
-        
+
+        show_resolved = self._show_resolved.get() if hasattr(self, '_show_resolved') else False
+
+        filtered_data: List[Dict] = []
+
+        if show_resolved:
+            # Build resolved IP list from domains only (exclude direct IP entries)
+            domains = [item.get("ip", "") for item in data if item.get("type", "").lower() == "domain"]
+            resolved_ips = self._resolve_domains_to_ips(domains)
+
+            for ip, domain in resolved_ips:
+                if filter_text and filter_text not in ip.lower():
+                    continue
+                filtered_data.append({
+                    "ip": ip,
+                    "type": "IP",
+                    "status": "Resolved",
+                    "source": f"Resolved from {domain}",
+                })
+        else:
+            # Show only domains (hide raw whitelist IPs)
+            for ip_data in data:
+                ip = ip_data.get("ip", "")
+                if ip_data.get("type", "").lower() != "domain":
+                    continue
+                if filter_text and filter_text not in ip.lower():
+                    continue
+                filtered_data.append(ip_data)
+
         # Set data to table
         self._table.set_data(filtered_data)
         
@@ -239,10 +271,40 @@ class WhitelistView(ctk.CTkFrame):
         self._status_label.configure(text="☁️ Syncing with server...", text_color="#00d4ff")
         self._controller.refresh()
     
+    def _on_toggle_resolved(self):
+        """Handle toggle resolved IPs."""
+        self._load_data()  # Reload and filter data
+    
     def _on_search(self, event=None):
         """Handle search/filter."""
-        data = self._controller.get_all_ips()
-        self._update_table(data)
+        self._load_data()  # Reload and filter data
+
+    def _resolve_domains_to_ips(self, domains: List[str]) -> List[tuple]:
+        """Resolve domains using the shared DNS resolver with deduplication."""
+        if not domains:
+            return []
+
+        unique_domains = [d for d in dict.fromkeys(domains) if d]
+        seen_ips: Set[str] = set()
+        resolved: List[tuple] = []
+
+        try:
+            results = self._dns_resolver.resolve_multiple_parallel(unique_domains)
+        except Exception:
+            return []
+
+        for domain in unique_domains:
+            record = results.get(domain)
+            if not record:
+                continue
+
+            for ip in list(record.ipv4) + list(record.ipv6):
+                if ip in seen_ips:
+                    continue
+                seen_ips.add(ip)
+                resolved.append((ip, domain))
+
+        return resolved
     
     def _show_error(self, message: str):
         """Show error message in status bar."""

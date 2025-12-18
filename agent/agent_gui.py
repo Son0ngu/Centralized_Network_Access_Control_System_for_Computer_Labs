@@ -1,9 +1,8 @@
 import sys
 import os
 
-# Add project root to sys.path for absolute imports
+# Add project root and agent directory to sys.path for absolute imports and relative imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Add agent directory for relative imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from gui.app import FirewallControllerApp

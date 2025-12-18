@@ -1,17 +1,7 @@
-"""
-Logs View - View agent activity logs with terminal-style console.
-- Using customtkinter.
-
-Features:
-- Real-time log display
-- Terminal-style appearance (black bg, green text)
-- Log level filtering
-- Search functionality
-- Export capability
-"""
-
 import customtkinter as ctk
 import logging
+import csv
+from tkinter import filedialog
 from typing import Optional
 
 from .components.log_console import LogConsole, GUILogHandler
@@ -165,6 +155,8 @@ class LogsView(ctk.CTkFrame):
         
         # Add to root logger
         root_logger = logging.getLogger()
+        # Ensure we actually receive INFO/DEBUG messages from all modules
+        root_logger.setLevel(logging.DEBUG)
         root_logger.addHandler(self._log_handler)
         
         # Also add to specific loggers
@@ -180,14 +172,15 @@ class LogsView(ctk.CTkFrame):
         
         for logger_name in loggers_to_capture:
             logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.DEBUG)
             if self._log_handler not in logger.handlers:
                 logger.addHandler(self._log_handler)
     
     def _add_welcome_logs(self):
         """Add welcome/sample logs."""
         self._log_console.append_log("=" * 60, "INFO")
-        self._log_console.append_log("  Firewall Agent Log Console", "INFO")
-        self._log_console.append_log("  - Enterprise Security", "INFO")
+        self._log_console.append_log("  SECURITY AGENT Log Console", "INFO")
+        self._log_console.append_log("  - Education Security", "INFO")
         self._log_console.append_log("=" * 60, "INFO")
         self._log_console.append_log("", "INFO")
         self._log_console.append_log("Log console initialized and ready", "INFO")
@@ -196,16 +189,48 @@ class LogsView(ctk.CTkFrame):
     def _on_filter_change(self, value: str):
         """Handle filter change."""
         self._status_label.configure(text=f"📟 Filter: {value}")
-    
+        if hasattr(self, "_log_console"):
+            self._log_console.set_filter_level(value)
+
     def _on_clear(self):
         """Handle clear button."""
         self._log_console.clear()
     
     def _on_export(self):
         """Handle export button."""
-        # TODO: Implement export functionality
-        self._log_console.append_log("Export feature coming soon...", "INFO")
-        self._status_label.configure(text="📟 Export not yet implemented")
+        try:
+            path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+                initialfile="logs.csv",
+                title="Save logs as CSV"
+            )
+
+            if not path:
+                self._status_label.configure(text="📟 Export canceled")
+                return
+
+            rows = self._log_console.get_history() if hasattr(self, "_log_console") else []
+            if not rows:
+                self._status_label.configure(text="📟 No logs to export")
+                return
+
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["timestamp", "level", "message"])
+                for entry in rows:
+                    writer.writerow([
+                        entry.get("timestamp", ""),
+                        entry.get("level", ""),
+                        entry.get("message", ""),
+                    ])
+
+            self._log_console.append_log(f"Exported {len(rows)} log lines to {path}", "INFO")
+            self._status_label.configure(text=f"📟 Exported {len(rows)} lines")
+        except Exception as e:
+            self._log_console.append_log(f"Export failed: {e}", "ERROR")
+            if hasattr(self, '_status_label'):
+                self._status_label.configure(text="📟 Export failed")
     
     def append_log(self, message: str, level: str = "INFO"):
         """

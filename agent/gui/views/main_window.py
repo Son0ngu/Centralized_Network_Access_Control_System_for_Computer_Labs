@@ -61,7 +61,7 @@ class MainWindow(ctk.CTkFrame):
         # Subtitle
         subtitle = ctk.CTkLabel(
             logo_frame,
-            text="Security Agent Intelligence Network Tool",
+            text="Security Agent Integrated Network Tool",
             font=self._theme.font("xs"),
             text_color=self._theme.colors.text_muted
         )

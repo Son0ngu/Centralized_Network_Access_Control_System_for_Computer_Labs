@@ -213,6 +213,7 @@ class AgentController:
             
             pagination = self._get_pagination_params()
             filters = self._get_filter_params(['status', 'hostname','group_id'])
+            exclude_group_id = request.args.get('exclude_group_id')
             
             agents_with_status = self.service.get_agents_with_status()
             self.logger.info(f" Found {len(agents_with_status)} agents")
@@ -228,7 +229,17 @@ class AgentController:
                 filtered_agents = [a for a in filtered_agents if hostname_filter in a.get('hostname', '').lower()]
             
             if filters.get("group_id"):
-                filtered_agents = [a for a in filtered_agents if str(a.get('group_id')) == filters['group_id']]
+                filtered_agents = [
+                    a for a in filtered_agents
+                    if str(a.get('group_id')) == filters['group_id']
+                ]
+
+            # Exclude agents already in a specific group (for "available agents" UI)
+            if exclude_group_id:
+                filtered_agents = [
+                    a for a in filtered_agents
+                    if str(a.get('group_id')) != exclude_group_id
+                ]
 
             # Apply pagination
             total_count = len(filtered_agents)

@@ -1,8 +1,3 @@
-"""
-GUI Resources module - Icons and assets.
-- Enterprise Security Theme.
-"""
-
 from .icons import (
     IconSet,
     ICONS,

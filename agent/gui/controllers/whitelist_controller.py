@@ -1,14 +1,3 @@
-"""
-Whitelist Controller - Manages whitelist CRUD operations for GUI.
-- Using customtkinter.
-
-Features:
-- View/Remove IP addresses
-- Refresh whitelist display
-- Integration with WhitelistManager
-- Thread-safe operations
-"""
-
 import logging
 import threading
 from typing import Callable, Dict, List
@@ -17,15 +6,7 @@ logger = logging.getLogger("gui.whitelist_controller")
 
 
 class WhitelistController:
-    """
-    Controller for whitelist management in GUI.
-    
-    Provides methods for:
-    - remove_ip(ip): Remove IP from local list
-    - get_all_ips(): Get all whitelisted IPs
-    - refresh(): Trigger sync and refresh data
-    """
-    
+
     _instance = None
     _lock = threading.Lock()
     
@@ -57,12 +38,7 @@ class WhitelistController:
         logger.info("WhitelistController initialized")
     
     def set_whitelist_manager(self, manager) -> None:
-        """
-        Set reference to WhitelistManager from Agent.
-        
-        Args:
-            manager: WhitelistManager instance
-        """
+   
         self._whitelist_manager = manager
         
         # Register callback to be notified when sync completes (periodic sync)
@@ -202,15 +178,7 @@ class WhitelistController:
                 logger.error(f"Error in success callback: {e}")
     
     def remove_ip(self, ip: str) -> bool:
-        """
-        Remove IP address from whitelist.
-        
-        Args:
-            ip: IP address to remove
-            
-        Returns:
-            True if successful
-        """
+ 
         ip = ip.strip()
         
         with self._lock_data:
@@ -247,12 +215,7 @@ class WhitelistController:
         return True
     
     def get_all_ips(self) -> List[Dict]:
-        """
-        Get all whitelisted IPs.
-        
-        Returns:
-            List of IP dictionaries
-        """
+     
         with self._lock_data:
             return list(self._local_ips.values())
     

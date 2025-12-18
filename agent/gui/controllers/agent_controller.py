@@ -1,11 +1,3 @@
-"""
-Agent Controller - Bridge between GUI and Core Agent.
-- Clean implementation.
-
-Uses threading + callback pattern for non-blocking GUI.
-customtkinter uses after() for thread-safe UI updates.
-"""
-
 import logging
 import threading
 import queue
@@ -34,12 +26,7 @@ class AgentEvent:
 
 
 class AgentSignals:
-    """
-    Signal-like pattern for customtkinter.
-    Uses callbacks instead of Qt Signals.
-    Thread-safe communication from Agent thread to GUI thread.
-    """
-    
+
     def __init__(self):
         self._callbacks: Dict[str, List[Callable]] = {
             'status_changed': [],
@@ -81,10 +68,7 @@ class AgentSignals:
         self._event_queue.put(event)
     
     def process_events(self, root) -> None:
-        """
-        Process queued events in GUI thread.
-        Call this from customtkinter's after() loop.
-        """
+
         try:
             while True:
                 try:
@@ -121,11 +105,7 @@ class AgentSignals:
 
 
 class AgentController:
-    """
-    Controller bridging GUI and Core Agent.
-    Runs agent in separate thread to keep GUI responsive.
-    """
-    
+
     _instance: Optional['AgentController'] = None
     
     def __new__(cls):
@@ -208,10 +188,7 @@ class AgentController:
         return True
     
     def stop_agent(self) -> bool:
-        """
-        Stop agent gracefully.
-        Returns immediately, status updates via signals.
-        """
+
         if self._status not in [AgentStatus.RUNNING, AgentStatus.STARTING]:
             logger.warning("Agent not running")
             return False
@@ -230,15 +207,12 @@ class AgentController:
         return True
     
     def _agent_worker(self):
-        """
-        Worker thread - runs agent components.
-        This runs in background, communicates via signals.
-        """
+
         try:
             logger.info("Agent worker starting...")
             
             # Import agent components
-            from config import get_config
+            from config import reload_config
             from core import get_agent, initialize_components, cleanup
             from shared.time_utils import sleep, uptime_string
             from utils import check_admin_privileges
@@ -247,8 +221,8 @@ class AgentController:
             self._agent = get_agent()
             
             # Load configuration
-            logger.info("Loading configuration...")
-            self._config = get_config()
+            logger.info("Reloading configuration from disk...")
+            self._config = reload_config()
             
             # Ensure device ID
             from core import AGENT_DEVICE_ID

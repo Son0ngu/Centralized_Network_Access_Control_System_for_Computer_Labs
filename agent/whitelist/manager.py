@@ -1,12 +1,6 @@
-import fnmatch
-import hashlib
-import json
 import logging
-import os
 import threading
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
-
-import requests
+from typing import Callable, Dict, List, Optional
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
 
@@ -23,7 +17,6 @@ class WhitelistManager:
         self.whitelist_config = config.get("whitelist", {})
         self.server_config = config.get("server", {})
         
-        # Core state
         self._state = WhitelistState()
         
         # Initialize syncer with proper parameters
@@ -98,7 +91,6 @@ class WhitelistManager:
         logger.info("Firewall manager linked to whitelist")
     
     def start_sync(self) -> None:
-        """Start background sync thread."""
         if self._running:
             logger.warning("Sync already running")
             return
@@ -139,7 +131,6 @@ class WhitelistManager:
                 self.sync_now()
     
     def sync_now(self) -> bool:
-        """Perform immediate sync with server."""
         try:
             agent_id = self.config.get("agent_id", "unknown")
             
@@ -253,7 +244,6 @@ class WhitelistManager:
             logger.error(f"Failed to update firewall rules: {e}")
     
     def get_stats(self) -> Dict:
-        """Get whitelist statistics."""
         with self._lock:
             state_stats = self._state.get_stats()
             
@@ -270,7 +260,6 @@ class WhitelistManager:
             }
     
     def get_cache_info(self) -> Dict:
-        """Get cache information."""
         with self._lock:
             last_sync = self._stats.get("last_sync")
             
@@ -287,7 +276,6 @@ class WhitelistManager:
         return self.sync_now()
     
     def cleanup(self) -> None:
-        """Cleanup resources."""
         self.stop_sync()
         self._state.clear()
         logger.info("WhitelistManager cleaned up")

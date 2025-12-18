@@ -26,6 +26,11 @@ class OptimizedDNSResolver:
         self.max_workers = max_workers
         self.timeout = timeout
         self._shutdown = False
+
+        # Create a dedicated event loop for this resolver instance
+        # to avoid "no current event loop" errors in worker threads.
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
         
         # Configure dnspython resolver
         self.resolver = dns.resolver.Resolver()
@@ -45,8 +50,8 @@ class OptimizedDNSResolver:
             thread_name_prefix='DNSResolver'
         )
         
-        # Async DNS resolver
-        self.aiodns_resolver = aiodns.DNSResolver()
+        # Async DNS resolver bound to this loop (used only if async paths are needed)
+        self.aiodns_resolver = aiodns.DNSResolver(loop=self._loop)
         self.aiodns_resolver.timeout = timeout
         
         # Register cleanup on exit

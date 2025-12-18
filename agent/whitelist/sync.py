@@ -49,6 +49,15 @@ class WhitelistSyncer:
         last_error = None
         headers = self._get_headers()
         
+        # Whitelist sync endpoint is JWT-protected; fail fast if no auth is available
+        if not any(k in headers for k in ("Authorization", "X-Agent-Token")):
+            error_msg = (
+                "Authentication required for whitelist sync - "
+                "configure JWT credentials or agent_token"
+            )
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+
         # Try current server first
         for attempt in range(self.max_retries):
             try:

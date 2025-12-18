@@ -1,15 +1,3 @@
-"""
-Log Console Component - Terminal-style log viewer.
-- Using customtkinter.
-
-Features:
-- Terminal-like appearance (black bg, green text)
-- Auto-scroll to bottom
-- Log level coloring
-- Search/filter capability
-- Custom logging.Handler integration
-"""
-
 import customtkinter as ctk
 import logging
 import queue
@@ -19,16 +7,7 @@ from datetime import datetime
 
 
 class LogConsole(ctk.CTkFrame):
-    """
-    Terminal-style log console widget.
-    
-    Features:
-    - Hacker/admin style (black background, green text)
-    - Auto-scroll to bottom
-    - Color-coded log levels
-    - Max lines limit to prevent memory issues
-    """
-    
+
     # Log level colors
     LEVEL_COLORS = {
         "DEBUG": "#888888",
@@ -79,6 +58,7 @@ class LogConsole(ctk.CTkFrame):
         self._line_count = 0
         self._paused = False
         self._filter_level = "ALL"
+        self._history: List[Dict[str, str]] = []
         
         # Message queue for thread-safe logging
         self._log_queue: queue.Queue = queue.Queue()
@@ -131,19 +111,6 @@ class LogConsole(ctk.CTkFrame):
         )
         self._line_count_label.pack(side="left", padx=(15, 0))
         
-        # Clear button
-        clear_btn = ctk.CTkButton(
-            toolbar,
-            text="🗑️ Clear",
-            width=70,
-            height=28,
-            font=ctk.CTkFont(size=11),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
-            command=self.clear
-        )
-        clear_btn.pack(side="right")
-        
         # Pause button
         self._pause_btn = ctk.CTkButton(
             toolbar,
@@ -183,7 +150,50 @@ class LogConsole(ctk.CTkFrame):
     
     def _on_level_change(self, value: str):
         """Handle level filter change."""
-        self._filter_level = value
+        self.set_filter_level(value)
+
+    def set_filter_level(self, level: str):
+        """Update the active filter level and redraw existing logs."""
+        self._filter_level = level.upper()
+        self._rebuild_from_history()
+    
+    def _passes_filter(self, level: str) -> bool:
+        """Return True if the level should be shown under the current filter."""
+        if self._filter_level == "ALL":
+            return True
+        level_order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if level in level_order and self._filter_level in level_order:
+            return level_order.index(level) >= level_order.index(self._filter_level)
+        return True
+
+    def _write_line(self, log_entry: Dict):
+        """Render a single log entry into the console without mutating history."""
+        level = log_entry.get("level", "INFO")
+        timestamp = log_entry.get("timestamp", "")
+        message = log_entry.get("message", "")
+
+        # Color currently unused by CTkTextbox but retained for future styling
+        self.LEVEL_COLORS.get(level, "#00ff88")
+
+        formatted_line = f"[{timestamp}] [{level:8}] {message}\n"
+        self._console.insert("end", formatted_line)
+        self._line_count += 1
+
+    def _rebuild_from_history(self):
+        """Re-render the console from stored history applying the current filter."""
+        self._console.configure(state="normal")
+        self._console.delete("1.0", "end")
+        self._line_count = 0
+
+        for entry in self._history:
+            if self._passes_filter(entry.get("level", "INFO")):
+                self._write_line(entry)
+
+        self._console.see("end")
+        self._console.configure(state="disabled")
+
+        if hasattr(self, '_line_count_label'):
+            self._line_count_label.configure(text=f"{self._line_count} lines")
     
     def _start_queue_processor(self):
         """Start background queue processor."""
@@ -207,14 +217,7 @@ class LogConsole(ctk.CTkFrame):
         level: str = "INFO",
         timestamp: Optional[str] = None
     ):
-        """
-        Append a log message (thread-safe).
-        
-        Args:
-            message: Log message
-            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            timestamp: Optional timestamp, defaults to current time
-        """
+
         if timestamp is None:
             try:
                 from shared.time_utils import now_vietnam
@@ -232,27 +235,25 @@ class LogConsole(ctk.CTkFrame):
     def _append_log_internal(self, log_entry: Dict):
         """Internal method to append log to console."""
         level = log_entry.get("level", "INFO")
-        
-        # Apply level filter
-        if self._filter_level != "ALL":
-            level_order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-            if level in level_order:
-                filter_idx = level_order.index(self._filter_level)
-                log_idx = level_order.index(level)
-                if log_idx < filter_idx:
-                    return
-        
         timestamp = log_entry.get("timestamp", "")
         message = log_entry.get("message", "")
+
+        # Always retain full history for export (independent of UI filter)
+        self._history.append({
+            "timestamp": timestamp,
+            "level": level,
+            "message": message,
+        })
+        if len(self._history) > self._max_lines:
+            self._history.pop(0)
         
-        # Format line
-        color = self.LEVEL_COLORS.get(level, "#00ff88")
-        formatted_line = f"[{timestamp}] [{level:8}] {message}\n"
+        # Apply level filter
+        if not self._passes_filter(level):
+            return
         
         # Append to console
         self._console.configure(state="normal")
-        self._console.insert("end", formatted_line)
-        self._line_count += 1
+        self._write_line(log_entry)
         
         # Trim if exceeds max lines
         if self._line_count > self._max_lines:
@@ -273,11 +274,16 @@ class LogConsole(ctk.CTkFrame):
         self._console.delete("1.0", "end")
         self._console.configure(state="disabled")
         self._line_count = 0
+        self._history = []
         
         if hasattr(self, '_line_count_label'):
             self._line_count_label.configure(text="0 lines")
         
         self.append_log("Console cleared", "INFO")
+
+    def get_history(self) -> List[Dict[str, str]]:
+        """Return a copy of the log history for export."""
+        return list(self._history)
     
     def write(self, message: str):
         """Write method for compatibility with logging handlers."""
@@ -290,15 +296,7 @@ class LogConsole(ctk.CTkFrame):
 
 
 class GUILogHandler(logging.Handler):
-    """
-    Custom logging.Handler that sends logs to LogConsole.
-    
-    Usage:
-        console = LogConsole(parent)
-        handler = GUILogHandler(console)
-        logging.getLogger().addHandler(handler)
-    """
-    
+
     def __init__(self, log_console: LogConsole):
         super().__init__()
         self._console = log_console
@@ -322,11 +320,7 @@ class GUILogHandler(logging.Handler):
 
 
 class QueueLogHandler(logging.Handler):
-    """
-    Logging handler that puts logs in a queue.
-    Useful for thread-safe communication with GUI.
-    """
-    
+
     def __init__(self, log_queue: queue.Queue):
         super().__init__()
         self._queue = log_queue

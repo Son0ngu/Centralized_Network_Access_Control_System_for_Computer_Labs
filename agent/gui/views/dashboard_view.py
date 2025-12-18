@@ -1,14 +1,3 @@
-"""
-Dashboard View - Shows agent status overview with real-time data.
-- Using customtkinter.
-
-Features:
-- StatusCard components for metrics display
-- Real-time data binding from AgentController
-- Periodic stats refresh using after()
-- Activity log with auto-scroll
-"""
-
 import customtkinter as ctk
 from typing import Dict, Optional
 
@@ -152,7 +141,7 @@ class DashboardView(ctk.CTkFrame):
             value="0",
             icon="📋",
             color="#00d4ff",
-            subtitle="domains + patterns",
+            subtitle="domains",
             width=180,
             height=110
         )
@@ -299,9 +288,8 @@ class DashboardView(ctk.CTkFrame):
                 
                 # Update domain/pattern counts
                 domains = stats.get('domains_count', 0)
-                patterns = stats.get('patterns_count', 0)
-                self._cards['domains'].set_value(str(domains + patterns))
-                self._cards['domains'].set_subtitle(f"{domains} domains, {patterns} patterns")
+                self._cards['domains'].set_value(str(domains))
+                self._cards['domains'].set_subtitle(f"{domains} domains")
                 
                 # Update IP count
                 ips = stats.get('ips_count', 0)
@@ -490,9 +478,8 @@ class DashboardView(ctk.CTkFrame):
         """Handle stats update from agent."""
         # Update domain/pattern counts
         domains = data.get('domains_count', 0)
-        patterns = data.get('patterns_count', 0)
-        self._cards['domains'].set_value(str(domains + patterns))
-        self._cards['domains'].set_subtitle(f"{domains} domains, {patterns} patterns")
+        self._cards['domains'].set_value(str(domains))
+        self._cards['domains'].set_subtitle(f"{domains} domains")
         
         # Update IP count
         ips = data.get('ips_count', 0)
@@ -625,14 +612,14 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
-            "║" + "  🛑 AGENT SHUTDOWN INITIATED".center(48) + "║",
+            "║" + "  AGENT SHUTDOWN INITIATED".center(48) + "║",
             "╠" + "═" * 48 + "╣",
-            f"║  📅 Time: {timestamp}".ljust(49) + "║",
-            f"║  ⏱️  Uptime: {uptime}".ljust(49) + "║",
-            f"║  📦 Packets: {packets}".ljust(49) + "║",
+            f"║  Time: {timestamp}".ljust(49) + "║",
+            f"║  Uptime: {uptime}".ljust(49) + "║",
+            f"║  Packets: {packets}".ljust(49) + "║",
             f"║  Domains: {domains}".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
-            "║  ⏳ Cleaning up resources...".ljust(49) + "║",
+            "║  Cleaning up resources...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
             ""
         ]
@@ -669,15 +656,15 @@ class DashboardView(ctk.CTkFrame):
         banner = [
             "",
             "╔" + "═" * 48 + "╗",
-            "║" + "  FIREWALL AGENT STARTING".center(48) + "║",
+            "║" + "  SECURITY AGENT STARTING".center(48) + "║",
             "╠" + "═" * 48 + "╣",
-            f"║  📅 Time: {timestamp}".ljust(49) + "║",
-            f"║  🖥️ Host: {hostname[:35]}".ljust(49) + "║",
-            "║  🔥 Mode: Detecting...".ljust(49) + "║",
+            f"║  Time: {timestamp}".ljust(49) + "║",
+            f"║  Host: {hostname[:35]}".ljust(49) + "║",
+            "║  Mode: Detecting...".ljust(49) + "║",
             "╠" + "═" * 48 + "╣",
-            "║  ⚙️  Initializing components...".ljust(49) + "║",
-            "║  📡 Connecting to server...".ljust(49) + "║",
-            "║  🛡  Setting up firewall rules...".ljust(49) + "║",
+            "║   Initializing components...".ljust(49) + "║",
+            "║   Connecting to server...".ljust(49) + "║",
+            "║   Setting up firewall rules...".ljust(49) + "║",
             "╚" + "═" * 48 + "╝",
             ""
         ]
@@ -707,9 +694,9 @@ class DashboardView(ctk.CTkFrame):
             "┌" + "─" * 48 + "┐",
             "│" + "  AGENT STOPPED SUCCESSFULLY".center(48) + "│",
             "├" + "─" * 48 + "┤",
-            f"│  📅 Time: {timestamp}".ljust(49) + "│",
+            f"│  Time: {timestamp}".ljust(49) + "│",
             "│  Resources cleaned up".ljust(49) + "│",
-            "│  🔓 Firewall rules cleared".ljust(49) + "│",
+            "│  Firewall rules cleared".ljust(49) + "│",
             "└" + "─" * 48 + "┘",
             ""
         ]
