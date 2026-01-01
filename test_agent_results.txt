@@ -1,0 +1,37 @@
+============================================================
+FIREWALL AGENT - UNIT TEST RESULTS
+============================================================
+
+Date: 2026-01-01 15:30:22
+Admin: Yes
+
+SUMMARY:
+  Total:   37
+  Passed:  32
+  Failed:  0
+  Errors:  2
+  Skipped: 3
+
+ERRORS:
+  - test_dns_query (__main__.TestDNSProxyServer.test_dns_query)
+Traceback (most recent call last):
+  File "C:\Users\sonbx\Firewall_controller_enhanced\agent\test_agent_full.py", line 547, in setUp
+    server_config = DNSServerConfig(
+                    ^^^^^^^^^^^^^^^^
+TypeError: DNSServerConfig.__init__() got an unexpected keyword argument 'enable_udp'
+
+
+  - test_server_start_stop (__main__.TestDNSProxyServer.test_server_start_stop)
+Traceback (most recent call last):
+  File "C:\Users\sonbx\Firewall_controller_enhanced\agent\test_agent_full.py", line 547, in setUp
+    server_config = DNSServerConfig(
+                    ^^^^^^^^^^^^^^^^
+TypeError: DNSServerConfig.__init__() got an unexpected keyword argument 'enable_udp'
+
+
+SKIPPED:
+  - test_firewall_manager_init (__main__.TestFirewallManager.test_firewall_manager_init): FirewallManager import failed: No module named 'agent'
+  - test_firewall_status (__main__.TestFirewallManager.test_firewall_status): FirewallManager import failed: No module named 'agent'
+  - test_legacy_api_noop (__main__.TestFirewallManager.test_legacy_api_noop): FirewallManager import failed: No module named 'agent'
+
+============================================================

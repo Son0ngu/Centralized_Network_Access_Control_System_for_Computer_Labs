@@ -20,7 +20,6 @@ from core import (
     build_lifecycle_log
 )
 from utils import (
-    check_admin_privileges,
     validate_configuration
 )
 
@@ -49,25 +48,6 @@ def main():
             sys.exit(1)
         
         logger.info("Configuration loaded and validated")
-        
-        admin_status = check_admin_privileges()
-        firewall_config = config.get("firewall", {})
-        current_mode = firewall_config.get("mode", "monitor")
-        
-        if admin_status:
-            if current_mode == "monitor":
-                logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
-                config["firewall"]["enabled"] = True
-                config["firewall"]["mode"] = "whitelist_only"
-            else:
-                config["firewall"]["enabled"] = True
-                logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
-        else:
-            # No admin privileges - force monitor mode
-            if current_mode in ["block", "whitelist_only", "enforce"]:
-                logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
-                config["firewall"]["enabled"] = False
-                config["firewall"]["mode"] = "monitor"
         
         # Apply startup delay if configured
         startup_delay = config["general"]["startup_delay"]

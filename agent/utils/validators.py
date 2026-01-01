@@ -1,8 +1,6 @@
 import logging
 from typing import Dict, List, Tuple
 
-from .ip_detector import check_admin_privileges
-
 logger = logging.getLogger("utils.validators")
 
 
@@ -17,21 +15,16 @@ def validate_configuration(config: Dict) -> bool:
         errors.extend(errors_s)
         warnings.extend(warnings_s)
         
-        # 2. Firewall mode validation
-        errors_f, warnings_f = _validate_firewall_config(config)
-        errors.extend(errors_f)
-        warnings.extend(warnings_f)
-        
-        # 3. Logging configuration validation
+        # 2. Logging configuration validation
         errors_l, warnings_l = _validate_logging_config(config)
         errors.extend(errors_l)
         warnings.extend(warnings_l)
         
-        # 4. Whitelist configuration validation
+        # 3. Whitelist configuration validation
         warnings_w = _validate_whitelist_config(config)
         warnings.extend(warnings_w)
         
-        # 5. Heartbeat configuration validation
+        # 4. Heartbeat configuration validation
         warnings_h = _validate_heartbeat_config(config)
         warnings.extend(warnings_h)
         
@@ -73,29 +66,6 @@ def _validate_server_config(config: Dict) -> Tuple[List[str], List[str]]:
             warnings.append(f"URL should start with http:// or https://: {url}")
     
     return errors, warnings
-
-
-def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
-    errors = []
-    warnings = []
-    
-    firewall_config = config.get("firewall", {})
-    valid_modes = ["block", "warn", "monitor", "whitelist_only"]
-    current_mode = firewall_config.get("mode", "monitor")
-    
-    if current_mode not in valid_modes:
-        errors.append(f"Invalid firewall mode: {current_mode}. Valid modes: {valid_modes}")
-    
-    admin_required_modes = ["block", "whitelist_only"]
-    if current_mode in admin_required_modes:
-        if not check_admin_privileges():
-            warnings.append(
-                f"Mode '{current_mode}' requires admin privileges - "
-                "will auto-switch to 'monitor'"
-            )
-    
-    return errors, warnings
-
 
 def _validate_logging_config(config: Dict) -> Tuple[List[str], List[str]]:
     errors = []

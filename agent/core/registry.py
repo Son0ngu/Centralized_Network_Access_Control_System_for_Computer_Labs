@@ -33,7 +33,7 @@ def register_agent(config: Dict) -> bool:
             "admin_privileges": admin_status,
             "capabilities": {
                 "packet_capture": True,
-                "firewall_management": admin_status,
+                "firewall_management": False,
                 "whitelist_sync": True
             },
             "registration_time": now_iso(),

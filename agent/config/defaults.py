@@ -138,13 +138,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         }
     },
     
-    # Firewall configuration (simplified - DNS Proxy handles whitelist enforcement)
-    "firewall": {
-        "enabled": True,
-        "rule_prefix": "FirewallController",
-        "cleanup_on_exit": True,
-    },
-    
     # Heartbeat configuration
     "heartbeat": {
         "enabled": True,

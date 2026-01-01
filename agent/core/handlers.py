@@ -69,33 +69,18 @@ def handle_domain_detection(
                 error_msg=f"Error checking IP {dest_ip}",
                 return_on_error=False
             )
-        
-        firewall_config = config.get("firewall", {})
-        firewall_mode = firewall_config.get("mode", "monitor")
-        firewall_enabled = firewall_config.get("enabled", False)
 
         is_whitelisted = domain_allowed or ip_allowed
-        
-        if not firewall_enabled:
-            # Firewall disabled - just monitor everything
-            action = "MONITORED"
-            level = "INFO" if is_whitelisted else "WARNING"
-        elif firewall_mode == "whitelist_only":
-            # WHITELIST_ONLY: Only allow whitelisted traffic, block everything else
-            action = "ALLOWED" if is_whitelisted else "BLOCKED"
-            level = "INFO" if action == "ALLOWED" else "BLOCKED"
-        elif firewall_mode == "block":
-            # BLOCK: Same as whitelist_only but with different naming semantics
-            action = "ALLOWED" if is_whitelisted else "BLOCKED" 
-            level = "INFO" if action == "ALLOWED" else "BLOCKED"
-        elif firewall_mode == "warn":
-            # WARN: Log warnings for non-whitelisted but don't block
-            action = "ALLOWED" if is_whitelisted else "WARNING"
-            level = "INFO" if is_whitelisted else "WARNING"
+        dns_proxy_enabled = config.get("dns_proxy", {}).get("enabled", True)
+        if is_whitelisted:
+            action = "ALLOWED_BY_WHITELIST"
+            level = "INFO"
+            enforcement = "whitelist"
+
         else:
-            # MONITOR (default): Just observe and log
-            action = "MONITORED"
-            level = "INFO" if is_whitelisted else "WARNING"
+            action = "BLOCKED_BY_DNS_SINKHOLE" if dns_proxy_enabled else "MONITORED"
+            level = "WARNING" if dns_proxy_enabled else "INFO"
+            enforcement = "dns_sinkhole" if dns_proxy_enabled else "monitor"
         
         # Create enhanced log record with UTC timestamps
         enhanced_record = {
@@ -110,11 +95,11 @@ def handle_domain_detection(
             "dest_ip": dest_ip or "unknown",
             "protocol": protocol,
             "port": str(port),
-            "firewall_mode": firewall_mode,
-            "firewall_enabled": firewall_enabled,
             "admin_privileges": check_admin_privileges(),
             "domain_allowed": domain_allowed,
             "ip_allowed": ip_allowed,
+            "enforcement": enforcement,
+            "dns_proxy_enabled": dns_proxy_enabled,
             "source": "domain_detection",
             "agent_uptime": uptime_string(),
             "agent_host": AGENT_HOSTNAME,

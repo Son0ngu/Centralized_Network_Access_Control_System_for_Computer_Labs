@@ -27,11 +27,10 @@ def initialize_components(config: Dict) -> bool:
     1. Register with server
     2. Initialize Token Manager
     3. Initialize Whitelist Manager + Sync
-    4. Initialize Firewall Manager (for DNS Proxy rule sync)
-    5. Initialize DNS Proxy Orchestrator (PRIMARY)
-    6. Initialize LogSender
-    7. Initialize HeartbeatSender
-    8. Initialize PacketSniffer (OPTIONAL - bypass detection only)
+    4. Initialize DNS Proxy Orchestrator (PRIMARY)
+    5. Initialize LogSender
+    6. Initialize HeartbeatSender
+    7. Initialize PacketSniffer (OPTIONAL - bypass detection only)
     
     Args:
         config: Configuration dictionary
@@ -99,30 +98,15 @@ def initialize_components(config: Dict) -> bool:
             except Exception as e:
                 logger.warning(f"⚠️ Whitelist sync error: {e}")
         
-        # 4. Initialize FirewallManager (for DNS Proxy rule sync)
-        admin_status = check_admin_privileges()
-        firewall_config = config.get("firewall", {})
-        
-        if firewall_config.get("enabled", True) and admin_status:
-            logger.info("Step 4: Initializing firewall manager...")
-            from firewall import FirewallManager
-            agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
-            logger.info("Firewall manager initialized (for DNS Proxy rule sync)")
-        else:
-            if not admin_status:
-                logger.warning("Step 4: No admin privileges - firewall features limited")
-            else:
-                logger.info("Step 4: Firewall disabled in config")
-        
-        # 4.5. Start periodic whitelist sync
+        # 4. Start periodic whitelist sync
         if config.get("whitelist", {}).get("auto_sync", True):
             agent.whitelist.start_sync()
             logger.info(f"Whitelist periodic sync started (interval: {config.get('whitelist', {}).get('update_interval', 60)}s)")
         
-        # 5. Initialize DNS Proxy Orchestrator (PRIMARY - Phase 1 Architecture)
+         # 4. Initialize DNS Proxy Orchestrator (PRIMARY - Phase 1 Architecture)
         dns_proxy_config = config.get("dns_proxy", {})
-        if dns_proxy_config.get("enabled", True) and admin_status:
-            logger.info("Step 5: Initializing DNS Proxy System (PRIMARY)...")
+        if dns_proxy_config.get("enabled", True) and check_admin_privileges():
+            logger.info("Step 4: Initializing DNS Proxy System (PRIMARY)...")
             try:
                 from dns_proxy import (
                     DNSProxyOrchestrator,
@@ -189,11 +173,6 @@ def initialize_components(config: Dict) -> bool:
                     agent.dns_proxy_orchestrator.set_whitelist_state(agent.whitelist._state)
                     logger.info("DNS Proxy connected to whitelist state")
                 
-                # Connect to firewall manager
-                if agent.firewall:
-                    agent.dns_proxy_orchestrator.set_firewall_manager(agent.firewall)
-                    logger.info("DNS Proxy connected to firewall manager")
-                
                 # Start the DNS Proxy system
                 if agent.dns_proxy_orchestrator.start():
                     agent_state['dns_proxy_mode'] = mode_str
@@ -212,12 +191,12 @@ def initialize_components(config: Dict) -> bool:
                 logger.warning("Falling back to legacy mode (PacketSniffer)")
         else:
             if not dns_proxy_config.get("enabled", True):
-                logger.info("Step 5: DNS Proxy disabled in config")
-            elif not admin_status:
-                logger.warning("Step 5: DNS Proxy requires admin privileges")
+                logger.info("Step 4: DNS Proxy disabled in config")
+            elif not check_admin_privileges():
+                logger.warning("Step 4: DNS Proxy requires admin privileges")
         
-        # 6. Initialize LogSender
-        logger.info("Step 6: Initializing log sender...")
+        # 5. Initialize LogSender
+        logger.info("Step 5: Initializing log sender...")
         from logging_module import LogSender
         
         server_url = config.get("server_url") or config.get("server", {}).get("url")
@@ -238,8 +217,8 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Log sender not initialized - missing server_url or agent_id")
         
-        # 7. Initialize HeartbeatSender
-        logger.info("Step 7: Initializing heartbeat sender...")
+        # 6. Initialize HeartbeatSender
+        logger.info("Step 6: Initializing heartbeat sender...")
         from services import HeartbeatSender
         
         if server_url and agent_id:
@@ -255,7 +234,7 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Heartbeat sender not initialized - missing server_url or agent_id")
         
-        # 8. Initialize PacketSniffer (OPTIONAL - bypass detection only)
+        # 7. Initialize PacketSniffer (OPTIONAL - bypass detection only)
         capture_config = config.get("capture", config.get("packet_capture", {}))
         capture_mode = capture_config.get("mode", "bypass_detection_only")
         
@@ -268,7 +247,7 @@ def initialize_components(config: Dict) -> bool:
         )
         
         if should_start_sniffer:
-            logger.info(f"Step 8: Initializing packet sniffer (mode: {capture_mode})...")
+            logger.info(f"Step 7: Initializing packet sniffer (mode: {capture_mode})...")
             try:
                 from capture import PacketSniffer
                 from .handlers import create_domain_handler
@@ -288,7 +267,7 @@ def initialize_components(config: Dict) -> bool:
                 logger.warning(f"Could not initialize packet sniffer: {e}")
                 logger.warning("Continuing without packet capture...")
         else:
-            logger.info("Step 8: Packet capture disabled (DNS Proxy handles whitelist enforcement)")
+            logger.info("Step 7: Packet capture disabled (DNS Proxy handles whitelist enforcement)")
         
         # Mark agent as running
         agent.running = True
@@ -348,13 +327,12 @@ def cleanup(config: Optional[Dict] = None) -> None:
     Cleanup all agent resources in correct order.
     
     Shutdown Order (reverse of initialization):
-    1. Stop PacketSniffer (optional)
-    2. Stop DNS Proxy System (restores DNS, removes security rules)
-    3. Stop HeartbeatSender
-    4. Flush and stop LogSender
-    5. Stop Whitelist sync
-    6. Stop Token Manager
-    7. Cleanup Firewall rules
+    1. Stop whitelist sync
+    2. Stop HeartbeatSender
+    3. Flush and stop LogSender
+    4. Stop Token Manager
+    5. Stop PacketSniffer (optional)
+    6. Stop DNS Proxy System (restores DNS, removes security rules)
     
     Args:
         config: Optional configuration for shutdown logging
@@ -423,13 +401,6 @@ def cleanup(config: Optional[Dict] = None) -> None:
             finally:
                 agent.dns_proxy_orchestrator = None
                 agent_state['dns_proxy_mode'] = None
-        
-        # 7. Cleanup firewall rules (only if DNS Proxy didn't handle it)
-        if hasattr(agent, 'firewall') and agent.firewall:
-            logger.info("Step 7: Cleaning up firewall rules...")
-            if hasattr(agent.firewall, 'cleanup'):
-                agent.firewall.cleanup()
-            agent.firewall = None
         
         agent.running = False
         

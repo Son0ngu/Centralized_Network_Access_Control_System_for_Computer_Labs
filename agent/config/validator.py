@@ -1,6 +1,4 @@
-import ctypes
 import logging
-import subprocess
 from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger("config.validator")
@@ -20,8 +18,6 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str], List[str]]
     warnings: List[str] = []
     
     _validate_server_config(config, errors, warnings)
-    
-    _validate_firewall_config(config, errors, warnings)
     
     _validate_logging_config(config, warnings)
     
@@ -51,31 +47,6 @@ def _validate_server_config(
     for url in urls_to_check:
         if not url.startswith(("http://", "https://")):
             warnings.append(f"URL should start with http:// or https://: {url}")
-
-
-def _validate_firewall_config(
-    config: Dict, 
-    errors: List[str], 
-    warnings: List[str]
-) -> None:
-    """Validate firewall configuration."""
-    firewall_config = config.get("firewall", {})
-    valid_modes = ["block", "warn", "monitor", "whitelist_only"]
-    current_mode = firewall_config.get("mode", "monitor")
-    
-    if current_mode not in valid_modes:
-        errors.append(f"Invalid firewall mode: {current_mode}. Valid: {valid_modes}")
-        config["firewall"]["mode"] = "monitor"
-    
-    # Admin privileges check
-    admin_required_modes = ["block", "whitelist_only"]
-    if current_mode in admin_required_modes:
-        if not _has_admin_privileges():
-            warnings.append(
-                f"Mode '{current_mode}' requires admin privileges - "
-                "will auto-switch to 'monitor'"
-            )
-
 
 def _validate_logging_config(config: Dict, warnings: List[str]) -> None:
     """Validate logging configuration."""
@@ -108,20 +79,3 @@ def _validate_heartbeat_config(config: Dict, warnings: List[str]) -> None:
         warnings.append(
             f"Heartbeat interval ({interval}s) too low - may overload server"
         )
-
-
-def _has_admin_privileges() -> bool:
-    """Check if running with administrator privileges."""
-    try:
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        try:
-            result = subprocess.run(
-                ["netsh", "advfirewall", "show", "currentprofile"],
-                capture_output=True,
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            return result.returncode == 0
-        except Exception:
-            return False

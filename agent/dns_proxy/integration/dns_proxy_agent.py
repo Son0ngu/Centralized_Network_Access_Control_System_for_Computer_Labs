@@ -7,7 +7,7 @@ Manages lifecycle of:
 - DNS Proxy Server
 - Network Manager  
 - Security Manager
-- Enhanced Firewall Sync
+- Firewall Sync (DNS tracking)
 
 Modes:
 - DISABLED: All components off
@@ -137,7 +137,7 @@ class DNSProxyOrchestrator:
             "dns_proxy": ComponentState(name="DNS Proxy Server"),
             "network_manager": ComponentState(name="Network Manager"),
             "security_manager": ComponentState(name="Security Manager"),
-            "firewall_sync": ComponentState(name="Enhanced Firewall Sync"),
+            "firewall_sync": ComponentState(name="Firewall Sync"),
         }
         
         # External references
@@ -166,8 +166,11 @@ class DNSProxyOrchestrator:
     def set_firewall_manager(self, manager) -> None:
         """Set the firewall manager reference."""
         self._firewall_manager = manager
-        logger.info("Firewall manager connected to orchestrator")
-    
+        if manager:
+            logger.info("Firewall manager connected to orchestrator")
+        else:
+            logger.info("No firewall manager set - running in DNS-only enforcement mode")
+
     def add_essential_domain(self, domain: str) -> None:
         """
         Add a domain that bypasses whitelist check.
@@ -217,7 +220,7 @@ class DNSProxyOrchestrator:
         
         Order:
         1. Enhanced Firewall Sync (needs to be ready first)
-        2. Security Manager (block DoH/DoT)
+        1. Firewall Sync (DNS tracking)
         3. DNS Proxy Server (start listening) <- MUST be before Network Manager!
         4. Network Manager (configure DNS to point to our server)
         
@@ -238,7 +241,7 @@ class DNSProxyOrchestrator:
         
         # Start in order
         try:
-            # 1. Enhanced Firewall Sync
+            # 1. Firewall Sync (DNS tracking)
             if self._config.firewall_sync_enabled:
                 success &= self._start_firewall_sync()
             
@@ -278,7 +281,7 @@ class DNSProxyOrchestrator:
         1. Network Manager (restore DNS first so traffic doesn't go to dead server)
         2. DNS Proxy Server (stop listening)
         3. Security Manager (remove blocks)
-        4. Enhanced Firewall Sync (cleanup rules)
+        4. Firewall Sync (cleanup rules)
         
         Returns:
             True if all stopped successfully
@@ -301,7 +304,7 @@ class DNSProxyOrchestrator:
             # 3. Security Manager
             success &= self._stop_component("security_manager")
             
-            # 4. Enhanced Firewall Sync
+            # 4. Firewall Sync
             success &= self._stop_component("firewall_sync")
             
             self._running = False
@@ -318,24 +321,29 @@ class DNSProxyOrchestrator:
         return success
     
     def _start_firewall_sync(self) -> bool:
-        """Initialize and start Enhanced Firewall Sync."""
+        """Initialize and start DNS Firewall Sync."""
         component = self._components["firewall_sync"]
         component.status = ComponentStatus.STARTING
         
         try:
-            from ..firewall import EnhancedFirewallSync, EnhancedSyncConfig
+            from ..firewall_sync import FirewallDNSSync, FirewallSyncConfig
             
-            config = EnhancedSyncConfig(
-                default_grace_period=self._config.default_grace_period,
-                connection_check_enabled=self._config.connection_aware_cleanup,
+            sync_config = FirewallSyncConfig(
+                grace_period=self._config.default_grace_period,
+                require_firewall=False,
             )
             
-            sync = EnhancedFirewallSync(config=config)
-            
             if self._firewall_manager:
-                sync.set_firewall_manager(self._firewall_manager)
+                logger.info("Connecting firewall manager to DNS sync")
+            else:
+                logger.info("Firewall manager not provided - firewall sync will track DNS-only state")
             
-            # Only start if not in monitor mode
+            sync = FirewallDNSSync(
+                config=sync_config,
+                firewall_manager=self._firewall_manager
+            )
+            
+            # Only start background cleanup if not in monitor mode
             if self._mode != OrchestratorMode.MONITOR:
                 sync.start()
             
@@ -343,13 +351,13 @@ class DNSProxyOrchestrator:
             component.status = ComponentStatus.RUNNING
             component.start_time = time.time()
             
-            logger.info("Enhanced Firewall Sync started")
+            logger.info("Firewall Sync started")
             return True
             
         except Exception as e:
             component.status = ComponentStatus.ERROR
             component.error = str(e)
-            logger.error(f"Failed to start Enhanced Firewall Sync: {e}")
+            logger.error(f"Failed to start Firewall Sync: {e}")
             return False
     
     def _start_security_manager(self) -> bool:
@@ -579,7 +587,7 @@ class DNSProxyOrchestrator:
         return self._components["security_manager"].instance
     
     def get_firewall_sync(self):
-        """Get the Enhanced Firewall Sync instance."""
+        """Get the Firewall Sync instance."""
         return self._components["firewall_sync"].instance
     
     def on_status_change(self, callback: Callable[[str, ComponentStatus], None]) -> None:
