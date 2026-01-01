@@ -39,6 +39,8 @@ class CacheConfig:
 @dataclass
 class FirewallSyncConfig:
     """Firewall synchronization configuration."""
+    # Enable/disable firewall sync (DNS-only mode when False)
+    enabled: bool = True
     # Timeout for adding firewall rule before returning DNS response
     # CRITICAL: This prevents hanging queries if firewall fails
     timeout: float = 3.0        # 2-5 seconds recommended
@@ -161,6 +163,7 @@ class DNSProxyConfig:
         # Parse firewall sync config
         fw_dict = dns_config.get("firewall_sync", {})
         firewall_config = FirewallSyncConfig(
+            enabled=fw_dict.get("enabled", True),
             timeout=fw_dict.get("timeout", 3.0),
             retry_on_failure=fw_dict.get("retry_on_failure", True),
             max_retries=fw_dict.get("max_retries", 2),
@@ -222,8 +225,11 @@ class DNSProxyConfig:
                 "negative_ttl": self.cache.negative_ttl,
             },
             "firewall_sync": {
+                "enabled": self.firewall_sync.enabled,
                 "timeout": self.firewall_sync.timeout,
                 "retry_on_failure": self.firewall_sync.retry_on_failure,
+                "max_retries": self.firewall_sync.max_retries,
+                "retry_delay": self.firewall_sync.retry_delay,
                 "grace_period": self.firewall_sync.grace_period,
             },
             "upstream_resolvers": [

@@ -69,11 +69,16 @@ class DNSQueryHandler:
     ):
         self.config = config
         self._whitelist_state = whitelist_state
-        
+        self._firewall_sync_enabled = getattr(config.firewall_sync, "enabled", True)
+
         # Initialize components if not provided
         self._cache = cache or DNSCache(config.cache)
         self._upstream = upstream_resolver or UpstreamResolver(config)
-        self._firewall_sync = firewall_sync or FirewallDNSSync(config.firewall_sync)
+        if self._firewall_sync_enabled:
+            self._firewall_sync = firewall_sync or FirewallDNSSync(config.firewall_sync)
+        else:
+            self._firewall_sync = None
+            logger.info("Firewall sync disabled - DNS-only sinkhole mode active")
         
         # Statistics
         self._stats = {
@@ -99,10 +104,16 @@ class DNSQueryHandler:
     
     def set_firewall_manager(self, firewall_manager) -> None:
         """Set firewall manager for sync."""
+        if not self._firewall_sync_enabled or not self._firewall_sync:
+            logger.debug("Firewall sync disabled - firewall manager not attached")
+            return
         self._firewall_sync.set_firewall_manager(firewall_manager)
     
     def set_firewall_sync(self, firewall_sync) -> None:
         """Set firewall sync instance."""
+        if not self._firewall_sync_enabled:
+            logger.info("Firewall sync disabled - provided instance ignored")
+            return
         self._firewall_sync = firewall_sync
         logger.info("Firewall sync connected to handler")
     
@@ -231,7 +242,10 @@ class DNSQueryHandler:
             # Got valid response - add firewall rules BEFORE returning
             all_ips = dns_result.all_ips
             
-            if all_ips:
+            sync_result = SyncResult(success=True)
+            
+            if all_ips and self._firewall_sync_enabled and self._firewall_sync:
+
                 self._stats["firewall_syncs"] += 1
                 
                 sync_result = self._firewall_sync.add_ips_blocking(
@@ -447,21 +461,35 @@ class DNSQueryHandler:
         """Start handler components."""
         self._cache.start()
         self._upstream.start()
-        self._firewall_sync.start()
+        if self._firewall_sync:
+            self._firewall_sync.start()
         logger.info("DNS Query Handler started")
     
     def stop(self) -> None:
         """Stop handler components."""
         self._cache.stop()
         self._upstream.stop()
-        self._firewall_sync.stop()
+        if self._firewall_sync:
+            self._firewall_sync.stop()
         logger.info("DNS Query Handler stopped")
     
     def get_stats(self) -> Dict:
         """Get handler statistics."""
         cache_stats = self._cache.get_stats()
         resolver_health = self._upstream.get_health_status()
-        firewall_stats = self._firewall_sync.get_stats()
+        firewall_stats = (
+            self._firewall_sync.get_stats()
+            if self._firewall_sync
+            else {
+                "enabled": False,
+                "active_rules": 0,
+                "rules_added": 0,
+                "rules_removed": 0,
+                "add_failures": 0,
+                "timeouts": 0,
+                "avg_sync_time_ms": 0.0,
+            }
+        )
         
         return {
             "handler": {

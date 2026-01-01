@@ -79,6 +79,7 @@ class FirewallDNSSync:
         firewall_manager=None
     ):
         self.config = config
+        self.enabled = getattr(config, "enabled", True)
         self._firewall_manager = firewall_manager
         
         # Track active rules by IP
@@ -107,16 +108,24 @@ class FirewallDNSSync:
             "total_sync_time_ms": 0.0,
         }
         
-        logger.info(f"FirewallDNSSync initialized: timeout={config.timeout}s, "
-                   f"grace_period={config.grace_period}s")
+        logger.info(
+            f"FirewallDNSSync initialized (enabled={self.enabled}): "
+            f"timeout={config.timeout}s, grace_period={config.grace_period}s"
+        )
     
     def set_firewall_manager(self, manager) -> None:
         """Set the firewall manager reference."""
+        if not self.enabled:
+            logger.debug("Firewall sync disabled - firewall manager not required")
+            return
         self._firewall_manager = manager
         logger.info("Firewall manager connected to DNS sync")
     
     def start(self) -> None:
         """Start background cleanup thread."""
+        if not self.enabled:
+            logger.info("Firewall sync disabled - DNS-only enforcement active")
+            return
         if self._running:
             return
         
@@ -131,6 +140,8 @@ class FirewallDNSSync:
     
     def stop(self) -> None:
         """Stop background threads."""
+        if not self.enabled:
+            return
         self._running = False
         if self._cleanup_thread:
             self._cleanup_thread.join(timeout=5)
@@ -162,6 +173,9 @@ class FirewallDNSSync:
         - If this returns success=False, the DNS response should
           return NXDOMAIN or an error to prevent traffic to unallowed IPs
         """
+        if not self.enabled:
+            return SyncResult(success=True, ips_added=ips, duration_ms=0.0)
+        
         if not ips:
             return SyncResult(success=True)
         
@@ -439,6 +453,19 @@ class FirewallDNSSync:
     
     def get_stats(self) -> Dict:
         """Get synchronization statistics."""
+        if not self.enabled:
+            return {
+                "enabled": False,
+                "active_rules": 0,
+                "rules_added": 0,
+                "rules_removed": 0,
+                "add_failures": 0,
+                "timeouts": 0,
+                "avg_sync_time_ms": 0.0,
+                "timeout_setting": self.config.timeout,
+                "grace_period": self.config.grace_period,
+            }
+        
         with self._lock:
             active_count = len([r for r in self._active_rules.values() if not r.is_expired])
             
@@ -448,6 +475,7 @@ class FirewallDNSSync:
                 avg_sync_time = self._stats["total_sync_time_ms"] / total_ops
             
             return {
+                "enabled": True,
                 "active_rules": active_count,
                 "rules_added": self._stats["rules_added"],
                 "rules_removed": self._stats["rules_removed"],

@@ -329,6 +329,7 @@ class DNSProxyOrchestrator:
             from ..firewall_sync import FirewallDNSSync, FirewallSyncConfig
             
             sync_config = FirewallSyncConfig(
+                enabled=self._config.firewall_sync_enabled,
                 grace_period=self._config.default_grace_period,
                 require_firewall=False,
             )
@@ -453,7 +454,7 @@ class DNSProxyOrchestrator:
         
         try:
             from ..server import DNSProxyServer
-            from ..config import DNSProxyConfig, DNSServerConfig
+            from ..config import DNSProxyConfig, DNSServerConfig, FirewallSyncConfig
             
             server_config = DNSServerConfig(
                 bind_address=self._config.dns_bind_address,
@@ -461,9 +462,16 @@ class DNSProxyOrchestrator:
                 ipv6_enabled=self._config.dns_ipv6_enabled,
             )
             
+            firewall_sync_config = FirewallSyncConfig(
+                enabled=self._config.firewall_sync_enabled,
+                grace_period=self._config.default_grace_period,
+                require_firewall=False,
+            )
+
             config = DNSProxyConfig(
                 enabled=True,
                 server=server_config,
+                firewall_sync=firewall_sync_config,
             )
             
             server = DNSProxyServer(config=config)
