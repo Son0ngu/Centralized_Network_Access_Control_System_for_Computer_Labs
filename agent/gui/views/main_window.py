@@ -78,7 +78,7 @@ class MainWindow(ctk.CTkFrame):
         # Menu items with icons
         menu_items = [
             ("dashboard", f"{ICONS.dashboard}", "Dashboard"),
-            ("firewall", f"{ICONS.firewall}", "Firewall"),
+            ("dns", "🌐", "DNS Proxy"),
             ("whitelist", f"{ICONS.whitelist}", "Whitelist"),
             ("logs", f"{ICONS.logs}", "Logs"),
             ("settings", f"{ICONS.settings}", "Settings")
@@ -145,13 +145,13 @@ class MainWindow(ctk.CTkFrame):
         """Create all content views."""
         # Import views here to avoid circular imports
         from .dashboard_view import DashboardView
-        from .firewall_view import FirewallView
+        from .dns_view import DNSView
         from .whitelist_view import WhitelistView
         from .logs_view import LogsView
         from .settings_view import SettingsView
         
         self._views["dashboard"] = DashboardView(self._content_area)
-        self._views["firewall"] = FirewallView(self._content_area)
+        self._views["dns"] = DNSView(self._content_area)
         self._views["whitelist"] = WhitelistView(self._content_area)
         self._views["logs"] = LogsView(self._content_area)
         self._views["settings"] = SettingsView(self._content_area)
@@ -163,18 +163,24 @@ class MainWindow(ctk.CTkFrame):
         agent_ctrl.signals.connect('status_changed', self._on_status_changed)
     
     def _on_status_changed(self, data: Dict):
-        """Handle agent status change - connect firewall manager."""
+        """Handle agent status change - connect DNS proxy."""
         status = data.get('status', '')
         if status == 'running':
-            # Connect firewall manager to firewall view
+            # Connect DNS proxy to DNS view
             try:
                 from ..controllers.agent_controller import AgentController
                 agent_ctrl = AgentController()
-                if agent_ctrl._agent and agent_ctrl._agent.firewall:
-                    if "firewall" in self._views:
-                        self._views["firewall"].set_firewall_manager(agent_ctrl._agent.firewall)
+                if agent_ctrl._agent and agent_ctrl._agent.dns_proxy_orchestrator:
+                    if "dns" in self._views:
+                        # Pass the orchestrator which has get_stats()
+                        dns_proxy = agent_ctrl._agent.dns_proxy_orchestrator
+                        # Or get the server directly if available
+                        if hasattr(dns_proxy, '_server') and dns_proxy._server:
+                            self._views["dns"].set_dns_proxy(dns_proxy._server)
+                        else:
+                            self._views["dns"].set_dns_proxy(dns_proxy)
             except Exception as e:
-                pass  # Firewall may not be available
+                pass  # DNS proxy may not be available
     
     def _on_agent_ready(self, data: Dict):
         """Handle agent ready event - notify whitelist view."""
