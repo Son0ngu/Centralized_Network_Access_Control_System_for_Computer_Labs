@@ -81,6 +81,14 @@ class WhitelistModel:
                                 'sparse': idx.get('sparse', False)
                             }
             
+            # Add tenant_id index for multi-tenancy isolation
+            if 'tenant_id' not in existing_fields:
+                try:
+                    self.collection.create_index([("tenant_id", ASCENDING)], name="tenant_idx")
+                    self.logger.debug("Created tenant_id index")
+                except Exception as e:
+                    self.logger.debug(f"tenant_id index already exists: {e}")
+            
             self.logger.debug(f"Existing field indexes: {existing_fields}")
             
             #  FIX: Define desired indexes with all properties
@@ -165,8 +173,13 @@ class WhitelistModel:
             self.logger.warning(f"Index creation process failed: {e}")
             # Continue anyway - indexes are not critical for basic functionality
     
-    def insert_entry(self, entry_data: Dict) -> str:
-        """Insert a new whitelist entry - vietnam ONLY"""
+    def insert_entry(self, entry_data: Dict, tenant_id: str = None) -> str:
+        """Insert a new whitelist entry - vietnam ONLY
+        
+        Args:
+            entry_data: Whitelist entry data
+            tenant_id: Tenant ID for isolation (required for multi-tenancy)
+        """
         try:
             # Use vietnam time for all timestamps
             current_time = now_vietnam()
@@ -175,6 +188,10 @@ class WhitelistModel:
             entry_data["added_date"] = current_time
             entry_data["created_at"] = current_time
             entry_data["updated_at"] = current_time
+            
+            # Set tenant_id for isolation
+            if tenant_id:
+                entry_data["tenant_id"] = tenant_id
             
             #  FIX: Set essential defaults BEFORE validation
             entry_data.setdefault("is_active", True)
@@ -205,9 +222,20 @@ class WhitelistModel:
             raise
     
     def find_all_entries(self, query: Dict = None, sort_field: str = "added_date", 
-                        sort_order: int = DESCENDING) -> List[Dict]:
-        """Find all whitelist entries with proper sorting - vietnam ONLY"""
+                        sort_order: int = DESCENDING, tenant_id: str = None) -> List[Dict]:
+        """Find all whitelist entries with proper sorting - vietnam ONLY
+        
+        Args:
+            query: Additional query filters
+            sort_field: Field to sort by
+            sort_order: Sort direction
+            tenant_id: Filter by tenant (for isolation)
+        """
         query = query or {}
+        
+        # Filter by tenant_id for isolation
+        if tenant_id:
+            query["tenant_id"] = tenant_id
         
         # FIX: Add active filter by default
         if "is_active" not in query:

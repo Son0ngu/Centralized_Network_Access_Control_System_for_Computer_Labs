@@ -13,7 +13,7 @@ from services.whitelist_service import WhitelistService
 from time_utils import now_iso, parse_agent_timestamp
 
 # Import auth middleware for JWT validation
-from middleware.auth import require_jwt, require_jwt_or_api_key
+from middleware.auth import require_jwt, require_jwt_or_api_key, get_current_tenant_id
 
 class WhitelistController:
     """Controller for whitelist operations"""
@@ -135,6 +135,9 @@ class WhitelistController:
     def list_domains(self):
         """List all whitelist domains - vietnam ONLY"""
         try:
+            # Get tenant_id for data isolation
+            tenant_id = get_current_tenant_id()
+            
             agent_id = request.args.get('agent_id')
             group_id = request.args.get('group_id')
 
@@ -148,8 +151,8 @@ class WhitelistController:
             offset = int(request.args.get('offset', 0))
             search = request.args.get('search', '').strip()
             
-            # Call service method
-            result = self.service.get_all_domains(limit, offset, search)
+            # Call service method with tenant_id
+            result = self.service.get_all_domains(limit, offset, search, tenant_id=tenant_id)
             
             # Add vietnam timestamp to response
             if isinstance(result, dict):
@@ -167,6 +170,9 @@ class WhitelistController:
             if not request.is_json:
                 return self._error_response("Request must be JSON", 400)
             
+            # Get tenant_id for data isolation
+            tenant_id = get_current_tenant_id()
+            
             data = request.get_json() or {}
             entry_value = data.get('value', '').strip().lower()
             if not entry_value:
@@ -178,8 +184,8 @@ class WhitelistController:
             if client_ip and ',' in client_ip:
                 client_ip = client_ip.split(',')[0].strip()
 
-            # Call unified service to handle all whitelist types
-            result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip)
+            # Call unified service to handle all whitelist types (with tenant isolation)
+            result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip, tenant_id=tenant_id)
 
             response_body = {
                 "success": True,

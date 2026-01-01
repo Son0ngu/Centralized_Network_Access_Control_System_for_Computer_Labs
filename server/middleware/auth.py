@@ -6,7 +6,7 @@ Authentication Middleware - API Key and JWT validation for agent requests.
 import logging
 from functools import wraps
 from typing import Callable, Optional
-from flask import request, jsonify, g
+from flask import request, jsonify, g, session
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,68 @@ _api_key_service = None
 
 # Global reference to JWT Service (set during init)
 _jwt_service = None
+
+
+def get_current_tenant_id() -> Optional[str]:
+    """
+    Get the current tenant_id from session or JWT token.
+    Used for multi-tenancy data isolation.
+    
+    Returns:
+        tenant_id string or None
+    """
+    # First check Flask g object (set by JWT middleware)
+    if hasattr(g, 'tenant_id') and g.tenant_id:
+        return g.tenant_id
+    
+    # Then check session
+    tenant_id = session.get('tenant_id')
+    if tenant_id:
+        return tenant_id
+    
+    return None
+
+
+def get_current_admin_id() -> Optional[str]:
+    """
+    Get the current admin_id from session or JWT token.
+    
+    Returns:
+        admin_id string or None
+    """
+    # First check Flask g object (set by JWT middleware)
+    if hasattr(g, 'admin_id') and g.admin_id:
+        return g.admin_id
+    
+    # Then check session
+    admin_id = session.get('admin_id')
+    if admin_id:
+        return admin_id
+    
+    return None
+
+
+def require_tenant(f: Callable) -> Callable:
+    """
+    Decorator that requires a valid tenant context.
+    Must be logged in as an admin with a tenant.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        tenant_id = get_current_tenant_id()
+        
+        if not tenant_id:
+            return jsonify({
+                "success": False,
+                "error": "Authentication required",
+                "message": "Please login to access this resource"
+            }), 401
+        
+        # Store in g for easy access
+        g.tenant_id = tenant_id
+        return f(*args, **kwargs)
+    
+    return decorated_function
 
 
 def init_auth_middleware(api_key_service, jwt_service=None):
@@ -121,6 +183,10 @@ def require_api_key(permission: str = "register"):
             g.api_key_info = validation
             g.api_key_id = validation.get("key_id")
             g.api_key_name = validation.get("name")
+            
+            # Store tenant_id for multi-tenancy data isolation
+            if validation.get("tenant_id"):
+                g.tenant_id = validation.get("tenant_id")
             
             logger.debug(
                 f"API key validated for {request.endpoint}: "
@@ -330,9 +396,11 @@ def require_jwt(f: Callable) -> Callable:
         g.agent_id = payload.get("sub")
         g.user_id = payload.get("user_id")
         g.token_jti = payload.get("jti")
+        g.tenant_id = payload.get("tenant_id")  # For tenant isolation
+        g.admin_id = payload.get("admin_id")    # For admin context
         
         logger.debug(
-            f"JWT validated for {request.endpoint}: agent={g.agent_id}"
+            f"JWT validated for {request.endpoint}: agent={g.agent_id}, tenant={g.tenant_id}"
         )
         
         return f(*args, **kwargs)

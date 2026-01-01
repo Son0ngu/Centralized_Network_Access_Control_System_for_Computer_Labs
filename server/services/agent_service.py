@@ -75,12 +75,18 @@ class AgentService:
         except Exception as exc:
             self.logger.error(f"Error persisting status for {agent.get('agent_id')}: {exc}")
             
-    def register_agent(self, agent_data: Dict, client_ip: str) -> Dict:
-        """Register a new agent using hostname+IP as identifier - vietnam ONLY"""
+    def register_agent(self, agent_data: Dict, client_ip: str, tenant_id: str = None) -> Dict:
+        """Register a new agent using hostname+IP as identifier - vietnam ONLY
+        
+        Args:
+            agent_data: Agent registration data
+            client_ip: Client IP address
+            tenant_id: Tenant ID for multi-tenancy isolation
+        """
         try:
             hostname = agent_data.get("hostname")
             
-            self.logger.info(f"Agent registration: {hostname} from {client_ip}")
+            self.logger.info(f"Agent registration: {hostname} from {client_ip} (tenant: {tenant_id})")
             
             if not hostname:
                 raise ValueError("Hostname is required")
@@ -161,8 +167,9 @@ class AgentService:
                     "group_id": str(self.pending_group.get("_id")),
                 }
                 
-                self.model.register_agent(agent_registration_data)
-                self.logger.info(f"Created new agent: {agent_id}")
+                # Pass tenant_id for multi-tenancy isolation
+                self.model.register_agent(agent_registration_data, tenant_id=tenant_id)
+                self.logger.info(f"Created new agent: {agent_id} (tenant: {tenant_id})")
 
             # Emit SocketIO event - vietnam only
             if self.socketio:
@@ -208,12 +215,16 @@ class AgentService:
             self.logger.error(f"Agent registration failed: {e}")
             raise
 
-    def get_agents_with_status(self) -> List[Dict]:
-        """Get all agents with status calculation - vietnam ONLY"""
+    def get_agents_with_status(self, tenant_id: str = None) -> List[Dict]:
+        """Get all agents with status calculation - vietnam ONLY
+        
+        Args:
+            tenant_id: Tenant ID for data isolation
+        """
         try:
             self.logger.info("get_agents_with_status() called - vietnam VERSION")
             
-            agents = self.model.get_all_agents()
+            agents = self.model.get_all_agents(tenant_id=tenant_id)
             self.logger.info(f"Found {len(agents)} agents from database")
             
             # Use vietnam time for status calculation

@@ -361,7 +361,7 @@ class TokenManager:
         """Stop background refresh thread"""
         self._running = False
         if self._refresh_thread:
-            self._refresh_thread.join(timeout=5)
+            self._refresh_thread.join(timeout=2)  # Reduced for faster shutdown
         self.logger.info("Auto token refresh stopped")
     
     def _refresh_loop(self):

@@ -64,7 +64,8 @@ agent_state: Dict = {
     "initialization_time": None,
     "admin_privileges": False,
     "local_ip": None,
-    "agent_id": None
+    "agent_id": None,
+    "dns_proxy_mode": None,  # DNS Proxy operating mode
 }
 class Agent:
     _instance: Optional['Agent'] = None
@@ -85,9 +86,13 @@ class Agent:
         self.firewall = None
         self.whitelist = None
         self.log_sender = None
-        self.sniffer = None  
         self.heartbeat = None  
         
+        # DNS Proxy System (Phase 1 - Proactive DNS Control)
+        self.dns_proxy_orchestrator = None  # DNSProxyOrchestrator instance
+        
+        # Legacy: PacketSniffer (now optional - bypass detection only)
+        self.sniffer = None  
         self.packet_sniffer = None
         self.heartbeat_sender = None
         

@@ -15,9 +15,10 @@ import logging
 #  Add current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, jsonify, request, redirect
+from flask import Flask, render_template, jsonify, request, redirect, session, url_for
 from flask_socketio import SocketIO
 from flask_cors import CORS
+from functools import wraps
 
 #  Import từ config.py (không phải database/config.py)
 from database.config import get_config, get_mongo_client, get_database, validate_config, close_mongo_client
@@ -42,6 +43,7 @@ from controllers.log_controller import LogController
 from controllers.group_controller import GroupController
 from controllers.api_key_controller import APIKeyController
 from controllers.auth_controller import AuthController
+from controllers.admin_controller import AdminController
 
 # API Key components
 from models.api_key_model import APIKeyModel
@@ -52,6 +54,14 @@ from services.jwt_service import JWTService, init_jwt_service
 
 # Auth middleware
 from middleware.auth import init_auth_middleware, require_api_key, require_jwt
+
+# Admin & Tenant components
+from models.admin_model import AdminModel
+from models.tenant_model import TenantModel
+from services.admin_service import AdminService
+
+# Security middleware
+from middleware.security import init_security_middleware
 
 # Setup logging
 logging.basicConfig(
@@ -89,6 +99,12 @@ def create_app():
     # Load configuration
     config = get_config()
     app.config.from_object(config)
+    
+    # Set secret key for session (use from config or generate)
+    if not app.config.get('SECRET_KEY'):
+        import secrets
+        app.config['SECRET_KEY'] = secrets.token_hex(32)
+        logger.warning("⚠️ SECRET_KEY not set, using random key. Sessions will be lost on restart!")
     
     #  Add template filters using time_utils - vietnam ONLY
     @app.template_filter('format_datetime')
@@ -206,6 +222,8 @@ def register_controllers(app, socketio, db):
         log_model = LogModel(db)
         group_model = GroupModel(db)
         api_key_model = APIKeyModel(db)  # NEW: API Key model
+        admin_model = AdminModel(db)  # NEW: Admin model
+        tenant_model = TenantModel(db)  # NEW: Tenant model
 
         logger.info(" Models initialized")
         
@@ -213,18 +231,36 @@ def register_controllers(app, socketio, db):
         jwt_service = init_jwt_service(db)
         logger.info(" JWT service initialized")
         
+        # Initialize email service for 2FA and notifications
+        from services.email_service import init_email_service
+        smtp_config = {
+            "host": os.getenv("SMTP_HOST", "smtp.gmail.com"),
+            "port": int(os.getenv("SMTP_PORT", 587)),
+            "username": os.getenv("SMTP_USERNAME", ""),
+            "password": os.getenv("SMTP_PASSWORD", ""),
+            "from_email": os.getenv("SMTP_FROM_EMAIL", "noreply@yourapp.com"),
+            "from_name": os.getenv("SMTP_FROM_NAME", "Firewall Controller")
+        }
+        init_email_service(smtp_config)
+        logger.info(" Email service initialized")
+        
         #  Initialize services
         group_service = GroupService(group_model, agent_model)
         whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio)
         agent_service = AgentService(agent_model, group_model, socketio, jwt_service)  # Pass JWT service
         log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
         api_key_service = APIKeyService(api_key_model, socketio)  # API Key service
+        admin_service = AdminService(admin_model, tenant_model, jwt_service, socketio)  # NEW: Admin service
         
         logger.info(" Services initialized")
         
         # Initialize auth middleware with both API Key and JWT services
         init_auth_middleware(api_key_service, jwt_service)
         logger.info(" Auth middleware initialized")
+        
+        # Initialize security middleware (sanitization, rate limiting)
+        init_security_middleware(app)
+        logger.info(" Security middleware initialized")
         
         # Create default API key if none exist
         default_key = api_key_service.create_default_key_if_none()
@@ -241,6 +277,7 @@ def register_controllers(app, socketio, db):
         group_controller = GroupController(group_service)
         api_key_controller = APIKeyController(api_key_model, api_key_service, socketio)
         auth_controller = AuthController(jwt_service, agent_model, socketio)  # NEW: Auth controller
+        admin_controller = AdminController(admin_model, tenant_model, admin_service, socketio)  # NEW: Admin controller
 
         logger.info(" Controllers initialized")
         
@@ -251,6 +288,7 @@ def register_controllers(app, socketio, db):
         app.register_blueprint(group_controller.blueprint, url_prefix='/api')
         app.register_blueprint(api_key_controller.blueprint, url_prefix='/api')
         app.register_blueprint(auth_controller.blueprint, url_prefix='/api')  # NEW: Auth routes
+        app.register_blueprint(admin_controller.blueprint, url_prefix='/api/admin')  # FIX: Admin routes at /api/admin/*
 
         logger.info(" All controllers registered successfully")
         
@@ -269,6 +307,18 @@ def register_controllers(app, socketio, db):
         import traceback
         traceback.print_exc()
         return None, None, None, None
+def login_required(f):
+    """Decorator to require login for web routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is logged in (has admin_id in session)
+        if 'admin_id' not in session:
+            # Redirect to admin login page
+            return redirect(url_for('admin_page') + '?redirect=' + request.path)
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""
     
@@ -321,17 +371,25 @@ def register_main_routes(app, log_service, agent_service):
                                  recent_logs=[])
     
     @app.route('/agents')
+    @login_required
     def agents_page():
         return render_template('agents.html', page_title="Agent Management")
     
     # ADD: Groups page route
     @app.route('/groups')
+    @login_required
     def groups_page():
         """Groups management page"""
         return render_template('groups.html', page_title="Group Management")
     
+    @app.route('/admin')
+    def admin_page():
+        """Admin management page (login page)"""
+        return render_template('admin.html', page_title="Admin Management")
+    
     # ADD: Group detail page route
     @app.route('/groups/<group_id>')
+    @login_required
     def group_detail(group_id):
         """Group detail page - view agents in group, add/remove agents"""
         try:
@@ -351,14 +409,17 @@ def register_main_routes(app, log_service, agent_service):
             return render_template('500.html', message=str(e)), 500
     
     @app.route('/whitelist')
+    @login_required
     def whitelist_page():
         return render_template('whitelist.html', page_title="Whitelist Management")
     
     @app.route('/logs')
+    @login_required
     def logs_page():
         return render_template('logs.html', page_title="System Logs")
     
     @app.route('/api-keys')
+    @login_required
     def api_keys_page():
         """API Keys management page - Admin only"""
         return render_template('api_keys.html', page_title="API Keys Management")

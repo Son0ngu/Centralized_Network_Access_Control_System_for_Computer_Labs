@@ -160,18 +160,12 @@ class FirewallView(ctk.CTkFrame):
                         "rule_name": f"{rule_prefix}_Allow_{ip.replace('.', '_')}"
                     })
                 
-                # Get policy status
-                if hasattr(self._firewall_manager, 'policy_manager'):
-                    if self._firewall_manager.policy_manager.default_deny_enabled:
-                        policy_status = "Default Deny (Active)"
-                    else:
-                        policy_status = "Default Allow"
+                # Get policy status - Updated for DNS Proxy architecture
+                # DNS Proxy is now PRIMARY, Default Deny is no longer used
+                policy_status = "DNS Proxy (Active)"
                 
-                # Get mode
-                if self._firewall_manager.whitelist_mode_active:
-                    mode = "Whitelist Only"
-                else:
-                    mode = "Monitor"
+                # Get mode - Updated for DNS Proxy architecture
+                mode = "DNS Proxy Sinkhole"
             else:
                 # Try to get rules from netsh directly
                 rules = self._get_rules_from_netsh()

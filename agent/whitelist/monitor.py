@@ -36,7 +36,7 @@ class WhitelistMonitor:
     def stop(self) -> None:
         self._running = False
         if self._thread:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=2)  # Reduced for faster shutdown
         logger.info("Whitelist monitor stopped")
     
     def _monitor_loop(self) -> None:

@@ -15,7 +15,7 @@ from services.agent_service import AgentService
 from time_utils import now_vietnam, now_iso
 
 # Import auth middleware for API key and JWT validation
-from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key
+from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key, get_current_tenant_id
 
 class AgentController:
     """Controller for agent operations"""
@@ -128,8 +128,11 @@ class AgentController:
             data = self._validate_json_request(['hostname', 'device_id'])
             client_ip = request.remote_addr or data.get("ip_address", "unknown")
             
-            # Call service method
-            result = self.service.register_agent(data, client_ip)
+            # Get tenant_id from API key for multi-tenancy isolation
+            tenant_id = get_current_tenant_id()
+            
+            # Call service method with tenant_id
+            result = self.service.register_agent(data, client_ip, tenant_id=tenant_id)
             
             # Broadcast notification via SocketIO
             if self.socketio:
@@ -211,11 +214,15 @@ class AgentController:
         try:
             self.logger.info(" List agents called")
             
+            # Get tenant_id for data isolation
+            tenant_id = get_current_tenant_id()
+            
             pagination = self._get_pagination_params()
             filters = self._get_filter_params(['status', 'hostname','group_id'])
             exclude_group_id = request.args.get('exclude_group_id')
             
-            agents_with_status = self.service.get_agents_with_status()
+            # Get agents with tenant filtering
+            agents_with_status = self.service.get_agents_with_status(tenant_id=tenant_id)
             self.logger.info(f" Found {len(agents_with_status)} agents")
             
             # Apply filters

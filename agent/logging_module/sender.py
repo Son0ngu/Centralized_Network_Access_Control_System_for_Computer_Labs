@@ -79,7 +79,7 @@ class LogSender:
             except Exception as e:
                 logger.error(f"Error flushing logs: {e}")
             
-            self._sender_thread.join(timeout=5)
+            self._sender_thread.join(timeout=2)  # Reduced for faster shutdown
         
         logger.info("Log sender stopped")
     

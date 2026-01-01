@@ -134,6 +134,64 @@ class JWTService:
             "refresh_expires_at": (now + timedelta(days=REFRESH_TOKEN_EXPIRY_DAYS)).isoformat(),
         }
     
+    def generate_access_token(self, payload: Dict) -> str:
+        """
+        Generate an access token with custom payload (for admin auth).
+        
+        Args:
+            payload: Dict containing claims like admin_id, email, tenant_id, role, type
+            
+        Returns:
+            JWT access token string
+        """
+        now = now_vietnam()
+        
+        # Build token claims
+        claims = {
+            "sub": payload.get("admin_id") or payload.get("sub"),
+            "jti": secrets.token_hex(16),
+            "type": "access",
+            "iat": now,
+            "exp": now + timedelta(hours=ACCESS_TOKEN_EXPIRY_HOURS),
+            "iss": "firewall-controller",
+        }
+        
+        # Add custom claims
+        for key in ["admin_id", "email", "tenant_id", "role", "user_type"]:
+            if key in payload:
+                claims[key] = payload[key]
+        
+        return jwt.encode(claims, self.secret_key, algorithm=self.algorithm)
+    
+    def generate_refresh_token(self, payload: Dict) -> str:
+        """
+        Generate a refresh token with custom payload (for admin auth).
+        
+        Args:
+            payload: Dict containing claims
+            
+        Returns:
+            JWT refresh token string
+        """
+        now = now_vietnam()
+        
+        # Build token claims (minimal for refresh)
+        claims = {
+            "sub": payload.get("admin_id") or payload.get("sub"),
+            "jti": secrets.token_hex(16),
+            "type": "refresh",
+            "iat": now,
+            "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRY_DAYS),
+            "iss": "firewall-controller",
+        }
+        
+        # Add essential claims only
+        for key in ["admin_id", "tenant_id"]:
+            if key in payload:
+                claims[key] = payload[key]
+        
+        return jwt.encode(claims, self.refresh_secret_key, algorithm=self.algorithm)
+    
     def validate_access_token(self, token: str) -> Tuple[bool, Optional[Dict], Optional[str]]:
         """
         Validate an access token.

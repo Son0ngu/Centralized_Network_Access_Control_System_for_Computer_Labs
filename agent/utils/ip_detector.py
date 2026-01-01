@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import netifaces
 
-from agent.shared.time_utils import now, now_iso, now_server_compatible, is_cache_valid, cache_age
+from shared.time_utils import now, now_iso, now_server_compatible, is_cache_valid, cache_age
 
 logger = logging.getLogger("utils.ip_detector")
 

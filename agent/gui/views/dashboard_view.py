@@ -400,40 +400,34 @@ class DashboardView(ctk.CTkFrame):
             self._status_indicator.configure(text="🟢 Running", text_color="#00ff88")
             self._update_button_state("running")
             
-            # Update mode card
+            # Update mode card - DNS Proxy Architecture
             info = self._controller.get_agent_info()
-            mode = info.get('firewall_mode', 'monitor')
-            enabled = info.get('firewall_enabled', False)
+            has_admin = info.get('has_admin', False)
+            dns_proxy_mode = info.get('dns_proxy_mode', 'monitor')
             
-            # Format mode display - all 4 modes
-            mode_display = {
-                'monitor': 'Monitor',
-                'whitelist_only': 'Whitelist',
-                'block': 'Block',
-                'warn': 'Warn'
-            }.get(mode, mode.title())
-            
-            # Mode-specific icons and colors
-            mode_config = {
-                'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
-                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed'),
-                'block': ('🚫', '#ff4444', 'Blocking non-whitelist'),
-                'warn': ('⚠️', '#ffa500', 'Warning on violations')
-            }.get(mode, ('👁️', '#888888', 'Unknown mode'))
-            
-            if enabled:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon(mode_config[0])
-                self._cards['mode'].set_color(mode_config[1])
-                self._cards['mode'].set_subtitle(mode_config[2])
-                # Log the actual mode
-                self._append_log(f"[MODE] Firewall mode: {mode_display} ({mode_config[2]})")
+            # DNS Proxy mode display - different based on admin status
+            if has_admin:
+                mode_config = {
+                    'disabled': ('⚫', 'Disabled', '#888888', 'DNS Proxy off'),
+                    'monitor': ('👁️', 'Monitor', '#00d4ff', 'Observing DNS'),
+                    'active': ('🛡', 'DNS Proxy', '#00ff88', 'Sinkhole active'),
+                    'parallel': ('🔄', 'Parallel', '#9966ff', 'Migration mode')
+                }.get(dns_proxy_mode, ('🛡', 'DNS Proxy', '#00ff88', 'Sinkhole active'))
             else:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon('👁️')
-                self._cards['mode'].set_color('#00d4ff')
-                self._cards['mode'].set_subtitle('Firewall disabled')
-                self._append_log(f"[MODE] Firewall mode: {mode_display} (Firewall disabled)")
+                # No admin - always show Monitor mode with warning
+                mode_config = ('👁️', 'Monitor', '#ffa500', 'No admin - DNS not blocked')
+            
+            self._cards['mode'].set_icon(mode_config[0])
+            self._cards['mode'].set_value(mode_config[1])
+            self._cards['mode'].set_color(mode_config[2])
+            self._cards['mode'].set_subtitle(mode_config[3])
+            
+            # Log mode with admin warning
+            if has_admin:
+                self._append_log(f"[MODE] DNS Proxy: {mode_config[1]} ({mode_config[3]})")
+            else:
+                self._append_log(f"[WARNING] Running in Monitor mode - No admin privileges")
+                self._append_log(f"[WARNING] DNS blocking disabled! Run as Administrator for full protection")
             
         elif status == 'stopped':
             self._cards['status'].set_value("Stopped")

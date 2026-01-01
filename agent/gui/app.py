@@ -85,8 +85,8 @@ class FirewallControllerApp:
         if self._controller and self._controller.is_running:
             print("Stopping agent before exit...")
             self._controller.stop_agent()
-            # Give agent time to cleanup
-            self._root.after(1000, self._do_quit)
+            # Shorter wait - cleanup is now faster
+            self._root.after(200, self._do_quit)
         else:
             self._do_quit()
     

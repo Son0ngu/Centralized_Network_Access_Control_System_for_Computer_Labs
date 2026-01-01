@@ -37,15 +37,27 @@ class AgentModel:
             # Compound index for hostname + IP combination
             self.collection.create_index([("hostname", ASCENDING), ("ip_address", ASCENDING)])
             self.collection.create_index([("group_id", ASCENDING)])
+            # Tenant isolation index
+            self.collection.create_index([("tenant_id", ASCENDING)], name="tenant_idx")
             self.logger.info("Agent indexes created successfully")
         except Exception as e:
             self.logger.warning(f"Error creating indexes: {e}")
 
-    def register_agent(self, agent_data: Dict) -> Dict:
-        """Register a new agent (CREATE only, not update) - vietnam ONLY"""
+    def register_agent(self, agent_data: Dict, tenant_id: str = None) -> Dict:
+        """Register a new agent (CREATE only, not update) - vietnam ONLY
+        
+        Args:
+            agent_data: Agent registration data
+            tenant_id: Tenant ID for isolation (required for multi-tenancy)
+        """
         try:
             # Use vietnam time for registration
             current_time = now_vietnam()  # vietnam naive for MongoDB
+            
+            # Set tenant_id for isolation
+            if tenant_id:
+                agent_data["tenant_id"] = tenant_id
+            
             agent_data.update({
                 "registered_date": current_time,
                 "updated_date": current_time,
@@ -127,6 +139,20 @@ class AgentModel:
         except Exception as exc:
             self.logger.error(f"Error counting agents for group {group_id}: {exc}")
             return 0
+    
+    def count_by_tenant(self, tenant_id: str) -> int:
+        """Count agents belonging to a tenant (via tenant_id field if exists, else return all)"""
+        try:
+            # Check if tenant_id field exists in agents
+            # For now, if no tenant_id field, return total count (single-tenant mode)
+            if self.collection.find_one({"tenant_id": {"$exists": True}}):
+                return self.collection.count_documents({"tenant_id": tenant_id})
+            else:
+                # Single-tenant mode - return all agents
+                return self.collection.count_documents({})
+        except Exception as exc:
+            self.logger.error(f"Error counting agents for tenant {tenant_id}: {exc}")
+            return 0
         
     def find_by_hostname(self, hostname: str) -> List[Dict]:
         """Find agents by hostname"""
@@ -144,11 +170,23 @@ class AgentModel:
             self.logger.error(f"Error finding agent by device ID {device_id}: {e}")
             return None
         
-    def get_all_agents(self, query: Dict = None, limit: int = 100, skip: int = 0) -> List[Dict]:
-        """Get all agents with optional filtering"""
+    def get_all_agents(self, query: Dict = None, limit: int = 100, skip: int = 0, tenant_id: str = None) -> List[Dict]:
+        """Get all agents with optional filtering
+        
+        Args:
+            query: Additional query filters
+            limit: Max results
+            skip: Skip first N results
+            tenant_id: Filter by tenant (for isolation)
+        """
         try:
             if query is None:
                 query = {}
+            
+            # Filter by tenant_id for isolation
+            if tenant_id:
+                query["tenant_id"] = tenant_id
+            
             return list(self.collection.find(query).sort("last_heartbeat", -1).skip(skip).limit(limit))
         except Exception as e:
             self.logger.error(f"Error getting agents: {e}")

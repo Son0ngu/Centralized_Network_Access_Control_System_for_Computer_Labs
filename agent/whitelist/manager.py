@@ -107,7 +107,7 @@ class WhitelistManager:
     def stop_sync(self) -> None:
         self._running = False
         if self._sync_thread:
-            self._sync_thread.join(timeout=5)
+            self._sync_thread.join(timeout=2)  # Reduced for faster shutdown
         logger.info("Whitelist sync stopped")
     
     def stop_periodic_updates(self) -> None:

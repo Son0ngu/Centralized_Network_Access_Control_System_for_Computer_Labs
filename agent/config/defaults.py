@@ -29,16 +29,91 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "retry_interval": 30,
         "max_retries": 5,
         "timeout": 30,
-        "auto_sync_firewall": True,
-        "resolve_ips_on_startup": True,
-        "ip_cache_ttl": 300,
-        "ip_refresh_interval": 300,
     },
     
-    # Packet capture configuration
+    # ==========================================================================
+    # DNS PROXY CONFIGURATION (Phase 1 - Proactive DNS Control)
+    # ==========================================================================
+    "dns_proxy": {
+        "enabled": True,
+        "mode": "active",  # disabled | monitor | active | parallel
+        
+        # DNS Server settings
+        "bind_address": "127.0.0.1",
+        "port": 53,
+        "ipv6_enabled": True,
+        "ipv6_bind_address": "::1",
+        
+        # Upstream resolvers (fallback order)
+        "upstream_resolvers": [
+            {"address": "8.8.8.8", "port": 53, "priority": 1},
+            {"address": "1.1.1.1", "port": 53, "priority": 2},
+            {"address": "208.67.222.222", "port": 53, "priority": 3}
+        ],
+        "upstream_timeout": 5.0,
+        "upstream_retries": 2,
+        
+        # DNS Cache settings
+        "cache": {
+            "enabled": True,
+            "max_entries": 10000,
+            "min_ttl": 60,
+            "max_ttl": 86400,
+            "negative_ttl": 300,  # TTL for blocked domains (NXDOMAIN)
+        },
+        
+        # Firewall synchronization (add IP rules from DNS responses)
+        "firewall_sync": {
+            "enabled": True,
+            "timeout": 5.0,
+            "retry_on_failure": True,
+            "grace_period": 60,  # Extra time before removing expired rules
+        },
+    },
+    
+    # ==========================================================================
+    # NETWORK MANAGER CONFIGURATION (DNS Enforcement)
+    # ==========================================================================
+    "network_manager": {
+        "enabled": True,
+        "auto_configure_dns": True,  # Set system DNS to 127.0.0.1
+        "monitor_interval": 30,      # Check for DNS drift every N seconds
+        "backup_path": "dns_backup.json",
+        
+        # Adapter settings
+        "adapters": {
+            "include_virtual": False,
+            "include_vpn": True,
+            "exclude_patterns": ["VMware*", "VirtualBox*", "Hyper-V*"]
+        },
+    },
+    
+    # ==========================================================================
+    # SECURITY CONFIGURATION (DoH/DoT Blocking)
+    # ==========================================================================
+    "security": {
+        "enabled": True,
+        "block_doh": True,   # Block DNS over HTTPS
+        "block_dot": True,   # Block DNS over TLS (port 853)
+        "doh_providers_update_url": None,  # Optional: URL to fetch DoH provider list
+        
+        # Bypass detection (monitor for attempts to bypass DNS Proxy)
+        "bypass_detection": {
+            "enabled": True,
+            "alert_on_direct_ip": True,
+            "alert_on_doh_attempt": True,
+            "log_level": "WARNING",
+        },
+    },
+    
+    # ==========================================================================
+    # PACKET SNIFFER CONFIGURATION (Bypass Detection Only)
+    # ==========================================================================
     "packet_capture": {
+        "enabled": False,  # Disabled by default (DNS Proxy handles everything)
+        "mode": "bypass_detection_only",  # bypass_detection_only | full
         "engine": "scapy",
-        "filter": "outbound and (tcp.DstPort == 80 or tcp.DstPort == 443)",
+        "filter": "tcp and dst port 443",  # Only monitor HTTPS for bypass detection
         "buffer_size": 4096,
         "packet_limit": 0,
         "interfaces": [],
@@ -63,17 +138,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         }
     },
     
-    # Firewall configuration
+    # Firewall configuration (simplified - DNS Proxy handles whitelist enforcement)
     "firewall": {
         "enabled": True,
-        "mode": "whitelist_only",
         "rule_prefix": "FirewallController",
         "cleanup_on_exit": True,
-        "create_allow_rules": True,
-        "create_default_block": True,
-        "allow_essential_ips": True,
-        "allow_private_networks": False,
-        "rule_priority_offset": 100,
     },
     
     # Heartbeat configuration

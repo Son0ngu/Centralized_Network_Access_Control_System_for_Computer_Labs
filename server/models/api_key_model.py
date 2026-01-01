@@ -41,6 +41,8 @@ class APIKeyModel:
             self.collection.create_index([("is_active", ASCENDING)])
             self.collection.create_index([("expires_at", ASCENDING)])
             self.collection.create_index([("created_at", DESCENDING)])
+            # Tenant isolation index
+            self.collection.create_index([("tenant_id", ASCENDING)], name="tenant_idx")
             self.logger.info("API Key indexes created successfully")
         except Exception as e:
             self.logger.warning(f"Error creating indexes: {e}")
@@ -76,7 +78,8 @@ class APIKeyModel:
         description: str = "",
         expires_in_days: Optional[int] = None,
         permissions: Optional[List[str]] = None,
-        created_by: str = "system"
+        created_by: str = "system",
+        tenant_id: str = None
     ) -> Dict:
         """
         Create a new API key.
@@ -87,6 +90,7 @@ class APIKeyModel:
             expires_in_days: Days until expiration (None = never expires)
             permissions: List of permissions ['register', 'sync', 'logs']
             created_by: Who created this key
+            tenant_id: Tenant ID for isolation (required for multi-tenancy)
             
         Returns:
             Dict with key info including plaintext key (only shown once!)
@@ -121,7 +125,8 @@ class APIKeyModel:
                 "last_used_at": None,
                 "usage_count": 0,
                 "revoked_at": None,
-                "revoked_by": None
+                "revoked_by": None,
+                "tenant_id": tenant_id  # Tenant isolation
             }
             
             result = self.collection.insert_one(key_doc)
@@ -227,7 +232,8 @@ class APIKeyModel:
                 "valid": True,
                 "key_id": str(key_doc["_id"]),
                 "name": key_doc.get("name"),
-                "permissions": permissions
+                "permissions": permissions,
+                "tenant_id": key_doc.get("tenant_id")  # For multi-tenancy isolation
             }
             
         except Exception as e:
@@ -270,7 +276,8 @@ class APIKeyModel:
         self,
         include_revoked: bool = False,
         page: int = 1,
-        limit: int = 20
+        limit: int = 20,
+        tenant_id: str = None
     ) -> Dict:
         """
         List all API keys (without showing the actual keys).
@@ -279,6 +286,7 @@ class APIKeyModel:
             include_revoked: Whether to include revoked keys
             page: Page number
             limit: Items per page
+            tenant_id: Filter by tenant (for isolation)
             
         Returns:
             Dict with keys list
@@ -287,6 +295,10 @@ class APIKeyModel:
             query = {}
             if not include_revoked:
                 query["is_active"] = True
+            
+            # Filter by tenant_id for isolation
+            if tenant_id:
+                query["tenant_id"] = tenant_id
             
             skip = (page - 1) * limit
             

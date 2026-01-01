@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Management - Firewall Controller{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Login/Register Page (shown when not authenticated) -->
+<div id="authSection" class="auth-container">
+    <div class="row g-0 min-vh-100">
+        <!-- Left Panel - Branding -->
+        <div class="col-lg-5 d-none d-lg-flex auth-branding">
+            <div class="p-5 d-flex flex-column justify-content-center">
+                <div class="text-center mb-5">
+                    <i class="fas fa-shield-alt auth-icon"></i>
+                    <h2 class="fw-bold mt-4">Firewall Controller</h2>
+                    <p class="text-white-50 mt-3">Enterprise-grade security management platform</p>
+                </div>
+                
+                <div class="security-features">
+                    <h5 class="fw-bold mb-4">Security Features</h5>
+                    <div class="feature-item">
+                        <i class="fas fa-lock me-3"></i>
+                        <span>Password strength validation</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-shield-alt me-3"></i>
+                        <span>Two-factor authentication</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-clock me-3"></i>
+                        <span>Rate limiting protection</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-ban me-3"></i>
+                        <span>Auto account lockout</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Auth Forms -->
+        <div class="col-lg-7 d-flex align-items-center justify-content-center">
+            <div class="auth-form-container">
+                <div class="auth-card">
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs nav-fill mb-4" id="authTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-panel" type="button" role="tab">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register-panel" type="button" role="tab">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="authTabContent">
+                        <!-- Login Panel -->
+                        <div class="tab-pane fade show active" id="login-panel" role="tabpanel">
+                            <h4 class="mb-4 text-center">Welcome Back</h4>
+                            
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="loginEmail" class="form-label">Email Address</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" class="form-control form-control-lg" id="loginEmail" placeholder="admin@example.com" required>
+                                    </div>
+                                    <div class="invalid-feedback" id="loginEmailError"></div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label for="loginPassword" class="form-label">Password</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="password" class="form-control form-control-lg" id="loginPassword" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('loginPassword', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="invalid-feedback" id="loginPasswordError"></div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </button>
+                            </form>
+
+                            <div class="text-center mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Max 5 login attempts per 5 minutes
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Register Panel -->
+                        <div class="tab-pane fade" id="register-panel" role="tabpanel">
+                            <h4 class="mb-4 text-center">Create Admin Account</h4>
+                            
+                            <form id="registerForm">
+                                <div class="mb-3">
+                                    <label for="regEmail" class="form-label">Email Address *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" class="form-control" id="regEmail" placeholder="admin@example.com" required>
+                                    </div>
+                                    <div class="invalid-feedback" id="regEmailError"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="regFullName" class="form-label">Full Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" id="regFullName" placeholder="John Doe">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="regPassword" class="form-label">Password *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="password" class="form-control" id="regPassword" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('regPassword', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div id="passwordStrength" class="mt-2"></div>
+                                    <small class="text-muted">
+                                        Min 12 characters, include uppercase, lowercase, number & special character
+                                    </small>
+                                    <div class="invalid-feedback" id="regPasswordError"></div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="regTenantName" class="form-label">Organization Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                        <input type="text" class="form-control" id="regTenantName" placeholder="Your Company (optional)">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-success btn-lg w-100">
+                                    <i class="fas fa-user-plus me-2"></i>Create Account
+                                </button>
+                            </form>
+
+                            <div class="alert alert-warning mt-3">
+                                <small>
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Admin registration may require approval. Contact your system administrator.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2FA Verification Section (hidden by default) -->
+<div id="twoFASection" class="twofa-overlay" style="display: none;">
+    <div class="twofa-dialog">
+        <div class="twofa-content">
+            <div class="twofa-header bg-warning">
+                <h5 class="twofa-title">
+                    <i class="fas fa-shield-alt me-2"></i>Two-Factor Authentication
+                </h5>
+            </div>
+            <div class="twofa-body">
+                <p class="text-center mb-4">Enter the 6-digit verification code sent to your email</p>
+                <form id="twoFAForm">
+                    <input type="hidden" id="twoFAAdminId">
+                    <div class="mb-3">
+                        <label for="twoFACode" class="form-label">Verification Code</label>
+                        <input type="text" class="form-control form-control-lg text-center" id="twoFACode" 
+                               maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="fas fa-check me-2"></i>Verify Code
+                    </button>
+                </form>
+                <button type="button" class="btn btn-link mt-3" onclick="cancelTwoFA()">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Login
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Authenticated Section (shown after login) -->
+<div id="authenticatedSection" class="container-fluid mt-4" style="display: none;">
+    <!-- Hero Section for Authenticated Users -->
+    <div class="hero-section hero-admin mb-4">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold text-white mb-3">
+                        <i class="fas fa-user-shield me-3"></i>Admin Dashboard
+                    </h1>
+                    <p class="lead text-white-75 mb-0">
+                        Manage your profile and organization settings
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <div class="d-flex justify-content-lg-end gap-4">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalAdmins">0</div>
+                            <div class="stat-label">Total Admins</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="activeTenants">0</div>
+                            <div class="stat-label">Active Tenants</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Section -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0"><i class="fas fa-user-circle me-2 text-primary"></i>My Profile</h5>
+        </div>
+        <div class="card-body">
+            <div id="profileInfo">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="text-muted small">Email</label>
+                            <p class="mb-0 fw-medium" id="profileEmail"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Full Name</label>
+                            <p class="mb-0 fw-medium" id="profileName"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Role</label>
+                            <p class="mb-0" id="profileRole"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="text-muted small">Organization</label>
+                            <p class="mb-0 fw-medium" id="profileTenant"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">2FA Status</label>
+                            <p class="mb-0" id="profile2FA"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small">Account Status</label>
+                            <p class="mb-0" id="profileStatus"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-primary" onclick="showChangePassword()">
+                    <i class="fas fa-key me-1"></i>Change Password
+                </button>
+                <button class="btn btn-warning" id="toggle2FABtn" onclick="toggle2FA()">
+                    <i class="fas fa-shield-alt me-1"></i>Enable 2FA
+                </button>
+                <button class="btn btn-outline-danger" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Section -->
+    <div id="changePasswordSection" class="card mb-4 shadow-sm" style="display: none;">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0"><i class="fas fa-key me-2 text-warning"></i>Change Password</h5>
+        </div>
+        <div class="card-body">
+            <form id="changePasswordForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="oldPassword" class="form-label">Current Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="oldPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('oldPassword', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="newPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('newPassword', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">Min 12 chars, must differ from last 5 passwords</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-2"></i>Update Password
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="hideChangePassword()">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+                </div>
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-save me-2"></i>Update Password
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="hideChangePassword()">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin List Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Tenant Admins</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>2FA</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminListBody">
+                        <tr>
+                            <td colspan="7" class="text-center">No admins found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+<!-- End Main Content -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

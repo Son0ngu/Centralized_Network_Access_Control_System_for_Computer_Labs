@@ -228,27 +228,27 @@ class AgentController:
             from core import AGENT_DEVICE_ID
             self._config["device_id"] = AGENT_DEVICE_ID
             
-            # Auto-adjust firewall configuration based on admin privileges
+            # Check admin privileges for DNS Proxy
             admin_status = check_admin_privileges()
-            firewall_config = self._config.get("firewall", {})
-            current_mode = firewall_config.get("mode", "monitor")
             
+            # Save admin status to agent_state for GUI display
+            from core import agent_state
+            agent_state['has_admin'] = admin_status
+            
+            # DNS Proxy Architecture: Requires admin for full functionality
             if admin_status:
-                # Has admin privileges - enable firewall enforcement
-                if current_mode == "monitor":
-                    logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
-                    self._config["firewall"]["enabled"] = True
-                    self._config["firewall"]["mode"] = "whitelist_only"
-                else:
-                    # Already in enforce mode, just ensure enabled
-                    self._config["firewall"]["enabled"] = True
-                    logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
+                logger.info("Admin privileges confirmed - DNS Proxy mode active")
+                # Ensure DNS Proxy is enabled
+                self._config.setdefault("dns_proxy", {})["enabled"] = True
+                self._config["dns_proxy"]["mode"] = "active"
+                agent_state['dns_proxy_mode'] = 'active'
             else:
-                # No admin privileges - force monitor mode
-                if current_mode in ["block", "whitelist_only", "enforce"]:
-                    logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
-                    self._config["firewall"]["enabled"] = False
-                    self._config["firewall"]["mode"] = "monitor"
+                logger.warning("No admin privileges - Running in Monitor mode only")
+                logger.warning("DNS Proxy requires admin for port 53 binding")
+                # Set to monitor mode when no admin
+                self._config.setdefault("dns_proxy", {})["enabled"] = False
+                self._config["dns_proxy"]["mode"] = "monitor"
+                agent_state['dns_proxy_mode'] = 'monitor'
             
             # Initialize components
             logger.info("Initializing components...")
@@ -361,10 +361,17 @@ class AgentController:
             info['device_id'] = self._agent.device_id
             info['agent_id'] = self._agent.get_agent_id()
             info['is_registered'] = self._agent.is_registered()
+            
+            # Get mode and admin status from agent_state
+            from core import agent_state
+            info['has_admin'] = agent_state.get('has_admin', False)
+            info['dns_proxy_mode'] = agent_state.get('dns_proxy_mode', 'monitor')
         
         if self._config:
-            info['firewall_mode'] = self._config.get('firewall', {}).get('mode', 'unknown')
-            info['firewall_enabled'] = self._config.get('firewall', {}).get('enabled', False)
+            # Config takes precedence if set
+            config_mode = self._config.get('dns_proxy', {}).get('mode')
+            if config_mode:
+                info['dns_proxy_mode'] = config_mode
         
         return info
     

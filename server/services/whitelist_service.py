@@ -31,13 +31,18 @@ class WhitelistService:
         
         self.logger.info("WhitelistService initialized with vietnam timezone support")
     
-    def get_all_entries(self, filters: Dict = None) -> Dict:
-        """Get all whitelist entries with optional filtering - vietnam ONLY"""
+    def get_all_entries(self, filters: Dict = None, tenant_id: str = None) -> Dict:
+        """Get all whitelist entries with optional filtering - vietnam ONLY
+        
+        Args:
+            filters: Optional query filters
+            tenant_id: Tenant ID for data isolation
+        """
         query = {}
         if filters:
             query = self.model.build_query_from_filters(filters)
         
-        entries = self.model.find_all_entries(query)
+        entries = self.model.find_all_entries(query, tenant_id=tenant_id)
         
         # Format entries for response
         formatted_entries = []
@@ -82,8 +87,14 @@ class WhitelistService:
             "server_time": now_iso()
         }
     
-    def add_entry(self, entry_data: Dict, client_ip: str) -> Dict:
-        """Add new entry to whitelist - vietnam ONLY"""
+    def add_entry(self, entry_data: Dict, client_ip: str, tenant_id: str = None) -> Dict:
+        """Add new entry to whitelist - vietnam ONLY
+        
+        Args:
+            entry_data: Entry data including type, value, etc.
+            client_ip: IP address of the client adding the entry
+            tenant_id: Tenant ID for data isolation
+        """
         entry_type = entry_data.get("type", "domain")
         value = entry_data.get("value", "").strip().lower()
         
@@ -148,9 +159,9 @@ class WhitelistService:
                 processed_entry["dns_info"] = dns_result["info"]
             processed_entry["dns_config"] = dns_config
         
-        # Insert entry using model
+        # Insert entry using model (with tenant isolation)
         try:
-            entry_id = self.model.insert_entry(processed_entry)
+            entry_id = self.model.insert_entry(processed_entry, tenant_id=tenant_id)
             logger.info(f"Successfully inserted entry with ID: {entry_id}")
         except Exception as e:
             logger.error(f"Failed to insert entry: {e}")
@@ -691,8 +702,15 @@ class WhitelistService:
                 "server_time": now_iso()  # vietnam ISO
             }
     
-    def get_all_domains(self, limit: int = 100, offset: int = 0, search: str = None) -> Dict:
-        """Get all domains with pagination - vietnam ONLY"""
+    def get_all_domains(self, limit: int = 100, offset: int = 0, search: str = None, tenant_id: str = None) -> Dict:
+        """Get all domains with pagination - vietnam ONLY
+        
+        Args:
+            limit: Max number of entries to return
+            offset: Starting position for pagination
+            search: Search query for value or category
+            tenant_id: Tenant ID for data isolation
+        """
         try:
             # Build query
             query = {}
@@ -702,8 +720,8 @@ class WhitelistService:
                     {"category": {"$regex": search, "$options": "i"}}
                 ]
             
-            # Get domains
-            domains = self.model.find_all_entries(query)
+            # Get domains with tenant filtering
+            domains = self.model.find_all_entries(query, tenant_id=tenant_id)
             
             # Apply pagination
             total_count = len(domains)

@@ -35,7 +35,8 @@ class APIKeyService:
         description: str = "",
         expires_in_days: Optional[int] = None,
         permissions: Optional[List[str]] = None,
-        created_by: str = "admin"
+        created_by: str = "admin",
+        tenant_id: str = None
     ) -> Dict:
         """
         Create a new API key.
@@ -46,6 +47,7 @@ class APIKeyService:
             expires_in_days: Days until expiration (None = never)
             permissions: List of permissions
             created_by: Who created this key
+            tenant_id: Tenant ID for data isolation
             
         Returns:
             Dict with key info including plaintext key
@@ -58,13 +60,14 @@ class APIKeyService:
                     "error": "Name must be at least 3 characters"
                 }
             
-            # Create key
+            # Create key with tenant isolation
             result = self.model.create_api_key(
                 name=name.strip(),
                 description=description.strip() if description else "",
                 expires_in_days=expires_in_days,
                 permissions=permissions,
-                created_by=created_by
+                created_by=created_by,
+                tenant_id=tenant_id
             )
             
             if result.get("success"):
@@ -141,7 +144,8 @@ class APIKeyService:
         self,
         include_revoked: bool = False,
         page: int = 1,
-        limit: int = 20
+        limit: int = 20,
+        tenant_id: str = None
     ) -> Dict:
         """
         List all API keys.
@@ -150,11 +154,12 @@ class APIKeyService:
             include_revoked: Include revoked keys
             page: Page number
             limit: Items per page
+            tenant_id: Tenant ID for data isolation
             
         Returns:
             Dict with keys list
         """
-        return self.model.list_api_keys(include_revoked, page, limit)
+        return self.model.list_api_keys(include_revoked, page, limit, tenant_id=tenant_id)
     
     def get_api_key(self, key_id: str) -> Optional[Dict]:
         """

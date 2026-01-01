@@ -80,7 +80,7 @@ class HeartbeatSender:
     def stop(self) -> None:
         self._running = False
         if self._thread:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=2)  # Reduced for faster shutdown
         logger.info("Heartbeat sender stopped")
     
     def _heartbeat_loop(self) -> None:

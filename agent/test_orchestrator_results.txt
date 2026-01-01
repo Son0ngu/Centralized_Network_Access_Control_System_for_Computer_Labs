@@ -1,0 +1,36 @@
+============================================================
+DNS PROXY ORCHESTRATOR TEST
+============================================================
+
+1. Admin: YES
+
+2. Creating whitelist state...
+   Whitelist: 5 domains, 3 patterns
+
+3. Creating orchestrator config...
+
+4. Creating orchestrator...
+
+5. Connecting whitelist to orchestrator...
+
+6. Starting orchestrator...
+   ORCHESTRATOR STARTED SUCCESSFULLY!
+
+7. Testing DNS queries...
+   ! google.com           → ERROR: All nameservers failed to answer the query google.com. IN A: Server Do53:127.0.0.1@53 answered SERVFAIL
+   ! microsoft.com        → ERROR: All nameservers failed to answer the query microsoft.com. IN A: Server Do53:127.0.0.1@53 answered SERVFAIL
+   ✗ facebook.com         → NXDOMAIN (blocked) | NOT WHITELISTED - should block/NXDOMAIN
+   ✗ twitter.com          → NXDOMAIN (blocked) | NOT WHITELISTED - should block/NXDOMAIN
+
+8. Orchestrator status:
+   mode: active
+   running: True
+   components: {'dns_proxy': {'status': 'running', 'running': True, 'uptime': 2.09, 'error': None, 'stats': {'server': {'running': True, 'udp_queries': 7, 'tcp_queries': 0, 'udp_errors': 0, 'tcp_errors': 0, 'active_tcp_connections': 0}, 'handler': {'total_queries': 7, 'allowed': 0, 'blocked': 5, 'cache_hits': 0, 'upstream_queries': 2, 'firewall_syncs': 2, 'errors': 2, 'block_rate_percent': 71.43}, 'cache': {'entries': 3, 'max_entries': 10000, 'hits': 0, 'misses': 2, 'hit_rate_percent': 0.0, 'inserts': 5, 'evictions': 0, 'expirations': 0, 'min_ttl': 60, 'max_ttl': 86400, 'negative_ttl': 300}, 'resolvers': {'8.8.8.8:53': {'address': '8.8.8.8', 'port': 53, 'is_healthy': True, 'consecutive_failures': 0, 'failure_rate_percent': 0.0, 'avg_response_time_ms': 31.9, 'total_queries': 3}, '1.1.1.1:53': {'address': '1.1.1.1', 'port': 53, 'is_healthy': True, 'consecutive_failures': 0, 'failure_rate_percent': 0.0, 'avg_response_time_ms': 22.91, 'total_queries': 1}, '208.67.222.222:53': {'address': '208.67.222.222', 'port': 53, 'is_healthy': True, 'consecutive_failures': 0, 'failure_rate_percent': 0.0, 'avg_response_time_ms': 55.81, 'total_queries': 1}}, 'firewall_sync': {'active_rules': 0, 'rules_added': 0, 'rules_removed': 0, 'add_failures': 0, 'timeouts': 0, 'avg_sync_time_ms': 0.0, 'timeout_setting': 3.0, 'grace_period': 60}}}, 'network_manager': {'status': 'running', 'running': True, 'uptime': 2.1, 'error': None, 'stats': {'mode': 'active', 'initialized': True, 'adapters': {'total_adapters': 0, 'active_adapters': 0, 'ipv6_enabled': 0, 'default_route': None, 'proxy_configured': 0, 'needs_config': 0}, 'enforcer': {'mode': 'enforce', 'adapters_with_stored_dns': 1, 'total_changes': 0, 'successful_changes': 0, 'failed_changes': 0}, 'doh_blocker': {'block_doh': True, 'block_dot': True, 'ips_blocked': 52, 'rules_created': 5, 'known_providers': 12}, 'drift_monitor': {'enabled': True, 'running': True, 'check_interval': 30.0, 'action': 'restore', 'total_drift_events': 1, 'restored_events': 0, 'pending_restores': 1}}}, 'security_manager': {'status': 'stopped', 'running': False, 'uptime': 0.0, 'error': None, 'stats': {}}, 'firewall_sync': {'status': 'stopped', 'running': False, 'uptime': 0.0, 'error': None, 'stats': {}}}
+   config: {'dns_enabled': True, 'network_enabled': True, 'security_enabled': False, 'firewall_enabled': False}
+
+9. Stopping orchestrator...
+   Orchestrator stopped.
+
+============================================================
+TEST COMPLETED
+============================================================

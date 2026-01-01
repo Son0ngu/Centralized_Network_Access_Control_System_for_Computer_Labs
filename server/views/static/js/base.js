@@ -59,6 +59,19 @@
         showNotification('danger', 'An unexpected error occurred. Please refresh the page.');
     });
 
+    // Global logout function
+    window.adminLogout = function() {
+        fetch('/api/admin/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + (localStorage.getItem('admin_access_token') || '')
+            }
+        }).finally(() => {
+            localStorage.clear();
+            window.location.href = '/admin';
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';

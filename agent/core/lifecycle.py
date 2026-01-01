@@ -1,6 +1,6 @@
 """
 Lifecycle management - Agent initialization and cleanup.
-- Clean implementation.
+- Clean implementation with DNS Proxy Architecture (Phase 1).
 """
 
 import logging
@@ -18,6 +18,21 @@ def initialize_components(config: Dict) -> bool:
     """
     Initialize all agent components in correct order.
     
+    NEW ARCHITECTURE (Phase 1 - DNS Proxy/Sinkhole):
+    - DNS Proxy is PRIMARY for whitelist enforcement
+    - PacketSniffer is OPTIONAL (bypass detection only)
+    - No Default Deny firewall policy needed (Sinkhole handles blocking)
+    
+    Initialization Order:
+    1. Register with server
+    2. Initialize Token Manager
+    3. Initialize Whitelist Manager + Sync
+    4. Initialize Firewall Manager (for DNS Proxy rule sync)
+    5. Initialize DNS Proxy Orchestrator (PRIMARY)
+    6. Initialize LogSender
+    7. Initialize HeartbeatSender
+    8. Initialize PacketSniffer (OPTIONAL - bypass detection only)
+    
     Args:
         config: Configuration dictionary
         
@@ -28,9 +43,9 @@ def initialize_components(config: Dict) -> bool:
     agent.config = config  # Store config in agent
     
     try:
-        logger.info("=" * 50)
-        logger.info("INITIALIZING AGENT COMPONENTS")
-        logger.info("=" * 50)
+        logger.info("=" * 60)
+        logger.info("INITIALIZING AGENT COMPONENTS (DNS Proxy Architecture)")
+        logger.info("=" * 60)
         
         # 1. Register with server first
         logger.info("Step 1: Registering with server...")
@@ -38,149 +53,177 @@ def initialize_components(config: Dict) -> bool:
         
         if not register_agent(config):
             logger.error("Failed to register with server")
-            # Continue anyway - can work offline with cached whitelist
             logger.warning("Continuing with offline mode...")
         else:
             logger.info(f"Registered successfully - Agent ID: {config.get('agent_id')}")
         
-        # 1.5. Initialize Token Manager for JWT auto-refresh
-        logger.info("Step 1.5: Initializing Token Manager...")
+        # 2. Initialize Token Manager for JWT auto-refresh
+        logger.info("Step 2: Initializing Token Manager...")
         token_manager = init_token_manager(config)
         
-        # Setup re-registration callback
         def on_token_expired():
             """Handle token expiry - trigger re-registration"""
             logger.warning("JWT tokens expired - triggering re-registration")
             if register_agent(config):
                 logger.info("Re-registration successful")
-                # Reset token manager with new tokens
                 token_manager.reset_reregistration_flag()
-                # Reload tokens from updated config
                 token_manager._load_tokens_from_config()
             else:
                 logger.error("Re-registration failed")
         
         def on_token_refreshed():
-            """Handle successful token refresh"""
             logger.debug("JWT tokens refreshed successfully")
         
-        # Start auto-refresh with callbacks
         token_manager.start_auto_refresh(
             on_refreshed=on_token_refreshed,
             on_expired=on_token_expired
         )
         logger.info("Token Manager initialized with auto-refresh")
         
-        # 2. Initialize WhitelistManager and SYNC FIRST (before firewall)
-        logger.info("Step 2: Initializing whitelist manager...")
+        # 3. Initialize WhitelistManager and SYNC
+        logger.info("Step 3: Initializing whitelist manager...")
         from whitelist import WhitelistManager
         agent.whitelist = WhitelistManager(config)
         logger.info("Whitelist manager initialized")
         
-        # 2.5. SYNC WHITELIST IMMEDIATELY (before enabling firewall)
-        # This is critical - we need whitelist data BEFORE enabling Default Deny
+        # 3.5. Sync whitelist immediately
         if config.get("whitelist", {}).get("auto_sync", True):
-            logger.info("Step 2.5: Syncing whitelist from server (BEFORE firewall)...")
+            logger.info("Step 3.5: Syncing whitelist from server...")
             try:
                 sync_success = agent.whitelist.sync_now()
                 if sync_success:
                     stats = agent.whitelist.get_stats()
                     logger.info(f"Whitelist synced: {stats.get('domain_count', 0)} domains, {stats.get('ip_count', 0)} IPs")
                 else:
-                    logger.warning("⚠️ Whitelist sync failed - firewall may block connections")
+                    logger.warning("⚠️ Whitelist sync failed")
             except Exception as e:
                 logger.warning(f"⚠️ Whitelist sync error: {e}")
         
-        # 3. Initialize FirewallManager (if enabled and has admin)
+        # 4. Initialize FirewallManager (for DNS Proxy rule sync)
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
-        firewall_mode = firewall_config.get("mode", "monitor")
         
-        # 3.1. Auto-install WinPcap if whitelist_only mode with admin
-        if firewall_config.get("enabled") and admin_status and firewall_mode == "whitelist_only":
-            logger.info("Step 3.1: Checking WinPcap for packet capture...")
-            try:
-                from capture.winpcap_installer import ensure_winpcap_available, is_winpcap_installed
-                
-                if not is_winpcap_installed():
-                    logger.info("WinPcap not found - attempting auto-installation...")
-                    success, message = ensure_winpcap_available()
-                    if success:
-                        logger.info(f"{message}")
-                    else:
-                        logger.warning(f"⚠️ WinPcap auto-install: {message}")
-                        logger.warning("Packet capture may not work without WinPcap/Npcap")
-                else:
-                    logger.info("WinPcap/Npcap already installed")
-            except Exception as e:
-                logger.warning(f"WinPcap check/install failed: {e}")
-        
-        if firewall_config.get("enabled") and admin_status:
-            logger.info("Step 3: Initializing firewall manager...")
+        if firewall_config.get("enabled", True) and admin_status:
+            logger.info("Step 4: Initializing firewall manager...")
             from firewall import FirewallManager
             agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
-            
-            # Link firewall to whitelist
-            if agent.whitelist:
-                agent.whitelist.set_firewall_manager(agent.firewall)
-                logger.info("Firewall manager linked to whitelist")
-            
-            # Enable whitelist-only mode if configured
-            if firewall_mode == "whitelist_only":
-                logger.info("Firewall mode: whitelist_only - Enabling Default Deny policy...")
-                
-                # Collect server URLs for allow rules
-                server_config = config.get("server", {})
-                server_urls = []
-                if server_config.get("urls"):
-                    server_urls.extend(server_config["urls"])
-                if server_config.get("url"):
-                    server_urls.append(server_config["url"])
-                
-                # Collect ALL whitelist data from synced data
-                whitelist_ips = set()
-                whitelist_domains = set()
-                if agent.whitelist and hasattr(agent.whitelist, '_state'):
-                    # Get direct IPs
-                    whitelist_ips = agent.whitelist._state.get_all_ips()
-                    # Get domains to resolve
-                    whitelist_domains = agent.whitelist._state.get_all_domains()
-                    # Get patterns (wildcard domains)
-                    whitelist_domains.update(agent.whitelist._state.get_all_patterns())
-                    
-                logger.info(f"Whitelist data: {len(whitelist_ips)} IPs, {len(whitelist_domains)} domains/patterns")
-                
-                # Enable with server URLs, whitelist IPs AND domains
-                if agent.firewall.enable_whitelist_mode(
-                    server_urls=server_urls, 
-                    whitelist_ips=whitelist_ips,
-                    whitelist_domains=whitelist_domains
-                ):
-                    logger.info("Default Deny policy enabled - All non-whitelisted traffic will be blocked")
-                else:
-                    logger.error("Failed to enable Default Deny policy")
-            else:
-                logger.info(f"Firewall mode: {firewall_mode} (not whitelist_only)")
+            logger.info("Firewall manager initialized (for DNS Proxy rule sync)")
         else:
-            if not firewall_config.get("enabled"):
-                logger.info("Step 3: Firewall disabled in config")
+            if not admin_status:
+                logger.warning("Step 4: No admin privileges - firewall features limited")
             else:
-                logger.warning("Step 3: Firewall enabled but no admin privileges")
+                logger.info("Step 4: Firewall disabled in config")
         
-        # 4. Start periodic whitelist sync (initial sync already done in Step 2.5)
+        # 4.5. Start periodic whitelist sync
         if config.get("whitelist", {}).get("auto_sync", True):
             agent.whitelist.start_sync()
             logger.info(f"Whitelist periodic sync started (interval: {config.get('whitelist', {}).get('update_interval', 60)}s)")
         
-        # 5. Initialize LogSender
-        logger.info("Step 5: Initializing log sender...")
+        # 5. Initialize DNS Proxy Orchestrator (PRIMARY - Phase 1 Architecture)
+        dns_proxy_config = config.get("dns_proxy", {})
+        if dns_proxy_config.get("enabled", True) and admin_status:
+            logger.info("Step 5: Initializing DNS Proxy System (PRIMARY)...")
+            try:
+                from dns_proxy import (
+                    DNSProxyOrchestrator,
+                    OrchestratorConfig,
+                    OrchestratorMode,
+                )
+                
+                # Build orchestrator config from agent config
+                mode_str = dns_proxy_config.get("mode", "active")
+                mode_map = {
+                    "disabled": OrchestratorMode.DISABLED,
+                    "monitor": OrchestratorMode.MONITOR,
+                    "active": OrchestratorMode.ACTIVE,
+                    "parallel": OrchestratorMode.PARALLEL,
+                }
+                orchestrator_mode = mode_map.get(mode_str, OrchestratorMode.ACTIVE)
+                
+                # Network manager config
+                network_config = config.get("network_manager", {})
+                
+                # Security config
+                security_config = config.get("security", {})
+                
+                # Firewall sync config
+                firewall_sync_config = dns_proxy_config.get("firewall_sync", {})
+                
+                orch_config = OrchestratorConfig(
+                    mode=orchestrator_mode,
+                    dns_proxy_enabled=True,
+                    dns_bind_address=dns_proxy_config.get("bind_address", "127.0.0.1"),
+                    dns_port=dns_proxy_config.get("port", 53),
+                    dns_ipv6_enabled=dns_proxy_config.get("ipv6_enabled", True),
+                    network_manager_enabled=network_config.get("enabled", True),
+                    auto_configure_dns=network_config.get("auto_configure_dns", True),
+                    dns_drift_monitor=True,
+                    security_enabled=security_config.get("enabled", True),
+                    block_doh=security_config.get("block_doh", True),
+                    block_dot=security_config.get("block_dot", True),
+                    firewall_sync_enabled=firewall_sync_config.get("enabled", True),
+                    default_grace_period=firewall_sync_config.get("grace_period", 60),
+                    upstream_resolvers=[
+                        r.get("address", "8.8.8.8") 
+                        for r in dns_proxy_config.get("upstream_resolvers", [{"address": "8.8.8.8"}])
+                    ],
+                )
+                
+                # Create orchestrator
+                agent.dns_proxy_orchestrator = DNSProxyOrchestrator(orch_config)
+                
+                # Add server URLs as essential domains (bypass whitelist)
+                # This is critical - agent needs to connect to server for whitelist sync
+                server_config = config.get("server", {})
+                server_urls = []
+                if server_config.get("url"):
+                    server_urls.append(server_config["url"])
+                if isinstance(server_config.get("urls"), list):
+                    server_urls.extend(server_config["urls"])
+                if server_urls:
+                    agent.dns_proxy_orchestrator.add_essential_domains_from_urls(server_urls)
+                    logger.info(f"Added {len(server_urls)} server URL(s) as essential domains")
+                
+                # Connect to whitelist state
+                if agent.whitelist and hasattr(agent.whitelist, '_state'):
+                    agent.dns_proxy_orchestrator.set_whitelist_state(agent.whitelist._state)
+                    logger.info("DNS Proxy connected to whitelist state")
+                
+                # Connect to firewall manager
+                if agent.firewall:
+                    agent.dns_proxy_orchestrator.set_firewall_manager(agent.firewall)
+                    logger.info("DNS Proxy connected to firewall manager")
+                
+                # Start the DNS Proxy system
+                if agent.dns_proxy_orchestrator.start():
+                    agent_state['dns_proxy_mode'] = mode_str
+                    logger.info(f"✓ DNS Proxy System started (mode: {mode_str})")
+                    logger.info("  → All DNS queries now go through 127.0.0.1:53")
+                    logger.info("  → Whitelist enforcement at DNS level (Sinkhole)")
+                    logger.info("  → DoH/DoT blocking enabled")
+                else:
+                    logger.error("Failed to start DNS Proxy System")
+                    
+            except ImportError as e:
+                logger.error(f"DNS Proxy module not available: {e}")
+                logger.warning("Falling back to legacy mode (PacketSniffer)")
+            except Exception as e:
+                logger.error(f"Could not initialize DNS Proxy: {e}", exc_info=True)
+                logger.warning("Falling back to legacy mode (PacketSniffer)")
+        else:
+            if not dns_proxy_config.get("enabled", True):
+                logger.info("Step 5: DNS Proxy disabled in config")
+            elif not admin_status:
+                logger.warning("Step 5: DNS Proxy requires admin privileges")
+        
+        # 6. Initialize LogSender
+        logger.info("Step 6: Initializing log sender...")
         from logging_module import LogSender
         
         server_url = config.get("server_url") or config.get("server", {}).get("url")
         agent_id = config.get("agent_id")
         
         if server_url and agent_id:
-            # FIX: Build config dict for LogSender
             log_sender_config = {
                 "server": config.get("server", {}),
                 "server_url": server_url,
@@ -195,12 +238,11 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Log sender not initialized - missing server_url or agent_id")
         
-        # 6. Initialize HeartbeatSender
-        logger.info("Step 6: Initializing heartbeat sender...")
+        # 7. Initialize HeartbeatSender
+        logger.info("Step 7: Initializing heartbeat sender...")
         from services import HeartbeatSender
         
         if server_url and agent_id:
-            # FIX: Build config dict for HeartbeatSender
             heartbeat_config = {
                 "server": config.get("server", {}),
                 "heartbeat": config.get("heartbeat", {}),
@@ -213,34 +255,51 @@ def initialize_components(config: Dict) -> bool:
         else:
             logger.warning("Heartbeat sender not initialized - missing server_url or agent_id")
         
-        # 7. Initialize PacketSniffer (if capture enabled)
+        # 8. Initialize PacketSniffer (OPTIONAL - bypass detection only)
         capture_config = config.get("capture", config.get("packet_capture", {}))
-        if capture_config.get("enabled", True):
-            logger.info("Step 7: Initializing packet sniffer...")
+        capture_mode = capture_config.get("mode", "bypass_detection_only")
+        
+        # Only start PacketSniffer if:
+        # - Explicitly enabled in config, OR
+        # - DNS Proxy is not running (fallback mode)
+        should_start_sniffer = (
+            capture_config.get("enabled", False) or 
+            (agent.dns_proxy_orchestrator is None and capture_mode == "full")
+        )
+        
+        if should_start_sniffer:
+            logger.info(f"Step 8: Initializing packet sniffer (mode: {capture_mode})...")
             try:
                 from capture import PacketSniffer
-                
-                # Create domain detection handler
                 from .handlers import create_domain_handler
-                domain_handler = create_domain_handler(config, agent)
                 
-                agent.sniffer = PacketSniffer(callback=domain_handler)
+                # Create handler based on mode
+                if capture_mode == "bypass_detection_only":
+                    # Bypass detection handler - only logs, no blocking decisions
+                    domain_handler = create_bypass_detection_handler(config, agent)
+                else:
+                    # Full mode handler (legacy)
+                    domain_handler = create_domain_handler(config, agent)
+                
+                agent.sniffer = PacketSniffer(callback=domain_handler, mode=capture_mode)
                 agent.sniffer.start()
-                logger.info("Packet sniffer initialized and started")
+                logger.info(f"Packet sniffer initialized (mode: {capture_mode})")
             except Exception as e:
                 logger.warning(f"Could not initialize packet sniffer: {e}")
                 logger.warning("Continuing without packet capture...")
         else:
-            logger.info("Step 7: Packet capture disabled in config")
+            logger.info("Step 8: Packet capture disabled (DNS Proxy handles whitelist enforcement)")
         
         # Mark agent as running
         agent.running = True
         agent_state['initialization_completed'] = True
         agent_state['initialization_time'] = now()
         
-        logger.info("=" * 50)
+        logger.info("=" * 60)
         logger.info("ALL COMPONENTS INITIALIZED SUCCESSFULLY")
-        logger.info("=" * 50)
+        if agent.dns_proxy_orchestrator:
+            logger.info("→ DNS Proxy is PRIMARY for whitelist enforcement")
+        logger.info("=" * 60)
         
         return True
         
@@ -249,47 +308,82 @@ def initialize_components(config: Dict) -> bool:
         return False
 
 
+def create_bypass_detection_handler(config: Dict, agent):
+    """
+    Create a handler for bypass detection mode.
+    Only logs suspicious activity, no blocking decisions.
+    """
+    from .handlers import handle_domain_detection
+    
+    def bypass_detection_callback(record: Dict):
+        """Handle detected traffic for bypass analysis."""
+        domain = record.get("domain")
+        dest_ip = record.get("dest_ip")
+        protocol = record.get("protocol")
+        
+        # Log suspicious activity (direct IP connections, etc.)
+        if not domain and dest_ip:
+            # Direct IP connection - potential bypass attempt
+            logger.warning(f"⚠️ BYPASS DETECTION: Direct IP connection to {dest_ip} ({protocol})")
+            
+            # Queue for logging but don't make blocking decision
+            if agent.log_sender:
+                log_record = {
+                    **record,
+                    "event_type": "bypass_detection",
+                    "action": "ALERT",
+                    "message": f"Direct IP connection detected: {dest_ip}",
+                }
+                agent.log_sender.queue_log(log_record)
+        
+        # For domains, just log - DNS Proxy handles blocking
+        elif domain:
+            logger.debug(f"Bypass monitor: {domain} -> {dest_ip}")
+    
+    return bypass_detection_callback
+
+
 def cleanup(config: Optional[Dict] = None) -> None:
     """
-    Cleanup all agent resources.
+    Cleanup all agent resources in correct order.
+    
+    Shutdown Order (reverse of initialization):
+    1. Stop PacketSniffer (optional)
+    2. Stop DNS Proxy System (restores DNS, removes security rules)
+    3. Stop HeartbeatSender
+    4. Flush and stop LogSender
+    5. Stop Whitelist sync
+    6. Stop Token Manager
+    7. Cleanup Firewall rules
     
     Args:
         config: Optional configuration for shutdown logging
     """
     agent = get_agent()
     
-    logger.info("=" * 50)
+    logger.info("=" * 60)
     logger.info("SHUTTING DOWN AGENT")
-    logger.info("=" * 50)
+    logger.info("=" * 60)
     
     try:
-        # Stop token manager auto-refresh
-        token_manager = get_token_manager()
-        if token_manager:
-            logger.info("Stopping token manager...")
-            token_manager.stop_auto_refresh()
+        # IMPORTANT: Stop components that make network requests FIRST
+        # to avoid them trying to resolve domains after DNS proxy stops
         
-        # Stop packet sniffer
-        if hasattr(agent, 'sniffer') and agent.sniffer:
-            logger.info("Stopping packet sniffer...")
-            agent.sniffer.stop()
-            agent.sniffer = None
-        
-        # Stop whitelist sync
+        # 1. Stop whitelist sync FIRST (prevents it from trying to resolve)
         if hasattr(agent, 'whitelist') and agent.whitelist:
-            logger.info("Stopping whitelist sync...")
+            logger.info("Step 1: Stopping whitelist sync...")
             agent.whitelist.stop_sync()
             agent.whitelist = None
         
-        # Stop heartbeat sender
+        # 2. Stop heartbeat sender (also makes network requests)
         if hasattr(agent, 'heartbeat') and agent.heartbeat:
-            logger.info("Stopping heartbeat sender...")
+            logger.info("Step 2: Stopping heartbeat sender...")
             agent.heartbeat.stop()
             agent.heartbeat = None
         
-        # Flush and stop log sender
+        # 3. Flush and stop log sender
         if hasattr(agent, 'log_sender') and agent.log_sender:
-            logger.info("Flushing and stopping log sender...")
+            logger.info("Step 3: Flushing and stopping log sender...")
             
             # Send shutdown log
             if config and config.get("agent_id"):
@@ -304,29 +398,44 @@ def cleanup(config: Optional[Dict] = None) -> None:
             agent.log_sender.stop()
             agent.log_sender = None
         
-        # Cleanup firewall (if needed)
+        # 4. Stop token manager auto-refresh
+        token_manager = get_token_manager()
+        if token_manager:
+            logger.info("Step 4: Stopping token manager...")
+            token_manager.stop_auto_refresh()
+        
+        # 5. Stop packet sniffer (if running)
+        if hasattr(agent, 'sniffer') and agent.sniffer:
+            logger.info("Step 5: Stopping packet sniffer...")
+            agent.sniffer.stop()
+            agent.sniffer = None
+        
+        # 6. Stop DNS Proxy System (LAST - restores DNS settings)
+        if hasattr(agent, 'dns_proxy_orchestrator') and agent.dns_proxy_orchestrator:
+            logger.info("Step 6: Stopping DNS Proxy System...")
+            try:
+                agent.dns_proxy_orchestrator.stop()
+                logger.info("  → DNS Proxy stopped")
+                logger.info("  → DNS settings restored")
+                logger.info("  → Security rules removed")
+            except Exception as e:
+                logger.error(f"Error stopping DNS Proxy: {e}")
+            finally:
+                agent.dns_proxy_orchestrator = None
+                agent_state['dns_proxy_mode'] = None
+        
+        # 7. Cleanup firewall rules (only if DNS Proxy didn't handle it)
         if hasattr(agent, 'firewall') and agent.firewall:
-            logger.info("Cleaning up firewall...")
+            logger.info("Step 7: Cleaning up firewall rules...")
             if hasattr(agent.firewall, 'cleanup'):
                 agent.firewall.cleanup()
-            elif hasattr(agent.firewall, 'cleanup_whitelist_firewall'):
-                agent.firewall.cleanup_whitelist_firewall()
             agent.firewall = None
-        
-        # Cleanup WinPcap if we installed it
-        try:
-            from capture.winpcap_installer import cleanup_winpcap, was_installed_by_us
-            if was_installed_by_us():
-                logger.info("Cleaning up WinPcap (auto-installed)...")
-                cleanup_winpcap()
-        except Exception as e:
-            logger.warning(f"WinPcap cleanup failed: {e}")
         
         agent.running = False
         
-        logger.info("=" * 50)
+        logger.info("=" * 60)
         logger.info("AGENT SHUTDOWN COMPLETE")
-        logger.info("=" * 50)
+        logger.info("=" * 60)
         
     except Exception as e:
         logger.error(f"Error during cleanup: {e}", exc_info=True)
@@ -349,7 +458,7 @@ def build_lifecycle_log(config: Dict, event_type: str, action: str, message: str
         "hostname": AGENT_HOSTNAME,
         "ip_address": local_ip,
         "uptime": uptime_string(),
-        "firewall_mode": config.get("firewall", {}).get("mode", "monitor"),
+        "dns_proxy_mode": config.get("dns_proxy", {}).get("mode", "disabled"),
         # Lifecycle events use agent as source/destination
         "source": "agent",
         "source_ip": local_ip,

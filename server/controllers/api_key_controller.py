@@ -12,6 +12,9 @@ from services.api_key_service import APIKeyService
 # Import time utilities - Vietnam ONLY
 from time_utils import now_vietnam, now_iso
 
+# Import auth middleware for tenant isolation
+from middleware.auth import get_current_tenant_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -117,6 +120,9 @@ class APIKeyController:
             - include_revoked: Include revoked keys (default false)
         """
         try:
+            # Get tenant_id for data isolation
+            tenant_id = get_current_tenant_id()
+            
             page = request.args.get('page', 1, type=int)
             limit = request.args.get('limit', 20, type=int)
             include_revoked = request.args.get('include_revoked', 'false').lower() == 'true'
@@ -128,7 +134,8 @@ class APIKeyController:
             result = self.service.list_api_keys(
                 include_revoked=include_revoked,
                 page=page,
-                limit=limit
+                limit=limit,
+                tenant_id=tenant_id
             )
             
             return self._success_response(result)
@@ -189,13 +196,17 @@ class APIKeyController:
                 if invalid:
                     return self._error_response(f"Invalid permissions: {invalid}")
             
-            # Create key
+            # Get tenant_id for data isolation
+            tenant_id = get_current_tenant_id()
+            
+            # Create key with tenant isolation
             result = self.service.create_api_key(
                 name=name,
                 description=description,
                 expires_in_days=expires_in_days,
                 permissions=permissions,
-                created_by="admin"  # TODO: Get from auth context
+                created_by="admin",  # TODO: Get from auth context
+                tenant_id=tenant_id
             )
             
             if result.get('success'):
