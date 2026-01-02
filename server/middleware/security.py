@@ -128,6 +128,87 @@ class InputSanitizer:
                 raise ValueError("Potential SQL injection detected")
         
         return value
+    
+    @staticmethod
+    def sanitize_nosql(data: Any, max_depth: int = 10) -> Any:
+        """
+        Prevent NoSQL injection by stripping MongoDB operators.
+        
+        MongoDB operators start with $ and can be used for injection:
+        - $gt, $gte, $lt, $lte: comparison operators
+        - $ne: not equal (bypass authentication)
+        - $regex: pattern matching
+        - $where: JavaScript execution
+        - $or, $and: logical operators
+        """
+        dangerous_keys = {
+            '$gt', '$gte', '$lt', '$lte', '$eq', '$ne',
+            '$in', '$nin', '$regex', '$where', '$exists',
+            '$type', '$expr', '$mod', '$text', '$geoNear',
+            '$or', '$and', '$nor', '$not', '$elemMatch',
+            '$size', '$all', '$bitsAllClear', '$bitsAllSet',
+        }
+        
+        def _sanitize(obj, depth=0):
+            if depth > max_depth:
+                return None
+            
+            if isinstance(obj, dict):
+                # Remove dangerous keys
+                sanitized = {}
+                for key, value in obj.items():
+                    # Strip keys that start with $
+                    if isinstance(key, str) and key.startswith('$'):
+                        if key.lower() in dangerous_keys:
+                            logger.warning(f"NoSQL injection attempt blocked: {key}")
+                            continue
+                    sanitized[key] = _sanitize(value, depth + 1)
+                return sanitized
+            elif isinstance(obj, list):
+                return [_sanitize(item, depth + 1) for item in obj]
+            elif isinstance(obj, str):
+                # Check for JSON-encoded injection
+                if obj.startswith('{') and '$' in obj:
+                    try:
+                        import json
+                        parsed = json.loads(obj)
+                        if isinstance(parsed, dict) and any(k.startswith('$') for k in parsed.keys()):
+                            logger.warning(f"NoSQL injection in string blocked: {obj[:50]}")
+                            return InputSanitizer.sanitize_string(obj)
+                    except json.JSONDecodeError:
+                        pass
+                return obj
+            else:
+                return obj
+        
+        return _sanitize(data)
+    
+    @staticmethod
+    def sanitize_input(value: Any) -> Any:
+        """
+        Universal input sanitizer - handles all types.
+        Applies XSS, NoSQL injection, and length protections.
+        """
+        if value is None:
+            return None
+        
+        if isinstance(value, str):
+            # Sanitize string
+            return InputSanitizer.sanitize_string(value)
+        elif isinstance(value, dict):
+            # Sanitize dict (NoSQL + XSS)
+            sanitized = InputSanitizer.sanitize_nosql(value)
+            return InputSanitizer.sanitize_dict(sanitized)
+        elif isinstance(value, list):
+            # Sanitize list
+            if len(value) > SANITIZATION_CONFIG["max_array_length"]:
+                value = value[:SANITIZATION_CONFIG["max_array_length"]]
+            return [InputSanitizer.sanitize_input(item) for item in value]
+        elif isinstance(value, (int, float, bool)):
+            return value
+        else:
+            # Convert to string and sanitize
+            return InputSanitizer.sanitize_string(str(value))
 
 
 class RateLimiter:

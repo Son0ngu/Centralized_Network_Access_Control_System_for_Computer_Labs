@@ -1,0 +1,422 @@
+{# Base template for Super Admin pages #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Super Admin - Firewall Controller{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/super_admin.css') }}">
+    
+    <style>
+        /* Super Admin specific styles */
+        .navbar-super-admin {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        .super-admin-badge {
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 56px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            width: 250px;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 56px);
+            padding-top: 1rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        .sidebar .nav-link {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0.75rem 1rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: #f39c12;
+        }
+        
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(243, 156, 18, 0.2);
+            border-left-color: #f39c12;
+        }
+        
+        .sidebar .nav-link i {
+            width: 24px;
+            text-align: center;
+            margin-right: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-header h6 {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        
+        .main-content-super {
+            margin-left: 250px;
+            padding: 1.5rem;
+            min-height: calc(100vh - 56px);
+            background: #f5f6fa;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar.collapsed + .main-content-super {
+            margin-left: 70px;
+        }
+        
+        .nav-section-title {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 1rem 1rem 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* Top navbar for super admin */
+        .navbar-top-super {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            height: 56px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                margin-left: -250px;
+                transition: margin-left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                margin-left: 0;
+            }
+            
+            .main-content-super {
+                margin-left: 0;
+                padding: 1rem;
+            }
+            
+            .navbar-top-super {
+                padding: 0.5rem 1rem;
+            }
+            
+            .super-admin-badge {
+                display: none;
+            }
+            
+            .navbar-brand span:not(.super-admin-badge) {
+                font-size: 1rem;
+            }
+            
+            /* Overlay when sidebar is open */
+            .sidebar-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1024;
+                display: none;
+            }
+            
+            .sidebar-backdrop.show {
+                display: block;
+            }
+            
+            /* Cards and content */
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .table th,
+            .table td {
+                padding: 0.5rem;
+                font-size: 0.85rem;
+            }
+            
+            h1, .h1 { font-size: 1.5rem; }
+            h2, .h2 { font-size: 1.25rem; }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 576px) {
+            .main-content-super {
+                padding: 0.75rem;
+            }
+            
+            .page-header h1,
+            .page-header h2 {
+                font-size: 1.25rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn-group .btn {
+                width: 100%;
+                margin-bottom: 0.25rem;
+            }
+            
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Backdrop for mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-dark navbar-top-super">
+        <div class="container-fluid">
+            <button class="btn btn-link text-white d-md-none" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <a class="navbar-brand d-flex align-items-center" href="/super-admin/">
+                <i class="fas fa-shield-alt me-2"></i>
+                <span>Firewall Controller</span>
+                <span class="super-admin-badge">Super Admin</span>
+            </a>
+            
+            <ul class="navbar-nav ms-auto flex-row">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle me-1"></i>
+                        <span class="d-none d-md-inline" id="adminName">Super Admin</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/super-admin/settings"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="superAdminLogout()"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-sticky">
+            <div class="sidebar-header">
+                <h6><i class="fas fa-crown me-2"></i>Platform Management</h6>
+            </div>
+            
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/super-admin/' %}active{% endif %}" href="/super-admin/">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/tenants' in request.path %}active{% endif %}" href="/super-admin/tenants">
+                        <i class="fas fa-building"></i>
+                        <span>Tenants</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/health' in request.path %}active{% endif %}" href="/super-admin/health">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>System Health</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="nav-section-title">Communication</div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% if '/broadcasts' in request.path %}active{% endif %}" href="/super-admin/broadcasts">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Broadcasts</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="nav-section-title">Audit & Logs</div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% if '/impersonation-logs' in request.path %}active{% endif %}" href="/super-admin/impersonation-logs">
+                        <i class="fas fa-user-secret"></i>
+                        <span>Impersonation Logs</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="nav-section-title">Settings</div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/super-admin/settings">
+                        <i class="fas fa-cog"></i>
+                        <span>System Settings</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- Back to login -->
+            <div class="mt-auto p-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                <a href="#" onclick="superAdminLogout()" class="btn btn-outline-light btn-sm w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content-super">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.0/socket.io.js"></script>
+    
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    
+    <script>
+        // Super Admin specific JS
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load admin name
+            const adminData = localStorage.getItem('admin_data');
+            if (adminData) {
+                try {
+                    const admin = JSON.parse(adminData);
+                    const nameEl = document.getElementById('adminName');
+                    if (nameEl && admin.full_name) {
+                        nameEl.textContent = admin.full_name;
+                    }
+                } catch(e) {}
+            }
+            
+            // Sidebar toggle for mobile
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('show');
+                backdrop.classList.toggle('show');
+            }
+            
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                backdrop.classList.remove('show');
+            }
+            
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (backdrop) {
+                backdrop.addEventListener('click', closeSidebar);
+            }
+            
+            // Close sidebar when clicking a nav link on mobile
+            sidebar.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeSidebar();
+                    }
+                });
+            });
+            
+            // Close sidebar on window resize to desktop
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    closeSidebar();
+                }
+            });
+        });
+        
+        function superAdminLogout() {
+            // Clear storage
+            localStorage.removeItem('admin_access_token');
+            localStorage.removeItem('admin_refresh_token');
+            localStorage.removeItem('admin_data');
+            localStorage.removeItem('tenant_data');
+            localStorage.removeItem('jwt_token');
+            
+            // Clear session
+            fetch('/api/admin/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('admin_access_token')
+                }
+            }).finally(() => {
+                window.location.href = '/admin';
+            });
+        }
+        
+        function getToken() {
+            return localStorage.getItem('jwt_token') || 
+                   localStorage.getItem('admin_access_token') || '';
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -140,6 +140,7 @@ class JWTService:
         
         Args:
             payload: Dict containing claims like admin_id, email, tenant_id, role, type
+                     Impersonation claims: is_impersonating, original_admin_id, impersonation_session_id
             
         Returns:
             JWT access token string
@@ -156,10 +157,16 @@ class JWTService:
             "iss": "firewall-controller",
         }
         
-        # Add custom claims
+        # Add standard claims
         for key in ["admin_id", "email", "tenant_id", "role", "user_type"]:
             if key in payload:
                 claims[key] = payload[key]
+        
+        # Add impersonation claims
+        claims["is_impersonating"] = payload.get("is_impersonating", False)
+        if claims["is_impersonating"]:
+            claims["original_admin_id"] = payload.get("original_admin_id")
+            claims["impersonation_session_id"] = payload.get("impersonation_session_id")
         
         return jwt.encode(claims, self.secret_key, algorithm=self.algorithm)
     
@@ -507,7 +514,9 @@ class JWTService:
         # Get expiry time
         exp = payload.get("exp")
         if isinstance(exp, (int, float)):
-            expires_at = datetime.fromtimestamp(exp)
+            # Make timezone-aware datetime
+            from time_utils import VIETNAM_TZ
+            expires_at = datetime.fromtimestamp(exp, tz=VIETNAM_TZ)
             is_expired = now > expires_at
         else:
             expires_at = None
@@ -516,13 +525,117 @@ class JWTService:
         return {
             "agent_id": payload.get("sub"),
             "user_id": payload.get("user_id"),
+            "admin_id": payload.get("admin_id"),
+            "role": payload.get("role"),
+            "tenant_id": payload.get("tenant_id"),
             "token_type": payload.get("type"),
             "jti": payload.get("jti"),
             "issued_at": payload.get("iat"),
             "expires_at": expires_at.isoformat() if expires_at else None,
             "is_expired": is_expired,
             "is_revoked": self._is_token_revoked(payload.get("jti")),
+            "is_impersonating": payload.get("is_impersonating", False),
+            "original_admin_id": payload.get("original_admin_id"),
+            "impersonation_session_id": payload.get("impersonation_session_id"),
         }
+    
+    # ========================================================================
+    # Impersonation Token Methods
+    # ========================================================================
+    
+    def generate_impersonation_token(
+        self,
+        super_admin_id: str,
+        target_admin_id: str,
+        target_tenant_id: str,
+        impersonation_session_id: str,
+        expires_hours: int = 4
+    ) -> str:
+        """
+        Generate an impersonation token for Super Admin to act as Tenant Admin.
+        
+        Args:
+            super_admin_id: The Super Admin's ID performing impersonation
+            target_admin_id: The Tenant Admin being impersonated
+            target_tenant_id: The tenant ID being accessed
+            impersonation_session_id: Session ID from ImpersonationLogModel
+            expires_hours: Token expiry in hours (max 4)
+            
+        Returns:
+            JWT access token with impersonation claims
+        """
+        # Cap impersonation duration at 4 hours
+        expires_hours = min(expires_hours, 4)
+        
+        now = now_vietnam()
+        
+        claims = {
+            "sub": target_admin_id,  # Acting as target admin
+            "admin_id": target_admin_id,
+            "jti": secrets.token_hex(16),
+            "type": "access",
+            "iat": now,
+            "exp": now + timedelta(hours=expires_hours),
+            "iss": "firewall-controller",
+            
+            # Role is still super_admin (preserves actual identity)
+            "role": "super_admin",
+            
+            # Tenant context from target
+            "tenant_id": target_tenant_id,
+            
+            # Impersonation markers
+            "is_impersonating": True,
+            "original_admin_id": super_admin_id,
+            "impersonation_session_id": impersonation_session_id,
+            "impersonation_target_id": target_admin_id,
+        }
+        
+        self.logger.info(
+            f"Generated impersonation token: super_admin={super_admin_id} -> "
+            f"tenant_admin={target_admin_id}, tenant={target_tenant_id}"
+        )
+        
+        return jwt.encode(claims, self.secret_key, algorithm=self.algorithm)
+    
+    def validate_impersonation_token(self, token: str) -> tuple:
+        """
+        Validate an impersonation token.
+        
+        Args:
+            token: The JWT token to validate
+            
+        Returns:
+            Tuple of (is_valid, payload, error_message)
+        """
+        is_valid, payload, error = self.validate_access_token(token)
+        
+        if not is_valid:
+            return is_valid, payload, error
+        
+        # Check if it's actually an impersonation token
+        if not payload.get("is_impersonating"):
+            return True, payload, None  # Valid but not impersonation
+        
+        # Verify impersonation-specific fields
+        required_fields = ["original_admin_id", "impersonation_session_id"]
+        for field in required_fields:
+            if not payload.get(field):
+                return False, None, f"Missing impersonation field: {field}"
+        
+        return True, payload, None
+    
+    def end_impersonation_session(self, token: str) -> bool:
+        """
+        End an impersonation session by revoking the impersonation token.
+        
+        Args:
+            token: The impersonation token to revoke
+            
+        Returns:
+            True if successfully revoked
+        """
+        return self.revoke_token(token, token_type="access")
 
 
 # Singleton instance (initialized in app.py)

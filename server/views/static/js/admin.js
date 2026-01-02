@@ -174,6 +174,9 @@ function handleLoginSuccess(data) {
     localStorage.setItem('admin_data', JSON.stringify(currentAdmin));
     localStorage.setItem('tenant_data', JSON.stringify(currentTenant));
     
+    // Also save as jwt_token for compatibility with other pages
+    localStorage.setItem('jwt_token', accessToken);
+    
     // Set session cookie by calling a backend endpoint
     fetch('/api/admin/set-session', {
         method: 'POST',
@@ -187,9 +190,28 @@ function handleLoginSuccess(data) {
     }).then(() => {
         showNotification('success', 'Login successful!');
         
-        // Redirect to intended page or dashboard
+        // Redirect based on role
+        const role = currentAdmin.role;
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect') || '/';
+        let redirect = params.get('redirect');
+        
+        if (!redirect) {
+            // Default redirects based on role
+            if (role === 'super_admin') {
+                redirect = '/super-admin/';
+            } else {
+                redirect = '/dashboard';
+            }
+        } else {
+            // Validate redirect for security
+            // Super admin shouldn't be redirected to tenant pages and vice versa
+            if (role === 'super_admin' && !redirect.startsWith('/super-admin')) {
+                redirect = '/super-admin/';
+            } else if (role !== 'super_admin' && redirect.startsWith('/super-admin')) {
+                redirect = '/dashboard';
+            }
+        }
+        
         window.location.href = redirect;
     }).catch(err => {
         console.error('Session setup error:', err);

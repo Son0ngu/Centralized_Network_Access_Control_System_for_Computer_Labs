@@ -1,0 +1,546 @@
+{% extends "super_admin/base_super.html" %}
+
+{% block title %}System Broadcasts - Super Admin{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="fas fa-bullhorn me-2"></i>System Broadcasts</h2>
+        <p class="text-muted mb-0">Send announcements to all tenants</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBroadcastModal">
+        <i class="fas fa-plus me-2"></i>New Broadcast
+    </button>
+</div>
+
+<!-- Broadcast Stats -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 id="totalBroadcasts">--</h3>
+                <p class="mb-0">Total Broadcasts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 id="activeBroadcasts">--</h3>
+                <p class="mb-0">Active</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h3 id="scheduledBroadcasts">--</h3>
+                <p class="mb-0">Scheduled</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h3 id="expiredBroadcasts">--</h3>
+                <p class="mb-0">Expired</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Broadcasts Alert -->
+<div id="activeBroadcastsList" class="mb-4">
+    <!-- Active broadcasts will be shown here -->
+</div>
+
+<!-- Broadcasts Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Broadcasts</h5>
+        <div>
+            <select class="form-select form-select-sm" id="filterBroadcastType" style="width: auto; display: inline-block;">
+                <option value="">All Types</option>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="danger">Danger</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th>Title</th>
+                        <th>Target</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="broadcastsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p class="mt-2 mb-0">Loading broadcasts...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Broadcast Modal -->
+<div class="modal fade" id="createBroadcastModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-bullhorn me-2"></i>Create Broadcast
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createBroadcastForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="title" required maxlength="200">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="broadcast_type" required>
+                                <option value="info">Info (Blue, Dismissible)</option>
+                                <option value="warning">Warning (Yellow, Dismissible)</option>
+                                <option value="danger">Danger (Red, Non-dismissible)</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Message <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="message" rows="4" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Target</label>
+                            <select class="form-select" name="target" id="targetSelect">
+                                <option value="all">All Tenants</option>
+                                <option value="specific">Specific Tenants</option>
+                            </select>
+                        </div>
+                        <div class="col-12" id="targetTenantsWrapper" style="display: none;">
+                            <label class="form-label">Select Tenants</label>
+                            <select class="form-select" name="target_tenants" id="targetTenants" multiple>
+                                <!-- Loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" name="priority">
+                                <option value="normal">Normal</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date</label>
+                            <input type="datetime-local" class="form-control" name="start_date">
+                            <div class="form-text">Leave empty for immediate broadcast</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <input type="datetime-local" class="form-control" name="end_date">
+                            <div class="form-text">Leave empty for no expiration</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="dismissible" id="dismissible" checked>
+                                <label class="form-check-label" for="dismissible">Allow users to dismiss</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="mt-4">
+                        <h6>Preview</h6>
+                        <div class="alert alert-info" id="broadcastPreview">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle me-2 mt-1"></i>
+                                <div>
+                                    <strong id="previewTitle">Broadcast title</strong>
+                                    <p class="mb-0" id="previewMessage">Broadcast message will appear here...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-bullhorn me-2"></i>Create Broadcast
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Broadcast Modal -->
+<div class="modal fade" id="viewBroadcastModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>Broadcast Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="broadcastDetailsContent">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/super_admin.js') }}"></script>
+<script>
+    let broadcastsData = [];
+    let tenantsData = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadBroadcasts();
+        loadStats();
+        loadTenants();
+        setupPreview();
+        setupTargetToggle();
+    });
+
+    function setupTargetToggle() {
+        const targetSelect = document.getElementById('targetSelect');
+        const targetTenantsWrapper = document.getElementById('targetTenantsWrapper');
+        
+        targetSelect.addEventListener('change', function() {
+            targetTenantsWrapper.style.display = this.value === 'specific' ? 'block' : 'none';
+        });
+    }
+
+    async function loadTenants() {
+        try {
+            const response = await fetch('/api/super/tenants', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                tenantsData = data.data.tenants || [];
+                const select = document.getElementById('targetTenants');
+                select.innerHTML = tenantsData.map(t => 
+                    `<option value="${t.tenant_id}">${escapeHtml(t.company_name)}</option>`
+                ).join('');
+            }
+        } catch (error) {
+            console.error('Error loading tenants:', error);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/broadcasts/stats', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                renderStats(data.data);
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    function setupPreview() {
+        const form = document.getElementById('createBroadcastForm');
+        const titleInput = form.querySelector('input[name="title"]');
+        const messageInput = form.querySelector('textarea[name="message"]');
+        const typeSelect = form.querySelector('select[name="broadcast_type"]');
+
+        function updatePreview() {
+            document.getElementById('previewTitle').textContent = titleInput.value || 'Broadcast title';
+            document.getElementById('previewMessage').textContent = messageInput.value || 'Broadcast message will appear here...';
+            
+            const preview = document.getElementById('broadcastPreview');
+            preview.className = 'alert';
+            const type = typeSelect.value;
+            const typeMap = {
+                'info': 'alert-info',
+                'warning': 'alert-warning',
+                'danger': 'alert-danger'
+            };
+            preview.classList.add(typeMap[type] || 'alert-info');
+
+            const icon = preview.querySelector('i');
+            const iconMap = {
+                'info': 'fa-info-circle',
+                'warning': 'fa-exclamation-triangle',
+                'danger': 'fa-exclamation-circle'
+            };
+            icon.className = 'fas me-2 mt-1 ' + (iconMap[type] || 'fa-info-circle');
+        }
+
+        titleInput.addEventListener('input', updatePreview);
+        messageInput.addEventListener('input', updatePreview);
+        typeSelect.addEventListener('change', updatePreview);
+    }
+
+    async function loadBroadcasts() {
+        try {
+            const response = await fetch('/api/broadcasts/list?include_inactive=true', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                broadcastsData = data.data.broadcasts || [];
+                renderBroadcasts(broadcastsData);
+                renderActiveBroadcasts(broadcastsData.filter(b => b.is_active));
+            }
+        } catch (error) {
+            console.error('Error loading broadcasts:', error);
+            showToast('error', 'Failed to load broadcasts');
+        }
+    }
+
+    function renderStats(stats) {
+        document.getElementById('totalBroadcasts').textContent = stats?.total || 0;
+        document.getElementById('activeBroadcasts').textContent = stats?.active || 0;
+        document.getElementById('scheduledBroadcasts').textContent = stats?.scheduled || 0;
+        document.getElementById('expiredBroadcasts').textContent = stats?.expired || 0;
+    }
+
+    function renderActiveBroadcasts(active) {
+        const container = document.getElementById('activeBroadcastsList');
+        if (!active || active.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = active.map(b => {
+            const typeClass = b.type_config?.bg_class || 'alert-info';
+            const icon = b.type_config?.icon || 'fa-info-circle';
+
+            return `
+                <div class="alert ${typeClass}">
+                    <div class="d-flex align-items-start">
+                        <i class="fas ${icon} me-2 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <strong>${escapeHtml(b.title)}</strong>
+                            <p class="mb-0">${escapeHtml(b.message)}</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-dark" onclick="deactivateBroadcast('${b.id}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBroadcasts(broadcasts) {
+        const tbody = document.getElementById('broadcastsTableBody');
+        
+        if (!broadcasts || broadcasts.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <i class="fas fa-bullhorn fa-2x mb-2"></i>
+                        <p class="mb-0">No broadcasts found</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = broadcasts.map(b => {
+            const typeClass = {
+                'info': 'primary',
+                'warning': 'warning',
+                'danger': 'danger'
+            }[b.type] || 'info';
+
+            const statusClass = b.is_active ? 'success' : 'secondary';
+            const statusText = b.is_active ? 'Active' : 'Inactive';
+
+            return `
+                <tr>
+                    <td>
+                        <span class="badge bg-${typeClass}">${b.type}</span>
+                    </td>
+                    <td>
+                        <strong>${escapeHtml(b.title)}</strong>
+                        <br><small class="text-muted">${escapeHtml(b.message?.substring(0, 50))}${b.message?.length > 50 ? '...' : ''}</small>
+                    </td>
+                    <td>${b.target === 'all' ? 'All Tenants' : `${b.target_tenants?.length || 0} tenants`}</td>
+                    <td>${formatDate(b.start_time)}</td>
+                    <td>${b.end_time ? formatDate(b.end_time) : 'No expiration'}</td>
+                    <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewBroadcast('${b.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${b.is_active ? `<button class="btn btn-outline-warning" onclick="deactivateBroadcast('${b.id}')" title="Deactivate">
+                                <i class="fas fa-pause"></i>
+                            </button>` : ''}
+                            <button class="btn btn-outline-danger" onclick="deleteBroadcast('${b.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Form submission
+    document.getElementById('createBroadcastForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = {
+            title: formData.get('title'),
+            message: formData.get('message'),
+            type: formData.get('broadcast_type'),
+            priority: formData.get('priority'),
+            target: formData.get('target'),
+            target_tenants: formData.get('target') === 'specific' 
+                ? Array.from(document.getElementById('targetTenants').selectedOptions).map(o => o.value)
+                : [],
+            start_time: formData.get('start_date') || null,
+            end_time: formData.get('end_date') || null
+        };
+
+        try {
+            const response = await fetch('/api/broadcasts/create', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + getToken(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('success', 'Broadcast created successfully');
+                bootstrap.Modal.getInstance(document.getElementById('createBroadcastModal')).hide();
+                this.reset();
+                loadBroadcasts();
+                loadStats();
+            } else {
+                showToast('error', result.error || 'Failed to create broadcast');
+            }
+        } catch (error) {
+            console.error('Error creating broadcast:', error);
+            showToast('error', 'Failed to create broadcast');
+        }
+    });
+
+    function viewBroadcast(id) {
+        const broadcast = broadcastsData.find(b => b.id === id);
+        if (!broadcast) return;
+
+        const content = document.getElementById('broadcastDetailsContent');
+        content.innerHTML = `
+            <table class="table table-sm">
+                <tr><td><strong>Title:</strong></td><td>${escapeHtml(broadcast.title)}</td></tr>
+                <tr><td><strong>Type:</strong></td><td><span class="badge bg-${broadcast.type === 'danger' ? 'danger' : broadcast.type === 'warning' ? 'warning' : 'primary'}">${broadcast.type}</span></td></tr>
+                <tr><td><strong>Status:</strong></td><td><span class="badge bg-${broadcast.is_active ? 'success' : 'secondary'}">${broadcast.is_active ? 'Active' : 'Inactive'}</span></td></tr>
+                <tr><td><strong>Target:</strong></td><td>${broadcast.target === 'all' ? 'All Tenants' : `${broadcast.target_tenants?.length || 0} specific tenants`}</td></tr>
+                <tr><td><strong>Priority:</strong></td><td>${broadcast.priority || 'Normal'}</td></tr>
+                <tr><td><strong>Dismissible:</strong></td><td>${broadcast.is_dismissible ? 'Yes' : 'No'}</td></tr>
+                <tr><td><strong>Start:</strong></td><td>${formatDate(broadcast.start_time)}</td></tr>
+                <tr><td><strong>End:</strong></td><td>${broadcast.end_time ? formatDate(broadcast.end_time) : 'No expiration'}</td></tr>
+                <tr><td><strong>Created:</strong></td><td>${formatDate(broadcast.created_at)}</td></tr>
+                <tr><td><strong>Created By:</strong></td><td>${broadcast.created_by?.full_name || 'Unknown'}</td></tr>
+            </table>
+            <div class="mt-3">
+                <strong>Message:</strong>
+                <p class="mt-2">${escapeHtml(broadcast.message)}</p>
+            </div>
+        `;
+
+        new bootstrap.Modal(document.getElementById('viewBroadcastModal')).show();
+    }
+
+    async function deactivateBroadcast(id) {
+        if (!confirm('Are you sure you want to deactivate this broadcast?')) return;
+
+        try {
+            const response = await fetch(`/api/broadcasts/${id}/deactivate`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('success', 'Broadcast deactivated');
+                loadBroadcasts();
+                loadStats();
+            } else {
+                showToast('error', result.error || 'Failed to deactivate broadcast');
+            }
+        } catch (error) {
+            console.error('Error deactivating broadcast:', error);
+            showToast('error', 'Failed to deactivate broadcast');
+        }
+    }
+
+    async function deleteBroadcast(id) {
+        if (!confirm('Are you sure you want to permanently delete this broadcast?')) return;
+
+        try {
+            const response = await fetch(`/api/broadcasts/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('success', 'Broadcast deleted');
+                loadBroadcasts();
+                loadStats();
+            } else {
+                showToast('error', result.error || 'Failed to delete broadcast');
+            }
+        } catch (error) {
+            console.error('Error deleting broadcast:', error);
+            showToast('error', 'Failed to delete broadcast');
+        }
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleString();
+    }
+
+    // Filter broadcasts by type
+    document.getElementById('filterBroadcastType').addEventListener('change', function() {
+        const type = this.value;
+        if (!type) {
+            renderBroadcasts(broadcastsData);
+        } else {
+            renderBroadcasts(broadcastsData.filter(b => b.type === type));
+        }
+    });
+</script>
+{% endblock %}

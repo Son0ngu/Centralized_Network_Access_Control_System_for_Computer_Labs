@@ -125,6 +125,10 @@
     </div>
     
     <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    <!-- Impersonation Handler - must load on all pages -->
+    <script src="{{ url_for('static', filename='js/impersonation.js') }}"></script>
+    <!-- Broadcast Handler - displays system broadcasts to tenant admins -->
+    <script src="{{ url_for('static', filename='js/broadcast.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -2,6 +2,10 @@
 Admin Model - Admin user management with multi-tenancy
 -------------------------------------------------------
 Manages administrative users within tenants.
+
+Roles:
+- super_admin: Platform-wide access, no tenant_id, manages all tenants
+- tenant_admin: Full access within their tenant only
 """
 
 import logging
@@ -16,6 +20,11 @@ from time_utils import now_vietnam
 from utils.password_validator import validate_password
 
 logger = logging.getLogger(__name__)
+
+# Role constants
+ROLE_SUPER_ADMIN = "super_admin"
+ROLE_TENANT_ADMIN = "tenant_admin"
+VALID_ROLES = [ROLE_SUPER_ADMIN, ROLE_TENANT_ADMIN]
 
 
 class AdminModel:
@@ -39,19 +48,45 @@ class AdminModel:
         
         Args:
             admin_data: {
-                "tenant_id": "tenant_id",
+                "tenant_id": "tenant_id" (required for tenant_admin, None for super_admin),
                 "email": "admin@example.com",
                 "password": "SecurePass123!",
                 "full_name": "John Doe",
-                "phone": "+84xxxxxxxxx"
+                "phone": "+84xxxxxxxxx",
+                "role": "tenant_admin" | "super_admin" (default: tenant_admin)
             }
         
         Returns:
             Created admin document (password excluded)
         
-        Note: Each admin belongs to exactly one tenant.
-              All resources (whitelist, agents, API keys) are isolated per tenant.
+        Note: 
+            - super_admin: tenant_id must be None, only ONE super_admin allowed
+            - tenant_admin: tenant_id is required, belongs to exactly one tenant
         """
+        role = admin_data.get("role", ROLE_TENANT_ADMIN)
+        
+        # Validate role
+        if role not in VALID_ROLES:
+            raise ValueError(f"Invalid role: {role}. Must be one of {VALID_ROLES}")
+        
+        # Validate tenant_id based on role
+        tenant_id = admin_data.get("tenant_id")
+        
+        if role == ROLE_SUPER_ADMIN:
+            # Super admin cannot have tenant_id
+            if tenant_id:
+                raise ValueError("Super Admin cannot belong to a tenant")
+            # Check if super_admin already exists
+            existing_super = self.get_super_admin()
+            if existing_super:
+                raise ValueError("Super Admin already exists. Only one Super Admin is allowed.")
+            tenant_id_obj = None
+        else:
+            # Tenant admin must have tenant_id
+            if not tenant_id:
+                raise ValueError("Tenant Admin must belong to a tenant")
+            tenant_id_obj = ObjectId(tenant_id)
+        
         # Validate password
         is_valid, errors = validate_password(
             admin_data["password"],
@@ -69,16 +104,16 @@ class AdminModel:
         now = now_vietnam()
         
         admin = {
-            "tenant_id": ObjectId(admin_data["tenant_id"]),
+            "tenant_id": tenant_id_obj,  # None for super_admin
             "email": admin_data["email"].lower().strip(),
             "password_hash": password_hash,
             "full_name": admin_data.get("full_name", ""),
             "phone": admin_data.get("phone"),
-            "role": "admin",  # Always 'admin' - system admin will be separate
+            "role": role,  # super_admin or tenant_admin
             "status": "active",  # active, suspended
             "email_verified": False,
-            "2fa_enabled": False,
-            "2fa_method": None,  # email, totp
+            "2fa_enabled": role == ROLE_SUPER_ADMIN,  # Required for super_admin
+            "2fa_method": "email" if role == ROLE_SUPER_ADMIN else None,
             "2fa_secret": None,
             "backup_codes": [],
             "password_history": [password_hash],
@@ -321,3 +356,97 @@ class AdminModel:
             logger.info(f"Activated admin: {admin_id}")
             return True
         return False
+
+    # ========================================
+    # SUPER ADMIN METHODS
+    # ========================================
+    
+    def get_super_admin(self) -> Optional[Dict]:
+        """Get the Super Admin account (there should only be one)."""
+        admin = self.collection.find_one({"role": ROLE_SUPER_ADMIN})
+        if admin:
+            admin.pop("password_hash", None)
+            admin.pop("password_history", None)
+        return admin
+    
+    def is_super_admin(self, admin_id: str) -> bool:
+        """Check if admin is Super Admin."""
+        try:
+            admin = self.collection.find_one({"_id": ObjectId(admin_id)})
+            return admin and admin.get("role") == ROLE_SUPER_ADMIN
+        except:
+            return False
+    
+    def list_all_tenant_admins(self, skip: int = 0, limit: int = 50, 
+                                filters: Dict = None) -> List[Dict]:
+        """
+        List all tenant admins across all tenants (Super Admin only).
+        
+        Args:
+            skip: Pagination offset
+            limit: Max results
+            filters: Optional filters (status, tenant_id, etc.)
+        
+        Returns:
+            List of tenant admins (password excluded)
+        """
+        query = {"role": ROLE_TENANT_ADMIN}
+        
+        if filters:
+            if filters.get("status"):
+                query["status"] = filters["status"]
+            if filters.get("tenant_id"):
+                query["tenant_id"] = ObjectId(filters["tenant_id"])
+            if filters.get("email"):
+                query["email"] = {"$regex": filters["email"], "$options": "i"}
+        
+        cursor = self.collection.find(query).skip(skip).limit(limit).sort("created_at", DESCENDING)
+        
+        admins = []
+        for admin in cursor:
+            admin.pop("password_hash", None)
+            admin.pop("password_history", None)
+            admins.append(admin)
+        
+        return admins
+    
+    def count_all_tenant_admins(self, filters: Dict = None) -> int:
+        """Count all tenant admins across all tenants."""
+        query = {"role": ROLE_TENANT_ADMIN}
+        
+        if filters:
+            if filters.get("status"):
+                query["status"] = filters["status"]
+            if filters.get("tenant_id"):
+                query["tenant_id"] = ObjectId(filters["tenant_id"])
+        
+        return self.collection.count_documents(query)
+    
+    def get_admin_with_tenant(self, admin_id: str) -> Optional[Dict]:
+        """
+        Get admin with tenant information (for Super Admin dashboard).
+        Uses aggregation to join with tenants collection.
+        """
+        try:
+            pipeline = [
+                {"$match": {"_id": ObjectId(admin_id)}},
+                {"$lookup": {
+                    "from": "tenants",
+                    "localField": "tenant_id",
+                    "foreignField": "_id",
+                    "as": "tenant"
+                }},
+                {"$unwind": {"path": "$tenant", "preserveNullAndEmptyArrays": True}},
+                {"$project": {
+                    "password_hash": 0,
+                    "password_history": 0,
+                    "2fa_secret": 0,
+                    "backup_codes": 0
+                }}
+            ]
+            
+            result = list(self.collection.aggregate(pipeline))
+            return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error getting admin with tenant: {e}")
+            return None

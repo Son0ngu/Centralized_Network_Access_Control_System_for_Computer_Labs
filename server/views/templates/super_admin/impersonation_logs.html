@@ -1,0 +1,400 @@
+{% extends "super_admin/base_super.html" %}
+
+{% block title %}Impersonation Logs - Super Admin{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="fas fa-user-secret me-2"></i>Impersonation Audit Logs</h2>
+        <p class="text-muted mb-0">Track all impersonation activities for compliance</p>
+    </div>
+    <button class="btn btn-outline-primary" onclick="exportLogs()">
+        <i class="fas fa-download me-2"></i>Export CSV
+    </button>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-primary" id="totalSessions">--</h3>
+                <p class="text-muted mb-0">Total Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-warning" id="activeSessions">--</h3>
+                <p class="text-muted mb-0">Active Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-success" id="completedSessions">--</h3>
+                <p class="text-muted mb-0">Completed</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-info" id="avgDuration">--</h3>
+                <p class="text-muted mb-0">Avg Duration</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Date Range</label>
+                <select class="form-select" id="filterDateRange">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="all">All time</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Super Admin</label>
+                <select class="form-select" id="filterAdmin">
+                    <option value="">All Admins</option>
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tenant</label>
+                <select class="form-select" id="filterTenant">
+                    <option value="">All Tenants</option>
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="filterStatus">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Super Admin</th>
+                        <th>Target Tenant</th>
+                        <th>Reason</th>
+                        <th>Started</th>
+                        <th>Ended</th>
+                        <th>Duration</th>
+                        <th>Actions Taken</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p class="mt-2 mb-0">Loading logs...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <div class="text-muted" id="paginationInfo">
+            Showing 0 of 0 logs
+        </div>
+        <nav>
+            <ul class="pagination mb-0" id="pagination">
+                <!-- Pagination will be generated here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt me-2"></i>Session Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="logDetailsContent">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/super_admin.js') }}"></script>
+<script>
+    let logsData = [];
+    let currentPage = 1;
+    const pageSize = 20;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLogs();
+        loadFilters();
+        setupFilters();
+    });
+
+    async function loadLogs() {
+        try {
+            const dateRange = document.getElementById('filterDateRange').value;
+            const adminId = document.getElementById('filterAdmin').value;
+            const tenantId = document.getElementById('filterTenant').value;
+            const status = document.getElementById('filterStatus').value;
+
+            let url = `/api/super/impersonation-logs?page=${currentPage}&limit=${pageSize}`;
+            if (dateRange !== 'all') url += `&days=${dateRange}`;
+            if (adminId) url += `&admin_id=${adminId}`;
+            if (tenantId) url += `&tenant_id=${tenantId}`;
+            if (status) url += `&status=${status}`;
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                logsData = data.data.logs;
+                renderStats(data.data.stats);
+                renderLogs(logsData);
+                renderPagination(data.data.pagination);
+            }
+        } catch (error) {
+            console.error('Error loading logs:', error);
+            showToast('error', 'Failed to load impersonation logs');
+        }
+    }
+
+    async function loadFilters() {
+        // Load admins
+        try {
+            const response = await fetch('/api/super/admins?role=super_admin', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            if (data.success && data.data.admins) {
+                const select = document.getElementById('filterAdmin');
+                data.data.admins.forEach(admin => {
+                    const option = document.createElement('option');
+                    option.value = admin.admin_id;
+                    option.textContent = admin.username;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading admins:', error);
+        }
+
+        // Load tenants
+        try {
+            const response = await fetch('/api/super/tenants?limit=100', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const data = await response.json();
+            if (data.success && data.data.tenants) {
+                const select = document.getElementById('filterTenant');
+                data.data.tenants.forEach(tenant => {
+                    const option = document.createElement('option');
+                    option.value = tenant.tenant_id;
+                    option.textContent = tenant.company_name;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading tenants:', error);
+        }
+    }
+
+    function setupFilters() {
+        ['filterDateRange', 'filterAdmin', 'filterTenant', 'filterStatus'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                currentPage = 1;
+                loadLogs();
+            });
+        });
+    }
+
+    function renderStats(stats) {
+        document.getElementById('totalSessions').textContent = stats?.total || 0;
+        document.getElementById('activeSessions').textContent = stats?.active || 0;
+        document.getElementById('completedSessions').textContent = stats?.completed || 0;
+        document.getElementById('avgDuration').textContent = stats?.avg_duration || '--';
+    }
+
+    function renderLogs(logs) {
+        const tbody = document.getElementById('logsTableBody');
+        
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        <i class="fas fa-user-secret fa-2x mb-2"></i>
+                        <p class="mb-0">No impersonation logs found</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = logs.map(log => {
+            const statusClass = log.status === 'active' ? 'warning' : 'success';
+            const duration = log.ended_at 
+                ? calculateDuration(log.started_at, log.ended_at)
+                : '<span class="text-warning">Ongoing</span>';
+
+            return `
+                <tr>
+                    <td>
+                        <code class="small">${log.session_id?.substring(0, 8)}...</code>
+                    </td>
+                    <td>
+                        <strong>${escapeHtml(log.super_admin_username)}</strong>
+                        <br><small class="text-muted">${escapeHtml(log.super_admin_email)}</small>
+                    </td>
+                    <td>
+                        <strong>${escapeHtml(log.tenant_name)}</strong>
+                        <br><small class="text-muted">${escapeHtml(log.tenant_subdomain)}</small>
+                    </td>
+                    <td>
+                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="${escapeHtml(log.reason)}">
+                            ${escapeHtml(log.reason)}
+                        </span>
+                    </td>
+                    <td>${formatDate(log.started_at)}</td>
+                    <td>${log.ended_at ? formatDate(log.ended_at) : '--'}</td>
+                    <td>${duration}</td>
+                    <td>
+                        <span class="badge bg-secondary">${log.actions_count || 0} actions</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${statusClass}">${log.status}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderPagination(pagination) {
+        if (!pagination) return;
+
+        document.getElementById('paginationInfo').textContent = 
+            `Showing ${((pagination.page - 1) * pagination.limit) + 1} - ${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} logs`;
+
+        const paginationEl = document.getElementById('pagination');
+        const totalPages = Math.ceil(pagination.total / pagination.limit);
+        
+        if (totalPages <= 1) {
+            paginationEl.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        
+        // Previous button
+        html += `
+            <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="goToPage(${pagination.page - 1}); return false;">Previous</a>
+            </li>
+        `;
+
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                html += `
+                    <li class="page-item ${pagination.page === i ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+
+        // Next button
+        html += `
+            <li class="page-item ${pagination.page === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="goToPage(${pagination.page + 1}); return false;">Next</a>
+            </li>
+        `;
+
+        paginationEl.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadLogs();
+    }
+
+    function calculateDuration(start, end) {
+        const diff = new Date(end) - new Date(start);
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(minutes / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes % 60}m`;
+        }
+        return `${minutes}m`;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleString();
+    }
+
+    async function exportLogs() {
+        showToast('info', 'Preparing export...');
+        
+        try {
+            const response = await fetch('/api/super/impersonation-logs/export', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `impersonation_logs_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                showToast('success', 'Export completed');
+            } else {
+                showToast('error', 'Failed to export logs');
+            }
+        } catch (error) {
+            console.error('Error exporting logs:', error);
+            showToast('error', 'Failed to export logs');
+        }
+    }
+</script>
+{% endblock %}

@@ -178,3 +178,120 @@ footer {
     border-radius: 8px;
     font-weight: 600;
 }
+
+/* ========================================
+   RESPONSIVE ENHANCEMENTS
+   ======================================== */
+
+/* Tablet (medium screens) */
+@media (max-width: 991.98px) {
+    main.container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Mobile (small screens) */
+@media (max-width: 767.98px) {
+    body {
+        font-size: 0.9rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    
+    .navbar-brand span {
+        display: none;
+    }
+    
+    main.container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        margin-top: 1rem !important;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    /* Stack action buttons on mobile */
+    .btn-group-vertical-mobile {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    /* Hide less important columns on mobile */
+    .hide-mobile {
+        display: none !important;
+    }
+    
+    /* Full width buttons on mobile */
+    .btn-mobile-full {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    footer {
+        margin-top: 2rem;
+        padding: 1rem 0 !important;
+    }
+    
+    footer .row {
+        flex-direction: column;
+        text-align: center !important;
+    }
+    
+    footer .col-md-6 {
+        text-align: center !important;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 575.98px) {
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    h1, .h1 { font-size: 1.5rem; }
+    h2, .h2 { font-size: 1.25rem; }
+    h3, .h3 { font-size: 1.1rem; }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+}
+
+/* Impersonation mode body adjustment */
+body.impersonating {
+    padding-top: 100px;
+}
+
+body.impersonating main {
+    margin-top: 0;
+}

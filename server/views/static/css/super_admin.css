@@ -1,0 +1,449 @@
+/**
+ * Super Admin Styles
+ * Styling for Super Admin dashboard and pages
+ */
+
+/* ============ Super Admin Banner ============ */
+.super-admin-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 20px;
+    margin: -20px -20px 20px -20px;
+    font-size: 0.9rem;
+}
+
+.super-admin-banner a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+}
+
+.super-admin-banner a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* ============ Hero Section ============ */
+.hero-section {
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 24px;
+    color: white;
+}
+
+.hero-super-admin {
+    background: linear-gradient(135deg, #1a1c2e 0%, #2d3561 100%);
+}
+
+.hero-content h1 {
+    margin-bottom: 0.5rem;
+}
+
+.hero-content p {
+    opacity: 0.9;
+}
+
+/* ============ Stat Cards ============ */
+.stat-card {
+    border-radius: 12px;
+    border: none;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-body {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.stat-card-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.stat-card-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+}
+
+.stat-card-info {
+    background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+    color: white;
+}
+
+.stat-card-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.stat-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.stat-label {
+    opacity: 0.9;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.stat-detail {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.stat-detail .text-success {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.stat-detail .text-danger,
+.stat-detail .text-secondary {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ============ Health Stats ============ */
+.health-stat {
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.health-stat.healthy {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.health-stat.warning {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.health-stat.critical {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.health-stat h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+/* ============ Health Bar ============ */
+.health-bar {
+    height: 12px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+}
+
+.health-segment {
+    transition: width 0.5s ease;
+}
+
+.health-segment.healthy {
+    background: #28a745;
+}
+
+.health-segment.warning {
+    background: #ffc107;
+}
+
+.health-segment.critical {
+    background: #dc3545;
+}
+
+/* ============ Cards ============ */
+.card {
+    border: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 16px 20px;
+}
+
+.card-header h5 {
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.card-footer {
+    background: transparent;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ============ Tables ============ */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    padding: 12px 16px;
+}
+
+.table tbody td {
+    padding: 16px;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+/* ============ Avatar ============ */
+.avatar-sm {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* ============ Badges ============ */
+.badge {
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+/* ============ Buttons ============ */
+.btn {
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+
+.btn-group-sm .btn {
+    padding: 4px 10px;
+}
+
+/* ============ Forms ============ */
+.form-control,
+.form-select {
+    border-radius: 8px;
+    padding: 10px 14px;
+    border: 1px solid #dee2e6;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.input-group-text {
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+/* ============ Modals ============ */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 20px 24px;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 16px 24px;
+}
+
+/* ============ Alerts ============ */
+.alert {
+    border: none;
+    border-radius: 10px;
+}
+
+/* ============ Toast Container ============ */
+.toast-container {
+    z-index: 9999;
+}
+
+.toast {
+    border: none;
+    border-radius: 10px;
+}
+
+/* ============ Dropdown ============ */
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.dropdown-item {
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.dropdown-item:hover {
+    background: #f8f9fa;
+}
+
+/* ============ Pagination ============ */
+.pagination .page-link {
+    border: none;
+    border-radius: 8px;
+    margin: 0 2px;
+    color: #667eea;
+}
+
+.pagination .page-item.active .page-link {
+    background: #667eea;
+}
+
+/* ============ Quick Actions ============ */
+.btn-outline-primary,
+.btn-outline-warning,
+.btn-outline-success,
+.btn-outline-info {
+    border-width: 2px;
+}
+
+/* ============ Impersonation Banner ============ */
+#impersonation-banner {
+    z-index: 9999;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* ============ Loading Spinner ============ */
+.fa-spinner {
+    color: #667eea;
+}
+
+/* ============ Responsive ============ */
+@media (max-width: 768px) {
+    .super-admin-banner {
+        margin: -15px -15px 15px -15px;
+        padding: 8px 15px;
+    }
+
+    .hero-section {
+        padding: 20px;
+    }
+
+    .stat-card-body {
+        padding: 16px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
+
+/* ============ Dark Mode Support ============ */
+@media (prefers-color-scheme: dark) {
+    .card {
+        background: #1e1e2f;
+        color: #e9ecef;
+    }
+
+    .card-header,
+    .card-footer {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .table {
+        color: #e9ecef;
+    }
+
+    .table thead th {
+        color: #adb5bd;
+    }
+
+    .form-control,
+    .form-select {
+        background: #2d2d44;
+        border-color: #3d3d5c;
+        color: #e9ecef;
+    }
+
+    .input-group-text {
+        background: #2d2d44;
+        border-color: #3d3d5c;
+        color: #e9ecef;
+    }
+
+    .dropdown-menu {
+        background: #2d2d44;
+    }
+
+    .dropdown-item {
+        color: #e9ecef;
+    }
+
+    .dropdown-item:hover {
+        background: #3d3d5c;
+    }
+
+    .modal-content {
+        background: #1e1e2f;
+        color: #e9ecef;
+    }
+
+    .modal-header,
+    .modal-footer {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}

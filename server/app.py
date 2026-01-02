@@ -60,6 +60,23 @@ from models.admin_model import AdminModel
 from models.tenant_model import TenantModel
 from services.admin_service import AdminService
 
+# Super Admin components
+from models.broadcast_model import BroadcastModel
+from models.impersonation_log_model import ImpersonationLogModel
+from services.super_admin_service import SuperAdminService
+from controllers.super_admin_controller import SuperAdminController
+
+# Broadcast components
+from services.broadcast_service import BroadcastService
+from controllers.broadcast_controller import BroadcastController
+
+# Authorization middleware
+from middleware.authorization import init_authorization_middleware
+
+# Impersonation middleware and scheduler
+from middleware.impersonation import init_impersonation_middleware
+from services.impersonation_scheduler import init_impersonation_scheduler
+
 # Security middleware
 from middleware.security import init_security_middleware
 
@@ -224,6 +241,8 @@ def register_controllers(app, socketio, db):
         api_key_model = APIKeyModel(db)  # NEW: API Key model
         admin_model = AdminModel(db)  # NEW: Admin model
         tenant_model = TenantModel(db)  # NEW: Tenant model
+        broadcast_model = BroadcastModel(db)  # NEW: Broadcast model
+        impersonation_log_model = ImpersonationLogModel(db)  # NEW: Impersonation log model
 
         logger.info(" Models initialized")
         
@@ -251,12 +270,28 @@ def register_controllers(app, socketio, db):
         log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
         api_key_service = APIKeyService(api_key_model, socketio)  # API Key service
         admin_service = AdminService(admin_model, tenant_model, jwt_service, socketio)  # NEW: Admin service
+        super_admin_service = SuperAdminService(
+            tenant_model, admin_model, agent_model, log_model,
+            broadcast_model, impersonation_log_model, jwt_service
+        )  # NEW: Super Admin service
+        
+        # Broadcast service
+        broadcast_service = BroadcastService(broadcast_model, admin_model, tenant_model)
         
         logger.info(" Services initialized")
         
         # Initialize auth middleware with both API Key and JWT services
         init_auth_middleware(api_key_service, jwt_service)
         logger.info(" Auth middleware initialized")
+        
+        # Initialize authorization middleware for role-based access
+        init_authorization_middleware(admin_model)
+        logger.info(" Authorization middleware initialized")
+        
+        # Initialize impersonation middleware and scheduler
+        init_impersonation_middleware(impersonation_log_model, admin_model)
+        init_impersonation_scheduler(impersonation_log_model, interval_seconds=60)
+        logger.info(" Impersonation middleware and scheduler initialized")
         
         # Initialize security middleware (sanitization, rate limiting)
         init_security_middleware(app)
@@ -278,6 +313,8 @@ def register_controllers(app, socketio, db):
         api_key_controller = APIKeyController(api_key_model, api_key_service, socketio)
         auth_controller = AuthController(jwt_service, agent_model, socketio)  # NEW: Auth controller
         admin_controller = AdminController(admin_model, tenant_model, admin_service, socketio)  # NEW: Admin controller
+        super_admin_controller = SuperAdminController(super_admin_service)  # NEW: Super Admin controller
+        broadcast_controller = BroadcastController(broadcast_service, socketio)  # Broadcast controller
 
         logger.info(" Controllers initialized")
         
@@ -289,6 +326,8 @@ def register_controllers(app, socketio, db):
         app.register_blueprint(api_key_controller.blueprint, url_prefix='/api')
         app.register_blueprint(auth_controller.blueprint, url_prefix='/api')  # NEW: Auth routes
         app.register_blueprint(admin_controller.blueprint, url_prefix='/api/admin')  # FIX: Admin routes at /api/admin/*
+        app.register_blueprint(super_admin_controller.blueprint)  # Super Admin routes (already has prefix in controller)
+        app.register_blueprint(broadcast_controller.blueprint, url_prefix='/api/broadcasts')  # Broadcast routes
 
         logger.info(" All controllers registered successfully")
         
@@ -352,6 +391,7 @@ def register_main_routes(app, log_service, agent_service):
         return stats, recent_logs
     
     @app.route('/')
+    @app.route('/dashboard')
     def index():
         """Dashboard route with statistics - vietnam ONLY"""
         try:
@@ -519,6 +559,30 @@ def register_socketio_events(socketio):
             'timestamp': now_iso(),  # vietnam ISO
             'client_data': data
         }, room=request.sid)
+    
+    # Admin namespace for broadcasts and real-time updates
+    @socketio.on('connect', namespace='/admin')
+    def handle_admin_connect():
+        """Handle admin WebSocket connection"""
+        logger.info(f"Admin connected: {request.sid} at {now_iso()}")
+        socketio.emit('admin_connected', {
+            'message': 'Connected to admin namespace',
+            'timestamp': now_iso()
+        }, room=request.sid, namespace='/admin')
+    
+    @socketio.on('join_tenant', namespace='/admin')
+    def handle_join_tenant(data):
+        """Join tenant-specific room for targeted broadcasts"""
+        from flask_socketio import join_room
+        tenant_id = data.get('tenant_id')
+        if tenant_id:
+            room = f"tenant_{tenant_id}"
+            join_room(room)
+            logger.info(f"Admin {request.sid} joined room {room}")
+    
+    @socketio.on('disconnect', namespace='/admin')
+    def handle_admin_disconnect():
+        logger.info(f"Admin disconnected: {request.sid} at {now_iso()}")
 
 if __name__ == "__main__":
     try:

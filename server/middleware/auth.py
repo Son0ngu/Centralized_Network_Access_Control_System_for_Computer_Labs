@@ -398,9 +398,16 @@ def require_jwt(f: Callable) -> Callable:
         g.token_jti = payload.get("jti")
         g.tenant_id = payload.get("tenant_id")  # For tenant isolation
         g.admin_id = payload.get("admin_id")    # For admin context
+        g.role = payload.get("role")            # Admin role (super_admin/tenant_admin)
+        
+        # Impersonation context
+        g.is_impersonating = payload.get("is_impersonating", False)
+        g.original_admin_id = payload.get("original_admin_id")
+        g.impersonation_session_id = payload.get("impersonation_session_id")
         
         logger.debug(
-            f"JWT validated for {request.endpoint}: agent={g.agent_id}, tenant={g.tenant_id}"
+            f"JWT validated for {request.endpoint}: agent={g.agent_id}, "
+            f"tenant={g.tenant_id}, role={g.role}, impersonating={g.is_impersonating}"
         )
         
         return f(*args, **kwargs)
