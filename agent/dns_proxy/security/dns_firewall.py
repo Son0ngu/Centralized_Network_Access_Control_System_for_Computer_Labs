@@ -63,6 +63,11 @@ class DNSFirewallConfig:
     
     # Enable strict mode (block before allow)
     strict_mode: bool = True
+    
+    # Block all other DNS traffic (can cause issues with upstream)
+    # When False, only allows specific resolvers but doesn't block others
+    # This is safer as it relies on network adapter DNS config
+    block_all_dns: bool = False  # Changed to False by default to prevent blocking upstreams
 
 
 @dataclass
@@ -173,13 +178,21 @@ class DNSFirewall:
             
             # === BLOCK RULES ===
             
-            # 4. Block all other DNS (catch-all)
-            result.rules_created += self._create_block_rule(
-                name=f"{self.RULE_PREFIX}Block_All_DNS",
-                remote_ip="any",
-                remote_port=self.DNS_PORT,
-                description="Block all other DNS traffic"
-            )
+            # 4. Block all other DNS (catch-all) - ONLY if block_all_dns is True
+            # WARNING: This can block the DNS proxy from reaching upstream resolvers
+            # if the allow rules are not processed first. 
+            # Default is False to rely on network adapter DNS configuration.
+            if self._config.block_all_dns:
+                result.rules_created += self._create_block_rule(
+                    name=f"{self.RULE_PREFIX}Block_All_DNS",
+                    remote_ip="any",
+                    remote_port=self.DNS_PORT,
+                    description="Block all other DNS traffic"
+                )
+                logger.warning(
+                    "Block-all DNS rule enabled. This may interfere with upstream "
+                    "resolvers if allow rules are not correctly processed."
+                )
             
             # 5. Block DNS on bypass ports (optional)
             if self._config.block_nonstandard_ports:
@@ -426,6 +439,16 @@ class DNSFirewall:
         """Check if a resolver IP is allowed."""
         return ip in self.get_allowed_resolvers()
     
+    def remove_all_rules(self) -> int:
+        """
+        Remove all DNS firewall rules.
+        Alias for remove_rules() for compatibility with SecurityManager.
+        
+        Returns:
+            Number of rules removed
+        """
+        return self.remove_rules()
+    
     def get_stats(self) -> Dict:
         """Get firewall statistics."""
         return {
@@ -435,6 +458,20 @@ class DNSFirewall:
             "additional_allowed": len(self._config.additional_allowed),
             "block_nonstandard_ports": self._config.block_nonstandard_ports,
             "include_ipv6": self._config.include_ipv6,
+        }
+    
+    def get_status(self) -> Dict:
+        """
+        Get firewall status summary.
+        
+        Returns:
+            Dict with status information
+        """
+        return {
+            "active": self._active,
+            "total_rules": len(self._rules_created),
+            "upstream_resolvers": self._config.upstream_resolvers.copy(),
+            "proxy_address": self._config.proxy_address_ipv4,
         }
     
     @property

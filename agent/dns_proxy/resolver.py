@@ -185,6 +185,17 @@ class UpstreamResolver:
             with self._lock:
                 self._current_index = (self._current_index + 1) % len(self._resolvers)
         
+        # Fallback: use system DNS configuration if all custom resolvers fail
+        system_result = self._resolve_with_system(domain, query_types)
+        if system_result.success:
+            logger.warning(
+                f"Upstream resolvers failed for {domain}; "
+                f"using system resolver ({system_result.resolver_used})"
+            )
+            return system_result
+        elif system_result.error:
+            last_error = system_result.error
+
         # All resolvers failed
         logger.error(f"All resolvers failed for {domain}. Tried: {tried_resolvers}")
         
@@ -194,6 +205,62 @@ class UpstreamResolver:
             ipv4_addresses=[],
             ipv6_addresses=[],
             error=last_error or "All upstream resolvers failed"
+        )
+    
+    def _resolve_with_system(self, domain: str, query_types: List[str]) -> DNSResult:
+        """Resolve domain using system-configured DNS servers.
+
+        This is a safety net for environments where the predefined
+        upstream resolvers (e.g., 8.8.8.8) are blocked or unreachable.
+        """
+        ipv4_addresses: List[str] = []
+        ipv6_addresses: List[str] = []
+        min_ttl = self.config.cache.max_ttl
+
+        resolver = dns.resolver.Resolver(configure=True)
+
+        for qtype in query_types:
+            try:
+                answers = resolver.resolve(domain, qtype, lifetime=self.config.upstream_timeout)
+                rrset = answers.rrset
+
+                if rrset and rrset.ttl < min_ttl:
+                    min_ttl = rrset.ttl
+
+                if qtype == "A":
+                    ipv4_addresses.extend([str(rdata) for rdata in answers])
+                elif qtype == "AAAA":
+                    ipv6_addresses.extend([str(rdata) for rdata in answers])
+            except dns.resolver.NoAnswer:
+                continue
+            except dns.resolver.NXDOMAIN:
+                return DNSResult(
+                    success=False,
+                    domain=domain,
+                    ipv4_addresses=[],
+                    ipv6_addresses=[],
+                    ttl=self.config.cache.negative_ttl,
+                    resolver_used="system",
+                    error="NXDOMAIN from system resolver"
+                )
+            except dns.exception.Timeout:
+                logger.debug(f"System resolver timeout for {domain} ({qtype})")
+                continue
+            except Exception as e:
+                logger.debug(f"System resolver error for {domain} ({qtype}): {e}")
+                continue
+
+        has_results = bool(ipv4_addresses or ipv6_addresses)
+        ttl = min_ttl if has_results else self.config.cache.negative_ttl
+
+        return DNSResult(
+            success=has_results,
+            domain=domain,
+            ipv4_addresses=ipv4_addresses,
+            ipv6_addresses=ipv6_addresses,
+            ttl=ttl,
+            resolver_used="system",
+            error=None if has_results else "System resolver returned no records"
         )
     
     def _query_resolver(

@@ -4,6 +4,7 @@ import queue
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional
+from shared.time_utils import reset_uptime
 
 logger = logging.getLogger("gui.agent_controller")
 
@@ -137,6 +138,14 @@ class AgentController:
             'blocked_count': 0,
             'allowed_count': 0,
             'uptime_seconds': 0,
+            'dns_queries': 0,
+            'dns_blocked': 0,
+            'dns_allowed': 0,
+            'logs_sent': 0,
+            'queue_size': 0,
+            'domains_count': 0,
+            'patterns_count': 0,
+            'ips_count': 0,
         }
         
         self._root = None  # Reference to CTk root for after()
@@ -170,6 +179,10 @@ class AgentController:
             logger.warning("Agent already running or starting")
             return False
         
+        # Reset uptime counter so dashboard shows real runtime per session
+        reset_uptime()
+        self._reset_stats()
+
         self._status = AgentStatus.STARTING
         self.signals.emit('status_changed', {'status': 'starting'})
         
@@ -319,7 +332,25 @@ class AgentController:
             })
             
             logger.info("Agent worker finished")
-    
+
+    def _reset_stats(self) -> None:
+        """Reset tracked statistics to a clean state."""
+        self._stats.update({
+            'packets_captured': 0,
+            'domains_detected': 0,
+            'blocked_count': 0,
+            'allowed_count': 0,
+            'uptime_seconds': 0,
+            'dns_queries': 0,
+            'dns_blocked': 0,
+            'dns_allowed': 0,
+            'logs_sent': 0,
+            'queue_size': 0,
+            'domains_count': 0,
+            'patterns_count': 0,
+            'ips_count': 0,
+        })
+
     def _update_stats(self):
         """Update internal statistics."""
         try:
@@ -345,6 +376,21 @@ class AgentController:
                     self._stats['logs_sent'] = sender_status.get('logs_sent', 0)
                     self._stats['queue_size'] = sender_status.get('queue_size', 0)
                     
+                # DNS Proxy stats (real-time from orchestrator/server)
+                dns_orchestrator = getattr(self._agent, "dns_proxy_orchestrator", None)
+                if dns_orchestrator and hasattr(dns_orchestrator, "get_dns_proxy"):
+                    dns_server = dns_orchestrator.get_dns_proxy()
+                    if dns_server and hasattr(dns_server, "get_stats"):
+                        dns_stats = dns_server.get_stats() or {}
+                        handler_stats = dns_stats.get('handler', {})
+
+                        self._stats['dns_queries'] = handler_stats.get('total_queries', 0)
+                        self._stats['dns_blocked'] = handler_stats.get('blocked', 0)
+                        self._stats['dns_allowed'] = handler_stats.get('allowed', 0)
+                        # Maintain backward-compatible fields for dashboards
+                        self._stats['blocked_count'] = handler_stats.get('blocked', self._stats.get('blocked_count', 0))
+                        self._stats['allowed_count'] = handler_stats.get('allowed', self._stats.get('allowed_count', 0))
+
         except Exception as e:
             logger.debug(f"Stats update error: {e}")
     

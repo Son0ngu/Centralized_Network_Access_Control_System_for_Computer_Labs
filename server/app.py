@@ -321,42 +321,41 @@ def login_required(f):
 
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""
+
+    def _collect_dashboard_stats():
+        """Collect dashboard statistics from services."""
+        stats = {
+            'total_logs': 0,
+            'allowed_count': 0,
+            'blocked_count': 0,
+            'active_agents': 0
+        }
+        recent_logs = []
+
+        try:
+            log_stats = log_service.get_comprehensive_statistics({})
+            stats['total_logs'] = log_stats.get('total', 0)
+            stats['allowed_count'] = log_stats.get('allowed', 0)
+            stats['blocked_count'] = log_stats.get('blocked', 0)
+            recent_logs = log_service.get_recent_logs(limit=10)
+        except Exception as e:
+            app.logger.warning(f"Could not fetch log stats: {e}")
+
+        try:
+            agent_stats = agent_service.calculate_statistics()
+            stats['active_agents'] = agent_stats.get('active', 0)
+            stats['agent_stats'] = agent_stats
+        except Exception as e:
+            app.logger.warning(f"Could not fetch agent stats: {e}")
+            stats['agent_stats'] = {}
+
+        return stats, recent_logs
     
     @app.route('/')
     def index():
         """Dashboard route with statistics - vietnam ONLY"""
         try:
-            # Get dashboard statistics
-            stats = {
-                'total_logs': 0,
-                'allowed_count': 0,
-                'blocked_count': 0,
-                'active_agents': 0
-            }
-            
-            recent_logs = []
-            
-            # Try to get real statistics
-            try:
-                # Get log statistics
-                stats['total_logs'] = log_service.get_total_count()
-                stats['allowed_count'] = log_service.get_count_by_action('ALLOWED')
-                stats['blocked_count'] = log_service.get_count_by_action('BLOCKED')
-                
-                #  FIX: Get active agents count properly
-                try:
-                    agent_stats = agent_service.calculate_statistics()
-                    stats['active_agents'] = agent_stats.get('active', 0)
-                except AttributeError:
-                    # Fallback if method doesn't exist
-                    stats['active_agents'] = agent_service.get_total_agents()
-                
-                # Get recent logs (last 10)
-                recent_logs = log_service.get_recent_logs(limit=10)
-                
-            except Exception as e:
-                app.logger.warning(f"Could not fetch dashboard stats: {e}")
-                # Use default values (zeros)
+            stats, recent_logs = _collect_dashboard_stats()
             
             return render_template('dashboard.html', 
                                  page_title="Dashboard", 
@@ -369,6 +368,33 @@ def register_main_routes(app, log_service, agent_service):
                                  page_title="Dashboard", 
                                  stats={'total_logs': 0, 'allowed_count': 0, 'blocked_count': 0, 'active_agents': 0},
                                  recent_logs=[])
+    
+    @app.route('/api/dashboard/stats')
+    def dashboard_stats_api():
+        """API endpoint to provide real dashboard statistics"""
+        try:
+            stats, recent_logs = _collect_dashboard_stats()
+            return jsonify({
+                "success": True,
+                "data": {
+                    "logs": {
+                        "total": stats.get("total_logs", 0),
+                        "allowed": stats.get("allowed_count", 0),
+                        "blocked": stats.get("blocked_count", 0),
+                    },
+                    "agents": stats.get("agent_stats", {}),
+                    "active_agents": stats.get("active_agents", 0),
+                    "recent_logs": recent_logs
+                },
+                "timestamp": now_iso()
+            })
+        except Exception as e:
+            app.logger.error(f"Dashboard stats API error: {e}")
+            return jsonify({
+                "success": False,
+                "error": "Failed to load dashboard stats",
+                "timestamp": now_iso()
+            }), 500
     
     @app.route('/agents')
     @login_required

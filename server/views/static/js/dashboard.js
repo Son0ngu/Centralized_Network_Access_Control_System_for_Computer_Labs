@@ -75,41 +75,74 @@
     }
 
     // Load initial statistics
-    async function loadDashboardStats() {
+    async function loadLegacyStats() {
         try {
-            console.log(' Loading dashboard statistics...');
-            
             const response = await fetch('/api/logs/stats');
             if (response.ok) {
                 const data = await response.json();
-                console.log(' Dashboard stats loaded:', data);
+                console.log(' Legacy dashboard stats loaded:', data);
                 
                 if (data.success) {
                     updateDashboardStats({
                         total_logs: data.total || 0,
                         allowed_count: data.allowed || 0,
-                        blocked_count: data.blocked || 0,
-                        active_agents: 0 // Will be updated separately
+                        blocked_count: data.blocked || 0
                     });
                 }
             }
             
-            // Load active agents count
+        } catch (error) {
+            console.error(' Error loading legacy log stats:', error);
+        }
+
+        try {
             const agentsResponse = await fetch('/api/agents/statistics');
             if (agentsResponse.ok) {
                 const agentsData = await agentsResponse.json();
-                console.log(' Agents stats loaded:', agentsData);
+                console.log(' Legacy agents stats loaded:', agentsData);
                 
                 if (agentsData.success && agentsData.data) {
-                    const activeAgentsEl = document.querySelector('[id*="agent"]') || document.querySelectorAll('.stat-number')[3];
-                    if (activeAgentsEl) {
-                        animateNumber(activeAgentsEl, parseInt(activeAgentsEl.textContent.replace(/,/g, ''), 10) || 0, agentsData.data.active || 0);
-                    }
+                    updateDashboardStats({
+                        active_agents: agentsData.data.active || 0
+                    });
                 }
             }
         } catch (error) {
+            console.error(' Error loading legacy agent stats:', error);
+        }
+    }
+
+    // Load initial statistics
+    async function loadDashboardStats() {
+        try {
+            console.log(' Loading dashboard statistics...');
+
+            const response = await fetch('/api/dashboard/stats');
+            if (response.ok) {
+                const data = await response.json();
+                console.log(' Dashboard stats loaded:', data);
+
+                if (data.success && data.data) {
+                    const logStats = data.data.logs || {};
+                    const agentStats = data.data.agents || {};
+
+                    updateDashboardStats({
+                        total_logs: logStats.total ?? 0,
+                        allowed_count: logStats.allowed ?? 0,
+                        blocked_count: logStats.blocked ?? 0,
+                        active_agents: agentStats.active ?? data.data.active_agents ?? 0
+                    });
+                    return;
+                }
+                console.warn(' Dashboard stats missing data, falling back to legacy calls');
+            } else {
+                console.warn(` Dashboard stats request failed with status ${response.status}`);
+            }
+
+        } catch (error) {
             console.error(' Error loading dashboard stats:', error);
         }
+        await loadLegacyStats();
     }
 
     setInterval(function () {

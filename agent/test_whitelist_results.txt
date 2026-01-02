@@ -1,0 +1,117 @@
+Whitelist JWT Flow Test Results
+Generated: 2026-01-02 10:12:42
+============================================================
+
+
+╔══════════════════════════════════════════════════════════════╗
+║           WHITELIST JWT FLOW TEST                             ║
+║           Test complete authentication & whitelist flow       ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+============================================================
+STEP 1: Load Configuration
+============================================================
+  [OK] Config loaded
+  [INFO] API Key: fc_4c85eb074fd5c9fbd...
+  [INFO] Server: http://localhost:5000
+
+============================================================
+STEP 2: Register Agent (API Key → JWT)
+============================================================
+  [INFO] Register URL: http://localhost:5000/api/agents/register
+  [INFO] Device ID: b30ea583fe223bdda55dad52
+  [INFO] Hostname: BXS
+  [INFO] Response status: 200
+  [OK] Registration successful!
+  [OK] Agent ID: 40213f95-da36-46eb-93f0-ed04d2e7f6d7
+  [OK] Access Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0M...
+  [INFO] Token expires: 2026-01-03T10:12:39.318291+07:00
+
+============================================================
+STEP 3: Sync Whitelist (JWT Auth)
+============================================================
+  [INFO] Sync URL: http://localhost:5000/api/whitelist/agent-sync
+  [INFO] Agent ID: 40213f95-da36-46eb-93f0-ed04d2e7f6d7
+  [INFO] Response status: 200
+  [OK] Whitelist synced successfully!
+  [OK] Total domains: 3
+  [INFO] Domains in whitelist:
+      1. google.com (domain)
+      2. hustask.soict.ai (domain)
+      3. https://hustack.soict.ai/ (url)
+
+============================================================
+STEP 4: Test WhitelistState Matching
+============================================================
+  [INFO] State updated: True
+  [INFO] Domains in state: 0
+  [INFO] Patterns in state: 0
+  [INFO] IPs in state: 0
+  [INFO] Domains loaded: ['google.com', 'hustack.soict.ai', 'hustask.soict.ai']
+
+  Domain matching tests:
+    ✓ google.com: allowed=True, expected=True (in whitelist) [PASS]
+    ✓ hustack.soict.ai: allowed=True, expected=True (in whitelist) [PASS]
+    ✓ hustask.soict.ai: allowed=True, expected=True (in whitelist) [PASS]
+    ✓ blocked-test.xyz: allowed=False, expected=False (not in whitelist) [PASS]
+    ✓ malware-site.com: allowed=False, expected=False (not in whitelist) [PASS]
+  [OK] All matching tests passed!
+
+============================================================
+STEP 5: Test DNS Handler Integration
+============================================================
+  [OK] DNS Handler created with whitelist state
+
+  DNS Handler domain check:
+    ✓ google.com: handler_allows=True, in_whitelist=True
+    ✓ hustack.soict.ai: handler_allows=True, in_whitelist=True
+    ✓ hustask.soict.ai: handler_allows=True, in_whitelist=True
+    ✗ blocked-test.xyz: handler_allows=False, in_whitelist=False
+
+============================================================
+STEP 6: Test Upstream DNS Resolver
+============================================================
+  [OK] Google DNS (8.8.8.8): google.com → 142.250.197.238
+  [OK] Cloudflare DNS (1.1.1.1): google.com → 142.250.76.14
+  [OK] 2/2 resolvers working
+
+============================================================
+STEP 7: Check DNS Proxy Status
+============================================================
+  [OK] Port 53 is in use
+  [OK] DNS Proxy responds to queries
+
+============================================================
+STEP 8: Test DNS Query Flow
+============================================================
+  [INFO] Testing 3 domains via DNS Proxy (127.0.0.1:53)
+  [OK] google.com → 142.250.197.238 (44ms) [ALLOWED - correct]
+  [OK] hustask.soict.ai → 142.250.71.179 (220ms) [ALLOWED - correct]
+  [OK] blocked-test.xyz → BLOCKED (0ms) [NOT IN WHITELIST - correct]
+  [OK] 
+All 3 queries behaved correctly!
+
+============================================================
+STEP 9: System DNS Settings
+============================================================
+  [OK] Ethernet: Uses DNS Proxy (127.0.0.1)
+  [OK] System is configured to use DNS Proxy
+
+============================================================
+SUMMARY
+============================================================
+
+  Results: 9/9 tests passed
+
+  ✓ config
+  ✓ registration
+  ✓ whitelist_sync
+  ✓ state_matching
+  ✓ handler_integration
+  ✓ upstream_resolver
+  ✓ dns_proxy
+  ✓ dns_query_flow
+  ✓ dns_settings
+
+All systems operational!

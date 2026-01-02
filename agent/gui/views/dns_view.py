@@ -69,7 +69,7 @@ class DNSView(ctk.CTkFrame):
         
         # Configure grid for 5 cards
         for i in range(5):
-            stats_frame.grid_columnconfigure(i, weight=1)
+            stats_frame.grid_columnconfigure(i, weight=1, minsize=160)
         
         # Card 1: Server Status
         self._status_card = self._create_stat_card(
@@ -222,10 +222,14 @@ class DNSView(ctk.CTkFrame):
         title_label.pack(anchor="w")
         
         value_label = ctk.CTkLabel(
-            inner, text=value, font=ctk.CTkFont(size=24, weight="bold"),
-            text_color=color
+            inner,
+            text=value,
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=color,
+            anchor="w",
+            wraplength=200
         )
-        value_label.pack(anchor="w", pady=(5, 0))
+        value_label.pack(anchor="w", pady=(5, 0), fill="x")
         
         return {"card": card, "title": title_label, "value": value_label, "color": color}
     

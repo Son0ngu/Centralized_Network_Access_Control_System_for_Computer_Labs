@@ -13,6 +13,34 @@ from .token_manager import init_token_manager, get_token_manager
 
 logger = logging.getLogger("core.lifecycle")
 
+# Profile manager for backup/restore
+_profile_manager = None
+
+
+def _init_profile_manager():
+    """Initialize profile manager for system backup."""
+    global _profile_manager
+    try:
+        from utils.profile_manager import get_profile_manager
+        _profile_manager = get_profile_manager()
+        return True
+    except ImportError:
+        logger.warning("Profile Manager not available - system backup disabled")
+        return False
+
+
+def _backup_system_profile():
+    """Backup system settings before agent starts."""
+    if _profile_manager:
+        try:
+            success = _profile_manager.backup_all()
+            if success:
+                logger.info("System profile backed up successfully")
+            return success
+        except Exception as e:
+            logger.warning(f"Failed to backup system profile: {e}")
+    return False
+
 
 def initialize_components(config: Dict) -> bool:
     """
@@ -24,6 +52,7 @@ def initialize_components(config: Dict) -> bool:
     - No Default Deny firewall policy needed (Sinkhole handles blocking)
     
     Initialization Order:
+    0. Backup system profile (DNS, firewall settings)
     1. Register with server
     2. Initialize Token Manager
     3. Initialize Whitelist Manager + Sync
@@ -45,6 +74,11 @@ def initialize_components(config: Dict) -> bool:
         logger.info("=" * 60)
         logger.info("INITIALIZING AGENT COMPONENTS (DNS Proxy Architecture)")
         logger.info("=" * 60)
+        
+        # 0. Initialize Profile Manager and backup system settings
+        logger.info("Step 0: Backing up system profile...")
+        _init_profile_manager()
+        _backup_system_profile()
         
         # 1. Register with server first
         logger.info("Step 1: Registering with server...")
@@ -401,6 +435,19 @@ def cleanup(config: Optional[Dict] = None) -> None:
             finally:
                 agent.dns_proxy_orchestrator = None
                 agent_state['dns_proxy_mode'] = None
+        
+        # 7. Restore system profile (DNS, firewall from backup)
+        if _profile_manager and _profile_manager.has_backup():
+            logger.info("Step 7: Restoring system profile from backup...")
+            try:
+                success, errors = _profile_manager.restore_all()
+                if success:
+                    logger.info("  → System profile restored successfully")
+                else:
+                    for error in errors:
+                        logger.warning(f"  → Restore issue: {error}")
+            except Exception as e:
+                logger.error(f"Error restoring system profile: {e}")
         
         agent.running = False
         

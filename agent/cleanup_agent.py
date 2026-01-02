@@ -2,9 +2,10 @@
 Agent Cleanup Script
 ====================
 Script khôi phục hệ thống về trạng thái ban đầu sau khi agent thay đổi:
-1. Khôi phục DNS về DHCP (tự động)
+1. Khôi phục DNS từ profile đã lưu (hoặc reset về DHCP)
 2. Xóa firewall rules do agent tạo
 3. Xóa DoH/DoT blocking rules
+4. Khôi phục hosts file
 
 Chạy với quyền Administrator:
     python cleanup_agent.py
@@ -17,7 +18,18 @@ import subprocess
 import sys
 import os
 import time
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Tuple, Optional
+
+# Add agent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from utils.profile_manager import ProfileManager, get_profile_manager
+    PROFILE_MANAGER_AVAILABLE = True
+except ImportError:
+    PROFILE_MANAGER_AVAILABLE = False
+
 
 # Colors for terminal output
 class Colors:
@@ -186,14 +198,16 @@ def cleanup_firewall_rules() -> int:
     Returns:
         Number of rules removed
     """
-    print(f"\n{Colors.BLUE}[2/3] Xóa Firewall Rules do Agent tạo...{Colors.RESET}")
+    print(f"\n{Colors.BLUE}[2/4] Xóa Firewall Rules do Agent tạo...{Colors.RESET}")
     print("-" * 50)
     
     # Firewall rule prefixes used by the agent
     rule_prefixes = [
         "FirewallController",
-        "DNS_Proxy_Block_",
+        "DNS_Proxy_",
         "FC_",
+        "DoH_Block_",
+        "DoT_Block_",
     ]
     
     removed_count = 0
@@ -258,7 +272,7 @@ def cleanup_doh_dot_rules() -> int:
     Returns:
         Number of rules removed
     """
-    print(f"\n{Colors.BLUE}[3/3] Xóa DoH/DoT Blocking Rules...{Colors.RESET}")
+    print(f"\n{Colors.BLUE}[3/4] Xóa DoH/DoT Blocking Rules...{Colors.RESET}")
     print("-" * 50)
     
     # Specific DoH/DoT rule names
@@ -289,6 +303,76 @@ def cleanup_doh_dot_rules() -> int:
     print(f"\n  → Đã xóa {removed_count} DoH/DoT rules")
     
     return removed_count
+
+
+def restore_hosts_file() -> bool:
+    """
+    Restore hosts file from backup.
+    
+    Returns:
+        True if restored successfully
+    """
+    print(f"\n{Colors.BLUE}[4/4] Khôi phục hosts file...{Colors.RESET}")
+    print("-" * 50)
+    
+    hosts_backup = Path.home() / ".firewall_agent" / "profiles" / "hosts.backup"
+    hosts_path = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "drivers" / "etc" / "hosts"
+    
+    if not hosts_backup.exists():
+        print(f"  {Colors.YELLOW}○{Colors.RESET} Không có backup hosts file")
+        return True
+    
+    try:
+        with open(hosts_backup, 'r', encoding='utf-8') as f:
+            original_content = f.read()
+        
+        with open(hosts_path, 'w', encoding='utf-8') as f:
+            f.write(original_content)
+        
+        hosts_backup.unlink()  # Remove backup after restore
+        print(f"  {Colors.GREEN}✓{Colors.RESET} Đã khôi phục hosts file")
+        return True
+        
+    except PermissionError:
+        print(f"  {Colors.RED}✗{Colors.RESET} Không đủ quyền để ghi hosts file")
+        return False
+    except Exception as e:
+        print(f"  {Colors.RED}✗{Colors.RESET} Lỗi: {e}")
+        return False
+
+
+def cleanup_with_profile() -> Tuple[bool, List[str]]:
+    """
+    Cleanup using saved profile (preferred method).
+    
+    Returns:
+        Tuple of (success, errors)
+    """
+    if not PROFILE_MANAGER_AVAILABLE:
+        return False, ["Profile Manager not available"]
+    
+    print(f"\n{Colors.BLUE}[Profile-based Restore]{Colors.RESET}")
+    print("-" * 50)
+    
+    manager = get_profile_manager()
+    
+    if not manager.has_backup():
+        print(f"  {Colors.YELLOW}○{Colors.RESET} Không tìm thấy profile backup")
+        print(f"  → Sẽ sử dụng cleanup thủ công")
+        return False, ["No profile backup found"]
+    
+    print(f"  {Colors.GREEN}✓{Colors.RESET} Tìm thấy profile backup")
+    
+    success, errors = manager.restore_all()
+    
+    if success:
+        print(f"  {Colors.GREEN}✓{Colors.RESET} Khôi phục từ profile thành công!")
+    else:
+        print(f"  {Colors.YELLOW}⚠{Colors.RESET} Khôi phục với một số lỗi:")
+        for error in errors:
+            print(f"    - {error}")
+    
+    return success, errors
 
 
 def flush_dns_cache():
@@ -412,10 +496,11 @@ def main():
     
     # Confirmation
     print(f"\n{Colors.YELLOW}⚠ Script này sẽ:{Colors.RESET}")
-    print("  1. Reset DNS của tất cả network adapters về DHCP")
+    print("  1. Khôi phục DNS từ profile backup (hoặc reset về DHCP)")
     print("  2. Xóa tất cả Firewall Rules do Agent tạo")
     print("  3. Xóa DoH/DoT Blocking Rules")
-    print("  4. Flush DNS Cache")
+    print("  4. Khôi phục hosts file từ backup")
+    print("  5. Flush DNS Cache")
     
     response = input(f"\n{Colors.BOLD}Bạn có muốn tiếp tục? [y/N]: {Colors.RESET}").strip().lower()
     
@@ -426,21 +511,49 @@ def main():
     print(f"\n{Colors.CYAN}Bắt đầu cleanup...{Colors.RESET}")
     start_time = time.time()
     
-    # Run cleanup steps
-    dns_count = cleanup_dns()
-    fw_count = cleanup_firewall_rules()
-    doh_count = cleanup_doh_dot_rules()
-    flush_dns_cache()
+    # Try profile-based restore first
+    profile_success = False
+    profile_errors = []
     
-    # Optional: Reset Winsock
-    # reset_winsock()
+    if PROFILE_MANAGER_AVAILABLE:
+        profile_success, profile_errors = cleanup_with_profile()
+    
+    # If profile restore failed or not available, do manual cleanup
+    if not profile_success:
+        print(f"\n{Colors.CYAN}Thực hiện cleanup thủ công...{Colors.RESET}")
+        
+        # Run cleanup steps
+        dns_count = cleanup_dns()
+        fw_count = cleanup_firewall_rules()
+        doh_count = cleanup_doh_dot_rules()
+        restore_hosts_file()
+        flush_dns_cache()
+    else:
+        # Profile restore already handled everything, just report
+        dns_count = 0
+        fw_count = 0
+        doh_count = 0
+        flush_dns_cache()
     
     # Verify
     verify_cleanup()
     
     # Summary
     elapsed = time.time() - start_time
-    print(f"""
+    
+    if profile_success:
+        print(f"""
+{Colors.CYAN}╔══════════════════════════════════════════════════════════════╗
+║                        CLEANUP SUMMARY                        ║
+╠══════════════════════════════════════════════════════════════╣
+║  Restore method:            Profile-based                     ║
+║  Time elapsed:              {elapsed:.1f}s                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  {Colors.GREEN}✓ Hệ thống đã được khôi phục từ profile backup{Colors.RESET}            {Colors.CYAN}║
+╚══════════════════════════════════════════════════════════════╝{Colors.RESET}
+""")
+    else:
+        print(f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════╗
 ║                        CLEANUP SUMMARY                        ║
 ╠══════════════════════════════════════════════════════════════╣
