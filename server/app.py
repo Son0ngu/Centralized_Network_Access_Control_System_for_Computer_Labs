@@ -326,7 +326,8 @@ def register_controllers(app, socketio, db):
         app.register_blueprint(api_key_controller.blueprint, url_prefix='/api')
         app.register_blueprint(auth_controller.blueprint, url_prefix='/api')  # NEW: Auth routes
         app.register_blueprint(admin_controller.blueprint, url_prefix='/api/admin')  # FIX: Admin routes at /api/admin/*
-        app.register_blueprint(super_admin_controller.blueprint)  # Super Admin routes (already has prefix in controller)
+        app.register_blueprint(super_admin_controller.blueprint)  # Super Admin API routes (/api/super/*)
+        app.register_blueprint(super_admin_controller.view_blueprint)  # Super Admin view routes (/super-admin/*)
         app.register_blueprint(broadcast_controller.blueprint, url_prefix='/api/broadcasts')  # Broadcast routes
 
         logger.info(" All controllers registered successfully")
@@ -361,8 +362,8 @@ def login_required(f):
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""
 
-    def _collect_dashboard_stats():
-        """Collect dashboard statistics from services."""
+    def _collect_dashboard_stats(tenant_id=None):
+        """Collect dashboard statistics from services, filtered by tenant_id if provided."""
         stats = {
             'total_logs': 0,
             'allowed_count': 0,
@@ -372,16 +373,19 @@ def register_main_routes(app, log_service, agent_service):
         recent_logs = []
 
         try:
-            log_stats = log_service.get_comprehensive_statistics({})
+            # Pass tenant_id to filter logs by tenant
+            filters = {'tenant_id': tenant_id} if tenant_id else {}
+            log_stats = log_service.get_comprehensive_statistics(filters)
             stats['total_logs'] = log_stats.get('total', 0)
             stats['allowed_count'] = log_stats.get('allowed', 0)
             stats['blocked_count'] = log_stats.get('blocked', 0)
-            recent_logs = log_service.get_recent_logs(limit=10)
+            recent_logs = log_service.get_recent_logs(limit=10, tenant_id=tenant_id)
         except Exception as e:
             app.logger.warning(f"Could not fetch log stats: {e}")
 
         try:
-            agent_stats = agent_service.calculate_statistics()
+            # Pass tenant_id to filter agents by tenant
+            agent_stats = agent_service.calculate_statistics(tenant_id=tenant_id)
             stats['active_agents'] = agent_stats.get('active', 0)
             stats['agent_stats'] = agent_stats
         except Exception as e:
@@ -392,15 +396,26 @@ def register_main_routes(app, log_service, agent_service):
     
     @app.route('/')
     @app.route('/dashboard')
+    @login_required
     def index():
         """Dashboard route with statistics - vietnam ONLY"""
         try:
-            stats, recent_logs = _collect_dashboard_stats()
+            # Get tenant_id from session for data isolation
+            # Super admin (no tenant_id) sees all data, tenant admin sees only their data
+            tenant_id = session.get('tenant_id')
+            role = session.get('role')
+            
+            # Super admin sees all data (tenant_id=None), tenant admin sees only their tenant's data
+            filter_tenant_id = None if role == 'super_admin' else tenant_id
+            
+            stats, recent_logs = _collect_dashboard_stats(tenant_id=filter_tenant_id)
             
             return render_template('dashboard.html', 
                                  page_title="Dashboard", 
                                  stats=stats,
-                                 recent_logs=recent_logs)
+                                 recent_logs=recent_logs,
+                                 current_role=role,
+                                 current_tenant_id=tenant_id)
                                  
         except Exception as e:
             app.logger.error(f"Dashboard error: {e}")
@@ -410,10 +425,18 @@ def register_main_routes(app, log_service, agent_service):
                                  recent_logs=[])
     
     @app.route('/api/dashboard/stats')
+    @login_required
     def dashboard_stats_api():
         """API endpoint to provide real dashboard statistics"""
         try:
-            stats, recent_logs = _collect_dashboard_stats()
+            # Get tenant_id from session for data isolation
+            tenant_id = session.get('tenant_id')
+            role = session.get('role')
+            
+            # Super admin sees all data, tenant admin sees only their tenant's data
+            filter_tenant_id = None if role == 'super_admin' else tenant_id
+            
+            stats, recent_logs = _collect_dashboard_stats(tenant_id=filter_tenant_id)
             return jsonify({
                 "success": True,
                 "data": {

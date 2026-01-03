@@ -57,14 +57,20 @@ class AdminService:
                 "error": f"Account is {admin.get('status')}"
             }
         
-        # Get tenant
-        tenant = self.tenant_model.get_by_id(str(admin['tenant_id']))
-        if not tenant or tenant.get('status') != 'active':
-            audit_log('failed_login', {'email': email, 'reason': 'tenant_not_active'})
-            return {
-                "success": False,
-                "error": "Tenant is not active"
-            }
+        # Super Admin has no tenant - skip tenant check
+        tenant = None
+        if admin.get('role') == 'super_admin':
+            # Super Admin doesn't need tenant validation
+            logger.info(f"Super Admin login: {email}")
+        else:
+            # Get tenant for regular admins
+            tenant = self.tenant_model.get_by_id(str(admin.get('tenant_id')))
+            if not tenant or tenant.get('status') != 'active':
+                audit_log('failed_login', {'email': email, 'reason': 'tenant_not_active'})
+                return {
+                    "success": False,
+                    "error": "Tenant is not active"
+                }
         
         # Check if 2FA is required
         if admin.get('2fa_enabled'):
@@ -111,7 +117,10 @@ class AdminService:
         if not admin:
             return {"success": False, "error": "Admin not found"}
         
-        tenant = self.tenant_model.get_by_id(str(admin['tenant_id']))
+        # Super Admin has no tenant
+        tenant = None
+        if admin.get('role') != 'super_admin' and admin.get('tenant_id'):
+            tenant = self.tenant_model.get_by_id(str(admin['tenant_id']))
         
         # Update last login
         self.admin_model.update_last_login(admin_id, ip_address)
@@ -128,7 +137,7 @@ class AdminService:
             **tokens
         }
     
-    def _generate_tokens(self, admin: Dict, tenant: Dict) -> Dict:
+    def _generate_tokens(self, admin: Dict, tenant: Dict = None) -> Dict:
         """Generate JWT tokens."""
         if not self.jwt_service:
             return {}
@@ -136,8 +145,8 @@ class AdminService:
         payload = {
             "admin_id": str(admin['_id']),
             "email": admin['email'],
-            "tenant_id": str(tenant['_id']),
-            "role": admin.get('role', 'admin'),
+            "tenant_id": str(tenant['_id']) if tenant else None,
+            "role": admin.get('role', 'tenant_admin'),
             "type": "admin"
         }
         

@@ -195,10 +195,16 @@ class LogModel:
             self.logger.error(f"Error getting count by action {action}: {e}")
             return 0
     
-    def get_recent_logs(self, limit: int = 10) -> List[Dict]:
-        """Get recent logs in vietnam timezone"""
+    def get_recent_logs(self, limit: int = 10, query: Dict = None) -> List[Dict]:
+        """Get recent logs in vietnam timezone
+        
+        Args:
+            limit: Maximum number of logs to return
+            query: Optional filter query (e.g., {'tenant_id': 'xxx'})
+        """
         try:
-            logs = list(self.collection.find()
+            filter_query = query or {}
+            logs = list(self.collection.find(filter_query)
                        .sort('timestamp', DESCENDING)
                        .limit(limit))
             

@@ -477,12 +477,16 @@ class LogService:
             self.logger.error(f"Error getting count for action {action}: {e}")
             return 0
 
-    def get_recent_logs(self, limit: int = 10) -> List[Dict]:
+    def get_recent_logs(self, limit: int = 10, tenant_id: str = None) -> List[Dict]:
         """Get recent logs via model wrapper - vietnam ONLY"""
         try:
+            query = {}
+            if tenant_id:
+                query['tenant_id'] = tenant_id
+            
             if hasattr(self.model, 'get_recent_logs'):
-                return self.model.get_recent_logs(limit=limit)
-            return self.model.find_logs(limit=limit, sort_field='timestamp')
+                return self.model.get_recent_logs(limit=limit, query=query)
+            return self.model.find_logs(limit=limit, sort_field='timestamp', query=query)
         except Exception as e:
             self.logger.error(f"Error getting recent logs: {e}")
             return []
@@ -493,15 +497,19 @@ class LogService:
         try:
             self.logger.info(f"Calculating comprehensive statistics with filters: {filters}")
             
-            # Check if we have any filters
-            has_filters = bool(filters and any(filters.values()))
+            # Extract tenant_id for filtering
+            tenant_id = filters.get('tenant_id') if filters else None
+            base_query = {'tenant_id': tenant_id} if tenant_id else {}
             
-            # Get total counts (no filters)
+            # Check if we have any filters beyond tenant_id
+            has_filters = bool(filters and any(k != 'tenant_id' and v for k, v in filters.items()))
+            
+            # Get total counts (filtered by tenant if provided)
             total_stats = {
-                "total": self.model.count_logs({}),
-                "allowed": self.model.count_logs({"action": "ALLOWED"}),
-                "blocked": self.model.count_logs({"action": "BLOCKED"}),
-                "warnings": self.model.count_logs({"level": "WARNING"})
+                "total": self.model.count_logs(base_query),
+                "allowed": self.model.count_logs({**base_query, "action": "ALLOWED"}),
+                "blocked": self.model.count_logs({**base_query, "action": "BLOCKED"}),
+                "warnings": self.model.count_logs({**base_query, "level": "WARNING"})
             }
             
             # Get filtered counts if filters exist

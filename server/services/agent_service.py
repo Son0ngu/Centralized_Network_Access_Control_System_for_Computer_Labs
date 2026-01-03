@@ -310,10 +310,14 @@ class AgentService:
             self.logger.error(traceback.format_exc())
             return []
 
-    def calculate_statistics(self) -> Dict:
-        """Calculate agent statistics - vietnam ONLY"""
+    def calculate_statistics(self, tenant_id: str = None) -> Dict:
+        """Calculate agent statistics - vietnam ONLY
+        
+        Args:
+            tenant_id: If provided, filter agents by this tenant. If None, include all agents.
+        """
         try:
-            agents = self.get_agents_with_status()
+            agents = self.get_agents_with_status(tenant_id=tenant_id)
             
             total = len(agents)
             active = len([a for a in agents if a.get('status') == 'active'])

@@ -215,13 +215,24 @@ class AdminController:
         if not admin:
             return self._error_response("Admin not found", 404)
         
-        # Set session
+        # Set session with all required fields including role
         session['admin_id'] = admin_id
         session['email'] = admin['email']
-        session['tenant_id'] = str(admin['tenant_id'])
+        session['role'] = admin.get('role', 'tenant_admin')  # Store role in session
+        session['full_name'] = admin.get('full_name', '')
+        
+        # Handle tenant_id (super_admin may not have tenant_id)
+        tenant_id = admin.get('tenant_id')
+        session['tenant_id'] = str(tenant_id) if tenant_id else None
+        
         session.permanent = True  # Session persists across browser restarts
         
-        return self._success_response(None, "Session established")
+        logger.info(f"Session established for {admin['email']} with role {session['role']}")
+        
+        return self._success_response({
+            "role": session['role'],
+            "tenant_id": session['tenant_id']
+        }, "Session established")
     
     def get_profile(self):
         """GET /admin/profile"""

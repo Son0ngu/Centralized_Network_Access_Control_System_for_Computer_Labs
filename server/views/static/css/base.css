@@ -120,6 +120,64 @@ body {
     height: 1.25rem;
 }
 
+/* ========================================
+   NAVBAR DROPDOWN STYLES
+   ======================================== */
+
+.navbar-nav .dropdown-menu {
+    background: #2d3250;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    margin-top: 0.5rem;
+    min-width: 220px;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item:hover,
+.navbar-nav .dropdown-menu .dropdown-item:focus {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item.text-danger {
+    color: #ff6b6b !important;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item.text-danger:hover {
+    background: rgba(255, 107, 107, 0.15);
+    color: #ff4757 !important;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item-text {
+    color: rgba(255, 255, 255, 0.6);
+    padding: 0.4rem 1rem;
+}
+
+.navbar-nav .dropdown-menu .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+}
+
+/* Super Admin Badge in Navbar */
+.navbar .badge.bg-danger {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+}
+
+/* Dropdown toggle arrow */
+.navbar-nav .dropdown-toggle::after {
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
 main {
     min-height: calc(100vh - 200px);
 }
