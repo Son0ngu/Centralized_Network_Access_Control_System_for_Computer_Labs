@@ -65,13 +65,9 @@ class FirewallSyncConfig:
 
 @dataclass  
 class DNSServerConfig:
-    """DNS Server listener configuration."""
+    """DNS Server listener configuration (IPv4 only)."""
     bind_address: str = "127.0.0.1"
     port: int = 53
-    
-    # IPv6 support
-    ipv6_enabled: bool = True
-    ipv6_bind_address: str = "::1"
     
     # Threading
     max_workers: int = 20
@@ -90,11 +86,6 @@ class DNSServerConfig:
     def listen_ip(self) -> str:
         """Alias for bind_address (used by server.py)."""
         return self.bind_address
-    
-    @property
-    def ipv6_listen_ip(self) -> str:
-        """Alias for ipv6_bind_address (used by server.py)."""
-        return self.ipv6_bind_address if self.ipv6_enabled else ""
     
     @property
     def buffer_size(self) -> int:
@@ -136,13 +127,11 @@ class DNSProxyConfig:
             logger.info("No dns_proxy config found, using defaults")
             return cls()
         
-        # Parse server config
+        # Parse server config (IPv4 only)
         server_dict = dns_config.get("server", {})
         server_config = DNSServerConfig(
             bind_address=server_dict.get("bind_address", "127.0.0.1"),
             port=server_dict.get("port", 53),
-            ipv6_enabled=server_dict.get("ipv6_enabled", True),
-            ipv6_bind_address=server_dict.get("ipv6_bind_address", "::1"),
             max_workers=server_dict.get("max_workers", 20),
             query_timeout=server_dict.get("query_timeout", 10.0),
             udp_buffer_size=server_dict.get("udp_buffer_size", 4096),
@@ -212,8 +201,6 @@ class DNSProxyConfig:
             "server": {
                 "bind_address": self.server.bind_address,
                 "port": self.server.port,
-                "ipv6_enabled": self.server.ipv6_enabled,
-                "ipv6_bind_address": self.server.ipv6_bind_address,
                 "max_workers": self.server.max_workers,
                 "query_timeout": self.server.query_timeout,
             },

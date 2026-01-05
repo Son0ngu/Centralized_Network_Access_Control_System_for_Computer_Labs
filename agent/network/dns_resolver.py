@@ -58,17 +58,16 @@ class OptimizedDNSResolver:
         atexit.register(self.shutdown)
     
     def resolve_domain_sync(self, domain: str) -> DNSRecord:
-        """Synchronous DNS resolution with dnspython."""
+        """Synchronous DNS resolution with dnspython (IPv4 only)."""
         if self._shutdown:
             return self._fallback_resolve(domain)
             
         ipv4_ips = []
-        ipv6_ips = []
         cname = None
         min_ttl = 300
         
         try:
-            # Resolve A records (IPv4)
+            # Resolve A records (IPv4 only)
             try:
                 answers = self.resolver.resolve(domain, 'A')
                 ipv4_ips = [str(rdata) for rdata in answers]
@@ -76,16 +75,8 @@ class OptimizedDNSResolver:
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
             
-            # Resolve AAAA records (IPv6)
-            try:
-                answers = self.resolver.resolve(domain, 'AAAA')
-                ipv6_ips = [str(rdata) for rdata in answers]
-                min_ttl = min(min_ttl, answers.ttl)
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
-                pass
-            
             # Resolve CNAME if no direct records
-            if not ipv4_ips and not ipv6_ips:
+            if not ipv4_ips:
                 try:
                     answers = self.resolver.resolve(domain, 'CNAME')
                     if answers:
@@ -100,43 +91,31 @@ class OptimizedDNSResolver:
         
         return DNSRecord(
             ipv4=tuple(ipv4_ips),
-            ipv6=tuple(ipv6_ips),
             cname=cname,
             ttl=min_ttl,
             resolved_at=now()
         )
     
     async def resolve_domain_async(self, domain: str) -> DNSRecord:
-        """Asynchronous DNS resolution with aiodns."""
+        """Asynchronous DNS resolution with aiodns (IPv4 only)."""
         if self._shutdown:
             return await self._async_fallback_resolve(domain)
             
         ipv4_ips = []
-        ipv6_ips = []
         cname = None
         min_ttl = 300
         
         try:
-            # Parallel async resolution
-            tasks = [
-                self._safe_query_async(domain, 'A'),
-                self._safe_query_async(domain, 'AAAA'),
-            ]
-            
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Async resolution for A records only
+            result = await self._safe_query_async(domain, 'A')
             
             # Process A records
-            if not isinstance(results[0], Exception) and results[0]:
-                ipv4_ips = [r.host for r in results[0]]
-                min_ttl = min(min_ttl, results[0][0].ttl if results[0] else 300)
-            
-            # Process AAAA records
-            if not isinstance(results[1], Exception) and results[1]:
-                ipv6_ips = [r.host for r in results[1]]
-                min_ttl = min(min_ttl, results[1][0].ttl if results[1] else 300)
+            if not isinstance(result, Exception) and result:
+                ipv4_ips = [r.host for r in result]
+                min_ttl = min(min_ttl, result[0].ttl if result else 300)
             
             # Try CNAME if no direct records
-            if not ipv4_ips and not ipv6_ips:
+            if not ipv4_ips:
                 cname_result = await self._safe_query_async(domain, 'CNAME')
                 if not isinstance(cname_result, Exception) and cname_result:
                     cname = str(cname_result[0].cname).rstrip('.')
@@ -147,7 +126,6 @@ class OptimizedDNSResolver:
         
         return DNSRecord(
             ipv4=tuple(ipv4_ips),
-            ipv6=tuple(ipv6_ips),
             cname=cname,
             ttl=min_ttl,
             resolved_at=now()
@@ -229,41 +207,33 @@ class OptimizedDNSResolver:
         return results
     
     def _fallback_resolve(self, domain: str) -> DNSRecord:
-        """Fallback to standard socket resolution."""
+        """Fallback to standard socket resolution (IPv4 only)."""
         if self._is_ip_address(domain):
             try:
                 ip_obj = ipaddress.ip_address(domain)
                 if ip_obj.version == 4:
                     return DNSRecord(
-                        ipv4=(domain,), ipv6=(), cname=None, ttl=300, resolved_at=now()
+                        ipv4=(domain,), cname=None, ttl=300, resolved_at=now()
                     )
                 else:
+                    # IPv6 address passed - return empty result
                     return DNSRecord(
-                        ipv4=(), ipv6=(domain,), cname=None, ttl=300, resolved_at=now()
+                        ipv4=(), cname=None, ttl=300, resolved_at=now()
                     )
             except:
                 pass
         
         ipv4_ips = []
-        ipv6_ips = []
         
-        # IPv4 resolution
+        # IPv4 resolution only
         try:
             ipv4_results = socket.getaddrinfo(domain, None, socket.AF_INET, socket.SOCK_STREAM)
             ipv4_ips = list(set(res[4][0] for res in ipv4_results))
         except socket.gaierror:
             pass
         
-        # IPv6 resolution
-        try:
-            ipv6_results = socket.getaddrinfo(domain, None, socket.AF_INET6, socket.SOCK_STREAM)
-            ipv6_ips = list(set(res[4][0] for res in ipv6_results))
-        except socket.gaierror:
-            pass
-        
         return DNSRecord(
             ipv4=tuple(sorted(ipv4_ips)),
-            ipv6=tuple(sorted(ipv6_ips)),
             cname=None,
             ttl=300,
             resolved_at=now()

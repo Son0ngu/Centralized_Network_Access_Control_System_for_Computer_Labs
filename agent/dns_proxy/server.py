@@ -31,7 +31,7 @@ class ServerStats:
 
 class UDPHandler:
     """
-    UDP DNS handler.
+    UDP DNS handler (IPv4 only).
     Handles DNS queries over UDP (standard DNS).
     """
     
@@ -46,10 +46,8 @@ class UDPHandler:
         self.stats = stats
         
         self._socket: Optional[socket.socket] = None
-        self._socket_v6: Optional[socket.socket] = None
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._thread_v6: Optional[threading.Thread] = None
         self._executor = ThreadPoolExecutor(
             max_workers=config.max_workers,
             thread_name_prefix="dns_udp"
@@ -78,28 +76,6 @@ class UDPHandler:
         except Exception as e:
             logger.error(f"Failed to start UDP IPv4 server: {e}")
             raise
-        
-        # IPv6 socket (optional)
-        if self.config.ipv6_listen_ip:
-            try:
-                self._socket_v6 = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-                self._socket_v6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                # Only bind to IPv6, not dual-stack
-                self._socket_v6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-                self._socket_v6.bind((self.config.ipv6_listen_ip, self.config.port))
-                self._socket_v6.settimeout(1.0)
-                
-                self._thread_v6 = threading.Thread(
-                    target=self._listen_loop,
-                    args=(self._socket_v6, "IPv6"),
-                    name="dns_udp_ipv6"
-                )
-                self._thread_v6.daemon = True
-                self._thread_v6.start()
-                
-                logger.info(f"UDP DNS listening on [{self.config.ipv6_listen_ip}]:{self.config.port}")
-            except Exception as e:
-                logger.warning(f"Failed to start UDP IPv6 server (non-fatal): {e}")
     
     def _listen_loop(self, sock: socket.socket, version: str) -> None:
         """Main UDP listen loop."""
@@ -152,12 +128,6 @@ class UDPHandler:
             except:
                 pass
         
-        if self._socket_v6:
-            try:
-                self._socket_v6.close()
-            except:
-                pass
-        
         # Fast shutdown - don't wait for pending queries
         self._executor.shutdown(wait=False, cancel_futures=True)
         
@@ -166,7 +136,7 @@ class UDPHandler:
 
 class TCPHandler:
     """
-    TCP DNS handler.
+    TCP DNS handler (IPv4 only).
     Handles DNS queries over TCP (for large responses).
     """
     
@@ -181,10 +151,8 @@ class TCPHandler:
         self.stats = stats
         
         self._socket: Optional[socket.socket] = None
-        self._socket_v6: Optional[socket.socket] = None
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._thread_v6: Optional[threading.Thread] = None
         self._executor = ThreadPoolExecutor(
             max_workers=config.max_workers,
             thread_name_prefix="dns_tcp"
@@ -214,28 +182,6 @@ class TCPHandler:
         except Exception as e:
             logger.error(f"Failed to start TCP IPv4 server: {e}")
             raise
-        
-        # IPv6 socket (optional)
-        if self.config.ipv6_listen_ip:
-            try:
-                self._socket_v6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                self._socket_v6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self._socket_v6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-                self._socket_v6.bind((self.config.ipv6_listen_ip, self.config.port))
-                self._socket_v6.listen(self.config.tcp_backlog)
-                self._socket_v6.settimeout(1.0)
-                
-                self._thread_v6 = threading.Thread(
-                    target=self._accept_loop,
-                    args=(self._socket_v6, "IPv6"),
-                    name="dns_tcp_ipv6"
-                )
-                self._thread_v6.daemon = True
-                self._thread_v6.start()
-                
-                logger.info(f"TCP DNS listening on [{self.config.ipv6_listen_ip}]:{self.config.port}")
-            except Exception as e:
-                logger.warning(f"Failed to start TCP IPv6 server (non-fatal): {e}")
     
     def _accept_loop(self, sock: socket.socket, version: str) -> None:
         """Accept incoming TCP connections."""
@@ -321,12 +267,6 @@ class TCPHandler:
         if self._socket:
             try:
                 self._socket.close()
-            except:
-                pass
-        
-        if self._socket_v6:
-            try:
-                self._socket_v6.close()
             except:
                 pass
         

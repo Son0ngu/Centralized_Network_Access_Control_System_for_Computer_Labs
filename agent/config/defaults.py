@@ -38,11 +38,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "enabled": True,
         "mode": "active",  # disabled | monitor | active | parallel
         
-        # DNS Server settings
+        # DNS Server settings (IPv4 only)
         "bind_address": "127.0.0.1",
         "port": 53,
-        "ipv6_enabled": True,
-        "ipv6_bind_address": "::1",
         
         # Upstream resolvers (fallback order)
         "upstream_resolvers": [

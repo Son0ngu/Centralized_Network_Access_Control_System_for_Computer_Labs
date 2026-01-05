@@ -44,11 +44,10 @@ class ResolverHealth:
 
 @dataclass
 class DNSResult:
-    """Result of a DNS resolution."""
+    """Result of a DNS resolution (IPv4 only)."""
     success: bool
     domain: str
     ipv4_addresses: List[str]
-    ipv6_addresses: List[str]
     cname: Optional[str] = None
     ttl: int = 300
     response_time_ms: float = 0.0
@@ -58,7 +57,7 @@ class DNSResult:
     
     @property
     def all_ips(self) -> List[str]:
-        return self.ipv4_addresses + self.ipv6_addresses
+        return self.ipv4_addresses
     
     @property
     def is_nxdomain(self) -> bool:
@@ -203,23 +202,22 @@ class UpstreamResolver:
             success=False,
             domain=domain,
             ipv4_addresses=[],
-            ipv6_addresses=[],
             error=last_error or "All upstream resolvers failed"
         )
     
     def _resolve_with_system(self, domain: str, query_types: List[str]) -> DNSResult:
-        """Resolve domain using system-configured DNS servers.
+        """Resolve domain using system-configured DNS servers (IPv4 only).
 
         This is a safety net for environments where the predefined
         upstream resolvers (e.g., 8.8.8.8) are blocked or unreachable.
         """
         ipv4_addresses: List[str] = []
-        ipv6_addresses: List[str] = []
         min_ttl = self.config.cache.max_ttl
 
         resolver = dns.resolver.Resolver(configure=True)
 
-        for qtype in query_types:
+        # Only query A records (IPv4)
+        for qtype in ["A"]:
             try:
                 answers = resolver.resolve(domain, qtype, lifetime=self.config.upstream_timeout)
                 rrset = answers.rrset
@@ -227,10 +225,7 @@ class UpstreamResolver:
                 if rrset and rrset.ttl < min_ttl:
                     min_ttl = rrset.ttl
 
-                if qtype == "A":
-                    ipv4_addresses.extend([str(rdata) for rdata in answers])
-                elif qtype == "AAAA":
-                    ipv6_addresses.extend([str(rdata) for rdata in answers])
+                ipv4_addresses.extend([str(rdata) for rdata in answers])
             except dns.resolver.NoAnswer:
                 continue
             except dns.resolver.NXDOMAIN:
@@ -238,7 +233,6 @@ class UpstreamResolver:
                     success=False,
                     domain=domain,
                     ipv4_addresses=[],
-                    ipv6_addresses=[],
                     ttl=self.config.cache.negative_ttl,
                     resolver_used="system",
                     error="NXDOMAIN from system resolver"
@@ -250,14 +244,13 @@ class UpstreamResolver:
                 logger.debug(f"System resolver error for {domain} ({qtype}): {e}")
                 continue
 
-        has_results = bool(ipv4_addresses or ipv6_addresses)
+        has_results = bool(ipv4_addresses)
         ttl = min_ttl if has_results else self.config.cache.negative_ttl
 
         return DNSResult(
             success=has_results,
             domain=domain,
             ipv4_addresses=ipv4_addresses,
-            ipv6_addresses=ipv6_addresses,
             ttl=ttl,
             resolver_used="system",
             error=None if has_results else "System resolver returned no records"
@@ -269,16 +262,16 @@ class UpstreamResolver:
         resolver: UpstreamResolverConfig,
         query_types: List[str]
     ) -> DNSResult:
-        """Query a specific resolver."""
+        """Query a specific resolver (IPv4 only)."""
         start_time = time.time()
         
         ipv4_addresses = []
-        ipv6_addresses = []
         cname = None
         min_ttl = 86400
         raw_response = None
         
-        for qtype in query_types:
+        # Only query A records (IPv4)
+        for qtype in ["A"]:
             try:
                 # Build DNS query
                 query = dns.message.make_query(domain, qtype)
@@ -320,14 +313,13 @@ class UpstreamResolver:
                         success=True,  # NXDOMAIN is a valid response
                         domain=domain,
                         ipv4_addresses=[],
-                        ipv6_addresses=[],
                         ttl=self.config.cache.negative_ttl,
                         response_time_ms=response_time,
                         resolver_used=f"{resolver.address}:{resolver.port}",
                         raw_response=response
                     )
                 
-                # Parse answer section
+                # Parse answer section (IPv4 only)
                 for rrset in response.answer:
                     # Track TTL
                     if rrset.ttl < min_ttl:
@@ -336,9 +328,6 @@ class UpstreamResolver:
                     if rrset.rdtype == dns.rdatatype.A:
                         for rdata in rrset:
                             ipv4_addresses.append(str(rdata))
-                    elif rrset.rdtype == dns.rdatatype.AAAA:
-                        for rdata in rrset:
-                            ipv6_addresses.append(str(rdata))
                     elif rrset.rdtype == dns.rdatatype.CNAME:
                         for rdata in rrset:
                             cname = str(rdata).rstrip(".")
@@ -352,14 +341,13 @@ class UpstreamResolver:
         
         response_time = (time.time() - start_time) * 1000
         
-        # Consider success if we got at least one IP
-        has_results = bool(ipv4_addresses or ipv6_addresses)
+        # Consider success if we got at least one IPv4 address
+        has_results = bool(ipv4_addresses)
         
         return DNSResult(
             success=has_results,
             domain=domain,
             ipv4_addresses=ipv4_addresses,
-            ipv6_addresses=ipv6_addresses,
             cname=cname,
             ttl=min_ttl if has_results else 300,
             response_time_ms=response_time,

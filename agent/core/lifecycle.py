@@ -172,7 +172,6 @@ def initialize_components(config: Dict) -> bool:
                     dns_proxy_enabled=True,
                     dns_bind_address=dns_proxy_config.get("bind_address", "127.0.0.1"),
                     dns_port=dns_proxy_config.get("port", 53),
-                    dns_ipv6_enabled=dns_proxy_config.get("ipv6_enabled", True),
                     network_manager_enabled=network_config.get("enabled", True),
                     auto_configure_dns=network_config.get("auto_configure_dns", True),
                     dns_drift_monitor=True,

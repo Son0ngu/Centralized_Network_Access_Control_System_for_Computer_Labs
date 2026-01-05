@@ -270,7 +270,6 @@ class DNSQueryHandler:
             cache_entry = self._cache.set(
                 domain=domain,
                 ipv4_addresses=dns_result.ipv4_addresses,
-                ipv6_addresses=dns_result.ipv6_addresses,
                 cname=dns_result.cname,
                 ttl=dns_result.ttl,
                 source="upstream"
@@ -281,11 +280,10 @@ class DNSQueryHandler:
             
             self._stats["allowed"] += 1
             
-            # Build response
+            # Build response (IPv4 only)
             response = self._build_response(
                 query,
                 dns_result.ipv4_addresses,
-                dns_result.ipv6_addresses,
                 dns_result.ttl
             )
             
@@ -355,10 +353,9 @@ class DNSQueryHandler:
         self,
         query: dns.message.Message,
         ipv4_addresses: List[str],
-        ipv6_addresses: List[str],
         ttl: int
     ) -> dns.message.Message:
-        """Build DNS response with A/AAAA records."""
+        """Build DNS response with A records (IPv4 only)."""
         response = dns.message.make_response(query)
         response.set_rcode(dns.rcode.NOERROR)
         
@@ -377,18 +374,6 @@ class DNSQueryHandler:
                 rrset.add(rdata, ttl)
             response.answer.append(rrset)
         
-        # Add AAAA records
-        if ipv6_addresses:
-            rrset = dns.rrset.RRset(qname, dns.rdataclass.IN, dns.rdatatype.AAAA)
-            for ip in ipv6_addresses:
-                rdata = dns.rdata.from_text(
-                    dns.rdataclass.IN,
-                    dns.rdatatype.AAAA,
-                    ip
-                )
-                rrset.add(rdata, ttl)
-            response.answer.append(rrset)
-        
         return response
     
     def _build_response_from_cache(
@@ -400,7 +385,6 @@ class DNSQueryHandler:
         return self._build_response(
             query,
             list(entry.ipv4_addresses),
-            list(entry.ipv6_addresses),
             entry.remaining_ttl
         )
     

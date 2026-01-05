@@ -29,23 +29,20 @@ class NetworkMode(Enum):
 
 @dataclass
 class NetworkConfig:
-    """Network manager configuration."""
+    """Network manager configuration (IPv4 only)."""
     mode: NetworkMode = NetworkMode.MONITOR
     
-    # DNS configuration
+    # DNS configuration (IPv4 only)
     configure_ipv4: bool = True
-    configure_ipv6: bool = True
     configure_secondary_adapters: bool = True
     
     # Auto-configure DNS settings (used by orchestrator)
     auto_configure_dns: bool = True
     dns_address: str = "127.0.0.1"
-    enable_ipv6: bool = True
     
     # DoH/DoT blocking
     block_doh: bool = True
     block_dot: bool = True
-    block_ipv6_doh: bool = True
     
     # Drift monitoring
     drift_check_interval: float = 30.0
@@ -59,12 +56,11 @@ class NetworkConfig:
 
 @dataclass
 class NetworkStatus:
-    """Current network status."""
+    """Current network status (IPv4 only)."""
     mode: NetworkMode
     adapters_total: int = 0
     adapters_configured: int = 0
     adapters_need_config: int = 0
-    ipv6_adapters: int = 0
     doh_rules_active: int = 0
     drift_monitor_running: bool = False
     last_check_time: float = 0
@@ -74,13 +70,12 @@ class NetworkStatus:
 
 @dataclass
 class MonitorReport:
-    """Report from monitor mode analysis."""
+    """Report from monitor mode analysis (IPv4 only)."""
     timestamp: float = field(default_factory=time.time)
     
     # Adapters
     adapters_scanned: int = 0
     adapters_need_ipv4_change: List[str] = field(default_factory=list)
-    adapters_need_ipv6_change: List[str] = field(default_factory=list)
     
     # DNS changes that would be made
     dns_changes: List[Dict] = field(default_factory=list)
@@ -219,7 +214,7 @@ class NetworkManager:
             for priority in priorities:
                 adapter = priority.adapter
                 
-                # Check IPv4
+                # Check IPv4 only
                 if adapter.has_ipv4:
                     if DNSEnforcer.PROXY_DNS_IPV4 not in adapter.dns_config.ipv4_servers:
                         report.adapters_need_ipv4_change.append(adapter.name)
@@ -230,33 +225,20 @@ class NetworkManager:
                             "new": [DNSEnforcer.PROXY_DNS_IPV4],
                             "reason": priority.reason,
                         })
-                
-                # Check IPv6
-                if adapter.has_ipv6 and self._config.configure_ipv6:
-                    if DNSEnforcer.PROXY_DNS_IPV6 not in adapter.dns_config.ipv6_servers:
-                        report.adapters_need_ipv6_change.append(adapter.name)
-                        report.dns_changes.append({
-                            "adapter": adapter.name,
-                            "family": "ipv6",
-                            "current": adapter.dns_config.ipv6_servers,
-                            "new": [DNSEnforcer.PROXY_DNS_IPV6],
-                            "reason": priority.reason,
-                        })
             
-            # DoH/DoT analysis
+            # DoH/DoT analysis (IPv4 only)
             if self._config.block_doh or self._config.block_dot:
                 providers = self._doh_blocker.get_providers()
                 ipv4_count = sum(len(p.ipv4_addresses) for p in providers)
-                ipv6_count = sum(len(p.ipv6_addresses) for p in providers) if self._config.block_ipv6_doh else 0
                 
-                report.doh_ips_to_block = ipv4_count + ipv6_count
+                report.doh_ips_to_block = ipv4_count
                 
                 # Estimate rules
                 rules = 0
                 if self._config.block_doh:
-                    rules += 2 if self._config.block_ipv6_doh else 1  # IPv4/IPv6 DoH
+                    rules += 1  # IPv4 DoH only
                 if self._config.block_dot:
-                    rules += 3  # IPv4, IPv6, and catch-all port 853
+                    rules += 1  # IPv4 port 853
                 report.doh_rules_to_create = rules
             
             # Calculate totals
@@ -341,10 +323,10 @@ class NetworkManager:
             results["errors"].append(f"DNS enforcement: {e}")
         
         try:
-            # Apply DoH/DoT blocking
+            # Apply DoH/DoT blocking (IPv4 only)
             if self._config.block_doh or self._config.block_dot:
                 block_result = self._doh_blocker.block_all_providers(
-                    include_ipv6=self._config.block_ipv6_doh
+                    include_ipv6=False
                 )
                 results["doh_blocking"] = {
                     "success": block_result.success,
@@ -427,7 +409,7 @@ class NetworkManager:
         return self.rollback()
     
     def get_status(self) -> NetworkStatus:
-        """Get current network status."""
+        """Get current network status (IPv4 only)."""
         self._adapter_manager.refresh()
         
         adapters = self._adapter_manager.get_active_adapters()
@@ -439,7 +421,6 @@ class NetworkManager:
             a for a in adapters
             if a.needs_dns_config
         ]
-        ipv6_adapters = self._adapter_manager.get_adapters_with_ipv6()
         
         doh_rules = self._doh_blocker.check_rules_exist()
         active_rules = sum(1 for v in doh_rules.values() if v)
@@ -449,7 +430,6 @@ class NetworkManager:
             adapters_total=len(adapters),
             adapters_configured=len(configured),
             adapters_need_config=len(need_config),
-            ipv6_adapters=len(ipv6_adapters),
             doh_rules_active=active_rules,
             drift_monitor_running=self._drift_monitor.is_running,
             last_check_time=time.time(),

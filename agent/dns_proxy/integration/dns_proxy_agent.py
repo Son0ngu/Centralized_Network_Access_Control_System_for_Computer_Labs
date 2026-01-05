@@ -45,15 +45,14 @@ class ComponentStatus(Enum):
 
 @dataclass
 class OrchestratorConfig:
-    """Configuration for DNS Proxy Orchestrator."""
+    """Configuration for DNS Proxy Orchestrator (IPv4 only)."""
     # Mode
     mode: OrchestratorMode = OrchestratorMode.ACTIVE
     
-    # DNS Proxy settings
+    # DNS Proxy settings (IPv4 only)
     dns_proxy_enabled: bool = True
     dns_bind_address: str = "127.0.0.1"
     dns_port: int = 53
-    dns_ipv6_enabled: bool = True
     
     # Network Manager settings
     network_manager_enabled: bool = True
@@ -425,7 +424,6 @@ class DNSProxyOrchestrator:
                 mode=net_mode,
                 auto_configure_dns=self._config.auto_configure_dns,
                 dns_address=self._config.dns_bind_address,
-                enable_ipv6=self._config.dns_ipv6_enabled,
             )
             
             manager = NetworkManager(config=config)
@@ -459,7 +457,6 @@ class DNSProxyOrchestrator:
             server_config = DNSServerConfig(
                 bind_address=self._config.dns_bind_address,
                 port=self._config.dns_port,
-                ipv6_enabled=self._config.dns_ipv6_enabled,
             )
             
             firewall_sync_config = FirewallSyncConfig(

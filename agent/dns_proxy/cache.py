@@ -19,12 +19,11 @@ logger = logging.getLogger("dns_proxy.cache")
 
 @dataclass
 class DNSCacheEntry:
-    """Single DNS cache entry with TTL tracking."""
+    """Single DNS cache entry with TTL tracking (IPv4 only)."""
     domain: str
     
-    # Record data
+    # Record data (IPv4 only)
     ipv4_addresses: Tuple[str, ...] = field(default_factory=tuple)
-    ipv6_addresses: Tuple[str, ...] = field(default_factory=tuple)
     cname: Optional[str] = None
     
     # TTL management
@@ -63,8 +62,8 @@ class DNSCacheEntry:
     
     @property
     def all_ips(self) -> Set[str]:
-        """Get all IP addresses (IPv4 + IPv6)."""
-        return set(self.ipv4_addresses) | set(self.ipv6_addresses)
+        """Get all IP addresses (IPv4 only)."""
+        return set(self.ipv4_addresses)
     
     def touch(self) -> None:
         """Update last accessed time and hit count."""
@@ -166,7 +165,6 @@ class DNSCache:
         self,
         domain: str,
         ipv4_addresses: List[str] = None,
-        ipv6_addresses: List[str] = None,
         cname: str = None,
         ttl: int = 300,
         is_negative: bool = False,
@@ -174,12 +172,11 @@ class DNSCache:
         source: str = "upstream"
     ) -> DNSCacheEntry:
         """
-        Add or update cache entry with TTL enforcement.
+        Add or update cache entry with TTL enforcement (IPv4 only).
         
         Args:
             domain: Domain name
             ipv4_addresses: List of IPv4 addresses
-            ipv6_addresses: List of IPv6 addresses
             cname: CNAME record if any
             ttl: TTL from upstream (will be adjusted to min/max)
             is_negative: True if NXDOMAIN response
@@ -209,7 +206,6 @@ class DNSCache:
         entry = DNSCacheEntry(
             domain=domain,
             ipv4_addresses=tuple(ipv4_addresses or []),
-            ipv6_addresses=tuple(ipv6_addresses or []),
             cname=cname,
             original_ttl=original_ttl,
             effective_ttl=effective_ttl,
