@@ -411,6 +411,7 @@ imported by:
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
     <a href="#firewall.manager">firewall.manager</a>
+ &#8226;   <a href="#whitelist.manager">whitelist.manager</a>
 
   </div>
 
@@ -421,7 +422,8 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>'agent.shared'</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#firewall.rules">firewall.rules</a>
+    <a href="#firewall.manager">firewall.manager</a>
+ &#8226;   <a href="#firewall.rules">firewall.rules</a>
 
   </div>
 
@@ -4403,7 +4405,7 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>agent</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#firewall.manager">firewall.manager</a>
+    <a href="#whitelist.manager">whitelist.manager</a>
 
   </div>
 
@@ -15915,7 +15917,7 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#'agent.network'">'agent.network'</a>
- &#8226;   <a href="#agent">agent</a>
+ &#8226;   <a href="#'agent.shared'">'agent.shared'</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#firewall">firewall</a>
  &#8226;   <a href="#firewall.policy">firewall.policy</a>
@@ -37634,7 +37636,9 @@ imported by:
   <a target="code" href="///D:/test/Firewall_controller_enhanced/agent/whitelist/manager.py" type="text/plain"><tt>whitelist.manager</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#logging">logging</a>
+    <a href="#'agent.network'">'agent.network'</a>
+ &#8226;   <a href="#agent">agent</a>
+ &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#typing">typing</a>
