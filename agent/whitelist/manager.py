@@ -1,5 +1,6 @@
 import logging
 import threading
+from urllib.parse import urlparse
 from typing import Callable, Dict, List, Optional
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
@@ -228,6 +229,17 @@ class WhitelistManager:
             # Combine domains and patterns
             all_domains = domains.union(patterns)
             
+            # CRITICAL: Always whitelist the server URLs
+            server_urls = self._get_server_urls()
+            for url in server_urls:
+                try:
+                    parsed = urlparse(url)
+                    if parsed.hostname:
+                        all_domains.add(parsed.hostname)
+                        logger.debug(f"Added server hostname to whitelist: {parsed.hostname}")
+                except Exception as e:
+                    logger.warning(f"Failed to parse server URL {url}: {e}")
+
             logger.info(f"Updating firewall with {len(all_domains)} domains and {len(ips)} IPs")
             
             # Update firewall - it will resolve domains to IPs internally

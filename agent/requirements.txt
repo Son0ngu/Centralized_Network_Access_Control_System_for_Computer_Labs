@@ -20,3 +20,5 @@ requests
 # Network interface management (cross-platform)
 netifaces>=0.11.0
 distro>=1.6.0
+
+customtkinter>=5.0.0
