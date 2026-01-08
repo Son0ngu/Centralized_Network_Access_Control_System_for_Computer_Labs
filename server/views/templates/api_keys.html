@@ -3,6 +3,7 @@
 {% block title %}API Keys Management - Firewall Controller{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 <style>
     .key-card {
         transition: all 0.3s ease;
@@ -363,6 +364,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadApiKeys();
     setupFilters();
     setupSocket();
+    
+    // Initialize Custom Selects
+    if (window.initCustomSelect) {
+        window.initCustomSelect('filterStatus');
+        window.initCustomSelect('filterPermission');
+    }
 });
 
 // Setup WebSocket for real-time updates

@@ -67,4 +67,99 @@
             document.body.style.opacity = '1';
         }, 100);
     });
+
+    // --- Custom Select Logic ---
+    const customSelects = new Map();
+
+    window.initCustomSelect = function(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        // Check if already initialized
+        if (select.parentNode.classList.contains('custom-select-wrapper')) {
+            window.updateCustomOptions(selectId); // Just update options if exists
+            return; 
+        }
+
+        // Wrap select
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+
+        // Create trigger
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger';
+        trigger.tabIndex = 0; // Make focusable
+        trigger.innerHTML = `<span class="selection">${select.options[select.selectedIndex]?.text || 'Select...'}</span>`;
+        wrapper.appendChild(trigger);
+
+        // Create options container
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'custom-options';
+        wrapper.appendChild(optionsDiv);
+        
+        // Function to populate/update options
+        const populateOptions = () => {
+            optionsDiv.innerHTML = '';
+            Array.from(select.options).forEach(option => {
+                const div = document.createElement('div');
+                div.className = `custom-option ${option.selected ? 'selected' : ''}`;
+                div.dataset.value = option.value;
+                div.textContent = option.text;
+                
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    select.value = option.value;
+                    select.dispatchEvent(new Event('change')); // Trigger native change
+                    
+                    // Update UI
+                    trigger.querySelector('.selection').textContent = option.text;
+                    optionsDiv.querySelectorAll('.custom-option').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    optionsDiv.classList.remove('open');
+                });
+                
+                optionsDiv.appendChild(div);
+            });
+        };
+
+        // Initial populate
+        populateOptions();
+        
+        // Store update function for later use
+        customSelects.set(selectId, populateOptions);
+
+        // Toggle dropdown
+        trigger.addEventListener('click', (e) => {
+            // Close others
+            document.querySelectorAll('.custom-options').forEach(el => {
+                if (el !== optionsDiv) el.classList.remove('open');
+            });
+            optionsDiv.classList.toggle('open');
+        });
+        
+        // Handle click outside to close
+        document.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target)) {
+                optionsDiv.classList.remove('open');
+            }
+        });
+    };
+
+    window.updateCustomOptions = function(selectId) {
+        if (customSelects.has(selectId)) {
+            customSelects.get(selectId)();
+            
+            // Also update trigger text to match new selected value
+            const select = document.getElementById(selectId);
+            const trigger = select.nextElementSibling; // .custom-select-trigger
+            if (trigger) {
+                const selectedOption = select.options[select.selectedIndex];
+                if (selectedOption) {
+                    trigger.querySelector('.selection').textContent = selectedOption.text;
+                }
+            }
+        }
+    };
 })();

@@ -366,7 +366,13 @@ class WhitelistService:
                 priority = "normal"
                 category = "uncategorized"
 
+            # Create a pseudo-ID for group items so they can be selected/manipulated on frontend
+            # format: group|group_id|type|value
+            pseudo_id = f"group|{group_id}|{entry_type}|{value}"
+
             entries.append({
+                "_id": pseudo_id,
+                "id": pseudo_id,
                 "value": value,
                 "type": entry_type,
                 "priority": priority,
@@ -382,8 +388,14 @@ class WhitelistService:
         for entry in global_entries + group_entries:
             key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
             merged_entry = merged.get(key, {})
+            
+            # Prefer existing ID if available (especially global ID)
+            entry_id = merged_entry.get("_id") or entry.get("_id")
+            
             merged[key] = {
                 **merged_entry,
+                "_id": entry_id,
+                "id": entry_id,
                 "value": entry.get("value"),
                 "type": entry.get("type", "domain"),
                 "priority": entry.get("priority", "normal"),
@@ -528,25 +540,104 @@ class WhitelistService:
             }
     
     def delete_entry(self, entry_id: str) -> bool:
-        """Delete an entry - vietnam ONLY"""
+        """Delete an entry from global or group scope"""
+        
+        # Try finding in global whitelist first
         entry = self.model.find_entry_by_id(entry_id)
-        if not entry:
-            raise ValueError("Entry not found")
+        if entry:
+            success = self.model.delete_entry(entry_id)
+            if success and self.socketio:
+                self.socketio.emit("whitelist_deleted", {
+                    "id": entry_id,
+                    "value": entry.get("value"),
+                    "type": entry.get("type", "domain"),
+                    "timestamp": now_iso()
+                })
+            return success
         
-        success = self.model.delete_entry(entry_id)
+        # If not, it might be inside a group document?
+        # But wait, group entries don't have unique IDs in whitelist list usually unless we assign them.
+        # Front end sends IDs for deletion?
+        # The frontend code sends `itemId` which for groups is usually missing in current impl unless normalized.
         
-        if success and self.socketio:
-            self.socketio.emit("whitelist_deleted", {
-                "id": entry_id,
-                "value": entry.get("value"),
-                "type": entry.get("type", "domain"),
-                "timestamp": now_iso()  # vietnam ISO
-            })
+        # If the ID fails, we can't delete it easily here.
+        # The controller needs to handle group item deletion separately or we need to search groups.
+        # But this method signature takes an ID string.
         
-        return success
+        raise ValueError("Entry not found")
+
+    def bulk_delete_entries(self, item_ids: List[str]) -> Dict:
+        """Bulk delete multiple whitelist entries (Global and Group)"""
+        deleted_count = 0
+        errors = []
+        
+        # Group deletes by group_id to optimize updates
+        group_deletes = {} # group_id -> list of (value, type)
+        
+        for item_id in item_ids:
+            try:
+                if item_id.startswith("group|"):
+                    # Parse group item ID: group|group_id|type|value
+                    parts = item_id.split("|", 3)
+                    if len(parts) == 4:
+                        _, gid, gtype, gvalue = parts
+                        if gid not in group_deletes:
+                            group_deletes[gid] = []
+                        group_deletes[gid].append((gvalue, gtype))
+                    else:
+                        errors.append(f"Invalid group item ID: {item_id}")
+                else:
+                    # Global item
+                    if self.delete_entry(item_id):
+                        deleted_count += 1
+                    else:
+                        errors.append(f"Failed to delete {item_id}")
+            except Exception as e:
+                errors.append(f"Error processing {item_id}: {str(e)}")
+        
+        # Process group deletes
+        for gid, items in group_deletes.items():
+            try:
+                group = self.group_model.find_by_id(gid)
+                if group:
+                    original_len = len(group.get("whitelist", []))
+                    # Filter out items to be deleted
+                    # items is list of (value, type)
+                    new_whitelist = []
+                    for entry in group.get("whitelist", []):
+                        # Normalize entry
+                        e_val = entry.get("value") if isinstance(entry, dict) else entry
+                        e_type = entry.get("type", "domain") if isinstance(entry, dict) else "domain"
+                        
+                        # Check if should be deleted
+                        should_delete = False
+                        for d_val, d_type in items:
+                            if d_val == e_val and d_type == e_type:
+                                should_delete = True
+                                break
+                        
+                        if not should_delete:
+                            new_whitelist.append(entry)
+                    
+                    if len(new_whitelist) != original_len:
+                        self.group_model.update_group(gid, {
+                            "whitelist": new_whitelist,
+                            "whitelist_version": group.get("whitelist_version", 1) + 1
+                        })
+                        deleted_count += (original_len - len(new_whitelist))
+            except Exception as e:
+                errors.append(f"Error updating group {gid}: {str(e)}")
+
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "error_count": len(errors),
+            "errors": errors[:10],
+            "server_time": now_iso()
+        }
     
     def bulk_add_entries(self, entries_data: List[Dict], client_ip: str) -> Dict:
-        """Bulk add entries to whitelist - vietnam ONLY"""
+        """Bulk add entries to whitelist - now with group support"""
         if not entries_data:
             raise ValueError("No entries provided")
         
@@ -554,13 +645,18 @@ class WhitelistService:
             raise ValueError("Maximum 1000 entries allowed per bulk operation")
         
         current_time = now_vietnam()
-        processed_entries = []
+        
+        # Split into global and group-specific entries
+        global_entries = []
+        group_entries_map = {}  # group_id -> [entries]
         errors = []
         
         for i, entry_data in enumerate(entries_data):
             try:
                 entry_type = entry_data.get("type", "domain")
                 value = entry_data.get("value", "").strip().lower()
+                scope = entry_data.get("scope", "global")
+                group_id = entry_data.get("group_id")
                 
                 if not value:
                     errors.append(f"Entry {i+1}: Value is required")
@@ -571,48 +667,93 @@ class WhitelistService:
                     errors.append(f"Entry {i+1}: {validation_result['message']}")
                     continue
                 
-                if any(e.get("value") == value for e in processed_entries):
+                # Check duplicates in current batch
+                if any(e.get("value") == value and e.get("scope") == scope for e in global_entries):
                     errors.append(f"Entry {i+1}: Duplicate value in batch")
                     continue
                 
-                existing = self.model.find_entry_by_value(value)
-                if existing:
-                    errors.append(f"Entry {i+1}: Entry already exists")
-                    continue
-                
+                # Process entry
                 processed_entry = {
                     "type": entry_type,
                     "value": value,
                     "category": entry_data.get("category", "uncategorized"),
+                    "notes": entry_data.get("notes", "Bulk import"),
                     "priority": entry_data.get("priority", "normal"),
                     "added_by": client_ip,
                     "added_date": current_time,
-                    "is_active": True,
-                    "notes": entry_data.get("notes", "Bulk import")
+                    "is_active": True
                 }
-                
-                processed_entries.append(processed_entry)
+
+                if scope == "group" and group_id:
+                    if group_id not in group_entries_map:
+                        group_entries_map[group_id] = []
+                    group_entries_map[group_id].append(processed_entry)
+                else:
+                    # Check global duplicate
+                    existing = self.model.find_entry_by_value(value)
+                    if existing:
+                        errors.append(f"Entry {i+1}: Global entry already exists")
+                        continue
+                    global_entries.append(processed_entry)
                 
             except Exception as e:
                 errors.append(f"Entry {i+1}: {str(e)}")
         
+        # Insert Global Entries
         inserted_ids = []
-        if processed_entries:
-            inserted_ids = self.model.bulk_insert_entries(processed_entries)
+        if global_entries:
+            inserted_ids = self.model.bulk_insert_entries(global_entries)
         
-        if inserted_ids and self.socketio:
+        # Update Group Entries
+        group_success_count = 0
+        for grp_id, entries in group_entries_map.items():
+            try:
+                # Need to update group document
+                group = self.group_model.find_by_id(grp_id)
+                if not group:
+                    errors.append(f"Group {grp_id} not found for bulk import")
+                    continue
+                
+                current_whitelist = group.get("whitelist", [])
+                
+                # Filter out duplicates
+                new_unique = []
+                for ne in entries:
+                     if not any(curr.get("value") == ne["value"] and curr.get("type") == ne["type"] for curr in current_whitelist):
+                         new_unique.append(ne)
+                     else:
+                         errors.append(f"Entry {ne['value']} already exists in group {group.get('name')}")
+                
+                if new_unique:
+                    # Append new items
+                    updated_whitelist = current_whitelist + new_unique
+                    # Convert dates in list to be JSON serializable if needed or keep as object (Mongo handles datetime)
+                     
+                    self.group_model.update_group(grp_id, {
+                        "whitelist": updated_whitelist,
+                        "whitelist_version": (group.get("whitelist_version", 1) + 1)
+                    })
+                    group_success_count += len(new_unique)
+                    
+            except Exception as e:
+                errors.append(f"Failed to update group {grp_id}: {str(e)}")
+
+        total_inserted = len(inserted_ids) + group_success_count
+        
+        # Notify
+        if total_inserted > 0 and self.socketio:
             self.socketio.emit("whitelist_bulk_added", {
-                "count": len(inserted_ids),
+                "count": total_inserted,
                 "added_by": client_ip,
-                "timestamp": now_iso()  # vietnam ISO
+                "timestamp": now_iso()
             })
         
         return {
-            "inserted_count": len(inserted_ids),
+            "inserted_count": total_inserted,
             "error_count": len(errors),
             "errors": errors[:10],
-            "success": len(inserted_ids) > 0,
-            "server_time": now_iso()  # vietnam ISO
+            "success": total_inserted > 0,
+            "server_time": now_iso()
         }
     
     def get_statistics(self) -> Dict:

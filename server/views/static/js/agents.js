@@ -1180,6 +1180,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (statusFilter) {
         statusFilter.addEventListener('change', filterAgents);
+        if (window.initCustomSelect) window.initCustomSelect('status-filter');
     }
     
     const createGroupBtn = document.getElementById('createGroupBtn');

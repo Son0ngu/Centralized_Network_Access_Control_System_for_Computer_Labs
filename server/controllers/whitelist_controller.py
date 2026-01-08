@@ -444,26 +444,10 @@ class WhitelistController:
                     "error": "Item IDs must be an array"
                 }), 400
             
-            deleted_count = 0
-            errors = []
+            # Use service method
+            result = self.service.bulk_delete_entries(item_ids)
             
-            for item_id in item_ids:
-                try:
-                    success = self.service.delete_entry(item_id)
-                    if success:
-                        deleted_count += 1
-                    else:
-                        errors.append(f"Failed to delete {item_id}")
-                except Exception as e:
-                    errors.append(f"Error deleting {item_id}: {str(e)}")
-            
-            return jsonify({
-                "success": True,
-                "deleted_count": deleted_count,
-                "error_count": len(errors),
-                "errors": errors[:10],
-                "server_time": now_iso()
-            }), 200
+            return jsonify(result), 200
             
         except Exception as e:
             self.logger.error(f"Error in bulk delete: {e}")

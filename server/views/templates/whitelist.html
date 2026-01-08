@@ -4,6 +4,7 @@
 
 {% block extra_css %}
  <link rel="stylesheet" href="{{ url_for('static', filename='css/whitelist.css') }}">
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -86,69 +87,63 @@
 <!-- Add Items Section -->
 <div class="add-items-section">
     <div class="row">
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="col-xl-3 col-md-6 mb-4">
             <div class="add-item-card" data-type="domain">
-                <div class="type-badge domain">Domain</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-globe"></i>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="add-item-icon mb-3">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="type-badge domain">Domain</div>
                 </div>
-                <div class="add-item-title">Add Domain</div>
-                <div class="add-item-desc">example.com<br>*.subdomain.com</div>
+                <div class="text-start">
+                    <div class="add-item-title h5">Add Domain</div>
+                    <div class="add-item-desc">Whitelist a new domain</div>
+                </div>
             </div>
         </div>
         
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="col-xl-3 col-md-6 mb-4">
             <div class="add-item-card" data-type="ip">
-                <div class="type-badge ip">IP Address</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-network-wired"></i>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="add-item-icon mb-3">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="type-badge ip">IP</div>
                 </div>
-                <div class="add-item-title">Add IP</div>
-                <div class="add-item-desc">192.168.1.100<br>10.0.0.0/24</div>
+                <div class="text-start">
+                    <div class="add-item-title h5">Add IP</div>
+                    <div class="add-item-desc">Whitelist an IP address</div>
+                </div>
             </div>
         </div>
         
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="col-xl-3 col-md-6 mb-4">
             <div class="add-item-card" data-type="url">
-                <div class="type-badge url">URL</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-link"></i>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="add-item-icon mb-3">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div class="type-badge url">URL</div>
                 </div>
-                <div class="add-item-title">Add URL</div>
-                <div class="add-item-desc">https://api.com/v1/*<br>/api/webhooks/*</div>
+                <div class="text-start">
+                    <div class="add-item-title h5">Add URL</div>
+                    <div class="add-item-desc">Whitelist a specific URL</div>
+                </div>
             </div>
         </div>
         
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
-            <div class="add-item-card" data-type="port">
-                <div class="type-badge port">Port</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-door-open"></i>
-                </div>
-                <div class="add-item-title">Add Port</div>
-                <div class="add-item-desc">80, 443<br>8000-9000</div>
-            </div>
-        </div>
-        
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
-            <div class="add-item-card" data-type="process">
-                <div class="type-badge process">Process</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-cogs"></i>
-                </div>
-                <div class="add-item-title">Add Process</div>
-                <div class="add-item-desc">chrome.exe<br>node.exe</div>
-            </div>
-        </div>
-        
-        <div class="col-lg-2 col-md-4 col-6 mb-3">
+        <div class="col-xl-3 col-md-6 mb-4">
             <div class="add-item-card" data-type="bulk">
-                <div class="type-badge domain">Bulk Import</div>
-                <div class="add-item-icon">
-                    <i class="fas fa-upload"></i>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="add-item-icon mb-3">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="type-badge bulk">Bulk</div>
                 </div>
-                <div class="add-item-title">Bulk Add</div>
-                <div class="add-item-desc">Import multiple<br>items at once</div>
+                <div class="text-start">
+                    <div class="add-item-title h5">Bulk Add</div>
+                    <div class="add-item-desc">Import multiple items</div>
+                </div>
             </div>
         </div>
     </div>
@@ -174,15 +169,13 @@
                     <option value="domain">Domains</option>
                     <option value="ip">IP Addresses</option>
                     <option value="url">URLs</option>
-                    <option value="port">Ports</option>
-                    <option value="process">Processes</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select class="form-select" id="status-filter">
                     <option value="">All Status</option>
-                    <option value="active">Active Only</option>
-                    <option value="inactive">Inactive Only</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -190,15 +183,10 @@
                     <option value="">All Groups</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-success flex-fill" id="refreshBtn">
-                        <i class="fas fa-sync-alt me-1"></i>Refresh
-                    </button>
-                    <button class="btn btn-outline-primary flex-fill" id="bulkActionsBtn">
-                        <i class="fas fa-tasks me-1"></i>Bulk
-                    </button>
-                </div>
+            <div class="col-md-3 text-end">
+                <button class="btn btn-outline-secondary" id="refreshBtn" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
             </div>
         </div>
     </div>

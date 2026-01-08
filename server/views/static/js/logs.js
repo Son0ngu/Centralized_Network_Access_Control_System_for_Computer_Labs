@@ -335,6 +335,10 @@ function populateAgentFilter() {
     if (currentValue) {
         agentFilter.value = currentValue;
     }
+
+    if (window.initCustomSelect) {
+        window.initCustomSelect('agent-filter');
+    }
     
     console.log(`Populated agent filter with ${sortedAgents.length} agents`);
 }
@@ -918,6 +922,11 @@ function showNotification(type, message) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing logs management...');
     
+    // Initialize custom selects for static elements
+    ['level-filter', 'limit-select'].forEach(id => {
+        if (window.initCustomSelect) window.initCustomSelect(id);
+    });
+
     // Time filter pills
     document.querySelectorAll('.time-pill').forEach(pill => {
         pill.addEventListener('click', function() {
