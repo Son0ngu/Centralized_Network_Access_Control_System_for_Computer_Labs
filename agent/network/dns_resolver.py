@@ -37,13 +37,21 @@ class OptimizedDNSResolver:
         self.resolver.timeout = timeout
         self.resolver.lifetime = timeout * 2
         
-        # Use fast DNS servers
-        self.resolver.nameservers = [
+        # preserve system nameservers and append public ones as fallback
+        # this ensures we resolve to the same IPs as the browser/OS (CDNs, GeoDNS)
+        current_nameservers = list(self.resolver.nameservers)
+        public_nameservers = [
             '1.1.1.1',   # Cloudflare
             '8.8.8.8',   # Google
             '1.0.0.1',   # Cloudflare
             '8.8.4.4',   # Google
         ]
+        
+        for ns in public_nameservers:
+            if ns not in current_nameservers:
+                current_nameservers.append(ns)
+        
+        self.resolver.nameservers = current_nameservers
         
         self.executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers,
