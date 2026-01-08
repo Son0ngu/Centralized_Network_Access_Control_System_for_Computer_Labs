@@ -245,7 +245,7 @@ class AgentController:
                     logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
             else:
                 # No admin privileges - force monitor mode
-                if current_mode in ["block", "whitelist_only", "enforce"]:
+                if current_mode in ["whitelist_only", "enforce"]:
                     logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
                     self._config["firewall"]["enabled"] = False
                     self._config["firewall"]["mode"] = "monitor"

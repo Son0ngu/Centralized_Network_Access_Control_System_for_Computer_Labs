@@ -80,13 +80,13 @@ def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
     warnings = []
     
     firewall_config = config.get("firewall", {})
-    valid_modes = ["block", "warn", "monitor", "whitelist_only"]
+    valid_modes = ["monitor", "whitelist_only"]
     current_mode = firewall_config.get("mode", "monitor")
     
     if current_mode not in valid_modes:
         errors.append(f"Invalid firewall mode: {current_mode}. Valid modes: {valid_modes}")
     
-    admin_required_modes = ["block", "whitelist_only"]
+    admin_required_modes = ["whitelist_only"]
     if current_mode in admin_required_modes:
         if not check_admin_privileges():
             warnings.append(

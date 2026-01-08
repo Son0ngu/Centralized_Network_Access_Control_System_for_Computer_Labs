@@ -405,20 +405,16 @@ class DashboardView(ctk.CTkFrame):
             mode = info.get('firewall_mode', 'monitor')
             enabled = info.get('firewall_enabled', False)
             
-            # Format mode display - all 4 modes
+            # Format mode display - only monitor and whitelist_only
             mode_display = {
                 'monitor': 'Monitor',
-                'whitelist_only': 'Whitelist',
-                'block': 'Block',
-                'warn': 'Warn'
+                'whitelist_only': 'Whitelist'
             }.get(mode, mode.title())
             
             # Mode-specific icons and colors
             mode_config = {
                 'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
-                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed'),
-                'block': ('🚫', '#ff4444', 'Blocking non-whitelist'),
-                'warn': ('⚠️', '#ffa500', 'Warning on violations')
+                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed')
             }.get(mode, ('👁️', '#888888', 'Unknown mode'))
             
             if enabled:
