@@ -894,7 +894,7 @@ function viewAgentLogs(agentId) {
 }
 
 async function editAgentDisplayName(agentId) {
-    const agent = agentsData.find(a => a.agent_id === agentId);
+    const agent = agentsData.find(a => getAgentId(a) === agentId);
     if (!agent) {
         showError('Agent not found');
         return;
@@ -928,7 +928,7 @@ async function saveDisplayName() {
         return;
     }
     
-    const agent = agentsData.find(a => a.agent_id === agentId);
+    const agent = agentsData.find(a => getAgentId(a) === agentId);
     if (!agent) return;
     
     // Check if changed
