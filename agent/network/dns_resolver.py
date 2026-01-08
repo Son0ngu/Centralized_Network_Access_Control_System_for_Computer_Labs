@@ -20,39 +20,23 @@ from cache.lru_cache import DNSRecord
 logger = logging.getLogger("network.dns")
 
 class OptimizedDNSResolver:
-    """DNS resolver with dnspython and aiodns."""
+    """DNS resolver with dnspython and aiodns fallback."""
     
-    def __init__(self, max_workers: int = 20, timeout: float = 5.0):
+    def __init__(self, max_workers: int = 10, timeout: float = 10.0):
         self.max_workers = max_workers
         self.timeout = timeout
         self._shutdown = False
 
         # Create a dedicated event loop for this resolver instance
-        # to avoid "no current event loop" errors in worker threads if async methods are used.
         self._loop = asyncio.new_event_loop()
-        # Do NOT set global event loop here as it may break the main thread (GUI)
-        # asyncio.set_event_loop(self._loop) 
         
         # Configure dnspython resolver
         self.resolver = dns.resolver.Resolver()
         self.resolver.timeout = timeout
         self.resolver.lifetime = timeout * 2
         
-        # preserve system nameservers and append public ones as fallback
-        # this ensures we resolve to the same IPs as the browser/OS (CDNs, GeoDNS)
-        current_nameservers = list(self.resolver.nameservers)
-        public_nameservers = [
-            '1.1.1.1',   # Cloudflare
-            '8.8.8.8',   # Google
-            '1.0.0.1',   # Cloudflare
-            '8.8.4.4',   # Google
-        ]
-        
-        for ns in public_nameservers:
-            if ns not in current_nameservers:
-                current_nameservers.append(ns)
-        
-        self.resolver.nameservers = current_nameservers
+        # Respect "Machine DNS": relying on system nameservers detected by dnspython.
+        logger.debug(f"Resolver initialized with system nameservers: {self.resolver.nameservers}")
         
         self.executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers,
@@ -102,6 +86,10 @@ class OptimizedDNSResolver:
                         min_ttl = min(min_ttl, answers.ttl)
                 except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                     pass
+            
+            # If nothing found via dnspython, try system fallback
+            if not ipv4_ips and not ipv6_ips and not cname:
+                 return self._fallback_resolve(domain)
         
         except Exception as e:
             logger.debug(f"DNS resolution error for {domain}: {e}")
@@ -189,23 +177,33 @@ class OptimizedDNSResolver:
         results = {}
         completed = 0
         
-        # Collect results as they complete
-        for future in concurrent.futures.as_completed(future_to_domain, timeout=self.timeout * 2):
-            domain = future_to_domain[future]
-            try:
-                result = future.result()
-                results[domain] = result
-                completed += 1
-                
-                if completed % 50 == 0:
-                    logger.debug(f"   Progress: {completed}/{len(domains)} domains resolved")
-                    
-            except Exception as e:
-                logger.warning(f"DNS resolution failed for {domain}: {e}")
-                results[domain] = self._fallback_resolve(domain)
+        # Collect results as they complete with an extended timeout
+        # Using a longer timeout multiplier (4x) to handle slow VMs
+        wait_timeout = self.timeout * 4
+        
+        try:
+            for future in concurrent.futures.as_completed(future_to_domain, timeout=wait_timeout):
+                domain = future_to_domain[future]
+                try:
+                    result = future.result()
+                    results[domain] = result
+                    completed += 1
+                except Exception as e:
+                    logger.warning(f"DNS resolution thread failed for {domain}: {e}")
+                    results[domain] = self._fallback_resolve(domain)
+        except concurrent.futures.TimeoutError:
+             logger.error(f"DNS Batch resolution timed out after {wait_timeout}s")
+             # Process remaining futures maybe? No, simplest is to just return what we have
+             pass
         
         duration = now() - start_time
         logger.info(f"Parallel DNS resolution completed in {duration:.2f}s ({len(results)}/{len(domains)} domains)")
+        
+        # Fill missing domains with fallback 
+        # (If timeout happened, we don't want to leave holes or return partial dict if view expects all)
+        for domain in domains:
+            if domain not in results:
+                results[domain] = self._fallback_resolve(domain)
         
         return results
     
