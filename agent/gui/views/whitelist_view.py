@@ -359,23 +359,39 @@ class WhitelistView(ctk.CTkFrame):
         unique_domains = [d for d in dict.fromkeys(domains) if d]
         seen_ips: Set[str] = set()
         resolved: List[tuple] = []
+        
+        print(f"DEBUG: Starting resolution for {len(unique_domains)} unique domains...")
 
         try:
             results = self._dns_resolver.resolve_multiple_parallel(unique_domains)
-        except Exception:
+            print(f"DEBUG: Resolution finished. Got results for {len(results)} domains")
+        except Exception as e:
+            print(f"ERROR: Resolution failed: {e}")
             return []
 
         for domain in unique_domains:
             record = results.get(domain)
             if not record:
                 continue
+            
+            # Combine IPs
+            ips = []
+            if record.ipv4:
+                ips.extend(record.ipv4)
+            if record.ipv6:
+                ips.extend(record.ipv6)
+            
+            if not ips:
+                print(f"DEBUG: No IPs found for {domain}")
+                continue
 
-            for ip in list(record.ipv4) + list(record.ipv6):
+            for ip in ips:
                 if ip in seen_ips:
                     continue
                 seen_ips.add(ip)
                 resolved.append((ip, domain))
-
+        
+        print(f"DEBUG: Total resolved IPs: {len(resolved)}")
         return resolved
     
     def _show_error(self, message: str):

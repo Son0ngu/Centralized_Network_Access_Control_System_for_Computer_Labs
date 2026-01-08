@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import json
 from pathlib import Path
+from ..controllers.agent_controller import AgentController
 
 
 class SettingsView(ctk.CTkFrame):
@@ -68,6 +69,21 @@ class SettingsView(ctk.CTkFrame):
                 except ValueError:
                     pass
             
+            # Firewall configuration
+            if 'firewall_backup_path' in self._entries:
+                if 'firewall' not in self._config:
+                    self._config['firewall'] = {}
+                if 'backup' not in self._config['firewall']:
+                    self._config['firewall']['backup'] = {}
+                
+                self._config['firewall']['backup']['path'] = self._entries['firewall_backup_path'].get()
+                
+                if hasattr(self, '_firewall_backup_enabled_var'):
+                    self._config['firewall']['backup']['enabled'] = bool(self._firewall_backup_enabled_var.get())
+                
+                if hasattr(self, '_firewall_restore_startup_var'):
+                    self._config['firewall']['backup']['restore_on_startup'] = bool(self._firewall_restore_startup_var.get())
+
             # Save to file
             with open(self._config_path, 'w', encoding='utf-8') as f:
                 json.dump(self._config, f, indent=4, ensure_ascii=False)
@@ -216,6 +232,80 @@ class SettingsView(ctk.CTkFrame):
         )
         log_menu.pack(side="left")
         
+        # ========================================
+        # FIREWALL BACKUP CONFIG
+        # ========================================
+        self._create_section(content, "🔥 Firewall Backup")
+        
+        fw_frame = ctk.CTkFrame(content, corner_radius=12, fg_color="#1a1a2e")
+        fw_frame.pack(fill="x", pady=(0, 20))
+        
+        # Backup Enabled
+        fw_config = self._config.get('firewall', {}).get('backup', {})
+        
+        enabled_row = ctk.CTkFrame(fw_frame, fg_color="transparent")
+        enabled_row.pack(fill="x", padx=20, pady=10)
+        
+        self._firewall_backup_enabled_var = ctk.IntVar(value=1 if fw_config.get('enabled', True) else 0)
+        enabled_switch = ctk.CTkSwitch(
+            enabled_row,
+            text="Enable Backup System",
+            variable=self._firewall_backup_enabled_var,
+            onvalue=1,
+            offvalue=0,
+            button_color="#00d4ff",
+            progress_color="#006080"
+        )
+        enabled_switch.pack(side="left")
+        
+        # Backup Path
+        current_path = fw_config.get('path', 'profiles/backup.wfw')
+        self._entries['firewall_backup_path'] = self._create_input_row(
+            fw_frame, "Backup Path:", current_path, 0
+        )
+        
+        # Restore on Startup
+        restore_row = ctk.CTkFrame(fw_frame, fg_color="transparent")
+        restore_row.pack(fill="x", padx=20, pady=10)
+        
+        self._firewall_restore_startup_var = ctk.IntVar(value=1 if fw_config.get('restore_on_startup', False) else 0)
+        restore_switch = ctk.CTkSwitch(
+            restore_row,
+            text="Restore Backup on Agent Startup",
+            variable=self._firewall_restore_startup_var,
+            onvalue=1,
+            offvalue=0,
+            button_color="#ffcc00",
+            progress_color="#806600"
+        )
+        restore_switch.pack(side="left")
+
+        # Manual Actions
+        actions_row = ctk.CTkFrame(fw_frame, fg_color="transparent")
+        actions_row.pack(fill="x", padx=20, pady=15)
+        
+        backup_btn = ctk.CTkButton(
+            actions_row,
+            text="📷 Create Snapshot",
+            width=140,
+            height=32,
+            fg_color="#2d2d44",
+            hover_color="#3d3d54",
+            command=self._manual_backup
+        )
+        backup_btn.pack(side="left", padx=(0, 10))
+        
+        restore_btn = ctk.CTkButton(
+            actions_row,
+            text="♻️ Restore Snapshot",
+            width=140,
+            height=32,
+            fg_color="#2d2d44",
+            hover_color="#3d3d54",
+            command=self._manual_restore
+        )
+        restore_btn.pack(side="left")
+        
         # (Network settings removed in UI)
         
         # ========================================
@@ -293,3 +383,59 @@ class SettingsView(ctk.CTkFrame):
         entry.pack(side="left")
         
         return entry
+
+    def _manual_backup(self):
+        """Manually trigger firewall snapshot."""
+        try:
+            ctrl = AgentController()
+            if not ctrl.is_running:
+                self._show_save_error("Agent must be running")
+                return
+
+            # Access agent internals - strictly handling potential None
+            agent = ctrl._agent
+            if not agent or not agent.firewall:
+                self._show_save_error("Firewall manager not active")
+                return
+            
+            # Get path from UI
+            path = self._entries.get('firewall_backup_path').get()
+            if not path:
+                path = "profiles/backup.wfw"
+                
+            if agent.firewall.save_snapshot(path):
+                if hasattr(self, '_status_label'):
+                    self._status_label.configure(text=f"✅ Snapshot saved to {path}", text_color="#00ff88")
+                    self.after(3000, lambda: self._status_label.configure(text=""))
+            else:
+                self._show_save_error("Snapshot failed (check logs)")
+                
+        except Exception as e:
+            self._show_save_error(str(e))
+
+    def _manual_restore(self):
+        """Manually trigger firewall restore."""
+        try:
+            ctrl = AgentController()
+            if not ctrl.is_running:
+                self._show_save_error("Agent must be running")
+                return
+
+            agent = ctrl._agent
+            if not agent or not agent.firewall:
+                self._show_save_error("Firewall manager not active")
+                return
+            
+            path = self._entries.get('firewall_backup_path').get()
+            if not path:
+                path = "profiles/backup.wfw"
+                
+            if agent.firewall.restore_snapshot(path):
+                if hasattr(self, '_status_label'):
+                    self._status_label.configure(text=f"✅ Firewall restored from {path}", text_color="#00ff88")
+                    self.after(3000, lambda: self._status_label.configure(text=""))
+            else:
+                self._show_save_error("Restore failed (file missing?)")
+                
+        except Exception as e:
+            self._show_save_error(str(e))

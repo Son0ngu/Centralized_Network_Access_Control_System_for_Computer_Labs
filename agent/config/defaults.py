@@ -35,8 +35,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "ip_refresh_interval": 300,
     },
     
-    # Packet capture configuration
-    "packet_capture": {
+    # Firewall configuration
+    "firewall": {
+        "enabled": False,
+        "mode": "monitor",  # monitor, blacklist, whitelist_only
+        "default_policy": "allow",
+        "backup": {
+            "enabled": True,
+            "path": "profiles/backup.wfw",
+            "restore_on_startup": False
+        }
+    },
+    
+    # Packet Capture configuration
+    "capture": {
         "engine": "scapy",
         "filter": "outbound and (tcp.DstPort == 80 or tcp.DstPort == 443)",
         "buffer_size": 4096,

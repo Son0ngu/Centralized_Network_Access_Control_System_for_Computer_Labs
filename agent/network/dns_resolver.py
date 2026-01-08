@@ -28,9 +28,10 @@ class OptimizedDNSResolver:
         self._shutdown = False
 
         # Create a dedicated event loop for this resolver instance
-        # to avoid "no current event loop" errors in worker threads.
+        # to avoid "no current event loop" errors in worker threads if async methods are used.
         self._loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self._loop)
+        # Do NOT set global event loop here as it may break the main thread (GUI)
+        # asyncio.set_event_loop(self._loop) 
         
         # Configure dnspython resolver
         self.resolver = dns.resolver.Resolver()
