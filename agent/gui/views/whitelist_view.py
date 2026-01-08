@@ -184,9 +184,9 @@ class WhitelistView(ctk.CTkFrame):
     
     def _register_callbacks(self):
         """Register controller callbacks."""
-        self._controller.on_data_changed(self._update_table)
-        self._controller.on_error(self._show_error)
-        self._controller.on_success(self._show_success)
+        self._controller.on_data_changed(lambda d: self.after(0, self._update_table, d))
+        self._controller.on_error(lambda m: self.after(0, self._show_error, m))
+        self._controller.on_success(lambda m: self.after(0, self._show_success, m))
     
     def _load_data(self):
         """Load initial data."""

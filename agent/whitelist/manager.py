@@ -162,8 +162,9 @@ class WhitelistManager:
                 # Update state
                 updated = self._state.update(data)
                 
-                self._stats["sync_count"] += 1
-                self._stats["last_sync"] = now()
+                with self._lock:
+                    self._stats["sync_count"] += 1
+                    self._stats["last_sync"] = now()
                 
                 if updated:
                     logger.info("Whitelist state updated with new data")
@@ -182,13 +183,15 @@ class WhitelistManager:
                 
                 return True
             else:
-                self._stats["errors"] += 1
+                with self._lock:
+                    self._stats["errors"] += 1
                 error_msg = result.get('error', 'Unknown error')
                 logger.warning(f"Whitelist sync failed: {error_msg}")
                 return False
             
         except Exception as e:
-            self._stats["errors"] += 1
+            with self._lock:
+                self._stats["errors"] += 1
             logger.error(f"Sync error: {e}", exc_info=True)
             return False
     
@@ -213,6 +216,13 @@ class WhitelistManager:
     def is_ip_allowed(self, ip: str) -> bool:
         """Check if IP is allowed (delegate to state)."""
         return self._state.is_ip_allowed(ip)
+
+    def remove_ip(self, ip: str) -> bool:
+        """Remove IP from whitelist state."""
+        success = self._state.remove_ip(ip)
+        if success:
+             self._update_firewall_rules()
+        return success
     
     def _update_firewall_rules(self) -> None:
         """Update firewall rules based on whitelist."""

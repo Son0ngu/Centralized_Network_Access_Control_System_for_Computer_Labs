@@ -155,6 +155,14 @@ class WhitelistState:
     def get_all_ips(self) -> Set[str]:
         with self._lock:
             return self._ips.copy()
+
+    def remove_ip(self, ip: str) -> bool:
+        """Remove an IP from the state safely."""
+        with self._lock:
+            if ip in self._ips:
+                self._ips.remove(ip)
+                return True
+            return False
     
     def clear(self) -> None:
         with self._lock:
