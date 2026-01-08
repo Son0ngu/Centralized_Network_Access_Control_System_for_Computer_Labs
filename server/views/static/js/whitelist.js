@@ -589,6 +589,14 @@ async function addItem() {
 
             await addItemToGroup(targetGroupId, itemData);
             showSuccess(`${itemData.value} added to group whitelist`);
+
+            // Reset form and close modal
+            form.reset();
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
             await Promise.all([loadGroups(), loadItems()]);
         } else {
             const response = await fetch('/api/whitelist', {
