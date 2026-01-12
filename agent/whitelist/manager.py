@@ -52,7 +52,8 @@ class WhitelistManager:
         
         # DNS Cache & Resolver
         self.dns_cache = LRUCache(max_size=2000, default_ttl=self._cache_ttl)
-        self.resolver = OptimizedDNSResolver(max_workers=10, timeout=5.0)
+        # Reduce max_workers to 5 for better stability on weak machines
+        self.resolver = OptimizedDNSResolver(max_workers=5, timeout=5.0)
         
         # Statistics
         self._stats = {
