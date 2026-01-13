@@ -894,42 +894,58 @@ function viewAgentLogs(agentId) {
 }
 
 async function editAgentDisplayName(agentId) {
-    const agent = agentsData.find(a => a.agent_id === agentId);
+    const agent = agentsData.find(a => getAgentId(a) === agentId);
     if (!agent) {
         showError('Agent not found');
         return;
     }
 
     const currentDisplayName = normalizeAgentString(agent.display_name);
-    const defaultValue = currentDisplayName || getAgentHostname(agent) || agentId;
-    const newDisplayName = prompt(`Enter a new display name for ${agent.agent_id}:`, defaultValue);
+    const hostname = getAgentHostname(agent);
+    
+    // Populate modal
+    document.getElementById('editDisplayNameAgentId').value = agentId;
+    document.getElementById('editDisplayNameAgentInfo').textContent = `${hostname || agentId} (${agent.ip_address || 'Unknown IP'})`;
+    document.getElementById('displayNameInput').value = currentDisplayName;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('editDisplayNameModal'));
+    modal.show();
+    
+    // Focus input after modal is shown
+    document.getElementById('editDisplayNameModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('displayNameInput').focus();
+    }, { once: true });
+}
 
-    if (newDisplayName === null) {
-        return;
-    }
-
-    const trimmedName = newDisplayName.trim();
-
-    if (!trimmedName) {
+async function saveDisplayName() {
+    const agentId = document.getElementById('editDisplayNameAgentId').value;
+    const newDisplayName = document.getElementById('displayNameInput').value.trim();
+    const saveBtn = document.getElementById('saveDisplayNameBtn');
+    
+    if (!newDisplayName) {
         showError('Display name cannot be empty.');
         return;
     }
-
-    if (trimmedName === currentDisplayName) {
+    
+    const agent = agentsData.find(a => getAgentId(a) === agentId);
+    if (!agent) return;
+    
+    // Check if changed
+    if (newDisplayName === normalizeAgentString(agent.display_name)) {
+        bootstrap.Modal.getInstance(document.getElementById('editDisplayNameModal')).hide();
         return;
     }
 
-    const editButton = document.querySelector(`[data-action="edit-name"][data-agent-id="${agentId}"]`);
-    if (editButton) {
-        editButton.disabled = true;
-        editButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    }
-
     try {
+        const originalBtnText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
         const response = await fetch(`/api/agents/${agentId}/display-name`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ display_name: trimmedName })
+            body: JSON.stringify({ display_name: newDisplayName })
         });
 
         const data = await response.json();
@@ -938,16 +954,23 @@ async function editAgentDisplayName(agentId) {
             throw new Error(data.error || 'Failed to update display name');
         }
 
-        agent.display_name = trimmedName;
+        // Update local data
+        agent.display_name = newDisplayName;
+        
+        // Refresh UI
         renderAgents(agentsData);
         showSuccess('Display name updated successfully');
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('editDisplayNameModal')).hide();
+        
     } catch (error) {
         console.error('Error updating display name:', error);
         showError(error.message || 'Failed to update display name');
-
-        if (editButton) {
-            editButton.disabled = false;
-            editButton.innerHTML = '<i class="fas fa-pen"></i>';
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
         }
     }
 }
@@ -1180,6 +1203,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (statusFilter) {
         statusFilter.addEventListener('change', filterAgents);
+        if (window.initCustomSelect) window.initCustomSelect('status-filter');
     }
     
     const createGroupBtn = document.getElementById('createGroupBtn');
@@ -1195,6 +1219,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveGroupBtn = document.getElementById('saveGroupBtn');
     if (saveGroupBtn) {
         saveGroupBtn.addEventListener('click', saveGroup);
+    }
+    
+    // Edit Display Name Modal
+    const saveDisplayNameBtn = document.getElementById('saveDisplayNameBtn');
+    if (saveDisplayNameBtn) {
+        saveDisplayNameBtn.addEventListener('click', saveDisplayName);
+    }
+    
+    // Submit on Enter in Edit Display Name Modal
+    const displayNameInput = document.getElementById('displayNameInput');
+    if (displayNameInput) {
+        displayNameInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                saveDisplayName();
+            }
+        });
     }
 
     // Setup Socket.IO for real-time updates

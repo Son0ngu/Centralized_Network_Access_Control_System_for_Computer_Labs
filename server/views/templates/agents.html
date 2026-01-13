@@ -4,6 +4,7 @@
 
 {% block extra_css %}
  <link rel="stylesheet" href="{{ url_for('static', filename='css/agents.css') }}">
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -222,6 +223,38 @@
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="saveGroupBtn">
                     <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Display Name Modal -->
+<div class="modal fade" id="editDisplayNameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Edit Agent Display Name</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDisplayNameForm" onsubmit="return false;">
+                    <input type="hidden" id="editDisplayNameAgentId">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Agent</label>
+                        <div class="form-control-plaintext text-muted" id="editDisplayNameAgentInfo"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="displayNameInput" class="form-label fw-semibold">New Display Name</label>
+                        <input type="text" class="form-control" id="displayNameInput" placeholder="Enter friendly name" required>
+                        <div class="form-text">This name will be shown in the dashboard and lists.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveDisplayNameBtn">
+                    <i class="fas fa-save me-1"></i>Save Changes
                 </button>
             </div>
         </div>

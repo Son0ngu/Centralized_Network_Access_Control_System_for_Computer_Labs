@@ -1,8 +1,11 @@
 import logging
 import threading
-from typing import Callable, Dict, List, Optional
+from urllib.parse import urlparse
+from typing import Callable, Dict, List, Optional, Set
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
+from agent.cache.lru_cache import LRUCache
+from agent.network import OptimizedDNSResolver
 
 from .state import WhitelistState
 from .sync import WhitelistSyncer  
@@ -40,11 +43,17 @@ class WhitelistManager:
         # Threading
         self._lock = threading.RLock()
         self._sync_thread: Optional[threading.Thread] = None
+        self._dns_refresh_thread: Optional[threading.Thread] = None
         self._running = False
         
         # Settings
         self._sync_interval = self.whitelist_config.get("sync_interval", 60)
         self._cache_ttl = self.whitelist_config.get("cache_ttl", 300)
+        
+        # DNS Cache & Resolver
+        self.dns_cache = LRUCache(max_size=2000, default_ttl=self._cache_ttl)
+        # Reduce max_workers to 5 for better stability on weak machines
+        self.resolver = OptimizedDNSResolver(max_workers=5, timeout=5.0)
         
         # Statistics
         self._stats = {
@@ -102,12 +111,23 @@ class WhitelistManager:
             name="WhitelistSync"
         )
         self._sync_thread.start()
+        
+        # Start DNS refresh thread
+        self._dns_refresh_thread = threading.Thread(
+            target=self._refresh_dns_loop,
+            daemon=True,
+            name="DNSRefresh"
+        )
+        self._dns_refresh_thread.start()
+
         logger.info(f"Whitelist sync started (interval: {self._sync_interval}s)")
     
     def stop_sync(self) -> None:
         self._running = False
         if self._sync_thread:
             self._sync_thread.join(timeout=5)
+        if self._dns_refresh_thread:
+            self._dns_refresh_thread.join(timeout=5)
         logger.info("Whitelist sync stopped")
     
     def stop_periodic_updates(self) -> None:
@@ -130,6 +150,48 @@ class WhitelistManager:
                 logger.info(f"Periodic whitelist sync (interval: {self._sync_interval}s)")
                 self.sync_now()
     
+    def _refresh_dns_loop(self) -> None:
+        """Background loop to refresh expiring DNS records."""
+        logger.info("Starting DNS refresh loop...")
+        
+        while self._running:
+            try:
+                # Check every 10 seconds
+                for _ in range(10): 
+                    if not self._running:
+                        return
+                    sleep(1)
+                
+                # Get keys expiring in the next 60 seconds
+                expiring_domains = self.dns_cache.get_expiring_keys(threshold_seconds=60.0)
+                
+                if expiring_domains:
+                    logger.debug(f"Refreshing {len(expiring_domains)} expiring domains...")
+                    updated = False
+                    
+                    for domain in expiring_domains:
+                        if not self._running:
+                            break
+                            
+                        # Resolve
+                        try:
+                            record = self.resolver.resolve_domain_sync(domain)
+                            # Create a set of IPs
+                            ips = set(record.ipv4) | set(record.ipv6)
+                            if ips:
+                                self.dns_cache.set(domain, ips, ttl=self._cache_ttl)
+                                updated = True
+                        except Exception as e:
+                            logger.debug(f"Failed to refresh {domain}: {e}")
+                    
+                    if updated and self._running:
+                        logger.info("DNS Cache updated via background refresh, triggering firewall update")
+                        self._update_firewall_rules()
+                        
+            except Exception as e:
+                logger.error(f"Error in DNS refresh loop: {e}")
+                sleep(5)
+
     def sync_now(self) -> bool:
         try:
             agent_id = self.config.get("agent_id", "unknown")
@@ -161,8 +223,9 @@ class WhitelistManager:
                 # Update state
                 updated = self._state.update(data)
                 
-                self._stats["sync_count"] += 1
-                self._stats["last_sync"] = now()
+                with self._lock:
+                    self._stats["sync_count"] += 1
+                    self._stats["last_sync"] = now()
                 
                 if updated:
                     logger.info("Whitelist state updated with new data")
@@ -181,13 +244,15 @@ class WhitelistManager:
                 
                 return True
             else:
-                self._stats["errors"] += 1
+                with self._lock:
+                    self._stats["errors"] += 1
                 error_msg = result.get('error', 'Unknown error')
                 logger.warning(f"Whitelist sync failed: {error_msg}")
                 return False
             
         except Exception as e:
-            self._stats["errors"] += 1
+            with self._lock:
+                self._stats["errors"] += 1
             logger.error(f"Sync error: {e}", exc_info=True)
             return False
     
@@ -212,6 +277,13 @@ class WhitelistManager:
     def is_ip_allowed(self, ip: str) -> bool:
         """Check if IP is allowed (delegate to state)."""
         return self._state.is_ip_allowed(ip)
+
+    def remove_ip(self, ip: str) -> bool:
+        """Remove IP from whitelist state."""
+        success = self._state.remove_ip(ip)
+        if success:
+             self._update_firewall_rules()
+        return success
     
     def _update_firewall_rules(self) -> None:
         """Update firewall rules based on whitelist."""
@@ -228,11 +300,51 @@ class WhitelistManager:
             # Combine domains and patterns
             all_domains = domains.union(patterns)
             
-            logger.info(f"Updating firewall with {len(all_domains)} domains and {len(ips)} IPs")
+            # CRITICAL: Always whitelist the server URLs
+            server_urls = self._get_server_urls()
+            for url in server_urls:
+                try:
+                    parsed = urlparse(url)
+                    if parsed.hostname:
+                        all_domains.add(parsed.hostname)
+                        logger.debug(f"Added server hostname to whitelist: {parsed.hostname}")
+                except Exception as e:
+                    logger.warning(f"Failed to parse server URL {url}: {e}")
+
+            # RESOLVE DOMAINS LOCALLY VIA CACHE
+            resolved_ips = set()
+            domains_to_resolve = set()
             
-            # Update firewall - it will resolve domains to IPs internally
+            for domain in all_domains:
+                cached_ips = self.dns_cache.get(domain)
+                if cached_ips:
+                    resolved_ips.update(cached_ips)
+                else:
+                    domains_to_resolve.add(domain)
+            
+            # Resolve missing
+            if domains_to_resolve:
+                logger.info(f"Resolving {len(domains_to_resolve)} new domains...")
+                try:
+                    results = self.resolver.resolve_multiple_parallel(list(domains_to_resolve))
+                    
+                    for domain, record in results.items():
+                        domain_ips = set(record.ipv4) | set(record.ipv6)
+                        if domain_ips:
+                            resolved_ips.update(domain_ips)
+                            self.dns_cache.set(domain, domain_ips, ttl=self._cache_ttl)
+                except Exception as e:
+                    logger.error(f"Error resolving domains: {e}")
+            
+            # Combine all IPs
+            final_ips = ips.union(resolved_ips)
+
+            logger.info(f"Updating firewall with {len(all_domains)} domains (resolved to {len(resolved_ips)} IPs) and {len(ips)} static IPs")
+            
+            # Update firewall - PASS RESOLVED IPS ONLY to avoid double resolution
             if hasattr(self._firewall_manager, 'update_whitelist'):
-                success = self._firewall_manager.update_whitelist(all_domains, ips)
+                # Pass empty domains set, and all IPs
+                success = self._firewall_manager.update_whitelist(set(), final_ips)
                 if success:
                     logger.info("Firewall rules updated successfully")
                 else:

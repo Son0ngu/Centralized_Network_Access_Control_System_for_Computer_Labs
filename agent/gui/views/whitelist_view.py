@@ -22,6 +22,15 @@ class WhitelistView(ctk.CTkFrame):
         # Shared DNS resolver for domain/IP lookups
         self._dns_resolver = OptimizedDNSResolver()
         
+         # Resolved IP cache/state
+        self._resolved_data: Optional[List[tuple]] = None
+        self._last_resolved_domains: Set[str] = set()
+        self._resolving_thread: Optional[threading.Thread] = None
+        self._resolve_lock = threading.Lock()
+        
+        # Queue for pending resolve requests
+        self._resolve_queued_domains: Optional[List[str]] = None
+
         # Auto-sync job ID
         self._auto_sync_job = None
         
@@ -175,9 +184,9 @@ class WhitelistView(ctk.CTkFrame):
     
     def _register_callbacks(self):
         """Register controller callbacks."""
-        self._controller.on_data_changed(self._update_table)
-        self._controller.on_error(self._show_error)
-        self._controller.on_success(self._show_success)
+        self._controller.on_data_changed(lambda d: self.after(0, self._update_table, d))
+        self._controller.on_error(lambda m: self.after(0, self._show_error, m))
+        self._controller.on_success(lambda m: self.after(0, self._show_success, m))
     
     def _load_data(self):
         """Load initial data."""
@@ -199,7 +208,16 @@ class WhitelistView(ctk.CTkFrame):
         if show_resolved:
             # Build resolved IP list from domains only (exclude direct IP entries)
             domains = [item.get("ip", "") for item in data if item.get("type", "").lower() == "domain"]
-            resolved_ips = self._resolve_domains_to_ips(domains)
+
+            # If domains changed or we haven't resolved yet, trigger background resolution
+            if set(domains) != self._last_resolved_domains or self._resolved_data is None:
+                self._last_resolved_domains = set(domains)
+                self._resolved_data = None
+                self._start_resolve_domains(domains)
+                # Keep existing table data while resolving to avoid empty UI
+                return
+
+            resolved_ips = self._resolved_data or []
 
             for ip, domain in resolved_ips:
                 if filter_text and filter_text not in ip.lower():
@@ -211,6 +229,10 @@ class WhitelistView(ctk.CTkFrame):
                     "source": f"Resolved from {domain}",
                 })
         else:
+            # Reset resolved cache when switching back to domain view
+            self._resolved_data = None
+            self._last_resolved_domains = set()
+
             # Show only domains (hide raw whitelist IPs)
             for ip_data in data:
                 ip = ip_data.get("ip", "")
@@ -273,12 +295,62 @@ class WhitelistView(ctk.CTkFrame):
     
     def _on_toggle_resolved(self):
         """Handle toggle resolved IPs."""
+        if self._show_resolved.get():
+            self._status_label.configure(text="Resolving domains...", text_color="#ffa500")
+        else:
+            self._status_label.configure(text="Showing domains", text_color="#00ff88")
         self._load_data()  # Reload and filter data
     
     def _on_search(self, event=None):
         """Handle search/filter."""
         self._load_data()  # Reload and filter data
 
+    def _start_resolve_domains(self, domains: List[str]):
+        """Resolve domains in a background thread to keep UI responsive."""
+        # If thread is running, queue this request
+        if self._resolving_thread and self._resolving_thread.is_alive():
+            self._resolve_queued_domains = domains  # Update pending request
+            return
+            
+        # Clear queue since we are handling it now
+        self._resolve_queued_domains = None
+
+        def worker():
+            resolved_pairs = []
+            try:
+                with self._resolve_lock:
+                    resolved_pairs = self._resolve_domains_to_ips(domains)
+            finally:
+                def update_ui():
+                    if not self.winfo_exists():
+                        return
+
+                    self._resolved_data = resolved_pairs
+
+                    if self._show_resolved.get():
+                        # Refresh table now that resolved data is ready
+                        self._status_label.configure(
+                            text=f"Resolved {len(resolved_pairs)} IPs",
+                            text_color="#00ff88"
+                        )
+                        self._update_table(self._controller.get_all_ips())
+                    else:
+                        # If user switched views, just reset state
+                        self._resolved_data = None
+                    
+                    # Check if there is a pending request in queue
+                    if self._resolve_queued_domains is not None:
+                        # Start next resolution with queued domains
+                        next_domains = self._resolve_queued_domains
+                        self._resolve_queued_domains = None
+                        # Don't recurse directly to avoid stack depth, use after
+                        self.after(50, lambda: self._start_resolve_domains(next_domains))
+
+                self.after(0, update_ui)
+
+        self._resolving_thread = threading.Thread(target=worker, daemon=True, name="ResolveDomainsThread")
+        self._resolving_thread.start()
+        
     def _resolve_domains_to_ips(self, domains: List[str]) -> List[tuple]:
         """Resolve domains using the shared DNS resolver with deduplication."""
         if not domains:
@@ -287,23 +359,39 @@ class WhitelistView(ctk.CTkFrame):
         unique_domains = [d for d in dict.fromkeys(domains) if d]
         seen_ips: Set[str] = set()
         resolved: List[tuple] = []
+        
+        print(f"DEBUG: Starting resolution for {len(unique_domains)} unique domains...")
 
         try:
             results = self._dns_resolver.resolve_multiple_parallel(unique_domains)
-        except Exception:
+            print(f"DEBUG: Resolution finished. Got results for {len(results)} domains")
+        except Exception as e:
+            print(f"ERROR: Resolution failed: {e}")
             return []
 
         for domain in unique_domains:
             record = results.get(domain)
             if not record:
                 continue
+            
+            # Combine IPs
+            ips = []
+            if record.ipv4:
+                ips.extend(record.ipv4)
+            if record.ipv6:
+                ips.extend(record.ipv6)
+            
+            if not ips:
+                print(f"DEBUG: No IPs found for {domain}")
+                continue
 
-            for ip in list(record.ipv4) + list(record.ipv6):
+            for ip in ips:
                 if ip in seen_ips:
                     continue
                 seen_ips.add(ip)
                 resolved.append((ip, domain))
-
+        
+        print(f"DEBUG: Total resolved IPs: {len(resolved)}")
         return resolved
     
     def _show_error(self, message: str):

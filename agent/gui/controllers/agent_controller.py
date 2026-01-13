@@ -131,6 +131,7 @@ class AgentController:
         self._stop_event = threading.Event()
         
         # Statistics
+        self._stats_lock = threading.Lock()
         self._stats = {
             'packets_captured': 0,
             'domains_detected': 0,
@@ -245,7 +246,7 @@ class AgentController:
                     logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
             else:
                 # No admin privileges - force monitor mode
-                if current_mode in ["block", "whitelist_only", "enforce"]:
+                if current_mode in ["whitelist_only", "enforce"]:
                     logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
                     self._config["firewall"]["enabled"] = False
                     self._config["firewall"]["mode"] = "monitor"
@@ -291,7 +292,9 @@ class AgentController:
                 
                 # Emit stats every 5 seconds
                 if loop_count % 5 == 0:
-                    self.signals.emit('stats_updated', self._stats.copy())
+                    with self._stats_lock:
+                         stats_snapshot = self._stats.copy()
+                    self.signals.emit('stats_updated', stats_snapshot)
                     logger.debug(f"Agent loop #{loop_count}, uptime: {uptime_string()}")
             
             logger.info("Agent worker loop ended")
@@ -324,36 +327,41 @@ class AgentController:
         """Update internal statistics."""
         try:
             from shared.time_utils import uptime
-            self._stats['uptime_seconds'] = int(uptime())
             
-            # Get stats from components if available
-            if self._agent:
-                # Whitelist stats
-                if self._agent.whitelist and hasattr(self._agent.whitelist, '_state'):
-                    whitelist_stats = self._agent.whitelist._state.get_stats()
-                    self._stats['domains_count'] = whitelist_stats.get('domains_count', 0)
-                    self._stats['patterns_count'] = whitelist_stats.get('patterns_count', 0)
-                    self._stats['ips_count'] = whitelist_stats.get('ips_count', 0)
+            with self._stats_lock:
+                self._stats['uptime_seconds'] = int(uptime())
                 
-                # Sniffer stats (if available)
-                if self._agent.sniffer and hasattr(self._agent.sniffer, 'packet_count'):
-                    self._stats['packets_captured'] = getattr(self._agent.sniffer, 'packet_count', 0)
-                
-                # Log sender stats
-                if self._agent.log_sender and hasattr(self._agent.log_sender, 'get_status'):
-                    sender_status = self._agent.log_sender.get_status()
-                    self._stats['logs_sent'] = sender_status.get('logs_sent', 0)
-                    self._stats['queue_size'] = sender_status.get('queue_size', 0)
+                # Get stats from components if available
+                if self._agent:
+                    # Whitelist stats
+                    if self._agent.whitelist and hasattr(self._agent.whitelist, '_state'):
+                        whitelist_stats = self._agent.whitelist._state.get_stats()
+                        self._stats['domains_count'] = whitelist_stats.get('domains_count', 0)
+                        self._stats['patterns_count'] = whitelist_stats.get('patterns_count', 0)
+                        self._stats['ips_count'] = whitelist_stats.get('ips_count', 0)
                     
+                    # Sniffer stats (if available)
+                    if self._agent.sniffer and hasattr(self._agent.sniffer, 'packet_count'):
+                        self._stats['packets_captured'] = getattr(self._agent.sniffer, 'packet_count', 0)
+                    
+                    # Log sender stats
+                    if self._agent.log_sender and hasattr(self._agent.log_sender, 'get_status'):
+                        sender_status = self._agent.log_sender.get_status()
+                        self._stats['logs_sent'] = sender_status.get('logs_sent', 0)
+                        self._stats['queue_size'] = sender_status.get('queue_size', 0)
+                        
         except Exception as e:
             logger.debug(f"Stats update error: {e}")
     
     def get_agent_info(self) -> Dict:
         """Get current agent information."""
+        with self._stats_lock:
+            stats_copy = self._stats.copy()
+
         info = {
             'status': self._status.name,
             'is_running': self.is_running,
-            'stats': self._stats.copy(),
+            'stats': stats_copy,
         }
         
         if self._agent:
@@ -370,7 +378,8 @@ class AgentController:
     
     def get_stats(self) -> Dict:
         """Get current agent statistics."""
-        return self._stats.copy()
+        with self._stats_lock:
+            return self._stats.copy()
     
     def force_whitelist_sync(self) -> bool:
         """Force immediate whitelist sync."""

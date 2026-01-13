@@ -197,10 +197,18 @@
     margin-bottom: 2rem;
 }
 
-.form-control, .form-select {
+.form-control {
     border-radius: 10px;
     border: 1px solid #e3e6f0;
     transition: all 0.3s ease;
+}
+
+.form-select {
+    border-radius: 20px; /* Softer, more rounded corners for dropdowns */
+    border: 1px solid #e3e6f0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background-color: #fff;
 }
 
 .form-control:focus, .form-select:focus {
@@ -264,6 +272,7 @@
 .type-badge.domain { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
 .type-badge.ip { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .type-badge.url { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+.type-badge.bulk { background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%); color: white; }
 .type-badge.port { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #333; }
 .type-badge.process { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; }
 

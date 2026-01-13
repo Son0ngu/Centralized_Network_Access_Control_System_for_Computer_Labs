@@ -574,6 +574,21 @@ class AgentService:
             raise ValueError("Agent not found or not updated")
         return True
 
+    def update_position(self, agent_id: str, position: int) -> bool:
+        """Update agent position in layout"""
+        try:
+            position = int(position) if position is not None else None
+            
+            updated = self.model.update_agent(agent_id, {"position": position})
+            if not updated:
+                raise ValueError("Agent not found or not updated")
+            return True
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            self.logger.error(f"Error updating position for agent {agent_id}: {e}")
+            raise
+
     def move_agent_to_group(self, agent_id: str, group_id: str) -> Dict:
         """Move agent to a new group"""
         try:

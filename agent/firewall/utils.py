@@ -34,21 +34,17 @@ class FirewallUtils:
         # Localhost
         essential.update(["127.0.0.1", "::1"])
         
-        # Common DNS servers
-        essential.update([
-            # Google
-            "8.8.8.8", "8.8.4.4",
-            "2001:4860:4860::8888", "2001:4860:4860::8844",
-            # Cloudflare
-            "1.1.1.1", "1.0.0.1",
-            "2606:4700:4700::1111", "2606:4700:4700::1001",
-            # OpenDNS
-            "208.67.222.222", "208.67.220.220",
-            "2620:119:35::35", "2620:119:53::53",
-            # Quad9
-            "9.9.9.9", "149.112.112.112",
-            "2620:fe::fe", "2620:fe::9"
-        ])
+        # Auto-detect system DNS servers
+        try:
+            import dns.resolver
+            sys_resolver = dns.resolver.Resolver()
+            if sys_resolver.nameservers:
+                essential.update(sys_resolver.nameservers)
+                logger.debug(f"Detected system DNS servers: {sys_resolver.nameservers}")
+        except Exception as e:
+            logger.debug(f"Could not detect system DNS configuration, falling back to minimal defaults: {e}")
+            # Fallback for connectivity safety
+            essential.update(["8.8.8.8", "1.1.1.1"])
         
         # Try to detect local IPv4 via shared IPDetector
         try:

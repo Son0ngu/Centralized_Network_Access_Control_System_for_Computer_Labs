@@ -4,9 +4,8 @@
 PyInstaller Spec File for Firewall Controller Agent GUI
 - Education Security
 
-This spec file creates two executables:
-1. SAINT.exe - Console mode (for service/CLI)
-2. SAINT_GUI.exe - GUI mode (windowed, no console)
+This spec file creates:
+1. SAINT_GUI.exe - GUI mode (windowed, no console)
 """
 
 import sys
@@ -129,47 +128,6 @@ except ImportError:
     pass
 
 
-# ========================================
-# Console Application (Service/CLI)
-# ========================================
-a_console = Analysis(
-    ['agent/agent_main.py'],
-    pathex=['agent'],
-    binaries=[],
-    datas=datas,
-    hiddenimports=hiddenimports,
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=['tkinter'],  # Exclude tkinter for console version
-    noarchive=False,
-    optimize=0,
-)
-
-pyz_console = PYZ(a_console.pure)
-
-exe_console = EXE(
-    pyz_console,
-    a_console.scripts,
-    a_console.binaries,
-    a_console.datas,
-    [],
-    name='SAINT',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,  # Console mode
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon='agent/miku.ico',
-    uac_admin=False,  # Request admin privileges
-)
 
 
 # ========================================
@@ -197,7 +155,7 @@ exe_gui = EXE(
     a_gui.binaries,
     a_gui.datas,
     [],
-    name='SAINT-GUI',
+    name='SAINT',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

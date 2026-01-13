@@ -198,8 +198,11 @@ class WhitelistController:
                     if hasattr(self._whitelist_manager, 'remove_ip'):
                         self._whitelist_manager.remove_ip(ip)
                     elif hasattr(self._whitelist_manager, '_state'):
-                        # Direct state manipulation
-                        self._whitelist_manager._state._ips.discard(ip)
+                        # Fallback (though manager should have remove_ip now)
+                        if hasattr(self._whitelist_manager._state, 'remove_ip'):
+                             self._whitelist_manager._state.remove_ip(ip)
+                        else: 
+                             self._whitelist_manager._state._ips.discard(ip)
                 
                 self._notify_data_changed()
                 self._notify_success(f"IP removed: {ip}")

@@ -60,7 +60,7 @@ def _validate_firewall_config(
 ) -> None:
     """Validate firewall configuration."""
     firewall_config = config.get("firewall", {})
-    valid_modes = ["block", "warn", "monitor", "whitelist_only"]
+    valid_modes = ["monitor", "whitelist_only"]
     current_mode = firewall_config.get("mode", "monitor")
     
     if current_mode not in valid_modes:
@@ -68,7 +68,7 @@ def _validate_firewall_config(
         config["firewall"]["mode"] = "monitor"
     
     # Admin privileges check
-    admin_required_modes = ["block", "whitelist_only"]
+    admin_required_modes = ["whitelist_only"]
     if current_mode in admin_required_modes:
         if not _has_admin_privileges():
             warnings.append(

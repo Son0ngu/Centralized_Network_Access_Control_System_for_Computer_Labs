@@ -110,6 +110,28 @@ class LRUCache:
             
             return len(expired_keys)
     
+    def get_expiring_keys(self, threshold_seconds: float = 60.0) -> list[str]:
+        """
+        Get keys that will expire within the threshold.
+        Examples:
+            - threshold=0: Get keys that have already expired.
+            - threshold=60: Get keys expiring in the next 60 seconds (or already expired).
+        """
+        with self._lock:
+            expiring = []
+            current_time = now()
+            for key in self._cache.keys():
+                timestamp = self._timestamps.get(key, 0)
+                ttl = self._ttls.get(key, self._default_ttl)
+                
+                # Calculate remaining life
+                age = current_time - timestamp
+                remaining = ttl - age
+                
+                if remaining <= threshold_seconds:
+                    expiring.append(key)
+            return expiring
+
     def get_stats(self) -> Dict:
         """Get cache statistics."""
         with self._lock:

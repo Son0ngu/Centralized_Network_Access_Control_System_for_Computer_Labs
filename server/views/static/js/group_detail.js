@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     setupSocketIO();
     formatDates();
+    
+    // Initialize custom select for status filter
+    if (typeof initCustomSelect === 'function') {
+        initCustomSelect('statusFilter');
+    }
 });
 
 function setupEventListeners() {
@@ -26,6 +31,9 @@ function setupEventListeners() {
     
     // Confirm add agents button
     document.getElementById('confirmAddAgents')?.addEventListener('click', addSelectedAgents);
+
+    // Unassigned agents search in Assign Modal
+    document.getElementById('unassignedAgentSearch')?.addEventListener('input', filterUnassignedAgentsList);
 }
 
 function setupSocketIO() {
@@ -77,7 +85,11 @@ async function loadGroupAgents() {
         
         console.log(`Loaded ${groupAgents.length} agents for group`);
         
-        renderGroupAgents(groupAgents);
+        if (currentView === 'map') {
+            renderGroupMap(groupAgents);
+        } else {
+            renderGroupAgents(groupAgents);
+        }
         updateStatistics();
         
     } catch (error) {
@@ -204,9 +216,24 @@ function updateStatistics() {
 // ========================================
 
 async function openAddAgentModal() {
+    // Reset target position if called directly from "Add Agent" button
+    if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('onclick') === 'openAddAgentModal()') {
+        targetSlotPosition = null;
+    }
+
     selectedAgents.clear();
     updateSelectedCount();
     
+     // Update modal title
+    const titleEl = document.querySelector('#addAgentModal .modal-title');
+    if (titleEl) {
+        if (targetSlotPosition) {
+            titleEl.textContent = `Assign Agent to Position ${targetSlotPosition}`;
+        } else {
+            titleEl.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add Agent to Group';
+        }
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('addAgentModal'));
     modal.show();
     
@@ -264,17 +291,36 @@ function renderAvailableAgents() {
 }
 
 function toggleAgentSelection(agentId) {
-    if (selectedAgents.has(agentId)) {
-        selectedAgents.delete(agentId);
+    if (targetSlotPosition !== null) {
+        // Single selection mode for specific slot
+        if (selectedAgents.has(agentId)) {
+            selectedAgents.delete(agentId);
+        } else {
+            selectedAgents.clear();
+            selectedAgents.add(agentId);
+        }
+        
+        // Update all checkboxes
+        document.querySelectorAll('.available-agent-item').forEach(item => {
+            const id = item.dataset.agentId;
+            const isSelected = selectedAgents.has(id);
+            item.classList.toggle('selected', isSelected);
+            item.querySelector('input[type="checkbox"]').checked = isSelected;
+        });
     } else {
-        selectedAgents.add(agentId);
-    }
-    
-    // Update UI
-    const item = document.querySelector(`.available-agent-item[data-agent-id="${agentId}"]`);
-    if (item) {
-        item.classList.toggle('selected', selectedAgents.has(agentId));
-        item.querySelector('input[type="checkbox"]').checked = selectedAgents.has(agentId);
+        // Multi-selection mode
+        if (selectedAgents.has(agentId)) {
+            selectedAgents.delete(agentId);
+        } else {
+            selectedAgents.add(agentId);
+        }
+        
+        // Update UI
+        const item = document.querySelector(`.available-agent-item[data-agent-id="${agentId}"]`);
+        if (item) {
+            item.classList.toggle('selected', selectedAgents.has(agentId));
+            item.querySelector('input[type="checkbox"]').checked = selectedAgents.has(agentId);
+        }
     }
     
     updateSelectedCount();
@@ -315,6 +361,16 @@ async function addSelectedAgents() {
         );
         
         await Promise.all(promises);
+
+        // If adding to specific slot
+        if (targetSlotPosition !== null && selectedAgents.size === 1) {
+            const agentId = selectedAgents.values().next().value;
+            await fetch(`/api/agents/${agentId}/position`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ position: targetSlotPosition })
+            });
+        }
         
         showSuccess(`Added ${selectedAgents.size} agent(s) to group`);
         bootstrap.Modal.getInstance(document.getElementById('addAgentModal')).hide();
@@ -379,7 +435,12 @@ function updateAgentStatus(agentId, status, data) {
     if (agent) {
         agent.status = status;
         agent.last_heartbeat = data.last_heartbeat;
-        renderGroupAgents(groupAgents);
+        
+        if (currentView === 'map') {
+            renderGroupMap(groupAgents);
+        } else {
+            renderGroupAgents(groupAgents);
+        }
         updateStatistics();
     }
 }
@@ -496,5 +557,363 @@ function showError(message) {
         showNotification('danger', message);
     } else {
         alert('Error: ' + message);
+    }
+}
+
+// ========================================
+// MAP VIEW & DRAG DROP
+// ========================================
+
+let currentView = 'list';
+let targetSlotPosition = null;
+
+function switchView(mode) {
+    currentView = mode;
+    const listContainer = document.getElementById('groupAgentsContainer');
+    const mapWrapper = document.getElementById('groupMapWrapper');
+    const filterParams = document.getElementById('listFilterParams');
+    
+    if (mode === 'map') {
+        listContainer.style.display = 'none';
+        mapWrapper.style.display = 'block';
+        if (filterParams) filterParams.style.display = 'none';
+        renderGroupMap(groupAgents);
+    } else {
+        listContainer.style.display = 'block';
+        mapWrapper.style.display = 'none';
+        if (filterParams) filterParams.style.display = 'block';
+        renderGroupAgents(groupAgents); // Re-render to ensure latest state
+    }
+}
+
+function updateGridLayout() {
+    renderGroupMap(groupAgents);
+}
+
+function renderGroupMap(agents) {
+    const mapContainer = document.getElementById('groupMapContainer');
+    const unassignedContainer = document.getElementById('unassignedGrid');
+    
+    // Get Grid Configuration (limit processing if value is invalid)
+    let rows = parseInt(document.getElementById('gridRows').value);
+    let cols = parseInt(document.getElementById('gridCols').value);
+    
+    if (!rows || rows < 1) rows = 1;
+    if (!cols || cols < 1) cols = 1;
+    
+    // Create Layout: Single flexible grid
+    // Use CSS Grid in inline style for dynamic rows/cols
+    const gridStyle = `display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px; padding: 10px;`;
+    
+    let html = `<div class="classroom-layout" style="${gridStyle}">`;
+    
+    const totalSlots = rows * cols;
+    
+    // Calculate size estimate (optional optimisation)
+    
+    for (let i = 0; i < totalSlots; i++) {
+        const pos = i + 1; 
+        html += renderSlot(pos, agents);
+    }
+    
+    html += '</div>'; // End layout
+    
+    mapContainer.innerHTML = html;
+    
+    // Render Unassigned
+    // Filter agents that have no position OR have position > totalSlots
+    const unassigned = agents.filter(a => !a.position || a.position < 1 || a.position > totalSlots);
+    
+    // We sort unassigned by status (active first) then name
+    unassigned.sort((a, b) => {
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+        return (a.display_name || '').localeCompare(b.display_name || '');
+    });
+    
+    if (unassigned.length > 0) {
+        unassignedContainer.innerHTML = unassigned.map(agent => renderDraggableCard(agent)).join('');
+    } else {
+        unassignedContainer.innerHTML = '<div class="text-muted p-3 w-100 text-center small" style="grid-column: 1 / -1;">All agents assigned to positions</div>';
+    }
+}
+
+function renderSlot(pos, agents) {
+    const agent = agents.find(a => a.position === pos);
+    let content = '';
+    
+    if (agent) {
+        content = renderDraggableCard(agent, true);
+        return `
+            <div class="device-slot occupied" id="slot-${pos}" 
+                 ondrop="drop(event, ${pos})" 
+                 ondragover="allowDrop(event)">
+                 <div class="position-badge">${pos}</div>
+                 ${content}
+            </div>
+        `;
+    } else {
+        // Empty slot - clickable to map agent
+        return `
+            <div class="device-slot empty" id="slot-${pos}" 
+                 ondrop="drop(event, ${pos})" 
+                 ondragover="allowDrop(event)"
+                 onclick="openAssignPositionModal(${pos})"
+                 title="Click to assign agent">
+                 <div class="position-badge">${pos}</div>
+                 <div class="slot-placeholder">
+                    <i class="fas fa-plus"></i>
+                 </div>
+            </div>
+        `;
+    }
+}
+
+// ========================================
+// ASSIGN POSITION MODAL
+// ========================================
+
+function openAssignPositionModal(pos) {
+    targetSlotPosition = pos;
+    const modalTitle = document.querySelector('#assignPositionModal .modal-title');
+    if (modalTitle) modalTitle.textContent = `Assign Agent to Position ${pos}`;
+    
+    // Populate list
+    // Filter agents in group that DO NOT have a position (or position is invalid/cleared)
+    // Also include agents that might have high positions if they are considered unassigned in pool
+    // But conceptually, we just want agents who are currently "Unassigned"
+    
+    // We can also allow moving agents? For simplicity, just unassigned ones first.
+    // If user wants to swap, they can drag drop.
+    const unassigned = groupAgents.filter(a => !a.position || a.position < 1);
+    
+    renderUnassignedAgentsList(unassigned);
+    
+    const modal = new bootstrap.Modal(document.getElementById('assignPositionModal'));
+    modal.show();
+}
+
+function renderUnassignedAgentsList(agents) {
+    const container = document.getElementById('unassignedAgentsList');
+    if (!container) return;
+    
+    if (agents.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <p class="mb-2">No unassigned agents found</p>
+                <small>Use "Add Agent" to bring new agents into the group first.</small>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = agents.map(agent => {
+        const displayName = agent.display_name || agent.hostname || agent.agent_id;
+        const statusInfo = getStatusInfo(agent.status);
+        
+        return `
+            <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 unassigned-list-item"
+                    data-search="${(displayName + ' ' + (agent.ip_address || '')).toLowerCase()}"
+                    onclick="assignAgentToPosition('${agent.agent_id}')">
+                <div class="agent-avatar small" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <div class="flex-grow-1 text-start">
+                    <div class="fw-semibold small">${escapeHtml(displayName)}</div>
+                    <div class="text-muted extra-small" style="font-size: 0.75rem;">
+                        ${agent.ip_address || 'Unknown IP'}
+                    </div>
+                </div>
+                <span class="badge ${getStatusBadgeClass(agent.status)} rounded-pill">
+                    ${statusInfo.text}
+                </span>
+            </button>
+        `;
+    }).join('');
+}
+
+function getStatusBadgeClass(status) {
+    switch(status) {
+        case 'active': return 'bg-success';
+        case 'inactive': return 'bg-warning text-dark';
+        case 'offline': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function filterUnassignedAgentsList() {
+    const term = document.getElementById('unassignedAgentSearch').value.toLowerCase();
+    const items = document.querySelectorAll('.unassigned-list-item');
+    items.forEach(item => {
+        const text = item.getAttribute('data-search') || '';
+        item.style.display = text.includes(term) ? 'flex' : 'none';
+    });
+}
+
+async function assignAgentToPosition(agentId) {
+    if (targetSlotPosition === null) return;
+    
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div> Assigning...';
+    btn.disabled = true;
+
+    try {
+        await updateAgentPosition(agentId, targetSlotPosition);
+        
+        // Close modal
+        const modalEl = document.getElementById('assignPositionModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+        
+        showSuccess('Agent assigned successfully');
+    } catch (error) {
+        console.error('Error assigning agent:', error);
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        showError('Failed to assign agent');
+    }
+}
+
+function renderDraggableCard(agent, isCompact=false) {
+    // Styling based on status
+    const statusClass = `status-${agent.status || 'offline'}`;
+    const displayName = agent.display_name || agent.hostname;
+    const version = agent.agent_version || 'v1';
+    const shortIp = agent.ip_address || '---';
+    
+    // Compact View for Grid
+    if (isCompact) {
+         return `
+            <div class="device-card ${statusClass}" 
+                 id="card-${agent.agent_id}" 
+                 draggable="true" 
+                 data-agent-id="${agent.agent_id}"
+                 ondragstart="drag(event, '${agent.agent_id}')"
+                 title="${escapeHtml(displayName)}">
+                
+                <div class="device-icon">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                
+                <div class="device-info">
+                    <span class="device-ip">${escapeHtml(shortIp)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Larger View for Unassigned Pool
+    return `
+        <div class="device-card ${statusClass}" 
+             id="card-${agent.agent_id}" 
+             draggable="true" 
+             style="width: 100px; height: 100px;" 
+             data-agent-id="${agent.agent_id}"
+             ondragstart="drag(event, '${agent.agent_id}')">
+            
+            <div class="device-icon">
+                <i class="fas fa-desktop"></i>
+            </div>
+            
+            <div class="device-info">
+                <div class="fw-bold small text-truncate" style="max-width: 90px;" title="${displayName}">${displayName}</div>
+                <div class="small text-muted">${shortIp}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Drag and Drop Handlers
+
+function allowDrop(ev) {
+    ev.preventDefault();
+    const slot = ev.currentTarget;
+    if (slot && !slot.classList.contains('drag-over')) {
+        slot.classList.add('drag-over');
+    }
+}
+
+function drag(ev, agentId) {
+    ev.dataTransfer.setData("agent_id", agentId);
+    ev.dataTransfer.effectAllowed = 'move';
+    const card = ev.currentTarget.closest('.device-card');
+    if (card) {
+        setTimeout(() => card.classList.add('is-dragging'), 0);
+    }
+}
+
+function drop(ev, pos) {
+    ev.preventDefault();
+    const slot = ev.currentTarget;
+    slot.classList.remove('drag-over');
+    
+    const agentId = ev.dataTransfer.getData("agent_id");
+    if (!agentId) return;
+    
+    const card = document.getElementById(`card-${agentId}`);
+    if (card) card.classList.remove('is-dragging');
+
+    updateAgentPosition(agentId, pos);
+}
+
+function dropToUnassigned(ev) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove('drag-over');
+    
+    const agentId = ev.dataTransfer.getData("agent_id");
+    if (!agentId) return;
+    
+    const card = document.getElementById(`card-${agentId}`);
+    if (card) card.classList.remove('is-dragging');
+    
+    updateAgentPosition(agentId, null);
+}
+
+// Remove drag-over class when drag leaves
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('dragleave', function(ev) {
+        if (ev.target.classList.contains('device-slot')) {
+            ev.target.classList.remove('drag-over');
+        }
+    });
+    
+    document.addEventListener('dragend', function(ev) {
+        // Clean up all drag-over states
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        document.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
+    });
+});
+
+async function updateAgentPosition(agentId, position) {
+    try {
+        const response = await fetch(`/api/agents/${agentId}/position`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ position: position })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update position');
+        
+        // Update local state
+        const agent = groupAgents.find(a => a.agent_id === agentId);
+        if (agent) {
+            agent.position = position;
+        }
+        
+        if (position !== null) {
+            const collidingAgent = groupAgents.find(a => a.position === position && a.agent_id !== agentId);
+            if (collidingAgent) {
+                collidingAgent.position = null; 
+            }
+        }
+        
+        renderGroupMap(groupAgents);
+        
+    } catch (error) {
+        console.error('Error updating position:', error);
+        alert('Failed to update position');
     }
 }

@@ -1,4 +1,7 @@
 import logging
+import json
+from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Optional, Set
 
 from agent.shared.time_utils import now_iso
@@ -577,3 +580,87 @@ class FirewallManager:
                 logger.warning(f"Error resolving {url}: {e}")
         
         return ips
+
+    # BACKUP RESTORE HELPERS
+    def save_snapshot(self, path: str = "profiles/backup.wfw") -> bool:
+        """Save firewall policy snapshot to file."""
+        try:
+            file_path = Path(path)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Get current policies
+            current_policies = self.policy_manager.get_current_policy()
+            
+            # Get current allowed IPs
+            allowed_ips = list(self.rules_manager.allowed_ips) if hasattr(self.rules_manager, 'allowed_ips') else []
+            
+            snapshot = {
+                "timestamp": datetime.now().isoformat(),
+                "policies": current_policies,
+                "whitelist_mode": self.whitelist_mode_active,
+                "essential_ips": list(self.essential_ips),
+                "allowed_ips": allowed_ips
+            }
+            
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(snapshot, f, indent=4)
+                
+            logger.info(f"Firewall snapshot saved to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save firewall snapshot: {e}")
+            return False
+
+    def restore_snapshot(self, path: str = "profiles/backup.wfw") -> bool:
+        """Restore firewall policy from snapshot file."""
+        try:
+            file_path = Path(path)
+            if not file_path.exists():
+                logger.error(f"Snapshot file not found: {file_path}")
+                return False
+                
+            with open(file_path, "r", encoding="utf-8") as f:
+                snapshot = json.load(f)
+            
+            logger.info(f"Restoring firewall snapshot from {snapshot.get('timestamp')}")
+            
+            # 1. Restore Windows Firewall Policies
+            policies = snapshot.get("policies", {})
+            for profile, action in policies.items():
+                if action not in ["allow", "block"]:
+                    continue
+                
+                # Convert action to firewall command arg
+                # block -> block outbound (and inbound)
+                # allow -> allow outbound (and block inbound usually)
+                policy_arg = "blockinbound,blockoutbound" if action == "block" else "blockinbound,allowoutbound"
+                
+                result = FirewallUtils.run_netsh_command([
+                    "advfirewall", "set", f"{profile}profile",
+                    "firewallpolicy", policy_arg
+                ])
+                
+                if result.returncode == 0:
+                     logger.debug(f"Restored {profile} profile to {action}")
+                else:
+                     logger.warning(f"Failed to restore {profile} profile: {result.stderr}")
+
+            # 2. Restore Whitelist if needed
+            was_whitelist_mode = snapshot.get("whitelist_mode", False)
+            if was_whitelist_mode:
+                allowed_ips = set(snapshot.get("allowed_ips", []))
+                essential_ips = set(snapshot.get("essential_ips", []))
+                
+                logger.info("Restoring whitelist rules...")
+                self.setup_whitelist_firewall(allowed_ips, essential_ips)
+            else:
+                 logger.info("Snapshot indicates whitelist mode was OFF. Clearing rules...")
+                 self.rules_manager.clear_all_rules()
+                 self.whitelist_mode_active = False
+
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to restore firewall snapshot: {e}")
+            return False

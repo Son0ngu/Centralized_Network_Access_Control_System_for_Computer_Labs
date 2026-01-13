@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', function() {
     loadGroups();
     loadAgents();
     setupEventListeners();
+
+    if (window.initCustomSelect) {
+        window.initCustomSelect('sortFilter');
+    }
 });
 
 function setupEventListeners() {
