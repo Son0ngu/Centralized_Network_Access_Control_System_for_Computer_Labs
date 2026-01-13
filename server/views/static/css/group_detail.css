@@ -324,129 +324,237 @@
         width: 100%;
         justify-content: flex-end;
     }
-}@
-@
+}
+
 /* Classroom Map Layout */
 .classroom-layout {
-    display: flex;
-    gap: 40px;
-    justify-content: center;
+    /* Grid layout is set inline in JS for dynamic columns */
     padding: 20px;
     background: #f8f9fa;
     border-radius: 8px;
+    border: 1px dashed #dee2e6;
     margin-bottom: 20px;
+    /* Ensure it works with overflow */
+    width: fit-content;
+    min-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-.classroom-block {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-gap: 15px;
-    padding: 15px;
-    background: #e9ecef;
-    border-radius: 8px;
-    border: 1px dashed #ced4da;
+/* Scrollable wrapper for the map */
+#groupMapWrapper {
+    overflow-x: auto;
+    width: 100%;
 }
+
+/* Unassigned Grid - 5 columns, scrollable */
+.unassigned-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+}
+
+/* Custom Scrollbar for unassigned grid */
+.unassigned-grid::-webkit-scrollbar {
+    width: 8px;
+}
+.unassigned-grid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+.unassigned-grid::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+.unassigned-grid::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+/* Remove old classroom-block styles as we use single grid */
 
 .device-slot {
     position: relative;
-    width: 60px;
-    height: 60px;
-    background: white;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
+    aspect-ratio: 1;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    min-height: 85px;
+    overflow: hidden;
+    padding: 4px;
+}
+
+.device-slot:hover {
+    border-color: #adb5bd;
+}
+
+.device-slot.occupied {
+    background: white;
+    border-style: solid;
+    border-color: transparent;
+    padding: 0;
 }
 
 .device-slot.drag-over {
-    background: #e7f1ff;
+    background: #e7f3ff !important;
+    border-color: #0d6efd !important;
+    border-style: solid !important;
+    box-shadow: 0 0 12px rgba(13, 110, 253, 0.3);
+}
+
+.device-slot.empty {
+    cursor: pointer;
+    color: #ced4da;
+}
+
+.device-slot.empty:hover {
+    background-color: #e9ecef;
     border-color: #0d6efd;
-    box-shadow: 0 0 10px rgba(13, 110, 253, 0.2);
+    color: #0d6efd;
+}
+
+.slot-placeholder {
+    font-size: 1.8rem;
+    transition: all 0.2s;
+    opacity: 0.5;
+}
+
+.device-slot.empty:hover .slot-placeholder {
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .position-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #6c757d;
+    top: 4px;
+    right: 4px;
+    background: rgba(108, 117, 125, 0.85);
     color: white;
-    font-size: 10px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 20;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Device Card Styles */
+/* Device Card Styles - Enhanced to match image */
 .device-card {
     width: 100%;
     height: 100%;
-    background: white;
-    border-radius: 6px;
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: grab;
-    border: 1px solid #ced4da;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 2.5px solid;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     z-index: 10;
-    font-size: 10px;
-    overflow: hidden;
-    position: relative;
+    padding: 0.4rem 0.2rem;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .device-card:active {
     cursor: grabbing;
+    transform: scale(0.98);
 }
 
 .device-card.is-dragging {
-    opacity: 0.5;
+    opacity: 0.6;
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 
-.status-online { border-color: #198754; background: #f0fff4; }
-.status-offline { border-color: #dc3545; background: #fff5f5; }
-.status-warning { border-color: #ffc107; background: #fffbf0; }
-
-.check-icon {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    color: #198754;
-    font-size: 10px;
-    display: none;
+/* Status Colors matching image */
+/* Active: Green */
+.status-active, .status-online { 
+    border-color: #28a745; 
+    background-color: #e8f5e9; 
+    color: #28a745;
 }
 
-.status-online .check-icon { display: block; }
+/* Inactive: Yellow/Orange */
+.status-inactive { 
+    border-color: #ffc107; 
+    background-color: #fff3cd; 
+    color: #856404;
+}
+
+/* Offline: Red */
+.status-offline { 
+    border-color: #dc3545; 
+    background-color: #f8d7da; 
+    color: #842029;
+}
 
 .device-icon {
-    font-size: 18px;
-    margin-bottom: 2px;
-    color: #495057;
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+    opacity: 0.9;
 }
 
 .device-info {
     text-align: center;
-    line-height: 1.1;
     width: 100%;
-    padding: 0 2px;
+    overflow: hidden;
 }
 
 .device-ip {
     display: block;
-    font-weight: bold;
+    font-weight: 700;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    margin-bottom: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 0 4px;
 }
 
 .device-version {
-    color: #6c757d;
-    font-size: 8px;
+    display: none;
 }
-@
+
+.check-icon {
+    display: none; 
+}
+
+/* Available Agents List in Modal */
+.available-agents-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.available-agent-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.available-agent-item:hover {
+    background-color: #f8f9fa;
+}
+
+.available-agent-item.selected {
+    background-color: #e7f3ff;
+    border-left: 3px solid #0d6efd;
+}
