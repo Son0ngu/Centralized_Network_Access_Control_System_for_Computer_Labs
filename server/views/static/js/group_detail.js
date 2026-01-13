@@ -498,3 +498,204 @@ function showError(message) {
         alert('Error: ' + message);
     }
 }
+
+// ========================================
+// MAP VIEW & DRAG DROP
+// ========================================
+
+let currentView = 'list';
+
+function switchView(mode) {
+    currentView = mode;
+    const listContainer = document.getElementById('groupAgentsContainer');
+    const mapWrapper = document.getElementById('groupMapWrapper');
+    const filterParams = document.getElementById('listFilterParams');
+    
+    if (mode === 'map') {
+        listContainer.style.display = 'none';
+        mapWrapper.style.display = 'block';
+        if (filterParams) filterParams.style.display = 'none';
+        renderGroupMap(groupAgents);
+    } else {
+        listContainer.style.display = 'block';
+        mapWrapper.style.display = 'none';
+        if (filterParams) filterParams.style.display = 'block';
+        renderGroupAgents(groupAgents); // Re-render to ensure latest state
+    }
+}
+
+function renderGroupMap(agents) {
+    const mapContainer = document.getElementById('groupMapContainer');
+    const unassignedContainer = document.getElementById('unassignedGrid');
+    
+    // Create Layout: Two blocks of 20
+    let html = '<div class="classroom-layout">';
+    
+    // Left Block (Positions 40-21)
+    html += '<div class="classroom-block">';
+    for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 4; col++) {
+            const pos = 40 - (row * 4) - col;
+            html += renderSlot(pos, agents);
+        }
+    }
+    html += '</div>';
+    
+    // Right Block (Positions 20-1)
+    html += '<div class="classroom-block">';
+    for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 4; col++) {
+            const pos = 20 - (row * 4) - col;
+            html += renderSlot(pos, agents);
+        }
+    }
+    html += '</div>';
+    html += '</div>'; // End layout
+    
+    mapContainer.innerHTML = html;
+    
+    // Render Unassigned
+    const unassigned = agents.filter(a => !a.position || a.position < 1 || a.position > 40);
+    
+    if (unassigned.length > 0) {
+        unassignedContainer.innerHTML = unassigned.map(agent => renderDraggableCard(agent)).join('');
+    } else {
+        unassignedContainer.innerHTML = '<div class="text-muted p-3 w-100 text-center small">All agents assigned to positions</div>';
+    }
+}
+
+function renderSlot(pos, agents) {
+    const agent = agents.find(a => a.position === pos);
+    let content = '';
+    
+    if (agent) {
+        content = renderDraggableCard(agent, true);
+    }
+    
+    return `
+        <div class="device-slot" id="slot-${pos}" 
+             ondrop="drop(event, ${pos})" 
+             ondragover="allowDrop(event)">
+             <div class="position-badge">${pos}</div>
+             ${content}
+        </div>
+    `;
+}
+
+function renderDraggableCard(agent, isCompact=false) {
+    // Styling based on status
+    const statusClass = `status-${agent.status || 'offline'}`;
+    const displayName = agent.display_name || agent.hostname;
+    const version = agent.agent_version || 'v1';
+    const shortIp = agent.ip_address || '---';
+    
+    // Compact View for Grid
+    if (isCompact) {
+         return `
+            <div class="device-card ${statusClass}" 
+                 id="card-${agent.agent_id}" 
+                 draggable="true" 
+                 data-agent-id="${agent.agent_id}"
+                 ondragstart="drag(event, '${agent.agent_id}')">
+                 
+                <div class="check-icon"><i class="fas fa-check-circle"></i></div>
+                
+                <div class="device-icon">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                
+                <div class="device-info">
+                    <span class="device-ip" title="${displayName}">${shortIp}</span>
+                    <span class="device-version">${version}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Larger View for Unassigned Pool
+    return `
+        <div class="device-card ${statusClass}" 
+             id="card-${agent.agent_id}" 
+             draggable="true" 
+             style="width: 100px; height: 100px;" 
+             data-agent-id="${agent.agent_id}"
+             ondragstart="drag(event, '${agent.agent_id}')">
+            
+            <div class="device-icon">
+                <i class="fas fa-desktop"></i>
+            </div>
+            
+            <div class="device-info">
+                <div class="fw-bold small text-truncate" style="max-width: 90px;" title="${displayName}">${displayName}</div>
+                <div class="small text-muted">${shortIp}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Drag and Drop Handlers
+
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drag(ev, agentId) {
+    ev.dataTransfer.setData("agent_id", agentId);
+    ev.target.classList.add('is-dragging');
+}
+
+function drop(ev, pos) {
+    ev.preventDefault();
+    const agentId = ev.dataTransfer.getData("agent_id");
+    
+    if (!agentId) return;
+    
+    const card = document.getElementById(`card-${agentId}`);
+    if (card) card.classList.remove('is-dragging');
+
+    updateAgentPosition(agentId, pos);
+}
+
+function dropToUnassigned(ev) {
+    ev.preventDefault();
+    const agentId = ev.dataTransfer.getData("agent_id");
+    if (!agentId) return;
+    
+    const card = document.getElementById(`card-${agentId}`);
+    if (card) card.classList.remove('is-dragging');
+    
+    updateAgentPosition(agentId, null);
+}
+
+async function updateAgentPosition(agentId, position) {
+    try {
+        const response = await fetch(`/api/agents/${agentId}/position`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ position: position })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update position');
+        
+        // Update local state
+        const agent = groupAgents.find(a => a.agent_id === agentId);
+        if (agent) {
+            agent.position = position;
+        }
+        
+        if (position !== null) {
+            const collidingAgent = groupAgents.find(a => a.position === position && a.agent_id !== agentId);
+            if (collidingAgent) {
+                collidingAgent.position = null; 
+            }
+        }
+        
+        renderGroupMap(groupAgents);
+        
+    } catch (error) {
+        console.error('Error updating position:', error);
+        alert('Failed to update position');
+    }
+}

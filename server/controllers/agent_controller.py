@@ -48,6 +48,7 @@ class AgentController:
         self.blueprint.add_url_rule('/agents/<agent_id>', 'get_agent', self.get_agent, methods=['GET'])
         self.blueprint.add_url_rule('/agents/<agent_id>', 'delete_agent', self.delete_agent, methods=['DELETE'])
         self.blueprint.add_url_rule('/agents/<agent_id>/display-name', 'update_display_name', self.update_display_name, methods=['PATCH'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/position', 'update_position', self.update_position, methods=['PATCH'])
         self.blueprint.add_url_rule('/agents/<agent_id>/group', 'update_group', self.update_group, methods=['PATCH'])
         
         #  DEBUG: Add debug routes (optional - remove in production)
@@ -272,6 +273,7 @@ class AgentController:
                     "agent_version": agent.get("agent_version", "Unknown"),
                     "status": agent.get("status"),
                     "group_id": str(agent.get("group_id")) if agent.get("group_id") else None,
+                    "position": agent.get("position"),
                     "registered_date": registered_date_iso,
                     "last_heartbeat": last_heartbeat_iso,
                     "time_since_heartbeat": agent.get("time_since_heartbeat"),
@@ -353,6 +355,21 @@ class AgentController:
         except Exception as e:
             self.logger.error(f"Error updating display name: {e}")
             return self._error_response("Failed to update display name", 500)
+
+    def update_position(self, agent_id: str):
+        """Update agent position"""
+        try:
+            # Allow position to be None (unassigned)
+            data = request.get_json() or {}
+            position = data.get('position')
+            
+            self.service.update_position(agent_id, position)
+            return self._success_response(message="Position updated")
+        except ValueError as e:
+            return self._error_response(str(e), 400)
+        except Exception as e:
+            self.logger.error(f"Error updating position: {e}")
+            return self._error_response("Failed to update position", 500)
 
     def update_group(self, agent_id: str):
         """Move agent to a new group"""
