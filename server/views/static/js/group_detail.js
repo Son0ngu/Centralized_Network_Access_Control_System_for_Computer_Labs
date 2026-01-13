@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     setupSocketIO();
     formatDates();
+    
+    // Initialize custom select for status filter
+    if (typeof initCustomSelect === 'function') {
+        initCustomSelect('statusFilter');
+    }
 });
 
 function setupEventListeners() {

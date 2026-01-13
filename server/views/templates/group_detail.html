@@ -3,6 +3,7 @@
 {% block title %}Group: {{ group.name }} - Firewall Controller{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/group_detail.css') }}">
 <style>
     /* Override navbar active state for group detail page */

@@ -76,7 +76,7 @@ def get_mongo_client(config):
     
     if _mongo_client is None:
         try:
-            logger.info(f"🔗 [{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
+            logger.info(f"[{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
             
             # FIX: Optimized connection settings để reduce Win32 exceptions
             _mongo_client = MongoClient(
@@ -183,7 +183,7 @@ def validate_config(config: Config = None) -> bool:
         masked_uri = mongo_uri.split('@')[1] if '@' in mongo_uri else mongo_uri
         logger.info(f" [{now_iso()}] Using MongoDB Atlas: {masked_uri}")
     else:
-        logger.info(f"🗄️ [{now_iso()}] Using MongoDB: {mongo_uri}")
+        logger.info(f"[{now_iso()}] Using MongoDB: {mongo_uri}")
     
     # Test MongoDB connection
     try:

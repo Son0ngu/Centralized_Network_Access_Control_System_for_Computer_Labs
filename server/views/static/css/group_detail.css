@@ -535,6 +535,23 @@
     display: none; 
 }
 
+/* Custom Select in Filter Params */
+#listFilterParams .custom-select-trigger {
+    height: 31px;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem !important;
+}
+
+#listFilterParams .custom-select-trigger:after {
+    font-size: 0.5rem;
+}
+
+#listFilterParams .custom-option {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
 /* Available Agents List in Modal */
 .available-agents-list {
     max-height: 400px;
