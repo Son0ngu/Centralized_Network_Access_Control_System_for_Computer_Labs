@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 import socket
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import aiodns
 import dns.resolver
@@ -19,6 +19,32 @@ from cache.lru_cache import DNSRecord
 
 logger = logging.getLogger("network.dns")
 
+
+def _min_ttl_dnspython(answer) -> Optional[int]:
+    """Extract minimum TTL from all RRsets in DNS response.
+    
+    When resolving A records, dnspython may follow CNAME chains automatically.
+    The correct TTL for caching should be min(CNAME TTL, A TTL) to respect
+    the entire chain's expiry policy.
+    
+    Args:
+        answer: dnspython Answer object
+        
+    Returns:
+        Minimum TTL from all RRsets, or answer.ttl as fallback, or None
+    """
+    try:
+        resp = getattr(answer, "response", None)
+        if resp and resp.answer:
+            # Get minimum TTL from all RRsets in the answer section
+            # This includes CNAME records in the chain + final A/AAAA records
+            return min(rrset.ttl for rrset in resp.answer)
+    except Exception:
+        pass
+    # Fallback to simple ttl attribute
+    return getattr(answer, "ttl", None)
+
+
 class OptimizedDNSResolver:
     """DNS resolver with dnspython and aiodns fallback."""
     
@@ -26,9 +52,6 @@ class OptimizedDNSResolver:
         self.max_workers = max_workers
         self.timeout = timeout
         self._shutdown = False
-
-        # Create a dedicated event loop for this resolver instance
-        self._loop = asyncio.new_event_loop()
         
         # Configure dnspython resolver
         self.resolver = dns.resolver.Resolver()
@@ -43,10 +66,6 @@ class OptimizedDNSResolver:
             thread_name_prefix='DNSResolver'
         )
         
-        # Async DNS resolver bound to this loop (used only if async paths are needed)
-        self.aiodns_resolver = aiodns.DNSResolver(loop=self._loop)
-        self.aiodns_resolver.timeout = timeout
-        
         # Register cleanup on exit
         atexit.register(self.shutdown)
     
@@ -58,14 +77,17 @@ class OptimizedDNSResolver:
         ipv4_ips = []
         ipv6_ips = []
         cname = None
-        min_ttl = 300
+        min_ttl = None  # Initialize as None to capture actual TTL from DNS response
         
         try:
             # Resolve A records (IPv4)
             try:
                 answers = self.resolver.resolve(domain, 'A')
                 ipv4_ips = [str(rdata) for rdata in answers]
-                min_ttl = min(min_ttl, answers.ttl)
+                # Get min TTL from entire response (includes CNAME chain if any)
+                ttl_value = _min_ttl_dnspython(answers)
+                if ttl_value is not None:
+                    min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
             
@@ -73,7 +95,10 @@ class OptimizedDNSResolver:
             try:
                 answers = self.resolver.resolve(domain, 'AAAA')
                 ipv6_ips = [str(rdata) for rdata in answers]
-                min_ttl = min(min_ttl, answers.ttl)
+                # Get min TTL from entire response (includes CNAME chain if any)
+                ttl_value = _min_ttl_dnspython(answers)
+                if ttl_value is not None:
+                    min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
             
@@ -83,7 +108,10 @@ class OptimizedDNSResolver:
                     answers = self.resolver.resolve(domain, 'CNAME')
                     if answers:
                         cname = str(answers[0].target).rstrip('.')
-                        min_ttl = min(min_ttl, answers.ttl)
+                        # Get min TTL from CNAME response
+                        ttl_value = _min_ttl_dnspython(answers)
+                        if ttl_value is not None:
+                            min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
                 except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                     pass
             
@@ -95,11 +123,14 @@ class OptimizedDNSResolver:
             logger.debug(f"DNS resolution error for {domain}: {e}")
             return self._fallback_resolve(domain)
         
+        # Use default TTL of 300 only if no actual TTL was obtained from DNS
+        final_ttl = min_ttl if min_ttl is not None else 300
+        
         return DNSRecord(
             ipv4=tuple(ipv4_ips),
             ipv6=tuple(ipv6_ips),
             cname=cname,
-            ttl=min_ttl,
+            ttl=final_ttl,
             resolved_at=now()
         )
     
@@ -111,13 +142,13 @@ class OptimizedDNSResolver:
         ipv4_ips = []
         ipv6_ips = []
         cname = None
-        min_ttl = 300
+        min_ttl = None  # Initialize as None to capture actual TTL from DNS response
         
         try:
             # Parallel async resolution
             tasks = [
-                self._safe_query_async(domain, 'A'),
-                self._safe_query_async(domain, 'AAAA'),
+                self._query_aiodns(domain, 'A'),
+                self._query_aiodns(domain, 'AAAA'),
             ]
             
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -125,36 +156,57 @@ class OptimizedDNSResolver:
             # Process A records
             if not isinstance(results[0], Exception) and results[0]:
                 ipv4_ips = [r.host for r in results[0]]
-                min_ttl = min(min_ttl, results[0][0].ttl if results[0] else 300)
+                # Safe TTL extraction with getattr (some versions/types may lack .ttl)
+                ttl_value = getattr(results[0][0], 'ttl', None)
+                if ttl_value is not None:
+                    min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
             
             # Process AAAA records
             if not isinstance(results[1], Exception) and results[1]:
                 ipv6_ips = [r.host for r in results[1]]
-                min_ttl = min(min_ttl, results[1][0].ttl if results[1] else 300)
+                # Safe TTL extraction with getattr
+                ttl_value = getattr(results[1][0], 'ttl', None)
+                if ttl_value is not None:
+                    min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
             
             # Try CNAME if no direct records
             if not ipv4_ips and not ipv6_ips:
-                cname_result = await self._safe_query_async(domain, 'CNAME')
+                cname_result = await self._query_aiodns(domain, 'CNAME')
                 if not isinstance(cname_result, Exception) and cname_result:
                     cname = str(cname_result[0].cname).rstrip('.')
+                    # Safe TTL extraction from CNAME response
+                    ttl_value = getattr(cname_result[0], 'ttl', None)
+                    if ttl_value is not None:
+                        min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
         
         except Exception as e:
             logger.debug(f"Async DNS resolution error for {domain}: {e}")
             return await self._async_fallback_resolve(domain)
         
+        # Use default TTL of 300 only if no actual TTL was obtained from DNS
+        final_ttl = min_ttl if min_ttl is not None else 300
+        
         return DNSRecord(
             ipv4=tuple(ipv4_ips),
             ipv6=tuple(ipv6_ips),
             cname=cname,
-            ttl=min_ttl,
+            ttl=final_ttl,
             resolved_at=now()
         )
     
-    async def _safe_query_async(self, domain: str, record_type: str):
-        """Safe async DNS query with timeout."""
+    async def _query_aiodns(self, domain: str, record_type: str):
+        """Safe async DNS query with timeout using running loop.
+        
+        Creates aiodns resolver per-call with the current running loop
+        to avoid 'attached to a different loop' errors.
+        """
         try:
+            resolver = aiodns.DNSResolver(
+                loop=asyncio.get_running_loop(),
+                timeout=self.timeout
+            )
             return await asyncio.wait_for(
-                self.aiodns_resolver.query(domain, record_type),
+                resolver.query(domain, record_type),
                 timeout=self.timeout
             )
         except Exception:
@@ -279,9 +331,10 @@ class OptimizedDNSResolver:
         )
     
     async def _async_fallback_resolve(self, domain: str) -> DNSRecord:
+        """Fallback to socket resolution in executor for async context."""
         if self._shutdown:
             return self._fallback_resolve(domain)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self.executor, self._fallback_resolve, domain)
     
     def _is_ip_address(self, address: str) -> bool:
