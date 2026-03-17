@@ -210,3 +210,141 @@
 .feature-icon.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
 .feature-icon.info { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .feature-icon.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+
+/* ========================================
+   RESPONSIVE - Dashboard
+   ======================================== */
+
+/* Tablet landscape (max-width: 992px) */
+@media (max-width: 992px) {
+    .hero-section {
+        padding: 3rem 1.5rem;
+        border-radius: 20px;
+    }
+
+    .hero-section h1.display-4 {
+        font-size: 2rem;
+    }
+
+    .feature-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .welcome-card .card-body {
+        padding: 2rem;
+    }
+}
+
+/* Tablet portrait (max-width: 768px) */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2.5rem 1.25rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+
+    .hero-section h1.display-4 {
+        font-size: 1.75rem;
+    }
+
+    .hero-section .lead {
+        font-size: 0.95rem;
+    }
+
+    .status-card .card-body {
+        padding: 1.25rem;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+    }
+
+    .status-icon {
+        font-size: 2rem;
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .feature-card {
+        padding: 1.5rem;
+        border-radius: 15px;
+    }
+
+    .feature-icon {
+        width: 55px;
+        height: 55px;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        padding: 1rem;
+    }
+
+    .system-info-card {
+        border-radius: 15px;
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 2rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-section h1.display-4 {
+        font-size: 1.4rem;
+    }
+
+    .hero-section h1 i {
+        display: none;
+    }
+
+    .hero-section .lead {
+        font-size: 0.875rem;
+    }
+
+    .status-card .card-body {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .status-icon {
+        font-size: 1.5rem;
+    }
+
+    .quick-action-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .welcome-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .feature-card {
+        padding: 1.25rem;
+    }
+
+    .feature-card h5 {
+        font-size: 1rem;
+    }
+
+    .feature-card p {
+        font-size: 0.85rem;
+    }
+}

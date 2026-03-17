@@ -178,3 +178,95 @@ footer {
     border-radius: 8px;
     font-weight: 600;
 }
+
+/* ========================================
+   RESPONSIVE - Global
+   ======================================== */
+
+/* Tablet (max-width: 768px) */
+@media (max-width: 768px) {
+    main.container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    footer .row {
+        text-align: center !important;
+    }
+
+    footer .col-md-6 {
+        text-align: center !important;
+        margin-bottom: 0.5rem;
+    }
+
+    .toast {
+        max-width: 90vw;
+        margin: 0 auto;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .modal-lg {
+        max-width: calc(100% - 1rem);
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    body {
+        font-size: 0.9rem;
+    }
+
+    main.container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        margin-top: 1rem !important;
+    }
+
+    .navbar {
+        padding: 0.5rem 0;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    .navbar-brand i {
+        font-size: 1.25rem;
+    }
+
+    footer {
+        margin-top: 2rem;
+    }
+
+    footer .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+    }
+
+    .btn:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .card {
+        border-radius: 12px;
+    }
+
+    /* Disable hover transforms on mobile for better performance */
+    .card:hover,
+    .status-card:hover,
+    .stats-card:hover,
+    .feature-card:hover,
+    .agent-card:hover,
+    .domain-card:hover,
+    .log-card:hover {
+        transform: none;
+    }
+}

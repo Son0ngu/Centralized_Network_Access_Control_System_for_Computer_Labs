@@ -3,7 +3,7 @@ Log Controller - handles log HTTP requests
 - Clean and simple
 """
 from datetime import timedelta
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, g
 from typing import Dict, Tuple
 from models.log_model import LogModel
 from services.log_service import LogService
@@ -14,6 +14,7 @@ from time_utils import now_iso, now_vietnam
 
 # Import auth middleware for JWT validation
 from middleware.auth import require_jwt
+from middleware.rbac import require_login
 
 class LogController:
     """Controller for log operations"""
@@ -32,34 +33,35 @@ class LogController:
         """Register all log routes"""
         
         #  IMPORTANT: Stats route MUST be before generic /logs route
-        self.blueprint.add_url_rule('/logs/stats', 
-                                   methods=['GET'], 
-                                   view_func=self.get_statistics)
-        
+        self.blueprint.add_url_rule('/logs/stats',
+                                   methods=['GET'],
+                                   view_func=require_login(self.get_statistics))
+
         # POST /api/logs - Receive logs from agents (requires JWT)
-        self.blueprint.add_url_rule('/logs', 
-                                   methods=['POST'], 
+        self.blueprint.add_url_rule('/logs',
+                                   methods=['POST'],
                                    view_func=require_jwt(self.receive_logs))
-        
-        # GET /api/logs - Get all logs (admin - no auth for now)
-        self.blueprint.add_url_rule('/logs', 
-                                   methods=['GET'], 
-                                   view_func=self.list_logs)
-        
-        #  ADD: DELETE /api/logs/clear - Clear logs
-        self.blueprint.add_url_rule('/logs/clear', 
-                                   methods=['DELETE'], 
-                                   view_func=self.clear_logs)
-        
-        # DELETE /api/logs - Clear all logs (legacy)
-        self.blueprint.add_url_rule('/logs', 
-                                   methods=['DELETE'], 
-                                   view_func=self.clear_logs)
-        
-        # GET /api/logs/export - Export logs
-        self.blueprint.add_url_rule('/logs/export', 
-                                   methods=['GET'], 
-                                   view_func=self.export_logs)
+
+        # GET /api/logs - Get all logs (requires admin login)
+        self.blueprint.add_url_rule('/logs',
+                                   methods=['GET'],
+                                   view_func=require_login(self.list_logs))
+
+        #  ADD: DELETE /api/logs/clear - Clear logs (requires admin login)
+        self.blueprint.add_url_rule('/logs/clear',
+                                   methods=['DELETE'],
+                                   view_func=require_login(self.clear_logs))
+
+        # DELETE /api/logs - Clear all logs (legacy, requires admin login)
+        self.blueprint.add_url_rule('/logs',
+                                   'clear_logs_legacy',
+                                   methods=['DELETE'],
+                                   view_func=require_login(self.clear_logs))
+
+        # GET /api/logs/export - Export logs (requires admin login)
+        self.blueprint.add_url_rule('/logs/export',
+                                   methods=['GET'],
+                                   view_func=require_login(self.export_logs))
     
     def receive_logs(self):
         """Receive logs from agent"""
@@ -71,8 +73,8 @@ class LogController:
             if not data:
                 return self._error_response("Invalid JSON data", 400)
             
-            # Get agent info from request
-            agent_id = request.headers.get('X-Agent-ID') or data.get('agent_id')
+            # Get agent_id from JWT token (NOT from headers - prevent spoofing)
+            agent_id = g.agent_id
             client_ip = request.remote_addr
             
             self.logger.info(f"Receiving logs from agent {agent_id} at {client_ip}")

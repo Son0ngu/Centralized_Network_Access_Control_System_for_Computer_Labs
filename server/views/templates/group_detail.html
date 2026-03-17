@@ -74,8 +74,8 @@
 </div>
 
 <!-- Statistics Cards -->
-<div class="row mb-4 g-3">
-    <div class="col-lg-3 col-md-6">
+<div class="row mb-4 g-2 g-md-3">
+    <div class="col-6 col-lg-3">
         <div class="card status-card border-start-primary h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -90,7 +90,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-md-6">
+    <div class="col-6 col-lg-3">
         <div class="card status-card border-start-success h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -105,7 +105,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-md-6">
+    <div class="col-6 col-lg-3">
         <div class="card status-card border-start-warning h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -120,7 +120,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-md-6">
+    <div class="col-6 col-lg-3">
         <div class="card status-card border-start-danger h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -263,101 +263,79 @@
             </div>
         </div>
         
-        <!-- Whitelist Domains -->
-        <div class="card">
+        <!-- Whitelist Domains — Inline Editor -->
+        <div class="card" id="whitelistEditorCard">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold">
                     <i class="fas fa-shield-alt me-2"></i>Whitelist Domains
+                    <span id="wlCount" class="badge bg-primary ms-2">0</span>
                 </h6>
-                <a href="/whitelist?group_id={{ group._id }}" class="btn btn-outline-primary btn-sm">
-                    <i class="fas fa-edit me-1"></i>Manage
-                </a>
-            </div>
-            <div class="card-body p-0">
-                <div id="whitelistContainer" class="whitelist-list">
-                    {% if group.whitelist and group.whitelist|length > 0 %}
-                        {% for item in group.whitelist[:15] %}
-                        <div class="whitelist-item d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center">
-                                {% if item is mapping %}
-                                    {% set item_type = item.get('type', 'domain') %}
-                                    {# FIX: Check 'value' first, then 'domain' #}
-                                    {% set item_value = item.get('value') or item.get('domain', '') %}
-                                    {% set item_category = item.get('category', 'general') %}
-                                {% else %}
-                                    {% set item_type = 'domain' %}
-                                    {% set item_value = item %}
-                                    {% set item_category = 'general' %}
-                                {% endif %}
-                                
-                                <!-- Icon based on type -->
-                                {% if item_type == 'ip' %}
-                                    <i class="fas fa-network-wired text-success me-2"></i>
-                                {% elif item_type == 'url' %}
-                                    <i class="fas fa-link text-info me-2"></i>
-                                {% else %}
-                                    <i class="fas fa-globe text-primary me-2"></i>
-                                {% endif %}
-                                
-                                <div>
-                                    <span class="whitelist-value">{{ item_value }}</span>
-                                    <div class="whitelist-meta">
-                                        <span class="badge bg-light text-secondary me-1" style="font-size: 0.65rem;">
-                                            {{ item_type }}
-                                        </span>
-                                        {% if item_category and item_category != 'general' and item_category != 'uncategorized' %}
-                                        <span class="badge bg-primary-subtle text-primary" style="font-size: 0.65rem;">
-                                            {{ item_category }}
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Priority indicator -->
-                            {% if item is mapping and item.get('priority') == 'high' %}
-                            <span class="badge bg-warning text-dark" title="High Priority">
-                                <i class="fas fa-star"></i>
-                            </span>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                        
-                        {% if group.whitelist|length > 15 %}
-                        <div class="text-center py-3 border-top bg-light">
-                            <a href="/whitelist?group_id={{ group._id }}" class="text-decoration-none">
-                                <i class="fas fa-ellipsis-h me-1"></i>
-                                View all {{ group.whitelist|length }} domains
-                            </a>
-                        </div>
-                        {% endif %}
-                    {% else %}
-                        <div class="empty-whitelist text-center py-4">
-                            <i class="fas fa-shield-alt fa-3x mb-3 text-muted opacity-25"></i>
-                            <p class="text-muted mb-2">No whitelist domains configured</p>
-                            <a href="/whitelist?group_id={{ group._id }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-plus me-1"></i>Add Domains
-                            </a>
-                        </div>
-                    {% endif %}
+                <div class="d-flex gap-2">
+                    <a href="/whitelist?group_id={{ group._id }}" class="btn btn-outline-secondary btn-sm" title="Mở trang Whitelist đầy đủ">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
                 </div>
             </div>
-            
-            <!-- Whitelist Stats Footer -->
-            {% if group.whitelist and group.whitelist|length > 0 %}
+
+            <!-- Add Domain Inline Form -->
+            <div class="card-body py-2 px-3 border-bottom" id="wlAddForm">
+                <div class="d-flex gap-2 align-items-start">
+                    <div class="flex-grow-1">
+                        <input type="text" id="wlNewValue" class="form-control form-control-sm"
+                               placeholder="Nhập domain, IP hoặc URL..." autocomplete="off">
+                    </div>
+                    <select id="wlNewType" class="form-select form-select-sm" style="width: 100px;">
+                        <option value="domain">Domain</option>
+                        <option value="ip">IP</option>
+                        <option value="url">URL</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="wlAddEntry()" id="wlAddBtn" title="Thêm">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <!-- Bulk add hint -->
+                <div class="form-text mt-1" style="font-size: 0.7rem;">
+                    <i class="fas fa-info-circle me-1"></i>Nhập nhiều domain cách nhau bằng dấu phẩy hoặc xuống dòng
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="card-body py-2 px-3 border-bottom bg-light">
+                <div class="d-flex gap-2 align-items-center">
+                    <div class="flex-grow-1 position-relative">
+                        <i class="fas fa-search position-absolute" style="left: 10px; top: 50%; transform: translateY(-50%); color: #adb5bd; font-size: 0.75rem;"></i>
+                        <input type="text" id="wlSearch" class="form-control form-control-sm ps-4"
+                               placeholder="Tìm kiếm domain..." oninput="wlFilterList()">
+                    </div>
+                    <select id="wlFilterType" class="form-select form-select-sm" style="width: 90px;" onchange="wlFilterList()">
+                        <option value="">Tất cả</option>
+                        <option value="domain">Domain</option>
+                        <option value="ip">IP</option>
+                        <option value="url">URL</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Domain List (dynamic) -->
+            <div class="card-body p-0">
+                <div id="wlDomainList" class="whitelist-list">
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin me-1"></i>Đang tải...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Stats -->
             <div class="card-footer bg-light py-2">
                 <div class="d-flex justify-content-between align-items-center small text-muted">
-                    <span>
-                        <i class="fas fa-list me-1"></i>
-                        {{ group.whitelist|length }} total entries
+                    <span id="wlStatsLeft">
+                        <i class="fas fa-list me-1"></i><span id="wlTotalCount">0</span> entries
                     </span>
-                    <span>
-                        <i class="fas fa-clock me-1"></i>
-                        v{{ group.whitelist_version or 1 }}
+                    <span id="wlStatsRight">
+                        <i class="fas fa-clock me-1"></i>v<span id="wlVersion">{{ group.whitelist_version or 1 }}</span>
                     </span>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -452,6 +430,146 @@
                 <button type="button" class="btn btn-primary" onclick="saveGroupChanges()">
                     <i class="fas fa-save me-1"></i>Save Changes
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agent Policy Context Menu (right-click on device card) -->
+<div id="agentContextMenu" class="agent-context-menu" style="display:none;">
+    <div class="context-menu-header">
+        <i class="fas fa-desktop me-2"></i>
+        <span id="ctxAgentName">Agent</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick="ctxSetPolicy('none')">
+        <i class="fas fa-globe text-success me-2"></i>
+        <span>Default (Theo nhóm)</span>
+        <small class="text-muted ms-auto">Bình thường</small>
+    </button>
+    <button class="context-menu-item context-menu-item-danger" onclick="ctxSetPolicy('isolate')">
+        <i class="fas fa-ban text-danger me-2"></i>
+        <span>Cắt mạng</span>
+        <small class="text-muted ms-auto">Chặn 100%</small>
+    </button>
+    <button class="context-menu-item" onclick="ctxOpenCustomWhitelist()">
+        <i class="fas fa-list-alt text-warning me-2"></i>
+        <span>Whitelist riêng</span>
+        <small class="text-muted ms-auto">Tùy chỉnh</small>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick="ctxViewPolicy()">
+        <i class="fas fa-info-circle text-info me-2"></i>
+        <span>Xem policy</span>
+    </button>
+</div>
+
+<!-- Isolate Confirm Modal -->
+<div class="modal fade" id="isolateConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white py-2">
+                <h6 class="modal-title mb-0">
+                    <i class="fas fa-ban me-2"></i>Cắt mạng
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Cắt mạng hoàn toàn máy <strong id="isolateAgentName"></strong>?</p>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Lý do</label>
+                    <input type="text" class="form-control form-control-sm" id="isolateReason"
+                           placeholder="VD: Xem YouTube trong giờ">
+                </div>
+                <div class="mb-0">
+                    <label class="form-label small fw-semibold">Thời hạn</label>
+                    <select class="form-select form-select-sm" id="isolateDuration">
+                        <option value="">Vĩnh viễn (đến khi bỏ)</option>
+                        <option value="5">5 phút</option>
+                        <option value="10">10 phút</option>
+                        <option value="15" selected>15 phút</option>
+                        <option value="30">30 phút</option>
+                        <option value="45">45 phút</option>
+                        <option value="60">1 tiếng</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-sm btn-danger" id="confirmIsolateBtn">
+                    <i class="fas fa-ban me-1"></i>Cắt mạng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Whitelist Modal -->
+<div class="modal fade" id="customWhitelistModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark py-2">
+                <h6 class="modal-title mb-0">
+                    <i class="fas fa-list-alt me-2"></i>Whitelist riêng — <span id="customWlAgentName"></span>
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Lý do</label>
+                    <input type="text" class="form-control form-control-sm" id="customWlReason"
+                           placeholder="VD: Chỉ cho dùng Wikipedia cho bài KT">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Thời hạn</label>
+                    <select class="form-select form-select-sm" id="customWlDuration">
+                        <option value="">Vĩnh viễn</option>
+                        <option value="15">15 phút</option>
+                        <option value="30">30 phút</option>
+                        <option value="45" selected>45 phút</option>
+                        <option value="60">1 tiếng</option>
+                        <option value="90">1.5 tiếng</option>
+                        <option value="120">2 tiếng</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Danh sách domain cho phép</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" class="form-control" id="customWlDomainInput"
+                               placeholder="VD: wikipedia.org">
+                        <button class="btn btn-outline-primary" type="button" onclick="addCustomWlDomain()">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="customWlDomainList" class="custom-wl-domain-list">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-sm btn-warning" id="confirmCustomWlBtn">
+                    <i class="fas fa-check me-1"></i>Áp dụng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Policy Info Modal -->
+<div class="modal fade" id="policyInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white py-2">
+                <h6 class="modal-title mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>Policy — <span id="policyInfoAgentName"></span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="policyInfoBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                </div>
             </div>
         </div>
     </div>

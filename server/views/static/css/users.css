@@ -1,0 +1,86 @@
+/* Hero */
+.hero-users {
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+    color: white;
+    padding: 2rem 0;
+    margin: -1.5rem -0.75rem 1.5rem;
+    border-radius: 0 0 1rem 1rem;
+}
+
+.hero-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Status Cards */
+.status-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.border-start-primary { border-left: 4px solid #0d6efd !important; }
+.border-start-success { border-left: 4px solid #198754 !important; }
+.border-start-warning { border-left: 4px solid #ffc107 !important; }
+.border-start-danger  { border-left: 4px solid #dc3545 !important; }
+
+.stat-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-number {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.status-icon {
+    font-size: 1.3rem;
+    opacity: 0.7;
+}
+
+/* Table */
+#usersTable th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom-width: 2px;
+    white-space: nowrap;
+}
+
+#usersTable td {
+    vertical-align: middle;
+    font-size: 0.88rem;
+}
+
+.role-badge {
+    font-size: 0.72rem;
+    padding: 0.3em 0.7em;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.role-admin {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.role-teacher {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.user-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-users h1 { font-size: 1.4rem; }
+    .card-header .d-flex { flex-direction: column; }
+    .card-header .input-group { width: 100% !important; }
+}

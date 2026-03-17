@@ -81,20 +81,20 @@
 <!-- Filter controls -->
 <div class="card filter-card mb-4">
     <div class="card-body">
-        <div class="row g-3 align-items-center">
+        <div class="row g-2 g-lg-3 align-items-center">
             <!-- Search Input -->
-            <div class="col-lg-4 col-md-6">
+            <div class="col-12 col-lg-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="fas fa-search text-muted"></i>
                     </span>
-                    <input type="text" class="form-control border-start-0" id="log-search" 
+                    <input type="text" class="form-control border-start-0" id="log-search"
                            placeholder="Search logs...">
                 </div>
             </div>
-            
+
             <!-- Level Filter -->
-            <div class="col-lg-2 col-md-3 col-6">
+            <div class="col-4 col-lg-2">
                 <select class="form-select" id="level-filter">
                     <option value="">All Levels</option>
                     <option value="ALLOWED">Allowed</option>
@@ -104,16 +104,16 @@
                     <option value="INFO">Info</option>
                 </select>
             </div>
-            
+
             <!-- Agent Filter -->
-            <div class="col-lg-2 col-md-3 col-6">
+            <div class="col-4 col-lg-2">
                 <select class="form-select" id="agent-filter">
                     <option value="">All Agents</option>
                 </select>
             </div>
-            
+
             <!-- Limit Select -->
-            <div class="col-lg-3 col-md-6">
+            <div class="col-4 col-lg-3">
                 <select class="form-select" id="limit-select">
                     <option value="50">50 logs</option>
                     <option value="100" selected>100 logs</option>
@@ -121,9 +121,9 @@
                     <option value="500">500 logs</option>
                 </select>
             </div>
-            
+
             <!-- Refresh Button -->
-            <div class="col-lg-1 col-md-12">
+            <div class="col-12 col-lg-1">
                 <button class="btn btn-outline-primary w-100" id="refreshBtn" title="Refresh logs">
                     <i class="fas fa-sync-alt"></i>
                 </button>

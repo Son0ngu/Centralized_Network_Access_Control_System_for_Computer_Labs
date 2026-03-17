@@ -125,18 +125,18 @@
 <!-- Search and Filter -->
 <div class="card search-card">
     <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col-md-6">
+        <div class="row align-items-center g-2">
+            <div class="col-12 col-md-6">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="fas fa-search text-muted"></i>
                     </span>
-                    <input type="text" class="form-control border-start-0" 
-                           placeholder="Search agents by name or IP..." 
+                    <input type="text" class="form-control border-start-0"
+                           placeholder="Search agents by name or IP..."
                            id="agent-search">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <select class="form-select" id="status-filter">
                     <option value="">All Status</option>
                     <option value="active">Active Only</option>
@@ -145,7 +145,7 @@
                     <option value="offline">Offline Only</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <button class="btn btn-outline-primary w-100" onclick="refreshAgents()">
                     <i class="fas fa-sync-alt me-2"></i>Refresh
                 </button>

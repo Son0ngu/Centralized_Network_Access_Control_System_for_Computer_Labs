@@ -223,6 +223,9 @@ def initialize_components(config: Dict) -> bool:
             }
             agent.heartbeat = HeartbeatSender(heartbeat_config)
             agent.heartbeat.set_agent_credentials(agent_id, config.get("agent_token", ""))
+            # Wire force_sync callback: khi server yêu cầu re-sync (policy changed)
+            if agent.whitelist and hasattr(agent.whitelist, 'sync_now'):
+                agent.heartbeat.on_force_sync = agent.whitelist.sync_now
             agent.heartbeat.start()
             logger.info("Heartbeat sender initialized and started")
         else:

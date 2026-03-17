@@ -34,3 +34,9 @@
     padding: 1rem;
     margin: 1rem 0;
 }
+
+@media (max-width: 576px) {
+    .error-illustration { font-size: 5rem; }
+    .error-code { font-size: 4rem; }
+    .error-details { padding: 0.75rem; font-size: 0.85rem; }
+}

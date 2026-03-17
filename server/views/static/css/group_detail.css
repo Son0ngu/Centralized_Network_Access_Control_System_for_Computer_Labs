@@ -304,25 +304,174 @@
     font-size: 0.9rem;
 }
 
-/* Responsive */
+/* ========================================
+   RESPONSIVE - Group Detail Page
+   ======================================== */
+
+/* Tablet landscape (max-width: 992px) */
+@media (max-width: 992px) {
+    .hero-section.hero-group h1.display-5 {
+        font-size: 1.75rem;
+    }
+}
+
+/* Tablet portrait (max-width: 768px) */
 @media (max-width: 768px) {
     .hero-group {
         padding: 1.5rem 0;
     }
-    
-    .hero-group h1 {
+
+    .hero-section.hero-group {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+    }
+
+    .hero-section.hero-group h1,
+    .hero-section.hero-group h1.display-5 {
         font-size: 1.5rem;
     }
-    
+
+    .hero-section.hero-group .lead {
+        font-size: 0.9rem;
+    }
+
+    .hero-section.hero-group .row .col-md-4 {
+        text-align: left !important;
+        margin-top: 1rem;
+    }
+
     .group-agent-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
     }
-    
+
     .agent-actions {
         width: 100%;
         justify-content: flex-end;
+    }
+
+    .agent-info {
+        width: 100%;
+    }
+
+    .status-card .card-body {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    /* Map controls */
+    #groupMapWrapper .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    #groupMapWrapper .d-flex.align-items-center.gap-3 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+
+    .card-header .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    .hero-section.hero-group {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-section.hero-group h1.display-5 {
+        font-size: 1.25rem;
+    }
+
+    .hero-section.hero-group h1 i {
+        display: none;
+    }
+
+    .hero-section.hero-group .lead {
+        font-size: 0.85rem;
+    }
+
+    .hero-section.hero-group .d-flex.align-items-center.gap-3 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+
+    .breadcrumb {
+        font-size: 0.8rem;
+    }
+
+    .status-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .stat-number {
+        font-size: 1.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .status-icon {
+        font-size: 1.25rem;
+    }
+
+    .group-agent-item {
+        padding: 0.75rem;
+    }
+
+    .agent-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+
+    .agent-info {
+        gap: 0.5rem;
+    }
+
+    .agent-details h6 {
+        font-size: 0.9rem;
+    }
+
+    .agent-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .agent-meta small {
+        font-size: 0.7rem;
+    }
+
+    .whitelist-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .whitelist-meta .badge {
+        font-size: 0.6rem !important;
+    }
+
+    .card-header {
+        padding: 0.75rem;
+    }
+
+    .card-header .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .available-agent-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
     }
 }
 
@@ -574,4 +723,369 @@
 .available-agent-item.selected {
     background-color: #e7f3ff;
     border-left: 3px solid #0d6efd;
+}
+
+/* ========================================
+   RESPONSIVE - Classroom Map & Unassigned Grid
+   ======================================== */
+
+@media (max-width: 992px) {
+    .unassigned-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .classroom-layout {
+        padding: 12px;
+    }
+
+    .unassigned-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .classroom-layout {
+        padding: 8px;
+    }
+
+    .device-slot {
+        min-height: 65px;
+    }
+
+    .device-icon {
+        font-size: 1.2rem;
+    }
+
+    .device-ip {
+        font-size: 0.6rem;
+    }
+
+    .unassigned-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 10px;
+        max-height: 300px;
+    }
+
+    .position-badge {
+        font-size: 0.55rem;
+        padding: 1px 4px;
+    }
+
+    .slot-placeholder {
+        font-size: 1.4rem;
+    }
+}
+
+/* ========================================
+   AGENT POLICY — Context Menu
+   ======================================== */
+
+.agent-context-menu {
+    position: fixed;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    min-width: 240px;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    animation: ctxFadeIn 0.12s ease-out;
+}
+
+@keyframes ctxFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.context-menu-header {
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #495057;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: #f0f0f0;
+    margin: 4px 0;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: background 0.12s;
+    text-align: left;
+    font-size: 0.82rem;
+    color: #333;
+}
+
+.context-menu-item:hover {
+    background: #f0f4ff;
+}
+
+.context-menu-item-danger:hover {
+    background: #fff0f0;
+}
+
+.context-menu-item i {
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.context-menu-item small {
+    font-size: 0.7rem;
+}
+
+/* ========================================
+   AGENT POLICY — Visual Overlay on Device Cards
+   ======================================== */
+
+/* Isolate overlay — red cage effect */
+.device-card.policy-isolate {
+    border-color: #dc3545 !important;
+    background: repeating-linear-gradient(
+        45deg,
+        #fff5f5, #fff5f5 4px,
+        #ffe0e0 4px, #ffe0e0 8px
+    ) !important;
+    position: relative;
+}
+
+.device-card.policy-isolate .device-icon {
+    color: #dc3545 !important;
+}
+
+/* Custom whitelist overlay — yellow/warning */
+.device-card.policy-custom_whitelist {
+    border-color: #ffc107 !important;
+    background: #fffbe6 !important;
+    position: relative;
+}
+
+.device-card.policy-custom_whitelist .device-icon {
+    color: #856404 !important;
+}
+
+/* Policy badge overlay (top-left corner) */
+.policy-badge {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    z-index: 25;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.policy-badge-isolate {
+    background: #dc3545;
+    color: #fff;
+}
+
+.policy-badge-custom {
+    background: #ffc107;
+    color: #333;
+}
+
+/* ========================================
+   AGENT POLICY — Custom Whitelist Modal
+   ======================================== */
+
+.custom-wl-domain-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background: #f8f9fa;
+}
+
+.custom-wl-domain-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.82rem;
+}
+
+.custom-wl-domain-item:last-child {
+    border-bottom: none;
+}
+
+.custom-wl-domain-item .btn-remove {
+    border: none;
+    background: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+
+.custom-wl-domain-item .btn-remove:hover {
+    opacity: 1;
+}
+
+.custom-wl-empty {
+    padding: 16px;
+    text-align: center;
+    color: #adb5bd;
+    font-size: 0.8rem;
+}
+
+/* ========================================
+   INLINE WHITELIST EDITOR
+   ======================================== */
+
+#wlAddForm input:focus,
+#wlAddForm select:focus {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+
+/* Domain list item — editable row */
+.wl-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.84rem;
+    transition: background 0.12s;
+    gap: 0.5rem;
+}
+
+.wl-entry:last-child {
+    border-bottom: none;
+}
+
+.wl-entry:hover {
+    background: #f8f9fa;
+}
+
+.wl-entry:hover .wl-actions {
+    opacity: 1;
+}
+
+.wl-entry-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.wl-entry-icon {
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.wl-entry-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.wl-entry-value {
+    font-weight: 500;
+    color: #333;
+    word-break: break-all;
+    line-height: 1.3;
+}
+
+.wl-entry-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 2px;
+}
+
+.wl-entry-badges .badge {
+    font-size: 0.6rem;
+    font-weight: 400;
+    padding: 0.15em 0.4em;
+}
+
+/* Action buttons — hidden by default, show on hover */
+.wl-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.wl-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+/* Priority star */
+.wl-priority-star {
+    color: #ffc107;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+/* Empty state for whitelist editor */
+.wl-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #adb5bd;
+}
+
+.wl-empty-state i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+}
+
+.wl-empty-state p {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Responsive for inline whitelist editor */
+@media (max-width: 576px) {
+    #wlAddForm .d-flex {
+        flex-wrap: wrap;
+    }
+
+    #wlAddForm .flex-grow-1 {
+        width: 100%;
+    }
+
+    #wlAddForm select {
+        width: auto !important;
+        flex: 1;
+    }
+
+    .wl-actions {
+        opacity: 1;
+    }
+
+    .wl-entry {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.78rem;
+    }
 }
