@@ -30,8 +30,10 @@ from models.whitelist_model import WhitelistModel
 from models.agent_model import AgentModel
 from models.log_model import LogModel
 from models.group_model import GroupModel
+from models.agent_policy_model import AgentPolicyModel
 
 from services.whitelist_service import WhitelistService
+from services.agent_policy_service import AgentPolicyService
 from services.agent_service import AgentService
 from services.log_service import LogService
 from services.group_service import GroupService
@@ -52,6 +54,17 @@ from services.jwt_service import JWTService, init_jwt_service
 
 # Auth middleware
 from middleware.auth import init_auth_middleware, require_api_key, require_jwt
+
+# RBAC components (Admin/Teacher auth)
+from models.user_model import UserModel
+from models.session_model import SessionModel
+from models.audit_model import AuditModel
+from services.admin_auth_service import AdminAuthService
+from services.rbac_service import RBACService
+from services.audit_service import AuditService
+from controllers.admin_auth_controller import AdminAuthController
+from controllers.user_controller import UserController
+from middleware.rbac import init_rbac_middleware, require_login
 
 # Setup logging
 logging.basicConfig(
@@ -112,8 +125,9 @@ def create_app():
     CORS(app, resources={
         r"/api/*": {
             "origins": ["*"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
         }
     })
     
@@ -195,6 +209,29 @@ def initialize_database_indexes(app, db):
         import traceback
         app.logger.debug(f"Index initialization traceback: {traceback.format_exc()}")
 
+def _seed_admin_user(user_model, admin_auth_service):
+    """Auto-seed admin user if no users exist in the database"""
+    try:
+        if user_model.count_users() == 0:
+            import bcrypt
+            password = os.environ.get('ADMIN_PASSWORD', 'admin123456')
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+            user_model.create({
+                "username": "admin",
+                "password_hash": password_hash,
+                "role": "admin",
+                "email": "admin@localhost",
+                "is_active": True,
+            })
+            logger.warning("=" * 60)
+            logger.warning(" DEFAULT ADMIN USER CREATED")
+            logger.warning(f" Username: admin")
+            logger.warning(f" Password: {password}")
+            logger.warning(" CHANGE THIS PASSWORD IMMEDIATELY!")
+            logger.warning("=" * 60)
+    except Exception as e:
+        logger.warning(f"Could not seed admin user: {e}")
+
 def register_controllers(app, socketio, db):
     """Register all controllers với proper parameters"""
     try:
@@ -213,10 +250,16 @@ def register_controllers(app, socketio, db):
         jwt_service = init_jwt_service(db)
         logger.info(" JWT service initialized")
         
+        #  Initialize models - Agent Policy
+        agent_policy_model = AgentPolicyModel(db)
+
         #  Initialize services
         group_service = GroupService(group_model, agent_model)
-        whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio)
-        agent_service = AgentService(agent_model, group_model, socketio, jwt_service)  # Pass JWT service
+        agent_policy_service = AgentPolicyService(agent_policy_model, agent_model, socketio)
+        whitelist_service = WhitelistService(whitelist_model, agent_model, group_model, socketio,
+                                             policy_service=agent_policy_service)
+        agent_service = AgentService(agent_model, group_model, socketio, jwt_service,
+                                      policy_model=agent_policy_model)
         log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
         api_key_service = APIKeyService(api_key_model, socketio)  # API Key service
         
@@ -225,6 +268,23 @@ def register_controllers(app, socketio, db):
         # Initialize auth middleware with both API Key and JWT services
         init_auth_middleware(api_key_service, jwt_service)
         logger.info(" Auth middleware initialized")
+
+        # Initialize RBAC components (Admin/Teacher auth)
+        user_model = UserModel(db)
+        session_model = SessionModel(db)
+        audit_model = AuditModel(db)
+
+        audit_service = AuditService(audit_model)
+        rbac_service = RBACService(group_model=group_model, agent_model=agent_model)
+        admin_auth_service = AdminAuthService(user_model, jwt_service, session_model, audit_service, socketio)
+
+        admin_auth_controller = AdminAuthController(admin_auth_service, jwt_service, socketio)
+
+        init_rbac_middleware(admin_auth_service, rbac_service, jwt_service, user_model)
+        logger.info(" RBAC middleware initialized")
+
+        # Auto-seed admin user if no users exist
+        _seed_admin_user(user_model, admin_auth_service)
         
         # Create default API key if none exist
         default_key = api_key_service.create_default_key_if_none()
@@ -236,11 +296,13 @@ def register_controllers(app, socketio, db):
         
         #  Initialize controllers
         whitelist_controller = WhitelistController(whitelist_model, whitelist_service, socketio)
-        agent_controller = AgentController(agent_model, agent_service, socketio)
+        agent_controller = AgentController(agent_model, agent_service, socketio,
+                                              policy_service=agent_policy_service)
         log_controller = LogController(log_model, log_service, socketio)
         group_controller = GroupController(group_service)
         api_key_controller = APIKeyController(api_key_model, api_key_service, socketio)
         auth_controller = AuthController(jwt_service, agent_model, socketio)  # NEW: Auth controller
+        user_controller = UserController(user_model, audit_service, socketio)  # User management
 
         logger.info(" Controllers initialized")
         
@@ -251,6 +313,8 @@ def register_controllers(app, socketio, db):
         app.register_blueprint(group_controller.blueprint, url_prefix='/api')
         app.register_blueprint(api_key_controller.blueprint, url_prefix='/api')
         app.register_blueprint(auth_controller.blueprint, url_prefix='/api')  # NEW: Auth routes
+        app.register_blueprint(admin_auth_controller.blueprint, url_prefix='/api')  # RBAC: Admin auth routes
+        app.register_blueprint(user_controller.blueprint, url_prefix='/api')  # User management
 
         logger.info(" All controllers registered successfully")
         
@@ -271,8 +335,14 @@ def register_controllers(app, socketio, db):
         return None, None, None, None
 def register_main_routes(app, log_service, agent_service):
     """Register main web routes - vietnam ONLY"""
-    
+
+    @app.route('/login')
+    def login_page():
+        """Login page - standalone, no base.html"""
+        return render_template('login.html')
+
     @app.route('/')
+    @require_login
     def index():
         """Dashboard route with statistics - vietnam ONLY"""
         try:
@@ -321,17 +391,20 @@ def register_main_routes(app, log_service, agent_service):
                                  recent_logs=[])
     
     @app.route('/agents')
+    @require_login
     def agents_page():
         return render_template('agents.html', page_title="Agent Management")
     
     # ADD: Groups page route
     @app.route('/groups')
+    @require_login
     def groups_page():
         """Groups management page"""
         return render_template('groups.html', page_title="Group Management")
     
     # ADD: Group detail page route
     @app.route('/groups/<group_id>')
+    @require_login
     def group_detail(group_id):
         """Group detail page - view agents in group, add/remove agents"""
         try:
@@ -351,14 +424,23 @@ def register_main_routes(app, log_service, agent_service):
             return render_template('500.html', message=str(e)), 500
     
     @app.route('/whitelist')
+    @require_login
     def whitelist_page():
         return render_template('whitelist.html', page_title="Whitelist Management")
     
     @app.route('/logs')
+    @require_login
     def logs_page():
         return render_template('logs.html', page_title="System Logs")
     
+    @app.route('/users')
+    @require_login
+    def users_page():
+        """User management page - Admin only"""
+        return render_template('users.html', page_title="User Management")
+
     @app.route('/api-keys')
+    @require_login
     def api_keys_page():
         """API Keys management page - Admin only"""
         return render_template('api_keys.html', page_title="API Keys Management")

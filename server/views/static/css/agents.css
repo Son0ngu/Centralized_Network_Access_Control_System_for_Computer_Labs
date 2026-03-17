@@ -602,3 +602,272 @@
 .group-agent-item .agent-status-dot.pending {
     background: #17a2b8;
 }
+
+/* ========================================
+   RESPONSIVE - Agents Page
+   ======================================== */
+
+/* Tablet landscape (max-width: 992px) */
+@media (max-width: 992px) {
+    .hero-section {
+        padding: 2.5rem 1.5rem;
+        border-radius: 18px;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.75rem;
+    }
+
+    .agents-hero {
+        padding: 2.5rem 1.5rem;
+    }
+
+    .stats-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+
+    .group-board {
+        gap: 12px;
+    }
+
+    .group-card {
+        min-width: 250px;
+        max-width: 280px;
+    }
+}
+
+/* Tablet portrait (max-width: 768px) */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.5rem;
+    }
+
+    .hero-section .lead {
+        font-size: 0.9rem;
+    }
+
+    .hero-section .row .col-md-4 {
+        text-align: left !important;
+        margin-top: 1rem;
+    }
+
+    .agents-hero {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+    }
+
+    /* Search card - stack inputs */
+    .search-card .row > div {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Stats cards */
+    .status-card .card-body {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .status-icon {
+        font-size: 1.5rem;
+    }
+
+    /* Agent cards */
+    .agent-card .card-body {
+        padding: 1rem;
+    }
+
+    .agent-actions {
+        min-width: auto;
+    }
+
+    .agent-actions .btn-action {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    /* Group board */
+    .group-board {
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .group-card {
+        min-width: 220px;
+        max-width: 260px;
+        padding: 10px;
+    }
+
+    .group-card .group-name {
+        font-size: 0.9rem;
+    }
+
+    /* Agent log panel */
+    .agent-log-panel {
+        padding: 8px 10px;
+    }
+
+    .agent-log-header {
+        font-size: 0.85rem;
+    }
+
+    .agent-log-meta {
+        font-size: 0.8rem;
+    }
+
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.25rem;
+    }
+
+    .hero-section h1 i {
+        display: none;
+    }
+
+    .hero-section .lead {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-section .btn-lg {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .hero-section .d-flex.align-items-center {
+        font-size: 0.85rem;
+    }
+
+    .agents-hero {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+    }
+
+    /* Stats cards - smaller */
+    .status-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .stat-number {
+        font-size: 1.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+        letter-spacing: 0;
+    }
+
+    .status-icon {
+        font-size: 1.25rem;
+    }
+
+    /* Search card */
+    .search-card .card-body {
+        padding: 0.75rem;
+    }
+
+    /* Agent card responsive layout */
+    .agent-card .card-body .d-flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .agent-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .agent-actions .btn-action {
+        flex: 1;
+        text-align: center;
+    }
+
+    .agent-display-name {
+        font-size: 0.95rem;
+    }
+
+    .agent-hostname {
+        font-size: 0.75rem;
+    }
+
+    .agent-status {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Group board on mobile */
+    .group-board {
+        gap: 8px;
+    }
+
+    .group-card {
+        min-width: 200px;
+        max-width: 240px;
+        padding: 8px;
+    }
+
+    .group-card .group-name {
+        font-size: 0.85rem;
+        gap: 6px;
+    }
+
+    .group-card .group-meta {
+        font-size: 0.8rem;
+    }
+
+    .group-agent-count {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .group-agent-item {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    /* Card headers - stack on mobile */
+    .card-header .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .card-header .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+}

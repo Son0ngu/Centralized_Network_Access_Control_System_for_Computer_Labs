@@ -12,6 +12,8 @@ from services.api_key_service import APIKeyService
 # Import time utilities - Vietnam ONLY
 from time_utils import now_vietnam, now_iso
 
+from middleware.rbac import require_login
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,57 +37,41 @@ class APIKeyController:
         self._register_routes()
     
     def _register_routes(self):
-        """Register routes for this controller"""
+        """Register routes for this controller (all require admin login)"""
         # CRUD operations
         self.blueprint.add_url_rule(
-            '/api-keys',
-            'list_api_keys',
-            self.list_api_keys,
-            methods=['GET']
+            '/api-keys', 'list_api_keys',
+            require_login(self.list_api_keys), methods=['GET']
         )
         self.blueprint.add_url_rule(
-            '/api-keys',
-            'create_api_key',
-            self.create_api_key,
-            methods=['POST']
+            '/api-keys', 'create_api_key',
+            require_login(self.create_api_key), methods=['POST']
         )
         self.blueprint.add_url_rule(
-            '/api-keys/<key_id>',
-            'get_api_key',
-            self.get_api_key,
-            methods=['GET']
+            '/api-keys/<key_id>', 'get_api_key',
+            require_login(self.get_api_key), methods=['GET']
         )
         self.blueprint.add_url_rule(
-            '/api-keys/<key_id>',
-            'update_api_key',
-            self.update_api_key,
-            methods=['PUT', 'PATCH']
+            '/api-keys/<key_id>', 'update_api_key',
+            require_login(self.update_api_key), methods=['PUT', 'PATCH']
         )
         self.blueprint.add_url_rule(
-            '/api-keys/<key_id>',
-            'delete_api_key',
-            self.delete_api_key,
-            methods=['DELETE']
+            '/api-keys/<key_id>', 'delete_api_key',
+            require_login(self.delete_api_key), methods=['DELETE']
         )
-        
+
         # Special operations
         self.blueprint.add_url_rule(
-            '/api-keys/<key_id>/revoke',
-            'revoke_api_key',
-            self.revoke_api_key,
-            methods=['POST']
+            '/api-keys/<key_id>/revoke', 'revoke_api_key',
+            require_login(self.revoke_api_key), methods=['POST']
         )
         self.blueprint.add_url_rule(
-            '/api-keys/stats',
-            'get_stats',
-            self.get_stats,
-            methods=['GET']
+            '/api-keys/stats', 'get_stats',
+            require_login(self.get_stats), methods=['GET']
         )
         self.blueprint.add_url_rule(
-            '/api-keys/validate',
-            'validate_key',
-            self.validate_key,
-            methods=['POST']
+            '/api-keys/validate', 'validate_key',
+            require_login(self.validate_key), methods=['POST']
         )
     
     def _success_response(self, data=None, message="Success", status_code=200) -> Tuple:

@@ -89,3 +89,20 @@
     color: #11998e;
     font-weight: 600;
 }
+
+@media (max-width: 576px) {
+    .custom-select-trigger {
+        font-size: 0.875rem;
+        height: 36px;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .custom-option {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .custom-options {
+        border-radius: 10px !important;
+    }
+}

@@ -4,7 +4,7 @@ Whitelist Controller - handles whitelist HTTP requests
 """
 
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from typing import Dict, Tuple
 from models.whitelist_model import WhitelistModel
 from services.whitelist_service import WhitelistService
@@ -14,6 +14,7 @@ from time_utils import now_iso, parse_agent_timestamp
 
 # Import auth middleware for JWT validation
 from middleware.auth import require_jwt, require_jwt_or_api_key
+from middleware.rbac import require_login, get_rbac_service
 
 class WhitelistController:
     """Controller for whitelist operations"""
@@ -34,50 +35,50 @@ class WhitelistController:
                                    methods=['GET'], 
                                    view_func=require_jwt(self.agent_sync))
         
-        # Admin management endpoints (no auth for now - will add admin auth later)
-        self.blueprint.add_url_rule('/whitelist', 
-                                   methods=['GET'], 
-                                   view_func=self.list_domains)
-        
-        self.blueprint.add_url_rule('/whitelist', 
-                                   methods=['POST'], 
-                                   view_func=self.add_domain)
-        
-        self.blueprint.add_url_rule('/whitelist/<domain_id>', 
-                                   methods=['DELETE'], 
-                                   view_func=self.delete_domain)
-        
-        self.blueprint.add_url_rule('/whitelist/import', 
-                                   methods=['POST'], 
-                                   view_func=self.import_domains)
-        
-        self.blueprint.add_url_rule('/whitelist/export', 
-                                   methods=['GET'], 
-                                   view_func=self.export_domains)
-        
-        self.blueprint.add_url_rule('/whitelist/statistics', 
-                                   methods=['GET'], 
-                                   view_func=self.get_statistics)
-        
-        # Bulk operations - NEW ROUTES
-        self.blueprint.add_url_rule('/whitelist/bulk', 
-                                   methods=['POST'], 
-                                   view_func=self.bulk_add_entries)
-        
-        self.blueprint.add_url_rule('/whitelist/bulk-update', 
-                                   methods=['POST'], 
-                                   view_func=self.bulk_update_entries)
-        
-        self.blueprint.add_url_rule('/whitelist/bulk-delete', 
-                                   methods=['POST'], 
-                                   view_func=self.bulk_delete_entries)
+        # Admin management endpoints (requires admin login)
+        self.blueprint.add_url_rule('/whitelist',
+                                   methods=['GET'],
+                                   view_func=require_login(self.list_domains))
+
+        self.blueprint.add_url_rule('/whitelist',
+                                   methods=['POST'],
+                                   view_func=require_login(self.add_domain))
+
+        self.blueprint.add_url_rule('/whitelist/<domain_id>',
+                                   methods=['DELETE'],
+                                   view_func=require_login(self.delete_domain))
+
+        self.blueprint.add_url_rule('/whitelist/import',
+                                   methods=['POST'],
+                                   view_func=require_login(self.import_domains))
+
+        self.blueprint.add_url_rule('/whitelist/export',
+                                   methods=['GET'],
+                                   view_func=require_login(self.export_domains))
+
+        self.blueprint.add_url_rule('/whitelist/statistics',
+                                   methods=['GET'],
+                                   view_func=require_login(self.get_statistics))
+
+        # Bulk operations (requires admin login)
+        self.blueprint.add_url_rule('/whitelist/bulk',
+                                   methods=['POST'],
+                                   view_func=require_login(self.bulk_add_entries))
+
+        self.blueprint.add_url_rule('/whitelist/bulk-update',
+                                   methods=['POST'],
+                                   view_func=require_login(self.bulk_update_entries))
+
+        self.blueprint.add_url_rule('/whitelist/bulk-delete',
+                                   methods=['POST'],
+                                   view_func=require_login(self.bulk_delete_entries))
     
     def agent_sync(self):
         """Sync whitelist for agents - vietnam ONLY"""
         try:
-            # Get query parameters
+            # Get query parameters - agent_id from JWT (NOT from query params)
             since = request.args.get('since')
-            agent_id = request.args.get('agent_id')
+            agent_id = g.agent_id
             global_version = request.args.get('global_version')
             group_version = request.args.get('group_version')
 
@@ -359,11 +360,29 @@ class WhitelistController:
                     "error": "Maximum 1000 items per bulk operation"
                 }), 400
             
+            # Validate group_id ownership for teacher
+            rbac = get_rbac_service()
+            if rbac:
+                group_ids = list({
+                    str(item['group_id'])
+                    for item in items
+                    if item.get('group_id')
+                })
+                if group_ids:
+                    is_valid, invalid_ids = rbac.validate_group_ids_ownership(
+                        g.current_user, group_ids
+                    )
+                    if not is_valid:
+                        return jsonify({
+                            "success": False,
+                            "error": f"Không có quyền thao tác trên group: {', '.join(invalid_ids)}"
+                        }), 403
+
             # Get client IP
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if ',' in client_ip:
                 client_ip = client_ip.split(',')[0].strip()
-            
+
             # Process bulk add
             result = self.service.bulk_add_entries(items, client_ip)
             

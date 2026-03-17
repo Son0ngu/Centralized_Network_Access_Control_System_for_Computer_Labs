@@ -22,3 +22,8 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
+@media (max-width: 576px) {
+    .error-illustration { font-size: 5rem; }
+    .error-code { font-size: 4rem; }
+}

@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 class WhitelistService:
     """Service class for whitelist business logic - vietnam ONLY"""
     
-    def __init__(self, whitelist_model: WhitelistModel, agent_model, group_model, socketio=None):
+    def __init__(self, whitelist_model: WhitelistModel, agent_model, group_model, socketio=None,
+                 policy_service=None):
         """Initialize WhitelistService with model and socketio"""
         self.model = whitelist_model
         self.agent_model = agent_model
         self.group_model = group_model
         self.socketio = socketio
+        self.policy_service = policy_service
         self.logger = logging.getLogger(self.__class__.__name__)
         
         self.logger.info("WhitelistService initialized with vietnam timezone support")
@@ -510,20 +512,39 @@ class WhitelistService:
             group_entries = self._normalize_group_entries(group)
             
             combined = self._merge_whitelists(global_entries, group_entries)
-            
+
+            # ── Apply per-agent policy override (isolate / custom_whitelist) ──
+            policy_mode = "none"
+            policy_active = False
+            if self.policy_service:
+                try:
+                    from flask import request as _req
+                    server_host = _req.host.split(":")[0] if _req else None
+                except Exception:
+                    server_host = None
+
+                policy_result = self.policy_service.apply_policy_to_sync(
+                    agent_id, combined, server_host=server_host
+                )
+                combined = policy_result["domains"]
+                policy_mode = policy_result["policy_mode"]
+                policy_active = policy_result["policy_active"]
+
             response = {
                 "domains": combined,
                 "timestamp": now_iso(),
                 "count": len(combined),
-                "type": response_type,  # Fixed: was "response_type" (string literal) instead of response_type (variable)
+                "type": response_type,
                 "success": True,
                 "server_time": now_iso(),
                 "global_version": current_global_version,
                 "group_version": current_group_version,
                 "group_id": str(group.get("_id")),
                 "agent_id": agent_id,
+                "policy_mode": policy_mode,
+                "policy_active": policy_active,
             }
-            
+
             return response
             
         except Exception as e:

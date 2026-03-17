@@ -6,7 +6,7 @@ Agent Controller - handles agent HTTP requests
 import logging
 from datetime import datetime
 from bson import ObjectId
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from typing import Dict, Tuple
 from models.agent_model import AgentModel
 from services.agent_service import AgentService
@@ -16,15 +16,18 @@ from time_utils import now_vietnam, now_iso
 
 # Import auth middleware for API key and JWT validation
 from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key
+from middleware.rbac import require_login, get_rbac_service
 
 class AgentController:
     """Controller for agent operations"""
     
-    def __init__(self, agent_model: AgentModel, agent_service: AgentService, socketio=None):
+    def __init__(self, agent_model: AgentModel, agent_service: AgentService, socketio=None,
+                 policy_service=None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
         self.service = agent_service
         self.socketio = socketio
+        self.policy_service = policy_service
         self.blueprint = Blueprint('agents', __name__)
         self._register_routes()
     
@@ -41,19 +44,23 @@ class AgentController:
         self.blueprint.add_url_rule('/agents/heartbeat', 'heartbeat', 
                                     require_jwt(self.heartbeat), 
                                     methods=['POST'])
-        self.blueprint.add_url_rule('/agents', 'list_agents', self.list_agents, methods=['GET'])  #  FIX: Add this route
-        self.blueprint.add_url_rule('/agents/statistics', 'get_statistics', self.get_statistics, methods=['GET'])  #  FIX: Add agents prefix
-        
-        # Individual agent routes
-        self.blueprint.add_url_rule('/agents/<agent_id>', 'get_agent', self.get_agent, methods=['GET'])
-        self.blueprint.add_url_rule('/agents/<agent_id>', 'delete_agent', self.delete_agent, methods=['DELETE'])
-        self.blueprint.add_url_rule('/agents/<agent_id>/display-name', 'update_display_name', self.update_display_name, methods=['PATCH'])
-        self.blueprint.add_url_rule('/agents/<agent_id>/position', 'update_position', self.update_position, methods=['PATCH'])
-        self.blueprint.add_url_rule('/agents/<agent_id>/group', 'update_group', self.update_group, methods=['PATCH'])
-        
-        #  DEBUG: Add debug routes (optional - remove in production)
-        self.blueprint.add_url_rule('/agents/debug/status', 'debug_status', self.debug_status, methods=['GET'])
-        self.blueprint.add_url_rule('/agents/debug/direct', 'debug_direct_call', self.debug_direct_call, methods=['GET'])
+        self.blueprint.add_url_rule('/agents', 'list_agents', require_login(self.list_agents), methods=['GET'])
+        self.blueprint.add_url_rule('/agents/statistics', 'get_statistics', require_login(self.get_statistics), methods=['GET'])
+
+        # Individual agent routes (requires admin login)
+        self.blueprint.add_url_rule('/agents/<agent_id>', 'get_agent', require_login(self.get_agent), methods=['GET'])
+        self.blueprint.add_url_rule('/agents/<agent_id>', 'delete_agent', require_login(self.delete_agent), methods=['DELETE'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/display-name', 'update_display_name', require_login(self.update_display_name), methods=['PATCH'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/position', 'update_position', require_login(self.update_position), methods=['PATCH'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/group', 'update_group', require_login(self.update_group), methods=['PATCH'])
+
+        # Agent policy routes (isolate / custom whitelist)
+        self.blueprint.add_url_rule('/agents/<agent_id>/policy', 'get_agent_policy', require_login(self.get_agent_policy), methods=['GET'])
+        self.blueprint.add_url_rule('/agents/<agent_id>/policy', 'set_agent_policy', require_login(self.set_agent_policy), methods=['PATCH'])
+
+        # DEBUG routes (requires admin login)
+        self.blueprint.add_url_rule('/agents/debug/status', 'debug_status', require_login(self.debug_status), methods=['GET'])
+        self.blueprint.add_url_rule('/agents/debug/direct', 'debug_direct_call', require_login(self.debug_direct_call), methods=['GET'])
 
     def _success_response(self, data=None, message="Success", status_code=200) -> Tuple:
         """Helper method for success responses"""
@@ -207,17 +214,35 @@ class AgentController:
             self.logger.error(f"Error processing heartbeat: {e}")
             return self._error_response("Failed to process heartbeat", 500)
     
+    def _check_agent_ownership(self, agent):
+        """Check if current teacher can access this agent. Returns error response or None."""
+        rbac = get_rbac_service()
+        if rbac and not rbac.can_teacher_access_agent(g.current_user, agent):
+            return self._error_response("Không có quyền truy cập agent này", 403)
+        return None
+
     def list_agents(self):
         """List all agents with filtering - COMPLETE VERSION - vietnam only"""
         try:
             self.logger.info(" List agents called")
-            
+
             pagination = self._get_pagination_params()
             filters = self._get_filter_params(['status', 'hostname','group_id'])
             exclude_group_id = request.args.get('exclude_group_id')
-            
+
             agents_with_status = self.service.get_agents_with_status()
             self.logger.info(f" Found {len(agents_with_status)} agents")
+
+            # Filter by teacher's groups (teacher only sees agents in their groups)
+            rbac = get_rbac_service()
+            if rbac:
+                teacher_group_ids = rbac.get_teacher_group_ids(g.current_user)
+                if teacher_group_ids is not None:
+                    group_set = set(teacher_group_ids)
+                    agents_with_status = [
+                        a for a in agents_with_status
+                        if str(a.get('group_id', '')) in group_set
+                    ]
             
             # Apply filters
             filtered_agents = agents_with_status
@@ -302,10 +327,15 @@ class AgentController:
     def get_agent(self, agent_id: str):
         """Get detailed agent information"""
         try:
-            # Call service method
+            agent_raw = self.model.find_by_agent_id(agent_id)
+            if not agent_raw:
+                return self._error_response("Agent not found", 404)
+            denied = self._check_agent_ownership(agent_raw)
+            if denied:
+                return denied
             agent_data = self.service.get_agent_details(agent_id)
             return self._success_response(agent_data)
-            
+
         except ValueError as e:
             return self._error_response(str(e), 404)
         except Exception as e:
@@ -315,12 +345,13 @@ class AgentController:
     def delete_agent(self, agent_id: str):
         """Delete an agent"""
         try:
-            #  THÊM: Get agent info trước khi delete
             agent = self.model.find_by_agent_id(agent_id)
             if not agent:
                 return self._error_response("Agent not found", 404)
-            
-            #  SỬA: Gọi service để delete
+            denied = self._check_agent_ownership(agent)
+            if denied:
+                return denied
+
             success = self.service.delete_agent(agent_id)
             
             if success:
@@ -347,6 +378,12 @@ class AgentController:
     def update_display_name(self, agent_id: str):
         """Update agent display name"""
         try:
+            agent = self.model.find_by_agent_id(agent_id)
+            if not agent:
+                return self._error_response("Agent not found", 404)
+            denied = self._check_agent_ownership(agent)
+            if denied:
+                return denied
             data = self._validate_json_request(['display_name'])
             self.service.update_display_name(agent_id, data.get('display_name'))
             return self._success_response(message="Display name updated")
@@ -359,10 +396,14 @@ class AgentController:
     def update_position(self, agent_id: str):
         """Update agent position"""
         try:
-            # Allow position to be None (unassigned)
+            agent = self.model.find_by_agent_id(agent_id)
+            if not agent:
+                return self._error_response("Agent not found", 404)
+            denied = self._check_agent_ownership(agent)
+            if denied:
+                return denied
             data = request.get_json() or {}
             position = data.get('position')
-            
             self.service.update_position(agent_id, position)
             return self._success_response(message="Position updated")
         except ValueError as e:
@@ -375,7 +416,20 @@ class AgentController:
         """Move agent to a new group"""
         try:
             data = self._validate_json_request(['group_id'])
-            agent = self.service.move_agent_to_group(agent_id, data.get('group_id'))
+            target_group_id = data.get('group_id')
+
+            # Validate ownership: teacher can only move agents to their own groups
+            rbac = get_rbac_service()
+            if rbac and target_group_id:
+                is_valid, invalid_ids = rbac.validate_group_ids_ownership(
+                    g.current_user, [str(target_group_id)]
+                )
+                if not is_valid:
+                    return self._error_response(
+                        "Không có quyền chuyển agent vào group này", 403
+                    )
+
+            agent = self.service.move_agent_to_group(agent_id, target_group_id)
             
             # Serialize ObjectId before returning
             serialized_agent = self._serialize_agent(agent)
@@ -400,6 +454,80 @@ class AgentController:
         except Exception as e:
             self.logger.error(f"Error updating agent group: {e}")
             return self._error_response("Failed to update agent group", 500)
+
+    # ── Agent Policy endpoints ─────────────────────────────────
+
+    def get_agent_policy(self, agent_id: str):
+        """GET /agents/<agent_id>/policy — Xem policy hiện tại của agent"""
+        try:
+            agent = self.model.find_by_agent_id(agent_id)
+            if not agent:
+                return self._error_response("Agent not found", 404)
+            denied = self._check_agent_ownership(agent)
+            if denied:
+                return denied
+
+            if not self.policy_service:
+                return self._error_response("Policy service not available", 503)
+
+            policy = self.policy_service.get_policy(agent_id)
+            return self._success_response(data=policy)
+
+        except Exception as e:
+            self.logger.error(f"Error getting agent policy: {e}")
+            return self._error_response("Failed to get policy", 500)
+
+    def set_agent_policy(self, agent_id: str):
+        """
+        PATCH /agents/<agent_id>/policy — Set policy cho agent
+        Body:
+        {
+            "mode": "isolate" | "none" | "custom_whitelist",
+            "reason": "Xem YouTube trong giờ",           // optional
+            "duration_minutes": 15,                       // optional, null = vĩnh viễn
+            "custom_whitelist": [{"domain": "x.com"}]     // chỉ khi mode=custom_whitelist
+        }
+        """
+        try:
+            agent = self.model.find_by_agent_id(agent_id)
+            if not agent:
+                return self._error_response("Agent not found", 404)
+            denied = self._check_agent_ownership(agent)
+            if denied:
+                return denied
+
+            if not self.policy_service:
+                return self._error_response("Policy service not available", 503)
+
+            data = request.get_json() or {}
+            mode = data.get("mode")
+            if not mode:
+                return self._error_response("'mode' is required (none / isolate / custom_whitelist)", 400)
+
+            policy = self.policy_service.set_policy(
+                agent_id=agent_id,
+                mode=mode,
+                applied_by_user=g.current_user,
+                reason=data.get("reason", ""),
+                custom_whitelist=data.get("custom_whitelist"),
+                duration_minutes=data.get("duration_minutes"),
+            )
+
+            mode_labels = {
+                "none": "Policy reset to default",
+                "isolate": f"Agent {agent_id} isolated",
+                "custom_whitelist": f"Custom whitelist applied to {agent_id}",
+            }
+            return self._success_response(
+                data=policy,
+                message=mode_labels.get(mode, "Policy updated"),
+            )
+
+        except ValueError as e:
+            return self._error_response(str(e), 400)
+        except Exception as e:
+            self.logger.error(f"Error setting agent policy: {e}")
+            return self._error_response("Failed to set policy", 500)
 
     def get_statistics(self):
         """Get agent statistics"""

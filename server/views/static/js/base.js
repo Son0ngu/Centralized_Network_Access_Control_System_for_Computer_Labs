@@ -163,3 +163,32 @@
         }
     };
 })();
+
+// ========================================
+// USER SESSION — fetch current user info & logout
+// ========================================
+(function() {
+    // Fetch current user info for navbar
+    fetch('/api/admin/auth/me', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.user) {
+                const u = data.user;
+                const nameEl = document.getElementById('navUsername');
+                const roleEl = document.getElementById('navUserRole');
+                if (nameEl) nameEl.textContent = u.username || 'User';
+                if (roleEl) roleEl.textContent = 'Role: ' + (u.role || 'unknown');
+            }
+        })
+        .catch(() => {});
+
+    // Logout function
+    window.doLogout = function() {
+        fetch('/api/admin/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+        })
+        .then(() => { window.location.href = '/login'; })
+        .catch(() => { window.location.href = '/login'; });
+    };
+})();

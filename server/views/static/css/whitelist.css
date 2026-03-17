@@ -348,3 +348,200 @@
 .modal-body .row .col-md-4 {
     transition: all 0.3s ease;
 }
+
+/* ========================================
+   RESPONSIVE - Whitelist Page
+   ======================================== */
+
+/* Tablet landscape (max-width: 992px) */
+@media (max-width: 992px) {
+    .whitelist-hero {
+        padding: 2.5rem 1.5rem;
+        border-radius: 18px;
+    }
+
+    .whitelist-hero h1.display-5 {
+        font-size: 1.75rem;
+    }
+
+    .stats-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+}
+
+/* Tablet portrait (max-width: 768px) */
+@media (max-width: 768px) {
+    .whitelist-hero {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+    }
+
+    .whitelist-hero h1.display-5 {
+        font-size: 1.5rem;
+    }
+
+    .whitelist-hero .lead {
+        font-size: 0.9rem;
+    }
+
+    /* Add items section */
+    .add-item-card {
+        padding: 1rem;
+    }
+
+    .add-item-icon {
+        font-size: 1.5rem;
+    }
+
+    .add-item-title {
+        font-size: 0.9rem;
+    }
+
+    .add-item-desc {
+        font-size: 0.8rem;
+    }
+
+    /* Stats cards */
+    .stats-card .card-body {
+        padding: 1rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+
+    .stats-label {
+        font-size: 0.8rem;
+    }
+
+    /* Search card */
+    .search-card .row > div {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Domain cards */
+    .domain-card .card-body {
+        padding: 1rem;
+    }
+
+    /* Bulk actions */
+    .bulk-actions .row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .bulk-actions .col-md-4 {
+        text-align: left !important;
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    .whitelist-hero {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+    }
+
+    .whitelist-hero h1.display-5 {
+        font-size: 1.25rem;
+    }
+
+    .whitelist-hero h1 i {
+        display: none;
+    }
+
+    .whitelist-hero .lead {
+        font-size: 0.85rem;
+    }
+
+    /* Stats cards - compact */
+    .stats-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .stats-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+        border-radius: 10px;
+    }
+
+    .stats-number {
+        font-size: 1.25rem;
+    }
+
+    .stats-label {
+        font-size: 0.75rem;
+    }
+
+    /* Add items - 2 cols */
+    .add-item-card {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .add-item-icon {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .add-item-title.h5 {
+        font-size: 0.85rem;
+    }
+
+    .add-item-desc {
+        font-size: 0.75rem;
+    }
+
+    .type-badge {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    /* Search card */
+    .search-card .card-body {
+        padding: 0.75rem;
+    }
+
+    /* Domain card compact */
+    .domain-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .domain-status {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .domain-type-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    /* Empty state */
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+    }
+
+    /* Card header on mobile */
+    .card-header .row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .card-header .col-md-6:last-child {
+        text-align: left !important;
+    }
+}

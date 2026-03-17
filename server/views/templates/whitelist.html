@@ -87,7 +87,7 @@
 <!-- Add Items Section -->
 <div class="add-items-section">
     <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-6 mb-4">
             <div class="add-item-card" data-type="domain">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="add-item-icon mb-3">
@@ -102,7 +102,7 @@
             </div>
         </div>
         
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-6 mb-4">
             <div class="add-item-card" data-type="ip">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="add-item-icon mb-3">
@@ -117,7 +117,7 @@
             </div>
         </div>
         
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-6 mb-4">
             <div class="add-item-card" data-type="url">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="add-item-icon mb-3">
@@ -132,7 +132,7 @@
             </div>
         </div>
         
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-6 mb-4">
             <div class="add-item-card" data-type="bulk">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="add-item-icon mb-3">
@@ -152,8 +152,8 @@
 <!-- Search and Filter -->
 <div class="card search-card">
     <div class="card-body">
-        <div class="row align-items-center g-3">
-            <div class="col-md-3">
+        <div class="row align-items-center g-2 g-md-3">
+            <div class="col-12 col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="fas fa-search text-muted"></i>
@@ -163,7 +163,7 @@
                            id="item-search">
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-4 col-md-2">
                 <select class="form-select" id="type-filter">
                     <option value="">All Types</option>
                     <option value="domain">Domains</option>
@@ -171,19 +171,19 @@
                     <option value="url">URLs</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-4 col-md-2">
                 <select class="form-select" id="status-filter">
                     <option value="">All Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-4 col-md-2">
                 <select class="form-select" id="group-filter">
                     <option value="">All Groups</option>
                 </select>
             </div>
-            <div class="col-md-3 text-end">
+            <div class="col-12 col-md-3 text-end">
                 <button class="btn btn-outline-secondary" id="refreshBtn" title="Refresh">
                     <i class="fas fa-sync-alt"></i>
                 </button>

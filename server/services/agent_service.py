@@ -24,13 +24,15 @@ from time_utils import (
 class AgentService:
     """Service class for agent business logic - vietnam ONLY"""
     
-    def __init__(self, agent_model: AgentModel, group_model, socketio=None, jwt_service=None):
+    def __init__(self, agent_model: AgentModel, group_model, socketio=None, jwt_service=None,
+                 policy_model=None):
         """Initialize AgentService with proper parameters"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
         self.group_model = group_model
         self.socketio = socketio
         self.jwt_service = jwt_service  # NEW: JWT service for token generation
+        self.policy_model = policy_model  # AgentPolicyModel for force_sync check
         
         # Get database from model, not from parameter
         self.db = self.model.db
@@ -416,11 +418,24 @@ class AgentService:
             # Calculate next heartbeat time
             next_heartbeat_time = now_vietnam() + timedelta(seconds=60)
             
+            # Check if agent has an active policy override → tell agent to force sync
+            force_sync = False
+            policy_mode = "none"
+            if self.policy_model:
+                try:
+                    policy_mode = self.policy_model.get_effective_mode(agent_id)
+                    if policy_mode != "none":
+                        force_sync = True
+                except Exception as pe:
+                    self.logger.warning(f"Policy check failed for {agent_id}: {pe}")
+
             return {
                 "agent_id": agent_id,
                 "status": new_status,
                 "next_heartbeat": int(next_heartbeat_time.timestamp() * 1000),
-                "server_time": now_iso()  # vietnam ISO
+                "server_time": now_iso(),  # vietnam ISO
+                "force_sync": force_sync,
+                "policy_mode": policy_mode,
             }
             
         except Exception as e:

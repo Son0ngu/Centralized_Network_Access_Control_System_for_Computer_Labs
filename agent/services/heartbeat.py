@@ -37,6 +37,9 @@ class HeartbeatSender:
         self._thread: Optional[threading.Thread] = None
         self._consecutive_failures = 0
         self._last_successful_heartbeat: Optional[float] = None
+
+        # Callback khi server yêu cầu force sync (agent policy changed)
+        self.on_force_sync = None  # Set bởi caller: fn() -> None
     
     def _get_server_urls(self) -> list:
         urls = []
@@ -147,6 +150,14 @@ class HeartbeatSender:
                     data = response.json()
                     if data.get("success"):
                         logger.debug(f"Heartbeat sent successfully to {server_url}")
+                        # Check force_sync flag from server (agent policy changed)
+                        resp_data = data.get("data", data)
+                        if resp_data.get("force_sync") and self.on_force_sync:
+                            logger.info(f"Server requests force sync (policy: {resp_data.get('policy_mode', '?')})")
+                            try:
+                                self.on_force_sync()
+                            except Exception as fs_err:
+                                logger.warning(f"Force sync callback failed: {fs_err}")
                         return True
                     else:
                         logger.warning(
