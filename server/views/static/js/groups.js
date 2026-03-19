@@ -188,7 +188,7 @@ function renderGroupCard(group) {
                         <button class="btn btn-sm btn-outline-info" onclick="viewGroupDetail('${group._id}')" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
-                        ${!isSystem ? `
+                        ${!isSystem && window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                             <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal('${group._id}')" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -202,7 +202,9 @@ function renderGroupCard(group) {
                 <p class="group-card-description">
                     ${escapeHtml(group.description) || 'No description'}
                 </p>
-                
+
+                ${group.created_by_username ? `<div class="mb-2"><span class="badge bg-${group.created_by_role === 'admin' ? 'danger' : 'success'} bg-opacity-10 text-${group.created_by_role === 'admin' ? 'danger' : 'success'}" style="font-size:0.7rem;"><i class="fas fa-user me-1"></i>Owner: ${escapeHtml(group.created_by_username)}</span></div>` : ''}
+
                 <div class="group-card-stats">
                     <div class="stat-item">
                         <i class="fas fa-laptop-code text-primary"></i>

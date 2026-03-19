@@ -61,7 +61,7 @@ class Config:
     
     # Socket.IO settings
     SOCKETIO_CORS_ALLOWED_ORIGINS = ["*"]
-    SOCKETIO_ASYNC_MODE = get_env('SOCKETIO_ASYNC_MODE', 'eventlet')
+    SOCKETIO_ASYNC_MODE = get_env('SOCKETIO_ASYNC_MODE', 'gevent')
     
     # Agent settings
     AGENT_WHITELIST_UPDATE_INTERVAL = int(get_env('AGENT_WHITELIST_UPDATE_INTERVAL', 300))

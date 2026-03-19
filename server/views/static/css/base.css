@@ -7,6 +7,11 @@
     --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);

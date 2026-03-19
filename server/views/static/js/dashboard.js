@@ -4,7 +4,7 @@
         const socket = io();
 
         socket.on('connect', function () {
-            console.log(' Connected to server for real-time updates');
+            console.log('Connected to server for real-time updates');
 
             const statusDot = document.querySelector('.pulse-dot');
             if (statusDot) {
@@ -13,7 +13,7 @@
         });
 
         socket.on('disconnect', function () {
-            console.log(' Disconnected from server');
+            console.log('Disconnected from server');
 
             const statusDot = document.querySelector('.pulse-dot');
             if (statusDot) {
@@ -22,36 +22,47 @@
         });
 
         socket.on('stats_update', function (statsData) {
-            console.log(' Stats update received:', statsData);
-            updateDashboardStats(statsData);
+            console.log('Stats update received:', statsData);
+            updateDashboardStats(statsData, true);
         });
     } catch (error) {
         console.log('Socket.IO not available:', error);
     }
 
-    function updateDashboardStats(stats) {
-        console.log(' Updating dashboard stats:', stats);
-        
-        // More specific selectors for each stat card
-        const totalLogsEl = document.querySelector('[id*="total"]') || document.querySelectorAll('.stat-number')[0];
-        const allowedEl = document.querySelector('[id*="allowed"]') || document.querySelectorAll('.stat-number')[1];
-        const blockedEl = document.querySelector('[id*="blocked"]') || document.querySelectorAll('.stat-number')[2];
-        const activeAgentsEl = document.querySelector('[id*="agent"]') || document.querySelectorAll('.stat-number')[3];
+    function getStatElements() {
+        return {
+            totalLogs: document.getElementById('statTotalLogs'),
+            allowed: document.getElementById('statAllowed'),
+            blocked: document.getElementById('statBlocked'),
+            activeAgents: document.getElementById('statActiveAgents'),
+        };
+    }
 
-        if (totalLogsEl && stats.total_logs !== undefined) {
-            animateNumber(totalLogsEl, parseInt(totalLogsEl.textContent.replace(/,/g, ''), 10) || 0, stats.total_logs);
+    function updateDashboardStats(stats, animate) {
+        const els = getStatElements();
+
+        if (els.totalLogs && stats.total_logs !== undefined) {
+            setStatValue(els.totalLogs, stats.total_logs, animate);
         }
-        
-        if (allowedEl && stats.allowed_count !== undefined) {
-            animateNumber(allowedEl, parseInt(allowedEl.textContent.replace(/,/g, ''), 10) || 0, stats.allowed_count);
+        if (els.allowed && stats.allowed_count !== undefined) {
+            setStatValue(els.allowed, stats.allowed_count, animate);
         }
-        
-        if (blockedEl && stats.blocked_count !== undefined) {
-            animateNumber(blockedEl, parseInt(blockedEl.textContent.replace(/,/g, ''), 10) || 0, stats.blocked_count);
+        if (els.blocked && stats.blocked_count !== undefined) {
+            setStatValue(els.blocked, stats.blocked_count, animate);
         }
-        
-        if (activeAgentsEl && stats.active_agents !== undefined) {
-            animateNumber(activeAgentsEl, parseInt(activeAgentsEl.textContent.replace(/,/g, ''), 10) || 0, stats.active_agents);
+        if (els.activeAgents && stats.active_agents !== undefined) {
+            setStatValue(els.activeAgents, stats.active_agents, animate);
+        }
+    }
+
+    function setStatValue(element, value, animate) {
+        if (animate) {
+            const start = parseInt(element.textContent.replace(/,/g, ''), 10) || 0;
+            if (start !== value) {
+                animateNumber(element, start, value);
+            }
+        } else {
+            element.textContent = value.toLocaleString();
         }
     }
 
@@ -75,40 +86,38 @@
     }
 
     // Load initial statistics
-    async function loadDashboardStats() {
+    async function loadDashboardStats(animate) {
         try {
-            console.log(' Loading dashboard statistics...');
-            
             const response = await fetch('/api/logs/stats');
             if (response.ok) {
                 const data = await response.json();
-                console.log(' Dashboard stats loaded:', data);
-                
+
                 if (data.success) {
+                    // Use filtered stats when server applies RBAC filtering (teacher)
+                    const useFiltered = data.has_filters;
                     updateDashboardStats({
-                        total_logs: data.total || 0,
-                        allowed_count: data.allowed || 0,
-                        blocked_count: data.blocked || 0,
-                        active_agents: 0 // Will be updated separately
-                    });
+                        total_logs: useFiltered ? (data.filtered_total || 0) : (data.total || 0),
+                        allowed_count: useFiltered ? (data.filtered_allowed || 0) : (data.allowed || 0),
+                        blocked_count: useFiltered ? (data.filtered_blocked || 0) : (data.blocked || 0),
+                        active_agents: 0
+                    }, animate);
                 }
             }
-            
+
             // Load active agents count
             const agentsResponse = await fetch('/api/agents/statistics');
             if (agentsResponse.ok) {
                 const agentsData = await agentsResponse.json();
-                console.log(' Agents stats loaded:', agentsData);
-                
+
                 if (agentsData.success && agentsData.data) {
-                    const activeAgentsEl = document.querySelector('[id*="agent"]') || document.querySelectorAll('.stat-number')[3];
-                    if (activeAgentsEl) {
-                        animateNumber(activeAgentsEl, parseInt(activeAgentsEl.textContent.replace(/,/g, ''), 10) || 0, agentsData.data.active || 0);
+                    const el = document.getElementById('statActiveAgents');
+                    if (el) {
+                        setStatValue(el, agentsData.data.active || 0, animate);
                     }
                 }
             }
         } catch (error) {
-            console.error(' Error loading dashboard stats:', error);
+            console.error('Error loading dashboard stats:', error);
         }
     }
 
@@ -117,11 +126,9 @@
     }, 30000);
 
     document.addEventListener('DOMContentLoaded', function () {
-        console.log(' Dashboard initialized');
-        
-        // Load initial stats
-        loadDashboardStats();
-        
+        // Load initial stats (no animation — just set values directly)
+        loadDashboardStats(false);
+
         // Animate cards
         const cards = document.querySelectorAll('.status-card, .feature-card');
         cards.forEach((card, index) => {
@@ -134,8 +141,8 @@
                 card.style.transform = 'translateY(0)';
             }, index * 100);
         });
-        
-        // Refresh stats every 10 seconds
-        setInterval(loadDashboardStats, 10000);
+
+        // Refresh stats every 10 seconds (with animation for incremental updates)
+        setInterval(function () { loadDashboardStats(true); }, 10000);
     });
 })();

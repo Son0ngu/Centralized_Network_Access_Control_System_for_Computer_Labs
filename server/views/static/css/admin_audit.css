@@ -1,0 +1,134 @@
+/* Admin Audit Logs - Responsive CSS */
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 25px;
+    padding: 3rem 2rem;
+    color: white;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: float 20s infinite linear;
+}
+
+@keyframes float {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(-50px, -50px) rotate(360deg); }
+}
+
+.hero-section .hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.pulse-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: #38ef7d;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(56, 239, 125, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
+}
+
+
+/* Base Styles */
+.audit-card {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.audit-card .table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #6c757d;
+}
+
+.audit-row:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.action-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+.action-auth { background: #e3f2fd; color: #1565c0; }
+.action-user { background: #f3e5f5; color: #7b1fa2; }
+.action-group { background: #e8f5e9; color: #2e7d32; }
+.action-whitelist { background: #fff3e0; color: #e65100; }
+.action-profile { background: #e0f7fa; color: #00695c; }
+.action-other { background: #f5f5f5; color: #616161; }
+
+.search-box {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+}
+
+.search-box:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+/* ========================================
+   Responsive: Tablet Portrait (max-width: 768px)
+   ======================================== */
+@media (max-width: 768px) {
+    /* Page header stack vertically */
+    .page-header-flex {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start !important;
+    }
+
+    .page-header-flex .btn {
+        width: 100%;
+    }
+
+    .action-badge {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* ========================================
+   Responsive: Mobile (max-width: 576px)
+   ======================================== */
+@media (max-width: 576px) {
+    .audit-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .audit-card .table {
+        font-size: 0.78rem;
+    }
+
+    /* Pagination stack */
+    .pagination-wrapper {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start !important;
+    }
+}

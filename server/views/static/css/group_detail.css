@@ -379,8 +379,26 @@
     }
 }
 
+/* Grid size inputs & whitelist type selects (extracted from inline styles) */
+.grid-size-input {
+    width: 70px;
+}
+
+.wl-type-select {
+    width: 100px;
+}
+
 /* Mobile (max-width: 576px) */
 @media (max-width: 576px) {
+    .grid-size-input {
+        width: 60px;
+    }
+
+    .wl-type-select {
+        width: auto;
+        flex: 1;
+    }
+
     .hero-section.hero-group {
         padding: 1.5rem 1rem;
         border-radius: 12px;

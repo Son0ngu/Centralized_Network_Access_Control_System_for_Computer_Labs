@@ -7,6 +7,7 @@ python-dotenv
 pyjwt
 bcrypt
 email_validator
-eventlet
+gevent 
+gevent-websocket
 tzdata
 python-snappy

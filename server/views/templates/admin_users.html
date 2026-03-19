@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Firewall Controller{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_users.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section hero-users">
+    <div class="hero-content">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-5 fw-bold mb-3">
+                    <i class="fas fa-users-cog me-3"></i>Quản lý tài khoản
+                </h1>
+                <p class="lead mb-2">Tạo và quản lý tài khoản người dùng, phân quyền truy cập hệ thống</p>
+                <div class="d-flex align-items-center mt-3">
+                    <span class="pulse-dot me-2"></span>
+                    <span class="fw-semibold">Role-based Access Control (RBAC)</span>
+                </div>
+            </div>
+            <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                <button class="btn btn-light btn-lg shadow-sm w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                    <i class="fas fa-user-plus me-2 text-primary"></i>Tạo tài khoản
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row mb-4 g-3">
+    <div class="col-6 col-md-3">
+        <div class="card status-card border-start-primary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-primary">Tổng cộng</div>
+                        <div class="stat-number text-primary" id="statTotal">0</div>
+                    </div>
+                    <div class="status-icon text-primary d-none d-sm-block">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card status-card border-start-danger h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-danger">Quản trị viên</div>
+                        <div class="stat-number text-danger" id="statAdmin">0</div>
+                    </div>
+                    <div class="status-icon text-danger d-none d-sm-block">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card status-card border-start-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-success">Giáo viên</div>
+                        <div class="stat-number text-success" id="statTeacher">0</div>
+                    </div>
+                    <div class="status-icon text-success d-none d-sm-block">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card status-card border-start-warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label text-warning">Vô hiệu hóa</div>
+                        <div class="stat-number text-warning" id="statInactive">0</div>
+                    </div>
+                    <div class="status-icon text-warning d-none d-sm-block">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter & Search -->
+<div class="card user-card mb-4">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-5">
+                <input type="text" class="form-control search-box" id="searchInput"
+                       placeholder="Tìm kiếm username hoặc email...">
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" id="filterRole">
+                    <option value="">Tất cả quyền</option>
+                    <option value="admin">Quản trị viên (Admin)</option>
+                    <option value="teacher">Giáo viên (Teacher)</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" id="filterStatus">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="true">Hoạt động (Active)</option>
+                    <option value="false">Bị khóa (Inactive)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-1">
+                <button class="btn btn-outline-secondary w-100" id="refreshBtn" title="Làm mới">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card user-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-nowrap">Username</th>
+                        <th class="text-nowrap">Email</th>
+                        <th class="text-nowrap">Role</th>
+                        <th class="text-nowrap">Trạng thái</th>
+                        <th class="d-none d-lg-table-cell text-nowrap">Đăng nhập gần nhất</th>
+                        <th class="d-none d-lg-table-cell text-nowrap">Ngày tạo</th>
+                        <th class="text-end text-nowrap">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Đang tải dữ liệu...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="d-flex justify-content-between align-items-center mt-3 pagination-wrapper">
+    <small class="text-muted" id="paginationInfo">Hiển thị 0 tài khoản</small>
+    <nav>
+        <ul class="pagination pagination-sm mb-0" id="paginationNav"></ul>
+    </nav>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content user-modal">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-user-plus me-2 text-primary"></i>Tạo tài khoản mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="createAlert" class="alert alert-danger d-none"></div>
+                <form id="createUserForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tên đăng nhập <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="createUsername"
+                               placeholder="vd: teacher01" required>
+                        <small class="text-muted">3-50 ký tự, chỉ chứa chữ, số, dấu gạch ngang, dấu chấm</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" class="form-control" id="createEmail" placeholder="email@example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="createPassword"
+                               placeholder="Tối thiểu 8 ký tự" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Quyền truy cập</label>
+                        <select class="form-select" id="createRole">
+                            <option value="teacher" selected>Giáo viên (Teacher)</option>
+                            <option value="admin">Quản trị viên (Admin)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-primary" id="createUserBtn">
+                    <i class="fas fa-plus me-1"></i>Tạo tài khoản
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content user-modal">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-key me-2 text-warning"></i>Khôi phục mật khẩu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Đặt lại mật khẩu cho <strong id="resetUsername"></strong></p>
+                <div id="resetAlert" class="alert alert-danger d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Mật khẩu mới</label>
+                    <input type="password" class="form-control" id="resetNewPassword"
+                           placeholder="Tối thiểu 8 ký tự">
+                </div>
+                <input type="hidden" id="resetUserId">
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-warning" id="resetPasswordBtn">
+                    <i class="fas fa-key me-1"></i>Đổi mật khẩu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin_users.js') }}"></script>
+{% endblock %}

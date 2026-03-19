@@ -1,6 +1,8 @@
 """
 Whitelist Controller - handles whitelist HTTP requests
-- Clean and simple
+RBAC: inject_current_user on web-facing endpoints for teacher data filtering.
+- Agent endpoint (agent-sync) keeps require_jwt — NOT affected
+- Web-facing endpoints apply teacher ownership filter on group-level whitelist
 """
 
 import logging
@@ -8,417 +10,454 @@ from flask import Blueprint, request, jsonify, g
 from typing import Dict, Tuple
 from models.whitelist_model import WhitelistModel
 from services.whitelist_service import WhitelistService
+from services.rbac_service import RBACService
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, parse_agent_timestamp
 
 # Import auth middleware for JWT validation
 from middleware.auth import require_jwt, require_jwt_or_api_key
-from middleware.rbac import require_login, get_rbac_service
+from middleware.rbac import inject_current_user
+
+from config.rbac_config import check_permission
+
 
 class WhitelistController:
     """Controller for whitelist operations"""
-    
-    def __init__(self, whitelist_model: WhitelistModel, whitelist_service: WhitelistService, socketio=None):
+
+    def __init__(self, whitelist_model: WhitelistModel, whitelist_service: WhitelistService,
+                 rbac_service: RBACService, socketio=None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = whitelist_model
         self.service = whitelist_service
+        self.rbac_service = rbac_service
         self.socketio = socketio
         self.blueprint = Blueprint('whitelist', __name__)
         self._register_routes()
-    
+
     def _register_routes(self):
         """Register all whitelist routes"""
-        
-        # Agent sync endpoint - requires JWT token (Phase 2)
-        self.blueprint.add_url_rule('/whitelist/agent-sync', 
-                                   methods=['GET'], 
+
+        # Agent sync endpoint - requires JWT token (NOT affected by RBAC)
+        self.blueprint.add_url_rule('/whitelist/agent-sync',
+                                   methods=['GET'],
                                    view_func=require_jwt(self.agent_sync))
-        
-        # Admin management endpoints (requires admin login)
+
+        # Web-facing endpoints — wrapped with inject_current_user
         self.blueprint.add_url_rule('/whitelist',
                                    methods=['GET'],
-                                   view_func=require_login(self.list_domains))
+                                   view_func=inject_current_user(self.list_domains))
 
         self.blueprint.add_url_rule('/whitelist',
                                    methods=['POST'],
-                                   view_func=require_login(self.add_domain))
+                                   view_func=inject_current_user(self.add_domain))
 
         self.blueprint.add_url_rule('/whitelist/<domain_id>',
                                    methods=['DELETE'],
-                                   view_func=require_login(self.delete_domain))
+                                   view_func=inject_current_user(self.delete_domain))
 
         self.blueprint.add_url_rule('/whitelist/import',
                                    methods=['POST'],
-                                   view_func=require_login(self.import_domains))
+                                   view_func=inject_current_user(self.import_domains))
 
         self.blueprint.add_url_rule('/whitelist/export',
                                    methods=['GET'],
-                                   view_func=require_login(self.export_domains))
+                                   view_func=inject_current_user(self.export_domains))
 
         self.blueprint.add_url_rule('/whitelist/statistics',
                                    methods=['GET'],
-                                   view_func=require_login(self.get_statistics))
+                                   view_func=inject_current_user(self.get_statistics))
 
-        # Bulk operations (requires admin login)
+        # Bulk operations
         self.blueprint.add_url_rule('/whitelist/bulk',
                                    methods=['POST'],
-                                   view_func=require_login(self.bulk_add_entries))
+                                   view_func=inject_current_user(self.bulk_add_entries))
 
         self.blueprint.add_url_rule('/whitelist/bulk-update',
                                    methods=['POST'],
-                                   view_func=require_login(self.bulk_update_entries))
+                                   view_func=inject_current_user(self.bulk_update_entries))
 
         self.blueprint.add_url_rule('/whitelist/bulk-delete',
                                    methods=['POST'],
-                                   view_func=require_login(self.bulk_delete_entries))
-    
+                                   view_func=inject_current_user(self.bulk_delete_entries))
+
+    # ========================================================================
+    # RBAC HELPERS
+    # ========================================================================
+
+    def _is_teacher(self):
+        """Check if current request is from a teacher via web UI."""
+        user = getattr(g, 'current_user', None)
+        if user and user.get('role') == 'teacher':
+            return True, user
+        return False, user
+
+    def _teacher_can_access_group(self, user, group_id):
+        """Check if teacher owns this group_id."""
+        if not group_id:
+            return False
+        teacher_group_ids = self.rbac_service.get_teacher_group_ids(user)
+        if teacher_group_ids is None:
+            return True  # admin
+        return str(group_id) in teacher_group_ids
+
+    # ========================================================================
+    # AGENT SYNC (NOT affected by RBAC)
+    # ========================================================================
+
     def agent_sync(self):
         """Sync whitelist for agents - vietnam ONLY"""
         try:
-            # Get query parameters - agent_id from JWT (NOT from query params)
             since = request.args.get('since')
-            agent_id = g.agent_id
+            agent_id = request.args.get('agent_id')
             global_version = request.args.get('global_version')
             group_version = request.args.get('group_version')
 
             self.logger.debug(f"Agent sync request - since: {since}, agent_id: {agent_id}")
-            
-            # FIX: Better parameter validation using time_utils - vietnam ONLY
+
             since_datetime = None
             if since:
                 try:
-                    since_datetime = parse_agent_timestamp(since)  # vietnam parsing
+                    since_datetime = parse_agent_timestamp(since)
                 except Exception as e:
                     self.logger.warning(f"Invalid since parameter: {since}, error: {e}")
-                    # Continue without since filter
-            
-            # Call service method
+
             result = self.service.get_agent_sync_data(
-                since_datetime,
-                agent_id,
+                since_datetime, agent_id,
                 int(global_version) if global_version else None,
                 int(group_version) if group_version else None,
             )
-            
-            # FIX: Ensure response format is correct
+
             if not isinstance(result, dict):
                 result = {"domains": [], "error": "Invalid response format"}
-            
             if "domains" not in result:
                 result["domains"] = []
-            
-            # Add success indicator and timestamp - vietnam ONLY
+
             result["success"] = True
             result["agent_id"] = agent_id
-            result["timestamp"] = now_iso()  # vietnam ISO
+            result["timestamp"] = now_iso()
             result["count"] = len(result.get("domains", []))
-            
-            self.logger.debug(f"Returning {len(result.get('domains', []))} domains for agent sync")
-            
+
             return jsonify(result), 200
-            
+
         except Exception as e:
             self.logger.error(f"Error in agent sync: {str(e)}", exc_info=True)
-            
-            # FIX: Always return valid JSON with domains array - vietnam ONLY
-            error_response = {
-                "success": False,
-                "error": "Sync failed: " + str(e),
-                "domains": [],  # Always include empty domains array
-                "timestamp": now_iso(),  # vietnam ISO
-                "count": 0,
-                "type": "error"
-            }
-            
-            return jsonify(error_response), 500
-    
+            return jsonify({
+                "success": False, "error": "Sync failed: " + str(e),
+                "domains": [], "timestamp": now_iso(), "count": 0, "type": "error"
+            }), 500
+
+    # ========================================================================
+    # WEB-FACING ENDPOINTS (with teacher data filtering)
+    # ========================================================================
+
     def list_domains(self):
         """List all whitelist domains - vietnam ONLY"""
         try:
             agent_id = request.args.get('agent_id')
             group_id = request.args.get('group_id')
 
+            is_teacher, user = self._is_teacher()
+
             if agent_id or group_id:
+                # RBAC: Teacher can only view whitelist of their own groups
+                if is_teacher and group_id:
+                    if not self._teacher_can_access_group(user, group_id):
+                        return self._error_response("Khong co quyen xem whitelist cua Group nay", 403)
+
                 scoped = self.service.get_scoped_whitelist(agent_id=agent_id, group_id=group_id)
                 status_code = 200 if scoped.get("success") else 400
                 return jsonify(scoped), status_code
-            
+
             # Get pagination parameters
             limit = min(int(request.args.get('limit', 100)), 1000)
             offset = int(request.args.get('offset', 0))
             search = request.args.get('search', '').strip()
-            
-            # Call service method
+
+            # RBAC: Teacher — fetch ALL then filter + paginate in Python
+            # (post-filter approach; for large datasets, push filter into model)
+            if is_teacher:
+                teacher_group_ids = self.rbac_service.get_teacher_group_ids(user)
+                if teacher_group_ids is not None:
+                    # Fetch all domains (no pagination at DB level)
+                    all_result = self.service.get_all_domains(10000, 0, search)
+                    all_domains = all_result.get("domains", []) if isinstance(all_result, dict) else []
+
+                    # Filter: teacher sees global + their groups
+                    filtered = []
+                    for d in all_domains:
+                        d_scope = d.get("scope", "global")
+                        d_group = str(d.get("group_id", "")) if d.get("group_id") else None
+                        if d_scope == "global" or (d_group and d_group in teacher_group_ids):
+                            filtered.append(d)
+
+                    # Apply pagination on filtered result
+                    total = len(filtered)
+                    paginated = filtered[offset:offset + limit]
+                    result = {
+                        "success": True,
+                        "domains": paginated,
+                        "total": total,
+                        "timestamp": now_iso(),
+                    }
+                    return jsonify(result), 200
+
+            # Admin / Agent: normal service call
             result = self.service.get_all_domains(limit, offset, search)
-            
-            # Add vietnam timestamp to response
+
             if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
-            
+                result["timestamp"] = now_iso()
+
             return jsonify(result), 200
-            
+
         except Exception as e:
             self.logger.error(f"Error listing domains: {e}")
             return self._error_response("Failed to list domains", 500)
-    
+
     def add_domain(self):
-        """Add new entry to whitelist (domains, IPs, URLs, etc.)"""
+        """Add new entry to whitelist"""
         try:
             if not request.is_json:
                 return self._error_response("Request must be JSON", 400)
-            
+
             data = request.get_json() or {}
             entry_value = data.get('value', '').strip().lower()
             if not entry_value:
                 return self._error_response("Value is required", 400)
 
-            # Normalize entry payload and client IP for auditing
             entry_type = data.get('type', 'domain')
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if client_ip and ',' in client_ip:
                 client_ip = client_ip.split(',')[0].strip()
 
-            # Call unified service to handle all whitelist types
+            # RBAC: Teacher can only add to their own groups, not global
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                entry_group_id = data.get('group_id')
+                entry_scope = data.get('scope', 'global')
+                if entry_scope == 'global' and not entry_group_id:
+                    return self._error_response("Teacher khong duoc them vao whitelist global", 403)
+                if entry_group_id and not self._teacher_can_access_group(user, entry_group_id):
+                    return self._error_response("Khong co quyen them whitelist vao Group nay", 403)
+
             result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip)
 
-            response_body = {
-                "success": True,
-                "timestamp": now_iso(),
-                **result
-            }
-            
-            # Broadcast update via SocketIO - vietnam ONLY
+            response_body = {"success": True, "timestamp": now_iso(), **result}
+
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
-                    'action': 'added',
-                    'type': entry_type,
-                    'value': entry_value,
-                    'category': data.get('category', 'general'),
-                    'timestamp': now_iso()  # vietnam ISO
+                    'action': 'added', 'type': entry_type, 'value': entry_value,
+                    'category': data.get('category', 'general'), 'timestamp': now_iso()
                 })
-            
+
             return jsonify(response_body), 201
 
         except ValueError as e:
             return self._error_response(str(e), 400)
-            
         except Exception as e:
             self.logger.error(f"Error adding entry: {e}")
             return self._error_response("Failed to add domain", 500)
-    
+
     def delete_domain(self, domain_id: str):
         """Delete domain from whitelist - vietnam ONLY"""
         try:
             self.logger.info(f"Attempting to delete domain: {domain_id}")
-            
-            # FIX: Validate domain_id format
+
             if not domain_id or len(domain_id) < 10:
                 return jsonify({
-                    "success": False,
-                    "error": "Invalid domain ID format",
-                    "timestamp": now_iso()
+                    "success": False, "error": "Invalid domain ID format", "timestamp": now_iso()
                 }), 400
-            
-            # Call service method
+
+            # RBAC: Teacher ownership check on the entry
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                # Lookup the entry to check its group
+                from bson import ObjectId as BsonObjectId
+                try:
+                    entry = self.model.collection.find_one({"_id": BsonObjectId(domain_id)})
+                except Exception:
+                    entry = None
+
+                if entry:
+                    if entry.get("scope") == "global" and not entry.get("group_id"):
+                        return self._error_response("Teacher khong duoc xoa whitelist global", 403)
+                    entry_group = entry.get("group_id")
+                    if entry_group and not self._teacher_can_access_group(user, entry_group):
+                        return self._error_response("Khong co quyen xoa entry nay", 403)
+
             result = self.service.delete_domain(domain_id)
-            
-            # Broadcast update via SocketIO - vietnam ONLY
+
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
-                    'action': 'deleted',
-                    'domain_id': domain_id,
-                    'timestamp': now_iso()
+                    'action': 'deleted', 'domain_id': domain_id, 'timestamp': now_iso()
                 })
-            
-            # Add vietnam timestamp to response
+
             if isinstance(result, dict):
                 result["timestamp"] = now_iso()
-            
+
             status_code = 200 if result.get('success') else 404
             return jsonify(result), status_code
-            
+
         except Exception as e:
             self.logger.error(f"Error deleting domain {domain_id}: {e}")
             return jsonify({
-                "success": False,
-                "error": f"Failed to delete domain: {str(e)}",
+                "success": False, "error": f"Failed to delete domain: {str(e)}",
                 "timestamp": now_iso()
             }), 500
 
-    
     def import_domains(self):
         """Import multiple domains - vietnam ONLY"""
         try:
             if not request.is_json:
                 return self._error_response("Request must be JSON", 400)
-            
+
             data = request.get_json()
             if not data or 'domains' not in data:
                 return self._error_response("Domains list is required", 400)
-            
+
             domains = data['domains']
             if not isinstance(domains, list):
                 return self._error_response("Domains must be a list", 400)
-            
-            # Call service method
+
+            # RBAC: Teacher can only import to their own groups
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                import_group_id = data.get('group_id')
+                if not import_group_id:
+                    return self._error_response("Teacher phai chi dinh group_id khi import", 403)
+                if not self._teacher_can_access_group(user, import_group_id):
+                    return self._error_response("Khong co quyen import vao Group nay", 403)
+
             result = self.service.import_domains(domains, data.get('category', 'imported'))
-            
-            # Broadcast update via SocketIO - vietnam ONLY
+
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
-                    'action': 'imported',
-                    'count': result.get('added_count', 0),
-                    'category': data.get('category', 'imported'),
-                    'timestamp': now_iso()  # vietnam ISO
+                    'action': 'imported', 'count': result.get('added_count', 0),
+                    'category': data.get('category', 'imported'), 'timestamp': now_iso()
                 })
-            
-            # Add vietnam timestamp to response
+
             if isinstance(result, dict):
-                result["timestamp"] = now_iso()  # vietnam ISO
-            
+                result["timestamp"] = now_iso()
+
             return jsonify(result), 200
-            
+
         except Exception as e:
             self.logger.error(f"Error importing domains: {e}")
             return self._error_response("Failed to import domains", 500)
-    
+
     def export_domains(self):
         """Export whitelist domains - vietnam ONLY"""
         try:
+            # RBAC: Teacher does NOT have logs:export (but whitelist:read is enough for viewing)
+            # Teacher can export their own group whitelist
             format = request.args.get('format', 'json')
             category = request.args.get('category')
-            
-            # Call service method
+
             result = self.service.export_domains(format, category)
-            
+
             if result.get('success'):
-                # Add vietnam timestamp to response
                 if isinstance(result, dict):
-                    result["timestamp"] = now_iso()  # vietnam ISO
-                
+                    result["timestamp"] = now_iso()
+
                 if format == 'txt':
                     from flask import Response
                     return Response(
-                        result['data'],
-                        mimetype='text/plain',
+                        result['data'], mimetype='text/plain',
                         headers={'Content-Disposition': 'attachment; filename=whitelist.txt'}
                     )
                 else:
                     return jsonify(result), 200
             else:
                 return self._error_response(result.get('error', 'Export failed'), 500)
-                
+
         except Exception as e:
             self.logger.error(f"Error exporting domains: {e}")
             return self._error_response("Failed to export domains", 500)
-    
+
     def get_statistics(self):
         """Get whitelist statistics - vietnam ONLY"""
         try:
-            # Call service method
             stats = self.service.get_statistics()
-            
             return jsonify({
-                'success': True,
-                'statistics': stats,
-                'timestamp': now_iso()  # vietnam ISO
+                'success': True, 'statistics': stats, 'timestamp': now_iso()
             }), 200
-            
         except Exception as e:
             self.logger.error(f"Error getting statistics: {e}")
             return self._error_response("Failed to get statistics", 500)
-    
+
+    # ========================================================================
+    # BULK OPERATIONS
+    # ========================================================================
+
     def bulk_add_entries(self):
         """Bulk add multiple whitelist entries"""
         try:
             data = request.get_json()
-            
             if not data or 'items' not in data:
-                return jsonify({
-                    "success": False,
-                    "error": "No items provided"
-                }), 400
-            
-            items = data['items']
-            
-            if not isinstance(items, list):
-                return jsonify({
-                    "success": False,
-                    "error": "Items must be an array"
-                }), 400
-            
-            if len(items) == 0:
-                return jsonify({
-                    "success": False,
-                    "error": "No items to import"
-                }), 400
-            
-            if len(items) > 1000:
-                return jsonify({
-                    "success": False,
-                    "error": "Maximum 1000 items per bulk operation"
-                }), 400
-            
-            # Validate group_id ownership for teacher
-            rbac = get_rbac_service()
-            if rbac:
-                group_ids = list({
-                    str(item['group_id'])
-                    for item in items
-                    if item.get('group_id')
-                })
-                if group_ids:
-                    is_valid, invalid_ids = rbac.validate_group_ids_ownership(
-                        g.current_user, group_ids
-                    )
-                    if not is_valid:
-                        return jsonify({
-                            "success": False,
-                            "error": f"Không có quyền thao tác trên group: {', '.join(invalid_ids)}"
-                        }), 403
+                return jsonify({"success": False, "error": "No items provided"}), 400
 
-            # Get client IP
+            items = data['items']
+            if not isinstance(items, list):
+                return jsonify({"success": False, "error": "Items must be an array"}), 400
+            if len(items) == 0:
+                return jsonify({"success": False, "error": "No items to import"}), 400
+            if len(items) > 1000:
+                return jsonify({"success": False, "error": "Maximum 1000 items per bulk operation"}), 400
+
+            # RBAC: Teacher check on group_id of items
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
+                for item in items:
+                    item_group = item.get('group_id')
+                    if not item_group or str(item_group) not in teacher_group_ids:
+                        return self._error_response(
+                            "Teacher chi duoc them whitelist vao Group cua minh", 403)
+
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if ',' in client_ip:
                 client_ip = client_ip.split(',')[0].strip()
 
-            # Process bulk add
             result = self.service.bulk_add_entries(items, client_ip)
-            
             return jsonify(result), 200 if result['success'] else 400
-            
+
         except Exception as e:
             self.logger.error(f"Error in bulk add: {e}")
-            return jsonify({
-                "success": False,
-                "error": str(e),
-                "server_time": now_iso()
-            }), 500
-    
+            return jsonify({"success": False, "error": str(e), "server_time": now_iso()}), 500
+
     def bulk_update_entries(self):
         """Bulk update multiple whitelist entries"""
         try:
             data = request.get_json()
-            
             if not data or 'item_ids' not in data:
-                return jsonify({
-                    "success": False,
-                    "error": "No item IDs provided"
-                }), 400
-            
+                return jsonify({"success": False, "error": "No item IDs provided"}), 400
+
             item_ids = data['item_ids']
             active = data.get('active', True)
-            
+
             if not isinstance(item_ids, list):
-                return jsonify({
-                    "success": False,
-                    "error": "Item IDs must be an array"
-                }), 400
-            
+                return jsonify({"success": False, "error": "Item IDs must be an array"}), 400
+
+            # RBAC: Teacher ownership check on each entry
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
+                from bson import ObjectId as BsonObjectId
+                for item_id in item_ids:
+                    try:
+                        entry = self.model.collection.find_one(
+                            {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
+                    except Exception:
+                        entry = None
+                    if entry:
+                        if entry.get("scope") == "global" and not entry.get("group_id"):
+                            return self._error_response("Teacher khong duoc sua whitelist global", 403)
+                        entry_group = entry.get("group_id")
+                        if entry_group and str(entry_group) not in teacher_group_ids:
+                            return self._error_response("Khong co quyen sua entry nay", 403)
+
             updated_count = 0
             errors = []
-            
             for item_id in item_ids:
                 try:
                     success = self.service.update_entry(item_id, {"is_active": active})
@@ -428,57 +467,59 @@ class WhitelistController:
                         errors.append(f"Failed to update {item_id}")
                 except Exception as e:
                     errors.append(f"Error updating {item_id}: {str(e)}")
-            
+
             return jsonify({
-                "success": True,
-                "updated_count": updated_count,
-                "error_count": len(errors),
-                "errors": errors[:10],  # Limit error list
+                "success": True, "updated_count": updated_count,
+                "error_count": len(errors), "errors": errors[:10],
                 "server_time": now_iso()
             }), 200
-            
+
         except Exception as e:
             self.logger.error(f"Error in bulk update: {e}")
-            return jsonify({
-                "success": False,
-                "error": str(e)
-            }), 500
-    
+            return jsonify({"success": False, "error": str(e)}), 500
+
     def bulk_delete_entries(self):
         """Bulk delete multiple whitelist entries"""
         try:
             data = request.get_json()
-            
             if not data or 'item_ids' not in data:
-                return jsonify({
-                    "success": False,
-                    "error": "No item IDs provided"
-                }), 400
-            
+                return jsonify({"success": False, "error": "No item IDs provided"}), 400
+
             item_ids = data['item_ids']
-            
             if not isinstance(item_ids, list):
-                return jsonify({
-                    "success": False,
-                    "error": "Item IDs must be an array"
-                }), 400
-            
-            # Use service method
+                return jsonify({"success": False, "error": "Item IDs must be an array"}), 400
+
+            # RBAC: Teacher ownership check
+            is_teacher, user = self._is_teacher()
+            if is_teacher:
+                teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
+                from bson import ObjectId as BsonObjectId
+                for item_id in item_ids:
+                    try:
+                        entry = self.model.collection.find_one(
+                            {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
+                    except Exception:
+                        entry = None
+                    if entry:
+                        if entry.get("scope") == "global" and not entry.get("group_id"):
+                            return self._error_response("Teacher khong duoc xoa whitelist global", 403)
+                        entry_group = entry.get("group_id")
+                        if entry_group and str(entry_group) not in teacher_group_ids:
+                            return self._error_response("Khong co quyen xoa entry nay", 403)
+
             result = self.service.bulk_delete_entries(item_ids)
-            
             return jsonify(result), 200
-            
+
         except Exception as e:
             self.logger.error(f"Error in bulk delete: {e}")
-            return jsonify({
-                "success": False,
-                "error": str(e)
-            }), 500
-    
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # ========================================================================
+    # HELPER
+    # ========================================================================
+
     def _error_response(self, message: str, status_code: int) -> Tuple:
         """Create error response - vietnam ONLY"""
         return jsonify({
-            "success": False,
-            "error": message,
-            "timestamp": now_iso()  # vietnam ISO
+            "success": False, "error": message, "timestamp": now_iso()
         }), status_code

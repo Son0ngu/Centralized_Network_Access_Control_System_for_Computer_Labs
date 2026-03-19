@@ -21,11 +21,12 @@ from middleware.rbac import require_login, get_rbac_service
 class AgentController:
     """Controller for agent operations"""
     
-    def __init__(self, agent_model: AgentModel, agent_service: AgentService, socketio=None,
+    def __init__(self, agent_model: AgentModel, agent_service: AgentService, rbac_service=None, socketio=None,
                  policy_service=None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = agent_model
         self.service = agent_service
+        self.rbac_service = rbac_service
         self.socketio = socketio
         self.policy_service = policy_service
         self.blueprint = Blueprint('agents', __name__)
@@ -530,10 +531,33 @@ class AgentController:
             return self._error_response("Failed to set policy", 500)
 
     def get_statistics(self):
-        """Get agent statistics"""
+        """Get agent statistics — RBAC-aware: teacher only sees their agents"""
         try:
-            #  CRITICAL: Use calculate_statistics method
             stats = self.service.calculate_statistics()
+
+            # RBAC: filter for teacher
+            rbac = get_rbac_service()
+            if rbac:
+                teacher_group_ids = rbac.get_teacher_group_ids(g.current_user)
+                if teacher_group_ids is not None:
+                    group_set = set(teacher_group_ids)
+                    agents = self.service.get_agents_with_status()
+                    filtered = [a for a in agents if str(a.get('group_id', '')) in group_set]
+                    total = len(filtered)
+                    active = len([a for a in filtered if a.get('status') == 'active'])
+                    inactive = len([a for a in filtered if a.get('status') == 'inactive'])
+                    offline = len([a for a in filtered if a.get('status') == 'offline'])
+                    pending = len([a for a in filtered if a.get('status') == 'pending'])
+                    active_pct = (active / total * 100) if total > 0 else 0
+                    stats = {
+                        'total': total, 'active': active, 'inactive': inactive,
+                        'offline': offline, 'pending': pending,
+                        'active_percentage': round(active_pct, 1),
+                        'health_status': 'good' if active_pct > 70 else 'warning' if active_pct > 30 else 'critical',
+                        'last_calculated': stats.get('last_calculated'),
+                        'thresholds': stats.get('thresholds'),
+                    }
+
             self.logger.info(f" Statistics calculated: {stats}")
             return self._success_response(stats)
         except Exception as e:

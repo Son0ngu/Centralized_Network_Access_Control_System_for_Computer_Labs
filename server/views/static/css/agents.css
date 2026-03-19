@@ -1,3 +1,8 @@
+/* Prevent horizontal overflow on mobile */
+html, body {
+    overflow-x: hidden;
+}
+
 .hero-section {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 25px;
@@ -6,6 +11,8 @@
     margin-bottom: 2.5rem;
     position: relative;
     overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .hero-section::before {
@@ -82,6 +89,8 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
     margin-bottom: 1.5rem;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .agent-card:hover {
@@ -690,8 +699,9 @@
         font-size: 1.5rem;
     }
 
-    /* Agent cards */
-    .agent-card .card-body {
+    /* Agent cards & items */
+    .agent-card .card-body,
+    .agent-item {
         padding: 1rem;
     }
 
@@ -702,6 +712,10 @@
     .agent-actions .btn-action {
         padding: 0.3rem 0.6rem;
         font-size: 0.8rem;
+    }
+
+    .agent-item .d-flex.align-items-center.justify-content-end {
+        flex-wrap: wrap;
     }
 
     /* Group board */
@@ -800,10 +814,33 @@
         padding: 0.75rem;
     }
 
-    /* Agent card responsive layout */
-    .agent-card .card-body .d-flex {
-        flex-wrap: wrap;
+    /* Agent item responsive layout */
+    .agent-item {
+        padding: 0.75rem !important;
+    }
+
+    .agent-item .row {
+        flex-direction: column;
+    }
+
+    .agent-item .col-md-6 {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .agent-item .d-flex.align-items-center.justify-content-end {
+        justify-content: flex-start !important;
+        flex-direction: column;
+        align-items: stretch !important;
         gap: 0.5rem;
+    }
+
+    .agent-item .me-3 {
+        display: none;
+    }
+
+    .agent-log-panel {
+        width: 100%;
     }
 
     .agent-actions {
@@ -829,6 +866,12 @@
     .agent-status {
         font-size: 0.65rem;
         padding: 0.25rem 0.5rem;
+    }
+
+    /* Prevent any child from causing horizontal overflow */
+    .agent-item * {
+        max-width: 100%;
+        overflow-wrap: break-word;
     }
 
     /* Group board on mobile */

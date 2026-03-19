@@ -143,8 +143,27 @@ body.login-page {
     display: none;
 }
 
-/* Responsive */
+/* ========================================
+   Responsive: Tablet Portrait (max-width: 768px)
+   ======================================== */
+@media (max-width: 768px) {
+    .login-container {
+        max-width: 380px;
+    }
+
+    .login-card {
+        padding: 2rem;
+    }
+}
+
+/* ========================================
+   Responsive: Mobile (max-width: 576px)
+   ======================================== */
 @media (max-width: 576px) {
+    .login-container {
+        max-width: 100%;
+    }
+
     .login-card {
         padding: 1.75rem;
     }
@@ -155,5 +174,15 @@ body.login-page {
 
     .login-logo h1 {
         font-size: 1.25rem;
+    }
+
+    .login-form .form-control {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-login {
+        padding: 0.625rem;
+        font-size: 0.95rem;
     }
 }

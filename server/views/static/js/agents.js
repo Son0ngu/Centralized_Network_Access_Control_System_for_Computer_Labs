@@ -590,16 +590,19 @@ function renderGroups() {
                         <i class="fas fa-eye"></i>
                     </button>
                     ${group.is_system ? '' : `
+                        ${window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                         <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${group._id}">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${group._id}">
                             <i class="fas fa-trash"></i>
                         </button>
+                        ` : ''}
                     `}
                 </div>
             </div>
             <div class="group-meta">${group.description || 'No description'}</div>
+            ${group.created_by_username ? `<div class="group-owner"><span class="badge bg-${group.created_by_role === 'admin' ? 'danger' : 'success'} bg-opacity-10 text-${group.created_by_role === 'admin' ? 'danger' : 'success'}" style="font-size:0.7rem;"><i class="fas fa-user me-1"></i>${group.created_by_username}</span></div>` : ''}
             <div class="group-stats">
                 <span class="badge bg-light text-dark border">
                     <i class="fas fa-shield-alt me-1"></i>Whitelist: ${whitelistCount}

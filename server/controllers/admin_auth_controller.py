@@ -57,6 +57,10 @@ class AdminAuthController:
             '/admin/auth/change-password', 'change_password',
             self.change_password, methods=['PUT']
         )
+        self.blueprint.add_url_rule(
+            '/admin/auth/profile', 'update_profile',
+            self.update_profile, methods=['PUT']
+        )
 
     def _success(self, data=None, message="Success", status_code=200) -> Tuple:
         response = {"success": True, "message": message}
@@ -270,3 +274,49 @@ class AdminAuthController:
         except Exception as e:
             self.logger.error(f"Change password error: {e}")
             return self._error("Doi mat khau that bai", 500)
+
+    @require_login
+    def update_profile(self):
+        """
+        PUT /api/admin/auth/profile
+        Body: {"email": "..."}
+        """
+        try:
+            if not request.is_json:
+                return self._error("Request must be JSON", 400)
+
+            data = request.get_json()
+            email = data.get("email", "").strip()
+
+            update_data = {}
+            if email:
+                # Check email duplicate
+                existing = self.auth_service.user_model.find_by_email(email)
+                if existing and str(existing.get("_id")) != str(g.current_user_id):
+                    return self._error("Email da duoc su dung boi nguoi khac", 400)
+                update_data["email"] = email
+
+            if update_data:
+                success = self.auth_service.user_model.update(g.current_user_id, update_data)
+                if success:
+                    # Log audit if needed
+                    try:
+                        if hasattr(self.auth_service, 'audit_service'):
+                            self.auth_service.audit_service.log(
+                                action="profile.update",
+                                username=g.current_user.get("username"),
+                                role=g.current_role,
+                                ip_address=request.remote_addr,
+                                details={"updated_fields": list(update_data.keys())}
+                            )
+                    except Exception as e:
+                        self.logger.error(f"Failed to log profile update: {e}")
+                        
+                    return self._success(None, "Cap nhat ho so thanh cong")
+                return self._error("Khong the cap nhat ho so", 500)
+
+            return self._success(None, "Khong co thay doi")
+
+        except Exception as e:
+            self.logger.error(f"Update profile error: {e}")
+            return self._error("Cap nhat ho so that bai", 500)

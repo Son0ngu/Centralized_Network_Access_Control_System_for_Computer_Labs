@@ -8,6 +8,11 @@ let wlEntries = [];            // Inline whitelist editor state
 let wlAllEntries = [];         // Unfiltered copy for search
 const groupId = document.getElementById('groupId').value;
 
+// Whitelist Profiles state
+let wpProfiles = [];
+// wpEditDomains removed — profile domains now edited on /whitelist page
+let wpAssignedTeachers = [];   // Current assigned teacher ObjectIds
+
 // ========================================
 // INITIALIZATION
 // ========================================
@@ -20,6 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSocketIO();
     formatDates();
     wlLoadEntries();
+    wpLoadProfiles();
+    wpLoadTeachers();
     
     // Initialize custom select for status filter
     if (typeof initCustomSelect === 'function') {
@@ -244,9 +251,10 @@ function renderAgentItem(agent) {
                     <button class="btn btn-sm btn-outline-primary" onclick="viewAgentLogs('${agent.agent_id}')" title="View Logs">
                         <i class="fas fa-file-alt"></i>
                     </button>
+                    ${window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                     <button class="btn btn-sm btn-outline-danger" onclick="removeAgentFromGroup('${agent.agent_id}')" title="Remove from Group">
                         <i class="fas fa-user-minus"></i>
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         </div>
@@ -621,6 +629,7 @@ function showError(message) {
 
 let currentView = 'list';
 let targetSlotPosition = null;
+let layoutSaveTimer = null;
 
 function switchView(mode) {
     currentView = mode;
@@ -643,6 +652,36 @@ function switchView(mode) {
 
 function updateGridLayout() {
     renderGroupMap(groupAgents);
+    
+    // Save to server with debounce
+    if (layoutSaveTimer) clearTimeout(layoutSaveTimer);
+    layoutSaveTimer = setTimeout(() => {
+        saveGroupLayout();
+    }, 1000);
+}
+
+async function saveGroupLayout() {
+    let rows = parseInt(document.getElementById('gridRows').value);
+    let cols = parseInt(document.getElementById('gridCols').value);
+    
+    if (!rows || rows < 1) rows = 1;
+    if (!cols || cols < 1) cols = 1;
+
+    try {
+        const response = await fetch(`/api/groups/${groupId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                layout: { rows: rows, cols: cols }
+            })
+        });
+        
+        if (!response.ok) {
+            console.error("Failed to save room layout to database");
+        }
+    } catch (e) {
+        console.error("Error saving room layout:", e);
+    }
 }
 
 function renderGroupMap(agents) {
@@ -1250,15 +1289,19 @@ async function applyPolicy(agentId, mode, reason = '', durationMinutes = null, c
 // INLINE WHITELIST EDITOR
 // ========================================
 
+// Default Profile state for whitelist editor
+let wlDefaultProfile = null;
+
 /**
- * Load whitelist entries for this group from API
+ * Load whitelist entries from Default Profile for this group
  */
 async function wlLoadEntries() {
     const container = document.getElementById('wlDomainList');
     if (!container) return;
 
     try {
-        const res = await fetch(`/api/whitelist?group_id=${groupId}`);
+        // Load Default Profile instead of group whitelist
+        const res = await fetch(`/api/groups/${groupId}/default-profile`);
         const data = await res.json();
 
         if (!data.success) {
@@ -1266,20 +1309,40 @@ async function wlLoadEntries() {
             return;
         }
 
-        // Combine group entries (primary) — global entries shown separately if needed
-        const groupEntries = (data.group || []).map(e => ({...e, _scope: 'group'}));
-        const globalEntries = (data.global || []).map(e => ({...e, _scope: 'global'}));
+        wlDefaultProfile = data.data;
+        const domains = wlDefaultProfile.domains || [];
 
-        wlAllEntries = [...groupEntries, ...globalEntries];
+        // Convert profile domains to entry format for rendering
+        const groupEntries = domains.map((d, i) => {
+            const val = typeof d === 'string' ? d : (d.value || '');
+            const type = typeof d === 'string' ? 'domain' : (d.type || 'domain');
+            const category = typeof d === 'string' ? 'general' : (d.category || 'general');
+            const priority = typeof d === 'string' ? 'normal' : (d.priority || 'normal');
+            return {
+                _id: `default|${i}`,
+                value: val,
+                type: type,
+                category: category,
+                priority: priority,
+                is_active: true,
+                _scope: 'group',
+                _index: i,
+            };
+        });
+
+        wlAllEntries = groupEntries;
         wlEntries = [...wlAllEntries];
 
         // Update counters
         const countEl = document.getElementById('wlCount');
         const totalEl = document.getElementById('wlTotalCount');
+        const versionEl = document.getElementById('wlVersion');
         if (countEl) countEl.textContent = groupEntries.length;
-        if (totalEl) totalEl.textContent = wlAllEntries.length;
+        if (totalEl) totalEl.textContent = groupEntries.length;
+        if (versionEl) versionEl.textContent = wlDefaultProfile.version || 1;
 
         wlRenderList();
+        wpUpdateBanner(); // Update banner with latest default profile info
     } catch (err) {
         console.error('wlLoadEntries error:', err);
         container.innerHTML = '<div class="wl-empty-state"><p>Lỗi kết nối</p></div>';
@@ -1331,11 +1394,13 @@ function wlRenderList() {
         // Priority star
         const star = priority === 'high' ? '<i class="fas fa-star wl-priority-star" title="High priority"></i>' : '';
 
-        // Delete button — only for group entries
-        const deleteBtn = isGlobal
+        // Delete button — uses domain index for Default Profile (admin only)
+        const entryIndex = entry._index !== undefined ? entry._index : '';
+        const isAdminUser = window.SAINT_AUTH && window.SAINT_AUTH.isAdmin;
+        const deleteBtn = (isGlobal || !isAdminUser)
             ? ''
             : `<div class="wl-actions">
-                <button class="btn btn-outline-danger btn-sm" onclick="wlDeleteEntry('${entryId}')" title="Xoá">
+                <button class="btn btn-outline-danger btn-sm" onclick="wlDeleteEntry(${entryIndex})" title="Xoá">
                     <i class="fas fa-trash-alt"></i>
                 </button>
                </div>`;
@@ -1387,7 +1452,7 @@ async function wlAddEntry() {
     const input = document.getElementById('wlNewValue');
     const typeSelect = document.getElementById('wlNewType');
     const btn = document.getElementById('wlAddBtn');
-    if (!input) return;
+    if (!input || !wlDefaultProfile) return;
 
     const raw = input.value.trim();
     if (!raw) { input.focus(); return; }
@@ -1398,38 +1463,46 @@ async function wlAddEntry() {
 
     const type = typeSelect?.value || 'domain';
 
-    // Build items
-    const items = values.map(val => ({
-        value: val,
-        type: type,
-        category: 'general',
-        scope: 'group',
-        group_id: groupId,
-        is_active: true,
-        priority: 'normal'
-    }));
+    // Build new domains array by appending to existing
+    const currentDomains = [...(wlDefaultProfile.domains || [])];
+    let addedCount = 0;
+    for (const val of values) {
+        const exists = currentDomains.some(d => {
+            const dVal = typeof d === 'string' ? d : d.value;
+            return dVal === val;
+        });
+        if (!exists) {
+            currentDomains.push({ value: val, type: type, category: 'general' });
+            addedCount++;
+        }
+    }
+
+    if (addedCount === 0) {
+        showNotification('warning', 'Tất cả domain đã tồn tại');
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     try {
-        const res = await fetch('/api/whitelist/bulk', {
-            method: 'POST',
+        const res = await fetch(`/api/groups/${groupId}/profiles/${wlDefaultProfile._id}`, {
+            method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items })
+            body: JSON.stringify({ domains: currentDomains })
         });
         const data = await res.json();
 
         if (data.success) {
             input.value = '';
-            showSuccess(`Đã thêm ${data.added_count || values.length} domain`);
+            showNotification('success', `Đã thêm ${addedCount} domain`);
             await wlLoadEntries();
         } else {
-            showError(data.error || 'Không thể thêm domain');
+            showNotification('danger', data.error || 'Không thể thêm domain');
         }
     } catch (err) {
         console.error('wlAddEntry error:', err);
-        showError('Lỗi kết nối server');
+        showNotification('danger', 'Lỗi kết nối server');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-plus"></i>';
@@ -1439,27 +1512,34 @@ async function wlAddEntry() {
 /**
  * Delete a whitelist entry
  */
-async function wlDeleteEntry(entryId) {
-    if (!entryId) return;
+async function wlDeleteEntry(entryIndex) {
+    if (entryIndex === undefined || !wlDefaultProfile) return;
     if (!confirm('Xoá domain này khỏi whitelist?')) return;
 
+    const currentDomains = [...(wlDefaultProfile.domains || [])];
+    const idx = parseInt(entryIndex);
+    if (idx < 0 || idx >= currentDomains.length) return;
+
+    const removed = currentDomains.splice(idx, 1);
+    const removedVal = typeof removed[0] === 'string' ? removed[0] : removed[0]?.value;
+
     try {
-        const res = await fetch('/api/whitelist/bulk-delete', {
-            method: 'POST',
+        const res = await fetch(`/api/groups/${groupId}/profiles/${wlDefaultProfile._id}`, {
+            method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ item_ids: [entryId] })
+            body: JSON.stringify({ domains: currentDomains })
         });
         const data = await res.json();
 
         if (data.success) {
-            showSuccess('Đã xoá domain');
+            showNotification('success', `Đã xoá "${removedVal}"`);
             await wlLoadEntries();
         } else {
-            showError(data.error || 'Không thể xoá');
+            showNotification('danger', data.error || 'Không thể xoá');
         }
     } catch (err) {
         console.error('wlDeleteEntry error:', err);
-        showError('Lỗi kết nối');
+        showNotification('danger', 'Lỗi kết nối');
     }
 }
 
@@ -1480,4 +1560,391 @@ function wlEscapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ========================================
+// WHITELIST PROFILES
+// ========================================
+
+async function wpLoadProfiles() {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles`);
+        const data = await res.json();
+        if (!data.success) return;
+        wpProfiles = data.data || [];
+        wpRenderProfiles();
+        wpUpdateBanner();
+    } catch (e) {
+        console.error('Failed to load profiles:', e);
+    }
+}
+
+/**
+ * Update the Firewall Status Banner based on current profile state
+ */
+function wpUpdateBanner() {
+    const iconEl = document.getElementById('firewallBannerIcon');
+    const titleEl = document.getElementById('firewallBannerTitle');
+    const descEl = document.getElementById('firewallBannerDesc');
+    if (!titleEl || !descEl) return;
+
+    const activeProfile = wpProfiles.find(p => p.is_active && !p.is_default);
+
+    if (activeProfile) {
+        // Teacher profile is active
+        iconEl.style.background = '#fff3e0';
+        iconEl.innerHTML = '<i class="fas fa-user-shield text-warning fa-lg"></i>';
+        titleEl.innerHTML = `<span class="text-warning">Teacher Profile Active</span>`;
+        descEl.innerHTML = `<i class="fas fa-play-circle me-1 text-warning"></i><strong>${wlEscapeHtml(activeProfile.name)}</strong> — ${wlEscapeHtml(activeProfile.teacher_username || '')} <span class="text-muted">(${(activeProfile.domains || []).length} domains)</span>`;
+    } else {
+        // Default Profile is in use
+        const defaultDomainCount = wlDefaultProfile ? (wlDefaultProfile.domains || []).length : '...';
+        iconEl.style.background = '#e8f5e9';
+        iconEl.innerHTML = '<i class="fas fa-shield-alt text-success fa-lg"></i>';
+        titleEl.innerHTML = `<span class="text-success">Default Profile</span>`;
+        descEl.innerHTML = `<i class="fas fa-check-circle me-1 text-success"></i>Dang dung Default Whitelist Profile <span class="text-muted">(${defaultDomainCount} domains)</span>`;
+    }
+}
+
+/**
+ * Render Teacher Profiles as a table (excludes Default profile)
+ */
+function wpRenderProfiles() {
+    const container = document.getElementById('profilesList');
+    const countEl = document.getElementById('profileCount');
+    if (!container) return;
+
+    // Filter out the Default profile — it's shown in its own card
+    const teacherProfiles = wpProfiles.filter(p => !p.is_default);
+    if (countEl) countEl.textContent = teacherProfiles.length;
+
+    if (teacherProfiles.length === 0) {
+        container.innerHTML = '<div class="text-center py-3 text-muted small">Chua co teacher profile nao</div>';
+        return;
+    }
+
+    const isAdmin = window.SAINT_AUTH && window.SAINT_AUTH.isAdmin;
+    const currentUserId = window.SAINT_AUTH?.user?._id;
+
+    let html = `
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Name</th>
+                    <th>Owner</th>
+                    <th class="text-center">Domains</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-end pe-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    for (const p of teacherProfiles) {
+        const isActive = p.is_active;
+        const domainCount = (p.domains || []).length;
+        const isOwn = currentUserId && String(p.teacher_id) === String(currentUserId);
+        const canManage = isOwn || isAdmin;
+
+        const statusBadge = isActive
+            ? '<span class="badge bg-success"><i class="fas fa-circle me-1" style="font-size:0.5rem;vertical-align:middle;"></i>Active</span>'
+            : '<span class="badge bg-secondary"><i class="fas fa-circle me-1" style="font-size:0.5rem;vertical-align:middle;"></i>Off</span>';
+
+        // Action buttons
+        let actions = '';
+
+        // Activate / Deactivate
+        if (isActive) {
+            actions += `<button class="btn btn-outline-warning btn-sm" onclick="wpDeactivate('${p._id}')" title="Tat profile"><i class="fas fa-pause"></i></button>`;
+        } else {
+            actions += `<button class="btn btn-outline-success btn-sm" onclick="wpActivate('${p._id}')" title="Kich hoat"><i class="fas fa-play"></i></button>`;
+        }
+
+        // Edit Rules — redirect to /whitelist?profile_id=...
+        if (canManage) {
+            actions += ` <a href="/whitelist?profile_id=${p._id}&group_id=${groupId}" class="btn btn-outline-primary btn-sm" title="Chinh sua Rule"><i class="fas fa-edit"></i></a>`;
+        }
+
+        // Delete (only non-active, only owner/admin)
+        if (canManage && !isActive) {
+            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="wpDeleteProfile('${p._id}')" title="Xoa"><i class="fas fa-trash"></i></button>`;
+        }
+
+        html += `
+            <tr class="${isActive ? 'table-success' : ''}">
+                <td class="ps-3 fw-semibold small">${wlEscapeHtml(p.name)}</td>
+                <td class="small text-muted">${wlEscapeHtml(p.teacher_username || '-')}</td>
+                <td class="text-center"><span class="badge bg-light text-dark">${domainCount}</span></td>
+                <td class="text-center">${statusBadge}</td>
+                <td class="text-end pe-3">
+                    <div class="btn-group btn-group-sm">${actions}</div>
+                </td>
+            </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+}
+
+async function wpActivate(profileId) {
+    // Refresh from server to get fresh state before activating
+    try {
+        const freshRes = await fetch(`/api/groups/${groupId}/profiles`);
+        const freshData = await freshRes.json();
+        if (freshData.success) {
+            wpProfiles = freshData.data || [];
+            wpRenderProfiles();
+        }
+    } catch (e) { /* proceed with cached state */ }
+
+    const activeProfile = wpProfiles.find(p => p.is_active);
+    if (activeProfile && activeProfile._id !== profileId) {
+        const confirmed = confirm(
+            `Profile "${activeProfile.name}" cua ${activeProfile.teacher_username} dang active.\n` +
+            `Ban co muon tat de activate profile moi?`
+        );
+        if (!confirmed) return;
+    }
+
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}/activate`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            await wpLoadProfiles();
+            showNotification('Profile activated', 'success');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error activating profile', 'danger');
+    }
+}
+
+async function wpDeactivate(profileId) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}/deactivate`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            await wpLoadProfiles();
+            showNotification('Profile deactivated — fallback ve Default', 'warning');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error deactivating profile', 'danger');
+    }
+}
+
+function openCreateProfileModal() {
+    document.getElementById('profileEditId').value = '';
+    document.getElementById('profileName').value = '';
+    document.getElementById('profileModalTitle').innerHTML = '<i class="fas fa-clipboard-list me-2"></i>New Whitelist Profile';
+    new bootstrap.Modal(document.getElementById('profileModal')).show();
+}
+
+/**
+ * "Chinh sua Rule" — redirect to /whitelist page with profile_id
+ */
+function wpEditProfile(profileId) {
+    window.location.href = `/whitelist?profile_id=${profileId}&group_id=${groupId}`;
+}
+
+/**
+ * Save new profile (name only — domains managed on /whitelist page)
+ */
+async function saveProfile() {
+    const name = document.getElementById('profileName').value.trim();
+    if (!name) {
+        showNotification('Ten profile khong duoc de trong', 'warning');
+        return;
+    }
+
+    const payload = { name, domains: [] };
+
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('profileModal'))?.hide();
+            await wpLoadProfiles();
+            showNotification('Profile da tao — dung "Chinh sua Rule" de them domain', 'success');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error saving profile', 'danger');
+    }
+}
+
+async function wpDeleteProfile(profileId) {
+    if (!confirm('Xoa profile nay?')) return;
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            wpLoadProfiles();
+            showNotification('Profile deleted', 'success');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error deleting profile', 'danger');
+    }
+}
+
+// ========================================
+// TEACHER ASSIGNMENT (Admin only)
+// ========================================
+
+async function wpLoadTeachers() {
+    // Only load for admin
+    if (!window.SAINT_AUTH || !window.SAINT_AUTH.isAdmin) return;
+
+    try {
+        // Get group data to find current teacher_ids
+        const res = await fetch(`/api/groups/${groupId}`);
+        const data = await res.json();
+        if (!data.success) return;
+
+        const group = data.data;
+        wpAssignedTeachers = (group.teacher_ids || []).map(String);
+        wpRenderTeachersList(group);
+    } catch (e) {
+        console.error('Failed to load teachers:', e);
+    }
+}
+
+async function wpRenderTeachersList(group) {
+    const container = document.getElementById('teachersList');
+    const countEl = document.getElementById('teacherCount');
+    if (!container) return;
+
+    const teacherIds = (group.teacher_ids || []).map(String);
+    if (countEl) countEl.textContent = teacherIds.length;
+
+    if (teacherIds.length === 0) {
+        container.innerHTML = '<div class="text-center py-3 text-muted small">Chua gan teacher nao</div>';
+        return;
+    }
+
+    // Fetch user details for assigned teachers
+    try {
+        const res = await fetch('/api/admin/users');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const allUsers = data.data?.users || data.data || [];
+        const teachers = allUsers.filter(u =>
+            u.role === 'teacher' && teacherIds.includes(String(u._id))
+        );
+
+        if (teachers.length === 0) {
+            container.innerHTML = '<div class="text-center py-3 text-muted small">Chua gan teacher nao</div>';
+            return;
+        }
+
+        container.innerHTML = teachers.map(t => `
+            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                <div>
+                    <i class="fas fa-user-tie me-2 text-success"></i>
+                    <span class="fw-semibold">${wlEscapeHtml(t.username)}</span>
+                    ${t.full_name ? `<small class="text-muted ms-1">(${wlEscapeHtml(t.full_name)})</small>` : ''}
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="wpRemoveTeacher('${t._id}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="text-center py-3 text-muted small">Error loading teacher info</div>';
+    }
+}
+
+async function openAssignTeacherModal() {
+    const container = document.getElementById('allTeachersList');
+    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+    new bootstrap.Modal(document.getElementById('assignTeacherModal')).show();
+
+    try {
+        const res = await fetch('/api/admin/users');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const allUsers = data.data?.users || data.data || [];
+        const teachers = allUsers.filter(u => u.role === 'teacher');
+        if (teachers.length === 0) {
+            container.innerHTML = '<div class="text-center py-3 text-muted">Khong co teacher nao</div>';
+            return;
+        }
+
+        container.innerHTML = teachers.map(t => {
+            const assigned = wpAssignedTeachers.includes(String(t._id));
+            return `
+            <label class="list-group-item d-flex align-items-center gap-2 py-2" style="cursor:pointer;">
+                <input type="checkbox" class="form-check-input teacher-checkbox" value="${t._id}"
+                       ${assigned ? 'checked' : ''}>
+                <div>
+                    <span class="fw-semibold">${wlEscapeHtml(t.username)}</span>
+                    ${t.full_name ? `<small class="text-muted ms-1">(${wlEscapeHtml(t.full_name)})</small>` : ''}
+                </div>
+            </label>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="text-center py-3 text-danger">Error loading teachers</div>';
+    }
+}
+
+async function saveTeacherAssignments() {
+    const checkboxes = document.querySelectorAll('#allTeachersList .teacher-checkbox');
+    const selectedIds = [];
+    checkboxes.forEach(cb => {
+        if (cb.checked) selectedIds.push(cb.value);
+    });
+
+    try {
+        const res = await fetch(`/api/groups/${groupId}/teachers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacher_ids: selectedIds })
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('assignTeacherModal'))?.hide();
+            wpAssignedTeachers = selectedIds;
+            wpLoadTeachers();
+            showNotification('Teachers updated', 'success');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error saving teachers', 'danger');
+    }
+}
+
+async function wpRemoveTeacher(teacherId) {
+    if (!confirm('Remove teacher from this group?')) return;
+    const newIds = wpAssignedTeachers.filter(id => id !== String(teacherId));
+
+    try {
+        const res = await fetch(`/api/groups/${groupId}/teachers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacher_ids: newIds })
+        });
+        const data = await res.json();
+        if (data.success) {
+            wpAssignedTeachers = newIds;
+            wpLoadTeachers();
+            showNotification('Teacher removed', 'success');
+        } else {
+            showNotification(data.error || 'Failed', 'danger');
+        }
+    } catch (e) {
+        showNotification('Error removing teacher', 'danger');
+    }
 }

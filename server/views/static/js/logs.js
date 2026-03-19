@@ -101,12 +101,13 @@ async function updateStatistics() {
         console.log(' Statistics data:', allTimeStats);
         
         if (allTimeStats && allTimeStats.success) {
-            const hasFilters = currentFilter.time !== 'all' || 
-                              currentFilter.level || 
-                              currentFilter.agent || 
+            const hasClientFilters = currentFilter.time !== 'all' ||
+                              currentFilter.level ||
+                              currentFilter.agent ||
                               currentFilter.search;
-            
-            console.log(' Has filters:', hasFilters);
+            const hasFilters = hasClientFilters || allTimeStats.has_filters;
+
+            console.log(' Has filters:', hasFilters, '(client:', hasClientFilters, 'server:', allTimeStats.has_filters, ')');
             
             // Update display elements
             const totalEl = document.getElementById('totalLogsCount');
@@ -114,41 +115,26 @@ async function updateStatistics() {
             const blockedEl = document.getElementById('blockedLogsCount');
             const warningsEl = document.getElementById('warningLogsCount');
             
-            if (totalEl) {
-                if (hasFilters && allTimeStats.has_filters) {
-                    totalEl.innerHTML = `${(allTimeStats.filtered_total || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(allTimeStats.total || 0).toLocaleString()}</small>`;
+            // Helper: render stat value
+            // - Server RBAC filter only (no client filter): show filtered number only
+            // - Client filter active: show "filtered of total"
+            // - No filter: show total
+            function renderStat(el, filteredVal, totalVal) {
+                if (!el) return;
+                if (hasClientFilters && hasFilters) {
+                    el.innerHTML = `${(filteredVal || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(totalVal || 0).toLocaleString()}</small>`;
+                } else if (hasFilters) {
+                    // Server-side RBAC filter only — don't leak global totals
+                    el.textContent = (filteredVal || 0).toLocaleString();
                 } else {
-                    totalEl.textContent = (allTimeStats.total || 0).toLocaleString();
+                    el.textContent = (totalVal || 0).toLocaleString();
                 }
-                console.log(' Updated total count:', totalEl.textContent);
             }
-            
-            if (allowedEl) {
-                if (hasFilters && allTimeStats.has_filters) {
-                    allowedEl.innerHTML = `${(allTimeStats.filtered_allowed || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(allTimeStats.allowed || 0).toLocaleString()}</small>`;
-                } else {
-                    allowedEl.textContent = (allTimeStats.allowed || 0).toLocaleString();
-                }
-                console.log(' Updated allowed count:', allowedEl.textContent);
-            }
-            
-            if (blockedEl) {
-                if (hasFilters && allTimeStats.has_filters) {
-                    blockedEl.innerHTML = `${(allTimeStats.filtered_blocked || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(allTimeStats.blocked || 0).toLocaleString()}</small>`;
-                } else {
-                    blockedEl.textContent = (allTimeStats.blocked || 0).toLocaleString();
-                }
-                console.log(' Updated blocked count:', blockedEl.textContent);
-            }
-            
-            if (warningsEl) {
-                if (hasFilters && allTimeStats.has_filters) {
-                    warningsEl.innerHTML = `${(allTimeStats.filtered_warnings || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(allTimeStats.warnings || 0).toLocaleString()}</small>`;
-                } else {
-                    warningsEl.textContent = (allTimeStats.warnings || 0).toLocaleString();
-                }
-                console.log(' Updated warnings count:', warningsEl.textContent);
-            }
+
+            renderStat(totalEl, allTimeStats.filtered_total, allTimeStats.total);
+            renderStat(allowedEl, allTimeStats.filtered_allowed, allTimeStats.allowed);
+            renderStat(blockedEl, allTimeStats.filtered_blocked, allTimeStats.blocked);
+            renderStat(warningsEl, allTimeStats.filtered_warnings, allTimeStats.warnings);
             
             // Update log count
             const logCountEl = document.getElementById('logCount');

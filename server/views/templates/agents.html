@@ -37,7 +37,7 @@
 <!-- Statistics Cards -->
 <div class="row mb-4 g-3">
     <!-- Total Agents -->
-    <div class="col-lg col-md-4 col-sm-6">
+    <div class="col-6 col-md-4 col-lg">
         <div class="card status-card border-start-primary h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Active Agents -->
-    <div class="col-lg col-md-4 col-sm-6">
+    <div class="col-6 col-md-4 col-lg">
         <div class="card status-card border-start-success h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- Inactive Agents -->
-    <div class="col-lg col-md-4 col-sm-6">
+    <div class="col-6 col-md-4 col-lg">
         <div class="card status-card border-start-warning h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -88,7 +88,7 @@
     </div>
 
     <!-- Offline Agents -->
-    <div class="col-lg col-md-4 col-sm-6">
+    <div class="col-6 col-md-4 col-lg">
         <div class="card status-card border-start-danger h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -105,7 +105,7 @@
     </div>
 
     <!-- Pending Agents -->
-    <div class="col-lg col-md-4 col-sm-6">
+    <div class="col-6 col-md-4 col-lg">
         <div class="card status-card border-start-info h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -156,19 +156,21 @@
 
 <!-- Group Management -->
 <div class="card mb-4" id="groups">  <!-- ADD: id="groups" for anchor -->
-    <div class="card-header d-flex justify-content-between align-items-center bg-light">
-        <div class="d-flex align-items-center gap-2">
-            <i class="fas fa-layer-group text-primary"></i>
-            <h6 class="mb-0 fw-bold">Groups</h6>
-            <small class="text-muted">Drag agents into a group to assign them.</small>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm" id="refreshGroupsBtn">
-                <i class="fas fa-sync-alt me-1"></i>Refresh
-            </button>
-            <button class="btn btn-primary btn-sm" id="createGroupBtn">
-                <i class="fas fa-plus me-1"></i>Create Group
-            </button>
+    <div class="card-header bg-light">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <i class="fas fa-layer-group text-primary"></i>
+                <h6 class="mb-0 fw-bold">Groups</h6>
+                <small class="text-muted d-none d-md-inline">Drag agents into a group to assign them.</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" id="refreshGroupsBtn">
+                    <i class="fas fa-sync-alt"></i><span class="d-none d-sm-inline ms-1">Refresh</span>
+                </button>
+                <button class="btn btn-primary btn-sm rbac-admin-only" id="createGroupBtn">
+                    <i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Create</span>
+                </button>
+            </div>
         </div>
     </div>
     <div class="card-body">

@@ -35,7 +35,7 @@
                         <div class="stat-label text-primary">
                             Total Logs
                         </div>
-                        <div class="stat-number">
+                        <div class="stat-number" id="statTotalLogs">
                             {{ stats.total_logs or 0 }}
                         </div>
                     </div>
@@ -55,7 +55,7 @@
                         <div class="stat-label text-success">
                             Allowed Requests
                         </div>
-                        <div class="stat-number text-success">
+                        <div class="stat-number text-success" id="statAllowed">
                             {{ stats.allowed_count or 0 }}
                         </div>
                     </div>
@@ -75,7 +75,7 @@
                         <div class="stat-label text-danger">
                             Blocked Threats
                         </div>
-                        <div class="stat-number text-danger">
+                        <div class="stat-number text-danger" id="statBlocked">
                             {{ stats.blocked_count or 0 }}
                         </div>
                     </div>
@@ -95,7 +95,7 @@
                         <div class="stat-label text-info">
                             Active Agents
                         </div>
-                        <div class="stat-number text-info">
+                        <div class="stat-number text-info" id="statActiveAgents">
                             {{ stats.active_agents or 0 }}
                         </div>
                     </div>

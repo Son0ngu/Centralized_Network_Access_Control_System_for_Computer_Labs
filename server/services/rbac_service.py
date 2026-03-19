@@ -1,7 +1,7 @@
 """
 RBAC Service - Permission check & ownership check.
 - Admin: toan quyen, khong bi gioi han boi ownership
-- Teacher: chi thao tac tren Group ma minh tao (created_by)
+- Teacher: chi thao tac tren Group ma minh duoc assign vao (teacher_ids)
 """
 
 import logging
@@ -61,23 +61,35 @@ class RBACService:
         """
         Check if user can access a specific group.
         - Admin: always True
-        - Teacher: only if group.created_by == user._id
+        - Teacher: if user._id in group.teacher_ids OR group.created_by == user._id (legacy)
         """
         if user.get("role") == "admin":
             return True
-        return self.is_owner(str(user.get("_id")), group)
+        user_id = user.get("_id")
+        teacher_ids = group.get("teacher_ids") or []
+        if any(str(tid) == str(user_id) for tid in teacher_ids):
+            return True
+        # Legacy fallback: created_by
+        return self.is_owner(str(user_id), group)
 
     def filter_groups_for_user(self, user: Dict, groups: List[Dict]) -> List[Dict]:
         """
         Filter groups list based on user access.
         - Admin: return all groups
-        - Teacher: return only groups created by this teacher
+        - Teacher: return only groups where user is in teacher_ids (or legacy created_by)
         """
         if user.get("role") == "admin":
             return groups
 
         user_id = str(user.get("_id"))
-        return [g for g in groups if str(g.get("created_by")) == user_id]
+        result = []
+        for g in groups:
+            teacher_ids = g.get("teacher_ids") or []
+            if any(str(tid) == user_id for tid in teacher_ids):
+                result.append(g)
+            elif str(g.get("created_by")) == user_id:
+                result.append(g)
+        return result
 
     # ========================================================================
     # HELPER: get teacher's group IDs
@@ -85,7 +97,7 @@ class RBACService:
 
     def get_teacher_group_ids(self, user: Dict) -> Optional[List[str]]:
         """
-        Tra ve list string group_ids ma teacher tao.
+        Tra ve list string group_ids ma teacher duoc assign vao.
         Returns None cho admin (nghia la tat ca).
         Returns [] neu khong co group_model.
         """
@@ -95,7 +107,11 @@ class RBACService:
         if self.group_model:
             user_id = user.get("_id")
             groups = list(self.group_model.collection.find(
-                {"created_by": user_id}, {"_id": 1}
+                {"$or": [
+                    {"teacher_ids": user_id},
+                    {"created_by": user_id},  # legacy fallback
+                ]},
+                {"_id": 1}
             ))
             return [str(g["_id"]) for g in groups]
 
@@ -110,11 +126,15 @@ class RBACService:
         Get MongoDB query filter for groups based on user role.
         Returns:
             None for admin (no filter needed - toan quyen)
-            {"created_by": ObjectId(...)} for teacher
+            Filter by teacher_ids for teacher
         """
         if user.get("role") == "admin":
             return None  # Admin sees all
-        return {"created_by": user.get("_id")}
+        user_id = user.get("_id")
+        return {"$or": [
+            {"teacher_ids": user_id},
+            {"created_by": user_id},  # legacy fallback
+        ]}
 
     def get_agent_query_filter(self, user: Dict) -> Optional[Dict]:
         """

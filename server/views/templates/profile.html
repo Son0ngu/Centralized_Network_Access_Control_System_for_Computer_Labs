@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ sơ cá nhân - Firewall Controller{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="profile-hero">
+    <div class="profile-hero-content">
+        <div class="profile-avatar">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <h3 class="fw-bold mb-1" id="heroUsername">Loading...</h3>
+        <span class="profile-role-badge" id="heroRoleBadge">--</span>
+        <p class="mb-0 mt-2 opacity-75 small" id="heroLastLogin"></p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Section 1: Thong tin ho so -->
+    <div class="col-lg-6">
+        <div class="card profile-card h-100">
+            <div class="card-header">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-id-badge me-2 text-info"></i>Thông tin hồ sơ
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div id="profileAlert" class="alert d-none" role="alert"></div>
+
+                <form id="profileForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tên đăng nhập</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" class="form-control bg-light" id="profileUsername" readonly>
+                        </div>
+                        <small class="text-muted">Không thể thay đổi</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Phân quyền</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-shield-alt"></i></span>
+                            <input type="text" class="form-control bg-light" id="profileRole" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Địa chỉ Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" id="profileEmail"
+                                   placeholder="Nhập địa chỉ email">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ngày tạo tài khoản</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            <input type="text" class="form-control bg-light" id="profileCreatedAt" readonly>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2" id="updateBtn">
+                        <i class="fas fa-save me-2"></i>Lưu thông tin
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Doi mat khau -->
+    <div class="col-lg-6">
+        <div class="card profile-card h-100">
+            <div class="card-header">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-key me-2 text-warning"></i>Đổi mật khẩu
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div id="passwordAlert" class="alert d-none" role="alert"></div>
+
+                <form id="changePasswordForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mật khẩu hiện tại</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="oldPassword"
+                                   placeholder="Nhập mật khẩu hiện tại" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mật khẩu mới</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-key"></i></span>
+                            <input type="password" class="form-control" id="newPassword"
+                                   placeholder="Tối thiểu 8 ký tự" required>
+                        </div>
+                        <div class="progress mt-2">
+                            <div class="progress-bar strength-bar" id="strengthBar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted" id="strengthText"></small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Xác nhận mật khẩu mới</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-check-double"></i></span>
+                            <input type="password" class="form-control" id="confirmPassword"
+                                   placeholder="Nhập lại mật khẩu mới" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning w-100 py-2 text-white" id="changeBtn">
+                        <i class="fas fa-sync-alt me-2"></i>Đổi mật khẩu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        const profileAlert = document.getElementById('profileAlert');
+        const passwordAlert = document.getElementById('passwordAlert');
+
+        function showAlert(alertEl, msg, isSuccess) {
+            alertEl.className = `alert alert-${isSuccess ? 'success' : 'danger'}`;
+            alertEl.innerHTML = `<i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'} me-2"></i>${msg}`;
+            alertEl.classList.remove('d-none');
+            setTimeout(() => alertEl.classList.add('d-none'), 5000);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                const d = new Date(dateStr);
+                return d.toLocaleDateString('vi-VN', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch { return dateStr; }
+        }
+
+        // Load profile data
+        try {
+            const resp = await fetch('/api/admin/auth/me', { credentials: 'same-origin' });
+            const data = await resp.json();
+            if (data.success && data.data) {
+                const user = data.data;
+                document.getElementById('profileUsername').value = user.username || '';
+                document.getElementById('profileRole').value = user.role || '';
+                document.getElementById('profileEmail').value = user.email || '';
+                document.getElementById('profileCreatedAt').value = formatDate(user.created_at);
+
+                // Hero
+                document.getElementById('heroUsername').textContent = user.username || '';
+                const badge = document.getElementById('heroRoleBadge');
+                badge.textContent = user.role || '';
+                if (user.role === 'admin') {
+                    badge.classList.add('role-admin');
+                } else if (user.role === 'teacher') {
+                    badge.classList.add('role-teacher');
+                }
+                if (user.last_login) {
+                    document.getElementById('heroLastLogin').innerHTML =
+                        '<i class="fas fa-clock me-1"></i>Đăng nhập lần cuối: ' + formatDate(user.last_login);
+                }
+            }
+        } catch (err) {
+            console.error('Error loading profile:', err);
+        }
+
+        // Update profile
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('updateBtn');
+            const orgText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang lưu...';
+            btn.disabled = true;
+            profileAlert.classList.add('d-none');
+
+            try {
+                const resp = await fetch('/api/admin/auth/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('profileEmail').value.trim()
+                    }),
+                    credentials: 'same-origin'
+                });
+                const data = await resp.json();
+                showAlert(profileAlert, data.message || data.error || 'Cập nhật hồ sơ ' + (data.success ? 'thành công' : 'thất bại'), data.success);
+            } catch (err) {
+                showAlert(profileAlert, 'Lỗi kết nối máy chủ', false);
+            } finally {
+                btn.innerHTML = orgText;
+                btn.disabled = false;
+            }
+        });
+
+        // Password strength indicator
+        document.getElementById('newPassword').addEventListener('input', function() {
+            const pw = this.value;
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+            let strength = 0;
+            if (pw.length >= 8) strength++;
+            if (pw.length >= 12) strength++;
+            if (/[A-Z]/.test(pw)) strength++;
+            if (/[0-9]/.test(pw)) strength++;
+            if (/[^A-Za-z0-9]/.test(pw)) strength++;
+
+            const levels = [
+                { width: '0%',   color: '#dc3545', label: '' },
+                { width: '20%',  color: '#dc3545', label: 'Rất yếu' },
+                { width: '40%',  color: '#ffc107', label: 'Yếu' },
+                { width: '60%',  color: '#fd7e14', label: 'Trung bình' },
+                { width: '80%',  color: '#20c997', label: 'Mạnh' },
+                { width: '100%', color: '#28a745', label: 'Rất mạnh' },
+            ];
+            const level = levels[strength] || levels[0];
+            bar.style.width = level.width;
+            bar.style.background = level.color;
+            text.textContent = pw.length > 0 ? level.label : '';
+        });
+
+        // Change password
+        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            passwordAlert.classList.add('d-none');
+
+            const oldPw = document.getElementById('oldPassword').value;
+            const newPw = document.getElementById('newPassword').value;
+            const confirmPw = document.getElementById('confirmPassword').value;
+
+            if (!oldPw || !newPw || !confirmPw) {
+                showAlert(passwordAlert, 'Vui lòng điền đầy đủ thông tin', false);
+                return;
+            }
+            if (newPw.length < 8) {
+                showAlert(passwordAlert, 'Mật khẩu mới phải có ít nhất 8 ký tự', false);
+                return;
+            }
+            if (newPw !== confirmPw) {
+                showAlert(passwordAlert, 'Mật khẩu xác nhận không khớp', false);
+                return;
+            }
+
+            const btn = document.getElementById('changeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+
+            try {
+                const resp = await fetch('/api/admin/auth/change-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ old_password: oldPw, new_password: newPw }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showAlert(passwordAlert, 'Đổi mật khẩu thành công!', true);
+                    this.reset();
+                    document.getElementById('strengthBar').style.width = '0%';
+                    document.getElementById('strengthText').textContent = '';
+                } else {
+                    showAlert(passwordAlert, data.error || 'Đổi mật khẩu thất bại', false);
+                }
+            } catch (err) {
+                showAlert(passwordAlert, 'Lỗi kết nối server', false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Đổi mật khẩu';
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

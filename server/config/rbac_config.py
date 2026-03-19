@@ -27,12 +27,16 @@ TEACHER_PERMISSIONS = [
     # Dashboard
     "dashboard:read",
 
-    # Groups (gioi han boi ownership - chi Group minh tao)
+    # Groups (chi xem Group duoc admin gan vao - khong tao/xoa)
     "groups:read",
-    "groups:create",
     "groups:update",
-    "groups:delete",
     "groups:manage_agents",
+
+    # Whitelist Profiles (per-teacher whitelist trong Group)
+    "whitelist_profile:create",
+    "whitelist_profile:update",
+    "whitelist_profile:delete",
+    "whitelist_profile:activate",
 
     # Agents (chi xem Agents trong Group cua minh)
     "agents:read",
@@ -104,11 +108,17 @@ def can_access_group(user: dict, group: dict) -> bool:
     """
     Check if user can access a specific group.
     Admin: always True (toan quyen)
-    Teacher: only if group.created_by == user._id (ownership)
+    Teacher: if user._id in group.teacher_ids OR group.created_by == user._id (legacy)
     """
     if user.get("role") == "admin":
         return True
-    return str(group.get("created_by")) == str(user.get("_id"))
+    user_id = user.get("_id")
+    # Check teacher_ids list
+    teacher_ids = group.get("teacher_ids") or []
+    if any(str(tid) == str(user_id) for tid in teacher_ids):
+        return True
+    # Legacy fallback: created_by
+    return str(group.get("created_by")) == str(user_id)
 
 
 def is_admin(role: str) -> bool:

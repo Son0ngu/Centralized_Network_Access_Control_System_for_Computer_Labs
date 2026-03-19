@@ -22,13 +22,14 @@ class WhitelistService:
     """Service class for whitelist business logic - vietnam ONLY"""
     
     def __init__(self, whitelist_model: WhitelistModel, agent_model, group_model, socketio=None,
-                 policy_service=None):
+                 policy_service=None, profile_service=None):
         """Initialize WhitelistService with model and socketio"""
         self.model = whitelist_model
         self.agent_model = agent_model
         self.group_model = group_model
         self.socketio = socketio
         self.policy_service = policy_service
+        self.profile_service = profile_service
         self.logger = logging.getLogger(self.__class__.__name__)
         
         self.logger.info("WhitelistService initialized with vietnam timezone support")
@@ -509,8 +510,29 @@ class WhitelistService:
                 global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
                 response_type = "incremental"
 
-            group_entries = self._normalize_group_entries(group)
-            
+            # Check for active whitelist profile — overrides group base whitelist
+            active_profile = None
+            if self.profile_service:
+                active_profile = self.profile_service.get_active_profile(str(group.get("_id")))
+
+            if active_profile:
+                # Use active profile's domains instead of group base whitelist
+                profile_group = dict(group)
+                profile_group["whitelist"] = active_profile.get("domains", [])
+                group_entries = self._normalize_group_entries(profile_group)
+            else:
+                # Fallback: use Default Profile instead of group.whitelist
+                default_profile = None
+                if self.profile_service:
+                    default_profile = self.profile_service.get_default_profile(str(group.get("_id")))
+                if default_profile:
+                    profile_group = dict(group)
+                    profile_group["whitelist"] = default_profile.get("domains", [])
+                    group_entries = self._normalize_group_entries(profile_group)
+                else:
+                    # Legacy fallback: use group.whitelist (for unmigrated groups)
+                    group_entries = self._normalize_group_entries(group)
+
             combined = self._merge_whitelists(global_entries, group_entries)
 
             # ── Apply per-agent policy override (isolate / custom_whitelist) ──
