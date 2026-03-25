@@ -1,6 +1,7 @@
 let groupsData = [];
 let agentsData = [];
 let quickDomains = [];
+let quickDomainEntries = [];  // Full entry objects for edit mode
 let selectedColor = 'primary';
 let currentView = 'grid';
 
@@ -303,6 +304,7 @@ function openCreateGroupModal() {
     
     // Clear quick domains
     quickDomains = [];
+    quickDomainEntries = [];
     renderQuickDomains();
     
     const modal = new bootstrap.Modal(document.getElementById('groupModal'));
@@ -324,11 +326,12 @@ function openEditGroupModal(groupId) {
     document.querySelector(`.color-option[data-color="${color}"]`)?.classList.add('selected');
     selectedColor = color;
     
-    // FIX: Load existing whitelist - handle both 'value' and 'domain' keys
-    quickDomains = (group.whitelist || []).map(item => {
-        if (typeof item === 'string') return item;
-        return item.value || item.domain || '';  // Check 'value' first, then 'domain'
-    }).filter(Boolean);
+    // FIX: Preserve full entry objects so we don't lose type/category/priority
+    quickDomainEntries = (group.whitelist || []).map(item => {
+        if (typeof item === 'string') return { value: item, type: 'domain', category: 'general' };
+        return { ...item };
+    }).filter(e => e.value);
+    quickDomains = quickDomainEntries.map(e => e.value || e.domain || '').filter(Boolean);
     renderQuickDomains();
     
     const modal = new bootstrap.Modal(document.getElementById('groupModal'));
@@ -356,13 +359,28 @@ async function saveGroup() {
     
     if (isEdit || quickDomains.length > 0) {
         const now = new Date().toISOString();
-        payload.whitelist = quickDomains.map(domain => ({
-            value: domain,
-            type: 'domain',
-            category: 'general',
-            added_at: now,
-            added_date: now  // FIX: Add added_date for display in whitelist page
-        }));
+        // Build whitelist preserving existing entry fields
+        const existingMap = {};
+        quickDomainEntries.forEach(e => {
+            const key = (e.value || e.domain || '').toLowerCase();
+            if (key) existingMap[key] = e;
+        });
+
+        payload.whitelist = quickDomains.map(domain => {
+            const existing = existingMap[domain.toLowerCase()];
+            if (existing) {
+                // Preserve original fields
+                return { ...existing, value: domain };
+            }
+            // New domain added in this session
+            return {
+                value: domain,
+                type: 'domain',
+                category: 'general',
+                added_at: now,
+                added_date: now
+            };
+        });
     }
     
     const url = isEdit ? `/api/groups/${groupId}` : '/api/groups';

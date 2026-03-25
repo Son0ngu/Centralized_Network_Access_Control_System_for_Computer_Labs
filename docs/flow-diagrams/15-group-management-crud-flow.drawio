@@ -1,0 +1,176 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="group-crud" name="Group Management CRUD">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 15: Group Management CRUD&lt;/b&gt;&lt;br&gt;/api/groups - Admin + Teacher (scoped)&lt;br&gt;&lt;i&gt;Quản lý nhóm máy trạm&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="480" y="10" width="380" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CREATE GROUP ===== -->
+        <mxCell id="cg_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f8ff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="400" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="cg_title" value="&lt;b&gt;CREATE GROUP&lt;/b&gt; - POST /api/groups&lt;br&gt;&lt;i&gt;Tạo nhóm mới&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="88" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cg_s1" value="&lt;b&gt;Request&lt;/b&gt; {name (required), description, whitelist: []}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="130" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cg_d1" value="&lt;b&gt;Name&lt;br&gt;provided?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="170" y="175" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="cge1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cg_s1" target="cg_d1" parent="1" />
+        <mxCell id="cg_err" value="&lt;b&gt;400&lt;/b&gt; Name required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="310" y="185" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cge2" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="cg_d1" target="cg_err" parent="1" />
+
+        <mxCell id="cg_s2" value="&lt;b&gt;Set created_by&lt;/b&gt;&lt;br&gt;= g.current_user._id&lt;br&gt;whitelist_version = 1&lt;br&gt;&lt;i&gt;Ghi người tạo, version=1&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="cge3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="cg_d1" target="cg_s2" parent="1" />
+
+        <mxCell id="cg_resp" value="&lt;b&gt;201 Created&lt;/b&gt; {group document}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="325" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cge4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cg_s2" target="cg_resp" parent="1" />
+
+        <!-- ===== GET GROUP DETAIL ===== -->
+        <mxCell id="gd_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fff0;strokeColor=#82b366;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="80" width="400" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="gd_title" value="&lt;b&gt;GET GROUP DETAIL&lt;/b&gt; - GET /api/groups/:id&lt;br&gt;&lt;i&gt;Chi tiết nhóm (RBAC scoped)&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="88" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gd_s1" value="&lt;b&gt;GET /groups/:group_id&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="130" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="gd_d1" value="&lt;b&gt;Is Teacher?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="178" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gde1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="gd_s1" target="gd_d1" parent="1" />
+
+        <mxCell id="gd_admin" value="&lt;b&gt;Admin: full access&lt;/b&gt;&lt;br&gt;Return group + agents&lt;br&gt;&lt;i&gt;Admin: toàn quyền&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="480" y="250" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="gde2" value="No (Admin)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=9;" edge="1" source="gd_d1" target="gd_admin" parent="1" />
+
+        <mxCell id="gd_d2" value="&lt;b&gt;can_access_group?&lt;/b&gt;&lt;br&gt;user._id in teacher_ids?&lt;br&gt;OR created_by?&lt;br&gt;&lt;i&gt;Thuộc nhóm này?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="690" y="245" width="140" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="gde3" value="Yes (Teacher)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=9;" edge="1" source="gd_d1" target="gd_d2" parent="1" />
+
+        <mxCell id="gd_err" value="&lt;b&gt;403&lt;/b&gt;&lt;br&gt;Không có quyền trên Group này" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="700" y="345" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="gde4" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="gd_d2" target="gd_err" parent="1" />
+
+        <mxCell id="gd_ok" value="&lt;b&gt;200 OK&lt;/b&gt; {group + agents}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="345" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="gde5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="gd_d2" target="gd_ok" parent="1" />
+        <mxCell id="gde6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="gd_admin" target="gd_ok" parent="1" />
+
+        <!-- ===== DELETE GROUP ===== -->
+        <mxCell id="dg_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="440" width="400" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="dg_title" value="&lt;b&gt;DELETE GROUP&lt;/b&gt; - DELETE /api/groups/:id&lt;br&gt;&lt;i&gt;Xoá nhóm (có bảo vệ)&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="448" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dg_s1" value="&lt;b&gt;DELETE /groups/:id&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="150" y="490" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dg_d1" value="&lt;b&gt;is_system&lt;br&gt;group?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nhóm hệ thống?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="170" y="540" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dge1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="dg_s1" target="dg_d1" parent="1" />
+
+        <mxCell id="dg_err1" value="&lt;b&gt;400&lt;/b&gt;&lt;br&gt;Cannot delete system group" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="320" y="548" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="dge2" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="dg_d1" target="dg_err1" parent="1" />
+
+        <mxCell id="dg_d2" value="&lt;b&gt;Has agents?&lt;/b&gt;&lt;br&gt;count_by_group &gt; 0?&lt;br&gt;&lt;i&gt;Có agent trong nhóm?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="155" y="625" width="140" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="dge3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="dg_d1" target="dg_d2" parent="1" />
+
+        <mxCell id="dg_move" value="&lt;b&gt;Move agents to &quot;Pending&quot;&lt;/b&gt;&lt;br&gt;update_many({group_id: id},&lt;br&gt;{$set: {group_id: pending_id}})&lt;br&gt;&lt;i&gt;Chuyển agent sang nhóm Pending&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="715" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="dge4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d6b656;fontSize=9;" edge="1" source="dg_d2" target="dg_move" parent="1" />
+
+        <mxCell id="dg_del" value="&lt;b&gt;model.delete_group(id)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xoá nhóm khỏi DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="135" y="790" width="180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="dge5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="dg_move" target="dg_del" parent="1" />
+        <mxCell id="dge5b" value="No (empty)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=9;" edge="1" source="dg_d2" target="dg_del" parent="1" />
+
+        <!-- ===== SET TEACHERS ===== -->
+        <mxCell id="st_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f0ff;strokeColor=#9673a6;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="440" width="400" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="st_title" value="&lt;b&gt;SET TEACHERS&lt;/b&gt; - POST /api/groups/:id/teachers&lt;br&gt;&lt;i&gt;Gán giáo viên cho nhóm (Admin only)&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="490" y="448" width="340" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="st_s1" value="&lt;b&gt;Request&lt;/b&gt; {teacher_ids: [&quot;id1&quot;, &quot;id2&quot;]}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="495" width="230" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="st_d1" value="&lt;b&gt;Is Admin?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="615" y="545" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="ste1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="st_s1" target="st_d1" parent="1" />
+
+        <mxCell id="st_err1" value="&lt;b&gt;403&lt;/b&gt; Chi Admin moi co quyen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="740" y="550" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ste2" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="st_d1" target="st_err1" parent="1" />
+
+        <mxCell id="st_v1" value="&lt;b&gt;Validate teacher_ids&lt;/b&gt;&lt;br&gt;Must be array&lt;br&gt;Each ID → valid ObjectId format&lt;br&gt;Convert string → ObjectId&lt;br&gt;&lt;i&gt;Kiểm tra danh sách ID&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="550" y="615" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ste3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="st_d1" target="st_v1" parent="1" />
+
+        <mxCell id="st_db" value="&lt;b&gt;model.set_teachers(group_id, oid_list)&lt;/b&gt;&lt;br&gt;$set: {teacher_ids: [ObjectId, ...]}&lt;br&gt;&lt;i&gt;Cập nhật danh sách teacher&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="530" y="700" width="250" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="ste4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="st_v1" target="st_db" parent="1" />
+
+        <mxCell id="st_resp" value="&lt;b&gt;200 OK&lt;/b&gt; {teacher_ids: [&quot;str&quot;, ...]}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="765" width="190" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ste5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="st_db" target="st_resp" parent="1" />
+
+        <!-- Group Schema -->
+        <mxCell id="gs_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="80" width="350" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="gs_title" value="&lt;b&gt;Group Document Schema&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="85" width="230" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gs" value="&lt;pre style='font-size:9px;margin:2px'&gt;{&lt;br&gt;  _id: ObjectId,&lt;br&gt;  name: String (required),&lt;br&gt;  description: String,&lt;br&gt;  is_system: Boolean (pending=true),&lt;br&gt;  teacher_ids: [ObjectId],&lt;br&gt;  created_by: ObjectId | null,&lt;br&gt;  whitelist: [entry objects],&lt;br&gt;  whitelist_version: Int (auto-inc),&lt;br&gt;  created_at: DateTime,&lt;br&gt;  updated_at: DateTime&lt;br&gt;}&lt;/pre&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="915" y="110" width="320" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- RBAC summary -->
+        <mxCell id="rbac_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="310" width="350" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="rbac" value="&lt;b&gt;RBAC Summary / Tóm tắt phân quyền&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Admin:&lt;/b&gt; Full CRUD + set_teachers&lt;br&gt;&lt;b&gt;Teacher:&lt;/b&gt; Read/Update own groups only&lt;br&gt;&amp;nbsp;&amp;nbsp;(via teacher_ids or created_by)" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="315" width="330" height="90" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

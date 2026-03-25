@@ -74,19 +74,19 @@ def _validate_admin_token(token: str):
 
     # Must be admin_user token (not agent token)
     if payload.get("token_for") != "admin_user":
-        return False, None, "Token khong phai cua admin user"
+        return False, None, "Token does not belong to admin user"
 
     # Get user from DB
     user_id = payload.get("sub")
     user = _user_model.find_by_id(user_id)
     if not user:
-        return False, None, "User khong ton tai"
+        return False, None, "User not found"
 
     if not user.get("is_active", True):
-        return False, None, "Tai khoan da bi vo hieu hoa"
+        return False, None, "Account has been disabled"
 
     if _user_model.is_locked(user):
-        return False, None, "Tai khoan bi khoa tam thoi"
+        return False, None, "Account temporarily locked"
 
     return True, user, None
 
@@ -161,7 +161,7 @@ def require_admin(f: Callable) -> Callable:
             logger.warning(f"Admin access denied: role={role} for {request.endpoint}")
             return jsonify({
                 "success": False,
-                "error": "Chi Admin moi co quyen truy cap",
+                "error": "Admin access only",
             }), 403
         return f(*args, **kwargs)
     return decorated
@@ -192,7 +192,7 @@ def require_permission(permission: str):
                 )
                 return jsonify({
                     "success": False,
-                    "error": "Khong du quyen",
+                    "error": "Insufficient permissions",
                     "required": permission,
                 }), 403
 
@@ -228,7 +228,7 @@ def inject_current_user(f: Callable) -> Callable:
 def require_group_ownership(group_id_param: str = "group_id"):
     """
     Decorator: Check Teacher ownership on Group.
-    - Admin: always pass (toan quyen)
+    - Admin: always pass (full access)
     - Teacher: group.created_by must == user._id
     Must be used AFTER @require_login.
 
@@ -270,7 +270,7 @@ def require_group_ownership(group_id_param: str = "group_id"):
                         group = None
 
                     if not group:
-                        return jsonify({"success": False, "error": "Group khong ton tai"}), 404
+                        return jsonify({"success": False, "error": "Group not found"}), 404
 
                     if not _rbac_service.can_access_group(user, group):
                         logger.warning(
@@ -278,7 +278,7 @@ def require_group_ownership(group_id_param: str = "group_id"):
                         )
                         return jsonify({
                             "success": False,
-                            "error": "Khong co quyen tren Group nay",
+                            "error": "No permission for this Group",
                         }), 403
 
             return f(*args, **kwargs)

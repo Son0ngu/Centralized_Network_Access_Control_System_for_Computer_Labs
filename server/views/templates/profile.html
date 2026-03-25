@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Hồ sơ cá nhân - Firewall Controller{% endblock %}
+{% block title %}Personal Profile - Firewall Controller{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
@@ -20,12 +20,12 @@
 </div>
 
 <div class="row g-4">
-    <!-- Section 1: Thong tin ho so -->
+    <!-- Section 1: Profile Info -->
     <div class="col-lg-6">
         <div class="card profile-card h-100">
             <div class="card-header">
                 <h5 class="mb-0 fw-bold">
-                    <i class="fas fa-id-badge me-2 text-info"></i>Thông tin hồ sơ
+                    <i class="fas fa-id-badge me-2 text-info"></i>Profile Information
                 </h5>
             </div>
             <div class="card-body p-4">
@@ -33,16 +33,16 @@
 
                 <form id="profileForm">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Tên đăng nhập</label>
+                        <label class="form-label fw-semibold">Username</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-user"></i></span>
                             <input type="text" class="form-control bg-light" id="profileUsername" readonly>
                         </div>
-                        <small class="text-muted">Không thể thay đổi</small>
+                        <small class="text-muted">Cannot be changed</small>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Phân quyền</label>
+                        <label class="form-label fw-semibold">Role</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-shield-alt"></i></span>
                             <input type="text" class="form-control bg-light" id="profileRole" readonly>
@@ -50,16 +50,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Địa chỉ Email</label>
+                        <label class="form-label fw-semibold">Email Address</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                             <input type="email" class="form-control" id="profileEmail"
-                                   placeholder="Nhập địa chỉ email">
+                                   placeholder="Enter email address">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Ngày tạo tài khoản</label>
+                        <label class="form-label fw-semibold">Account Created</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
                             <input type="text" class="form-control bg-light" id="profileCreatedAt" readonly>
@@ -67,19 +67,19 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 py-2" id="updateBtn">
-                        <i class="fas fa-save me-2"></i>Lưu thông tin
+                        <i class="fas fa-save me-2"></i>Save Info
                     </button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Section 2: Doi mat khau -->
+    <!-- Section 2: Change Password -->
     <div class="col-lg-6">
         <div class="card profile-card h-100">
             <div class="card-header">
                 <h5 class="mb-0 fw-bold">
-                    <i class="fas fa-key me-2 text-warning"></i>Đổi mật khẩu
+                    <i class="fas fa-key me-2 text-warning"></i>Change Password
                 </h5>
             </div>
             <div class="card-body p-4">
@@ -87,20 +87,20 @@
 
                 <form id="changePasswordForm">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Mật khẩu hiện tại</label>
+                        <label class="form-label fw-semibold">Current Password</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-lock"></i></span>
                             <input type="password" class="form-control" id="oldPassword"
-                                   placeholder="Nhập mật khẩu hiện tại" required>
+                                   placeholder="Enter current password" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Mật khẩu mới</label>
+                        <label class="form-label fw-semibold">New Password</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-key"></i></span>
                             <input type="password" class="form-control" id="newPassword"
-                                   placeholder="Tối thiểu 8 ký tự" required>
+                                   placeholder="Minimum 8 characters" required>
                         </div>
                         <div class="progress mt-2">
                             <div class="progress-bar strength-bar" id="strengthBar" style="width: 0%"></div>
@@ -109,16 +109,16 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Xác nhận mật khẩu mới</label>
+                        <label class="form-label fw-semibold">Confirm New Password</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-check-double"></i></span>
                             <input type="password" class="form-control" id="confirmPassword"
-                                   placeholder="Nhập lại mật khẩu mới" required>
+                                   placeholder="Re-enter new password" required>
                         </div>
                     </div>
 
                     <button type="submit" class="btn btn-warning w-100 py-2 text-white" id="changeBtn">
-                        <i class="fas fa-sync-alt me-2"></i>Đổi mật khẩu
+                        <i class="fas fa-sync-alt me-2"></i>Change Password
                     </button>
                 </form>
             </div>
@@ -147,7 +147,7 @@
             if (!dateStr) return 'N/A';
             try {
                 const d = new Date(dateStr);
-                return d.toLocaleDateString('vi-VN', {
+                return d.toLocaleDateString('en-US', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -176,7 +176,7 @@
                 }
                 if (user.last_login) {
                     document.getElementById('heroLastLogin').innerHTML =
-                        '<i class="fas fa-clock me-1"></i>Đăng nhập lần cuối: ' + formatDate(user.last_login);
+                        '<i class="fas fa-clock me-1"></i>Last login:' + formatDate(user.last_login);
                 }
             }
         } catch (err) {
@@ -188,7 +188,7 @@
             e.preventDefault();
             const btn = document.getElementById('updateBtn');
             const orgText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang lưu...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
             btn.disabled = true;
             profileAlert.classList.add('d-none');
 
@@ -202,9 +202,9 @@
                     credentials: 'same-origin'
                 });
                 const data = await resp.json();
-                showAlert(profileAlert, data.message || data.error || 'Cập nhật hồ sơ ' + (data.success ? 'thành công' : 'thất bại'), data.success);
+                showAlert(profileAlert, data.message || data.error || (data.success ? 'Profile updated successfully' : 'Profile update failed'), data.success);
             } catch (err) {
-                showAlert(profileAlert, 'Lỗi kết nối máy chủ', false);
+                showAlert(profileAlert, 'Server connection error', false);
             } finally {
                 btn.innerHTML = orgText;
                 btn.disabled = false;
@@ -225,11 +225,11 @@
 
             const levels = [
                 { width: '0%',   color: '#dc3545', label: '' },
-                { width: '20%',  color: '#dc3545', label: 'Rất yếu' },
-                { width: '40%',  color: '#ffc107', label: 'Yếu' },
-                { width: '60%',  color: '#fd7e14', label: 'Trung bình' },
-                { width: '80%',  color: '#20c997', label: 'Mạnh' },
-                { width: '100%', color: '#28a745', label: 'Rất mạnh' },
+                { width: '20%',  color: '#dc3545', label: 'Very weak' },
+                { width: '40%',  color: '#ffc107', label: 'Weak' },
+                { width: '60%',  color: '#fd7e14', label: 'Medium' },
+                { width: '80%',  color: '#20c997', label: 'Strong' },
+                { width: '100%', color: '#28a745', label: 'Very strong' },
             ];
             const level = levels[strength] || levels[0];
             bar.style.width = level.width;
@@ -247,21 +247,21 @@
             const confirmPw = document.getElementById('confirmPassword').value;
 
             if (!oldPw || !newPw || !confirmPw) {
-                showAlert(passwordAlert, 'Vui lòng điền đầy đủ thông tin', false);
+                showAlert(passwordAlert, 'Please fill in all fields', false);
                 return;
             }
             if (newPw.length < 8) {
-                showAlert(passwordAlert, 'Mật khẩu mới phải có ít nhất 8 ký tự', false);
+                showAlert(passwordAlert, 'New password must be at least 8 characters', false);
                 return;
             }
             if (newPw !== confirmPw) {
-                showAlert(passwordAlert, 'Mật khẩu xác nhận không khớp', false);
+                showAlert(passwordAlert, 'Passwords do not match', false);
                 return;
             }
 
             const btn = document.getElementById('changeBtn');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
 
             try {
                 const resp = await fetch('/api/admin/auth/change-password', {
@@ -272,18 +272,18 @@
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    showAlert(passwordAlert, 'Đổi mật khẩu thành công!', true);
+                    showAlert(passwordAlert, 'Password changed successfully!', true);
                     this.reset();
                     document.getElementById('strengthBar').style.width = '0%';
                     document.getElementById('strengthText').textContent = '';
                 } else {
-                    showAlert(passwordAlert, data.error || 'Đổi mật khẩu thất bại', false);
+                    showAlert(passwordAlert, data.error || 'Password change failed', false);
                 }
             } catch (err) {
-                showAlert(passwordAlert, 'Lỗi kết nối server', false);
+                showAlert(passwordAlert, 'Server connection error', false);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Đổi mật khẩu';
+                btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Change Password';
             }
         });
     });

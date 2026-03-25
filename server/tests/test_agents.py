@@ -2,11 +2,11 @@
 Comprehensive Test Suite: Agent Management
 ============================================
 Tests toàn bộ chức năng Agent gửi lên server:
-1. AgentModel      — CRUD, find, heartbeat update, statistics
-2. AgentService    — Registration, heartbeat, status, group move, policy check
-3. AgentController — HTTP endpoints, RBAC teacher isolation, agent-to-server flow
-4. Cross-Teacher   — Agent không bị gửi nhầm teacher, không cross-leak
-5. Edge Cases      — undefined fields, missing data, device_id conflict
+1. AgentModel      - CRUD, find, heartbeat update, statistics
+2. AgentService    - Registration, heartbeat, status, group move, policy check
+3. AgentController - HTTP endpoints, RBAC teacher isolation, agent-to-server flow
+4. Cross-Teacher   - Agent không bị gửi nhầm teacher, không cross-leak
+5. Edge Cases      - undefined fields, missing data, device_id conflict
 
 Sử dụng REAL MongoDB (test database) để integration test chính xác.
 
@@ -36,7 +36,7 @@ from time_utils import now_vietnam
 
 
 # ============================================================================
-# FIXTURES — Database
+# FIXTURES - Database
 # ============================================================================
 
 @pytest.fixture(scope='session')
@@ -86,7 +86,7 @@ def rbac_service(group_model, agent_model):
 
 
 # ============================================================================
-# FIXTURES — Users & Constants
+# FIXTURES - Users & Constants
 # ============================================================================
 
 ADMIN_ID = ObjectId("650000000000000000000001")
@@ -110,7 +110,7 @@ def teacher_b():
 
 
 def make_agent_data(hostname="PC-01", device_id=None, ip="192.168.1.10"):
-    """Helper — tạo agent registration data."""
+    """Helper - tạo agent registration data."""
     return {
         "hostname": hostname,
         "device_id": device_id or str(uuid.uuid4()),
@@ -122,7 +122,7 @@ def make_agent_data(hostname="PC-01", device_id=None, ip="192.168.1.10"):
 
 
 def insert_agent(agent_model, group_id, hostname="PC-01", device_id=None, agent_id=None):
-    """Helper — insert agent trực tiếp vào DB."""
+    """Helper - insert agent trực tiếp vào DB."""
     aid = agent_id or str(uuid.uuid4())
     did = device_id or str(uuid.uuid4())
     token = secrets.token_hex(32)
@@ -143,13 +143,13 @@ def insert_agent(agent_model, group_id, hostname="PC-01", device_id=None, agent_
 
 
 # ============================================================================
-# 1. MODEL TESTS — AgentModel CRUD
+# 1. MODEL TESTS - AgentModel CRUD
 # ============================================================================
 
 class TestAgentModel:
 
     def test_model_register_agent(self, agent_model):
-        """Register agent — insert vào DB, trả về đủ fields."""
+        """Register agent - insert vào DB, trả về đủ fields."""
         data = {
             "agent_id": str(uuid.uuid4()),
             "device_id": str(uuid.uuid4()),
@@ -311,14 +311,14 @@ class TestAgentModel:
 
 
 # ============================================================================
-# 2. SERVICE TESTS — AgentService business logic
+# 2. SERVICE TESTS - AgentService business logic
 # ============================================================================
 
 class TestAgentServiceRegistration:
-    """Registration flow — new agent, duplicate device_id, missing fields."""
+    """Registration flow - new agent, duplicate device_id, missing fields."""
 
     def test_register_new_agent(self, agent_service):
-        """Register brand new agent — trả về agent_id, token, pending status."""
+        """Register brand new agent - trả về agent_id, token, pending status."""
         data = make_agent_data("NewPC", ip="192.168.10.1")
         result = agent_service.register_agent(data, "192.168.10.1")
 
@@ -341,14 +341,14 @@ class TestAgentServiceRegistration:
         assert "updated" in r2["message"]
 
     def test_register_missing_hostname_fails(self, agent_service):
-        """Register thiếu hostname — raise ValueError."""
+        """Register thiếu hostname - raise ValueError."""
         data = make_agent_data()
         del data["hostname"]
         with pytest.raises(ValueError, match="Hostname is required"):
             agent_service.register_agent(data, "10.0.0.1")
 
     def test_register_missing_device_id_fails(self, agent_service):
-        """Register thiếu device_id — raise ValueError."""
+        """Register thiếu device_id - raise ValueError."""
         data = make_agent_data()
         del data["device_id"]
         with pytest.raises(ValueError, match="Device ID is required"):
@@ -374,7 +374,7 @@ class TestAgentServiceRegistration:
 
 
 class TestAgentServiceHeartbeat:
-    """Heartbeat processing — token validation, device_id mismatch, status."""
+    """Heartbeat processing - token validation, device_id mismatch, status."""
 
     def _register_agent(self, agent_service):
         data = make_agent_data("HB-PC", ip="192.168.20.1")
@@ -382,7 +382,7 @@ class TestAgentServiceHeartbeat:
         return result
 
     def test_heartbeat_valid(self, agent_service):
-        """Heartbeat hợp lệ — trả về status, next_heartbeat."""
+        """Heartbeat hợp lệ - trả về status, next_heartbeat."""
         reg = self._register_agent(agent_service)
         hb = agent_service.process_heartbeat(
             reg["agent_id"], reg["token"],
@@ -396,14 +396,14 @@ class TestAgentServiceHeartbeat:
         assert hb["policy_mode"] == "none"
 
     def test_heartbeat_unknown_agent(self, agent_service):
-        """Heartbeat từ agent không tồn tại — raise."""
+        """Heartbeat từ agent không tồn tại - raise."""
         with pytest.raises(ValueError, match="Unknown agent"):
             agent_service.process_heartbeat(
                 "fake-agent-id", "fake-token", {}, "10.0.0.1"
             )
 
     def test_heartbeat_invalid_token(self, agent_service):
-        """Heartbeat với sai token — raise."""
+        """Heartbeat với sai token - raise."""
         reg = self._register_agent(agent_service)
         with pytest.raises(ValueError, match="Invalid token"):
             agent_service.process_heartbeat(
@@ -411,7 +411,7 @@ class TestAgentServiceHeartbeat:
             )
 
     def test_heartbeat_device_id_mismatch(self, agent_service, agent_model):
-        """Heartbeat gửi device_id khác với DB — raise."""
+        """Heartbeat gửi device_id khác với DB - raise."""
         reg = self._register_agent(agent_service)
         agent = agent_model.find_by_agent_id(reg["agent_id"])
         stored_device_id = agent["device_id"]
@@ -424,7 +424,7 @@ class TestAgentServiceHeartbeat:
             )
 
     def test_heartbeat_pending_status_preserved(self, agent_service, agent_model):
-        """Agent pending — heartbeat không thay đổi status thành active."""
+        """Agent pending - heartbeat không thay đổi status thành active."""
         reg = self._register_agent(agent_service)
         # Agent is pending after registration
         agent = agent_model.find_by_agent_id(reg["agent_id"])
@@ -440,7 +440,7 @@ class TestAgentServiceHeartbeat:
 
 
 class TestAgentServiceStatus:
-    """Status calculation — active/inactive/offline thresholds."""
+    """Status calculation - active/inactive/offline thresholds."""
 
     def test_status_active(self, agent_service, agent_model, group_model):
         """Agent heartbeat < 5 min ago → active."""
@@ -505,10 +505,10 @@ class TestAgentServiceStatus:
         assert found["status"] == "offline"
 
     def test_statistics(self, agent_service, agent_model, group_model):
-        """Statistics — đếm đúng active/inactive/offline/pending."""
+        """Statistics - đếm đúng active/inactive/offline/pending."""
         gid = str(group_model.create_group("StatGrp", "")["_id"])
 
-        # Active agent — fresh heartbeat
+        # Active agent - fresh heartbeat
         a1 = insert_agent(agent_model, gid, "StatA")
         agent_model.update_agent(a1["agent_id"], {
             "status": "active",
@@ -528,7 +528,7 @@ class TestAgentServiceStatus:
 
 
 class TestAgentServiceGroupMove:
-    """Move agent between groups — status transitions."""
+    """Move agent between groups - status transitions."""
 
     def test_move_to_active_group(self, agent_service, agent_model, group_model):
         """Move agent from pending → active group → status becomes active."""
@@ -553,7 +553,7 @@ class TestAgentServiceGroupMove:
         assert result["status"] == "pending"
 
     def test_move_to_nonexistent_group(self, agent_service, agent_model, group_model):
-        """Move to group không tồn tại — raise."""
+        """Move to group không tồn tại - raise."""
         gid = str(group_model.create_group("MvGrp", "")["_id"])
         agent = insert_agent(agent_model, gid, "BadMovePC")
 
@@ -561,7 +561,7 @@ class TestAgentServiceGroupMove:
             agent_service.move_agent_to_group(agent["agent_id"], str(ObjectId()))
 
     def test_move_nonexistent_agent(self, agent_service, group_model):
-        """Move agent không tồn tại — raise."""
+        """Move agent không tồn tại - raise."""
         grp = group_model.create_group("MvGrp2", "")
         with pytest.raises(ValueError, match="Agent not found"):
             agent_service.move_agent_to_group("fake-agent", str(grp["_id"]))
@@ -644,7 +644,7 @@ class TestCrossTeacherIsolation:
         assert can_access is True
 
     def test_agent_in_pending_group_not_owned(self, rbac_service, agent_model, group_model, teacher_a):
-        """Agent trong pending group (system) — teacher không có quyền."""
+        """Agent trong pending group (system) - teacher không có quyền."""
         pending = group_model.ensure_pending_group()
         agent = insert_agent(agent_model, str(pending["_id"]), "PendingPC")
 
@@ -653,7 +653,7 @@ class TestCrossTeacherIsolation:
         assert can_access is False
 
     def test_teacher_empty_groups_sees_nothing(self, rbac_service, agent_model, group_model, teacher_b):
-        """Teacher chưa tạo group nào — thấy 0 agents."""
+        """Teacher chưa tạo group nào - thấy 0 agents."""
         # Create agents in teacher_a's groups
         grp_a = group_model.create_group("SomeGrp", "", [], created_by=TEACHER_A_ID)
         insert_agent(agent_model, str(grp_a["_id"]), "SomePC")
@@ -667,13 +667,13 @@ class TestCrossTeacherIsolation:
 
 
 # ============================================================================
-# 4. EDGE CASES — undefined, null, conflict
+# 4. EDGE CASES - undefined, null, conflict
 # ============================================================================
 
 class TestAgentEdgeCases:
 
     def test_agent_with_none_fields(self, agent_model):
-        """Agent với fields None/undefined — không crash."""
+        """Agent với fields None/undefined - không crash."""
         aid = str(uuid.uuid4())
         agent_model.register_agent({
             "agent_id": aid,
@@ -690,7 +690,7 @@ class TestAgentEdgeCases:
         assert found["ip_address"] is None
 
     def test_agent_empty_string_fields(self, agent_model):
-        """Agent với empty string — vẫn lưu được."""
+        """Agent với empty string - vẫn lưu được."""
         aid = str(uuid.uuid4())
         agent_model.register_agent({
             "agent_id": aid,
@@ -703,7 +703,7 @@ class TestAgentEdgeCases:
         assert found["hostname"] == ""
 
     def test_heartbeat_with_no_timestamp(self, agent_service):
-        """Heartbeat không có timestamp — server dùng now_vietnam()."""
+        """Heartbeat không có timestamp - server dùng now_vietnam()."""
         data = make_agent_data("NoTsPC", ip="10.0.6.1")
         reg = agent_service.register_agent(data, "10.0.6.1")
 
@@ -715,7 +715,7 @@ class TestAgentEdgeCases:
         assert hb["agent_id"] == reg["agent_id"]
 
     def test_heartbeat_with_future_timestamp(self, agent_service):
-        """Heartbeat với timestamp tương lai — vẫn xử lý, clamp to 0."""
+        """Heartbeat với timestamp tương lai - vẫn xử lý, clamp to 0."""
         data = make_agent_data("FuturePC", ip="10.0.6.2")
         reg = agent_service.register_agent(data, "10.0.6.2")
 
@@ -728,7 +728,7 @@ class TestAgentEdgeCases:
         assert hb["agent_id"] == reg["agent_id"]
 
     def test_register_same_hostname_different_device(self, agent_service, agent_model):
-        """2 agents cùng hostname nhưng khác device_id — tạo 2 agents riêng."""
+        """2 agents cùng hostname nhưng khác device_id - tạo 2 agents riêng."""
         d1 = make_agent_data("SameHost", device_id="dev-AAA", ip="10.0.7.1")
         d2 = make_agent_data("SameHost", device_id="dev-BBB", ip="10.0.7.2")
         r1 = agent_service.register_agent(d1, "10.0.7.1")
@@ -738,7 +738,7 @@ class TestAgentEdgeCases:
         assert r1["agent_id"] != r2["agent_id"]
 
     def test_update_display_name(self, agent_service, agent_model, group_model):
-        """Update display name — chỉ thay display_name, giữ hostname."""
+        """Update display name - chỉ thay display_name, giữ hostname."""
         gid = str(group_model.create_group("DnGrp", "")["_id"])
         agent = insert_agent(agent_model, gid, "OrigName")
 
@@ -748,7 +748,7 @@ class TestAgentEdgeCases:
         assert found["hostname"] == "OrigName"
 
     def test_update_display_name_empty_fails(self, agent_service, agent_model, group_model):
-        """Display name rỗng — raise."""
+        """Display name rỗng - raise."""
         gid = str(group_model.create_group("DnGrp2", "")["_id"])
         agent = insert_agent(agent_model, gid, "DnPC")
 
@@ -765,7 +765,7 @@ class TestAgentEdgeCases:
         assert found["position"] == 5
 
     def test_delete_agent(self, agent_service, agent_model, group_model):
-        """Delete agent — xóa khỏi DB."""
+        """Delete agent - xóa khỏi DB."""
         gid = str(group_model.create_group("DelGrp", "")["_id"])
         agent = insert_agent(agent_model, gid, "DelPC")
 
@@ -774,12 +774,12 @@ class TestAgentEdgeCases:
         assert agent_model.find_by_agent_id(agent["agent_id"]) is None
 
     def test_delete_nonexistent_agent(self, agent_service):
-        """Delete agent không tồn tại — raise."""
+        """Delete agent không tồn tại - raise."""
         with pytest.raises(ValueError, match="Agent not found"):
             agent_service.delete_agent("fake-id")
 
     def test_get_agent_details(self, agent_service, agent_model, group_model):
-        """Get agent details — đầy đủ fields."""
+        """Get agent details - đầy đủ fields."""
         gid = str(group_model.create_group("DetGrp", "")["_id"])
         agent = insert_agent(agent_model, gid, "DetailPC")
 

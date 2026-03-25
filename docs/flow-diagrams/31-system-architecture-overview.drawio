@@ -1,0 +1,345 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0" version="29.6.4" pages="2">
+  <diagram id="system-architecture" name="Flow 31: SAINT System Architecture Overview">
+    <mxGraphModel dx="1800" dy="2000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;SAINT - System Architecture Overview&lt;/b&gt;&lt;br&gt;&lt;i&gt;Security Agent Integrated Network Tool - Kiến trúc tổng quan hệ thống&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="1100" height="60" as="geometry" />
+        </mxCell>
+        <!-- ==================== LAYER 1: FRONTEND ==================== -->
+        <mxCell id="fe_layer" value="&lt;b&gt;FRONTEND LAYER - Web Dashboard&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giao diện quản trị web (Jinja2 + Bootstrap 5 + Vanilla JS)&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=13;html=1;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1720" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_login" value="&lt;b&gt;/login&lt;/b&gt;&lt;br&gt;&lt;i&gt;Auth&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="20" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_dash" value="&lt;b&gt;/&lt;/b&gt;&lt;br&gt;&lt;i&gt;Dashboard&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="110" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_agents" value="&lt;b&gt;/agents&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agents&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="200" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_groups" value="&lt;b&gt;/groups&lt;/b&gt;&lt;br&gt;&lt;i&gt;Groups&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="290" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_gd" value="&lt;b&gt;/groups/:id&lt;/b&gt;&lt;br&gt;&lt;i&gt;Detail&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="380" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_wl" value="&lt;b&gt;/whitelist&lt;/b&gt;&lt;br&gt;&lt;i&gt;Whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="470" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_logs" value="&lt;b&gt;/logs&lt;/b&gt;&lt;br&gt;&lt;i&gt;Logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="560" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_prof" value="&lt;b&gt;/profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;Profile&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="650" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_api" value="&lt;b&gt;/api-keys&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="740" y="50" width="80" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_users" value="&lt;b&gt;/admin/users&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="830" y="50" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_audit" value="&lt;b&gt;/admin/audit&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="930" y="50" width="90" height="45" as="geometry" />
+        </mxCell>
+        <!-- Frontend modules -->
+        <mxCell id="fe_authjs" value="&lt;b&gt;auth.js&lt;/b&gt;&lt;br&gt;&lt;i&gt;RBAC + Token Refresh&lt;br&gt;Fetch Interceptor&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="1100" y="50" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_basejs" value="&lt;b&gt;base.js&lt;/b&gt;&lt;br&gt;&lt;i&gt;Toast, Loading, Utils&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="1260" y="50" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_sio" value="&lt;b&gt;Socket.IO Client&lt;/b&gt;&lt;br&gt;&lt;i&gt;Real-time events&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="fe_layer">
+          <mxGeometry x="1400" y="50" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fe_tech" value="&lt;i&gt;Jinja2 Templates + Bootstrap 5.3 + Font Awesome 6.4 + Vanilla JS (ES6+) + httpOnly Cookies + sessionStorage&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#333333;" vertex="1" parent="fe_layer">
+          <mxGeometry x="20" y="115" width="1500" height="20" as="geometry" />
+        </mxCell>
+        <!-- Connection labels between layers -->
+        <mxCell id="conn_fe_srv" value="&lt;b&gt;HTTP REST API (fetch)&lt;/b&gt;&lt;br&gt;&lt;i&gt;+ WebSocket (Socket.IO)&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="700" y="310" width="250" height="35" as="geometry" />
+        </mxCell>
+        <!-- Arrows between FE and Server -->
+        <mxCell id="arr_fe_srv1" value="" style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="300" as="sourcePoint" />
+            <mxPoint x="600" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arr_fe_srv2" value="" style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#9673a6;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1100" y="300" as="sourcePoint" />
+            <mxPoint x="1100" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- ==================== LAYER 2: SERVER ==================== -->
+        <mxCell id="srv_layer" value="&lt;b&gt;SERVER LAYER - Flask + SocketIO&lt;/b&gt;&lt;br&gt;&lt;i&gt;Backend API server (Python Flask + MongoDB)&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=13;html=1;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="1720" height="380" as="geometry" />
+        </mxCell>
+        <!-- Controllers -->
+        <mxCell id="ctrl_label" value="&lt;b&gt;Controllers (API Endpoints)&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="45" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_auth" value="&lt;b&gt;Auth&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/admin/auth/*&lt;br&gt;login, logout, refresh,&lt;br&gt;verify, me, profile&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="70" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_agent" value="&lt;b&gt;Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/agents/*&lt;br&gt;register, heartbeat,&lt;br&gt;policy, CRUD&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="170" y="70" width="130" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_group" value="&lt;b&gt;Group&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/groups/*&lt;br&gt;CRUD, agents,&lt;br&gt;teachers&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="310" y="70" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_wl" value="&lt;b&gt;Whitelist&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/whitelist/*&lt;br&gt;CRUD, import,&lt;br&gt;export&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="440" y="70" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_log" value="&lt;b&gt;Log&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/logs/*&lt;br&gt;submit, query,&lt;br&gt;stats, clear&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="570" y="70" width="110" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_apikey" value="&lt;b&gt;API Key&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/api-keys/*&lt;br&gt;create, validate,&lt;br&gt;revoke&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="690" y="70" width="110" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_user" value="&lt;b&gt;User&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/admin/users/*&lt;br&gt;CRUD, reset-pw,&lt;br&gt;activate&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="810" y="70" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_audit" value="&lt;b&gt;Audit&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/audit/*&lt;br&gt;query, export&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="940" y="70" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_profile" value="&lt;b&gt;Profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;/api/whitelist-profiles/*&lt;br&gt;CRUD&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="1050" y="70" width="130" height="70" as="geometry" />
+        </mxCell>
+        <!-- Middleware -->
+        <mxCell id="mw_label" value="&lt;b&gt;Middleware &amp;amp; Security&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="155" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_jwt" value="&lt;b&gt;JWT Auth&lt;/b&gt;&lt;br&gt;&lt;i&gt;Access 24h + Refresh 7d&lt;br&gt;httpOnly cookies&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="180" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_rbac" value="&lt;b&gt;RBAC&lt;/b&gt;&lt;br&gt;&lt;i&gt;@require_login&lt;br&gt;@require_admin&lt;br&gt;@require_permission&lt;br&gt;@require_group_ownership&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="180" y="180" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_brute" value="&lt;b&gt;Brute-Force&lt;/b&gt;&lt;br&gt;&lt;i&gt;5 attempts / 15 min&lt;br&gt;Per-account lock&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="360" y="180" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_bcrypt" value="&lt;b&gt;bcrypt&lt;/b&gt;&lt;br&gt;&lt;i&gt;rounds=12&lt;br&gt;Password hashing&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="510" y="180" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_nosql" value="&lt;b&gt;NoSQL Injection&lt;/b&gt;&lt;br&gt;&lt;i&gt;re.escape()&lt;br&gt;Input sanitization&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="640" y="180" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_hmac" value="&lt;b&gt;HMAC-SHA256&lt;/b&gt;&lt;br&gt;&lt;i&gt;API key hashing&lt;br&gt;+ SHA-256 fallback&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="780" y="180" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="mw_audit" value="&lt;b&gt;Audit Logger&lt;/b&gt;&lt;br&gt;&lt;i&gt;Fire-and-forget&lt;br&gt;All CRUD actions&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="920" y="180" width="120" height="55" as="geometry" />
+        </mxCell>
+        <!-- SocketIO server -->
+        <mxCell id="sio_srv" value="&lt;b&gt;Socket.IO Server&lt;/b&gt;&lt;br&gt;&lt;i&gt;Real-time event broadcast&lt;br&gt;9 event types&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="srv_layer">
+          <mxGeometry x="1050" y="180" width="140" height="55" as="geometry" />
+        </mxCell>
+        <!-- Services -->
+        <mxCell id="svc_label" value="&lt;b&gt;Services&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="275" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_auth" value="AuthService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="300" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_agent" value="AgentService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="120" y="300" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_group" value="GroupService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="220" y="300" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_wl" value="WhitelistService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="320" y="300" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_log" value="LogService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="430" y="300" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_rbac" value="RBACService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="520" y="300" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_key" value="APIKeyService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="620" y="300" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_user" value="UserService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="720" y="300" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_audit" value="AuditService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="srv_layer">
+          <mxGeometry x="810" y="300" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="srv_tech" value="&lt;i&gt;Python 3.x + Flask + Flask-SocketIO + PyMongo + PyJWT + bcrypt + HMAC-SHA256&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#333333;" vertex="1" parent="srv_layer">
+          <mxGeometry x="20" y="340" width="1100" height="20" as="geometry" />
+        </mxCell>
+        <!-- ==================== DATABASE ==================== -->
+        <mxCell id="db_conn" value="&lt;b&gt;PyMongo&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="350" y="760" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_srv_db" value="" style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="750" as="sourcePoint" />
+            <mxPoint x="400" y="810" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;MongoDB&lt;/b&gt;&lt;br&gt;&lt;i&gt;Database Layer&lt;/i&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="200" y="810" width="600" height="100" as="geometry" />
+        </mxCell>
+        <!-- Collections -->
+        <mxCell id="col1" value="users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="210" y="855" width="65" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col2" value="agents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="280" y="855" width="65" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col3" value="groups" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="350" y="855" width="65" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col4" value="whitelist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="420" y="855" width="65" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col5" value="logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="490" y="855" width="50" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col6" value="api_keys" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="545" y="855" width="65" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col7" value="audit_logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="615" y="855" width="70" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="col8" value="profiles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="690" y="855" width="60" height="22" as="geometry" />
+        </mxCell>
+        <!-- ==================== LAYER 3: AGENT ==================== -->
+        <mxCell id="agent_layer" value="&lt;b&gt;AGENT LAYER - Python Desktop Application&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent chạy trên máy tính học sinh (CustomTkinter GUI + Windows Firewall)&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=13;html=1;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="900" y="810" width="860" height="310" as="geometry" />
+        </mxCell>
+        <!-- GUI -->
+        <mxCell id="ag_gui" value="&lt;b&gt;GUI (CustomTkinter)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1200×800, dark mode&lt;br&gt;5 tabs: Dashboard | Firewall&lt;br&gt;| Whitelist | Logs | Settings&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
+          <mxGeometry x="20" y="50" width="170" height="70" as="geometry" />
+        </mxCell>
+        <!-- Agent threads -->
+        <mxCell id="ag_threads" value="&lt;b&gt;7 Daemon Threads&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="agent_layer">
+          <mxGeometry x="210" y="48" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_hb" value="&lt;b&gt;Heartbeat&lt;/b&gt;&lt;br&gt;&lt;i&gt;20s loop&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="210" y="72" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_ws" value="&lt;b&gt;WhitelistSync&lt;/b&gt;&lt;br&gt;&lt;i&gt;60s loop&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="310" y="72" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_dns" value="&lt;b&gt;DNSRefresh&lt;/b&gt;&lt;br&gt;&lt;i&gt;10s loop&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="410" y="72" width="85" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_ls" value="&lt;b&gt;LogSender&lt;/b&gt;&lt;br&gt;&lt;i&gt;2s batch&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="505" y="72" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_ps" value="&lt;b&gt;PacketSniffer&lt;/b&gt;&lt;br&gt;&lt;i&gt;scapy sniff&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="595" y="72" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_tm" value="&lt;b&gt;TokenMgr&lt;/b&gt;&lt;br&gt;&lt;i&gt;JWT refresh&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=9;" vertex="1" parent="agent_layer">
+          <mxGeometry x="695" y="72" width="80" height="35" as="geometry" />
+        </mxCell>
+        <!-- Firewall -->
+        <mxCell id="ag_fw" value="&lt;b&gt;Firewall Manager&lt;/b&gt;&lt;br&gt;&lt;i&gt;Windows Default Deny + ALLOW rules&lt;br&gt;netsh advfirewall commands&lt;br&gt;Rule prefix: &quot;FirewallController&quot;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
+          <mxGeometry x="20" y="140" width="220" height="60" as="geometry" />
+        </mxCell>
+        <!-- Domain Detection -->
+        <mxCell id="ag_dd" value="&lt;b&gt;Domain Extractor&lt;/b&gt;&lt;br&gt;&lt;i&gt;HTTP Host | HTTPS SNI | DNS QNAME&lt;br&gt;→ Whitelist check → Log queue&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
+          <mxGeometry x="260" y="140" width="250" height="50" as="geometry" />
+        </mxCell>
+        <!-- Modes -->
+        <mxCell id="ag_modes" value="&lt;b&gt;Firewall Modes&lt;/b&gt;&lt;br&gt;&lt;i&gt;monitor | whitelist_only | warn&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
+          <mxGeometry x="530" y="140" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_tech" value="&lt;i&gt;Python 3.x + CustomTkinter + scapy + requests + threading + queue.Queue + netsh (Windows)&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#333333;" vertex="1" parent="agent_layer">
+          <mxGeometry x="20" y="220" width="800" height="20" as="geometry" />
+        </mxCell>
+        <!-- Agent to Server connection -->
+        <mxCell id="conn_agent_srv" value="&lt;b&gt;HTTP REST API&lt;/b&gt;&lt;br&gt;&lt;i&gt;register, heartbeat, whitelist-sync, logs, policy&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="760" width="350" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_agent_srv" value="" style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#d6b656;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1200" y="750" as="sourcePoint" />
+            <mxPoint x="1200" y="810" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- ==================== BOTTOM: Windows Firewall ==================== -->
+        <mxCell id="win_fw" value="&lt;b&gt;WINDOWS FIREWALL&lt;/b&gt;&lt;br&gt;&lt;i&gt;netsh advfirewall&lt;br&gt;Default Deny + ALLOW rules&lt;/i&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;size=0.2;" vertex="1" parent="1">
+          <mxGeometry x="930" y="1160" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_agent_fw" value="netsh" style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#b85450;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1055" y="1120" as="sourcePoint" />
+            <mxPoint x="1055" y="1160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Network -->
+        <mxCell id="network" value="&lt;b&gt;NETWORK TRAFFIC&lt;/b&gt;&lt;br&gt;&lt;i&gt;HTTP / HTTPS / DNS packets&lt;/i&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;size=0.2;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1160" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="arr_agent_net" value="scapy sniff" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1375" y="1160" as="sourcePoint" />
+            <mxPoint x="1375" y="1120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <!-- ==================== FLOW DIAGRAM INDEX ==================== -->
+        <mxCell id="index" value="&lt;b&gt;📑 Flow Diagram Index - 31 Diagrams&lt;/b&gt;" style="shape=table;startSize=25;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1280" width="1720" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="ih" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="index">
+          <mxGeometry y="25" width="1720" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ih1" value="Batch 1: Auth &amp; Security (7)" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ih">
+          <mxGeometry width="344" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ih2" value="Batch 2: Agent-Server (6)" style="shape=partialRectangle;connectable=0;fillColor=#d5e8d4;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ih">
+          <mxGeometry x="344" width="344" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ih3" value="Batch 3: Admin CRUD (6)" style="shape=partialRectangle;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ih">
+          <mxGeometry x="688" width="344" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ih4" value="Batch 4: Agent Threads (6)" style="shape=partialRectangle;connectable=0;fillColor=#f8cecc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ih">
+          <mxGeometry x="1032" width="344" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ih5" value="Batch 5: Frontend (6)" style="shape=partialRectangle;connectable=0;fillColor=#e1d5e7;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ih">
+          <mxGeometry x="1376" width="344" height="22" as="geometry" />
+        </mxCell>
+        <!-- Content rows -->
+        <mxCell id="ir1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=9;fontFamily=Segoe UI;html=1;" vertex="1" parent="index">
+          <mxGeometry y="47" width="1720" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ir1a" value="&lt;div style=&#39;text-align:left;padding:4px;font-size:9px;&#39;&gt;01. Admin Login Flow&lt;br&gt;02. Admin Logout Flow&lt;br&gt;03. Agent Token Refresh&lt;br&gt;04. Agent Token Verify&lt;br&gt;05. RBAC Middleware&lt;br&gt;06. Profile &amp;amp; Password&lt;br&gt;07. Brute-Force Protection&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;html=1;" vertex="1" parent="ir1">
+          <mxGeometry width="344" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ir1b" value="&lt;div style=&#39;text-align:left;padding:4px;font-size:9px;&#39;&gt;08. Agent Registration&lt;br&gt;09. Agent Heartbeat&lt;br&gt;10. Whitelist Sync&lt;br&gt;11. Log Submission&lt;br&gt;12. SocketIO Realtime&lt;br&gt;13. Agent Status Lifecycle&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;html=1;" vertex="1" parent="ir1">
+          <mxGeometry x="344" width="344" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ir1c" value="&lt;div style=&#39;text-align:left;padding:4px;font-size:9px;&#39;&gt;14. User Management CRUD&lt;br&gt;15. Group Management CRUD&lt;br&gt;16. API Key Management&lt;br&gt;17. Whitelist CRUD&lt;br&gt;18. Whitelist Import/Export&lt;br&gt;19. Audit Logging&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;html=1;" vertex="1" parent="ir1">
+          <mxGeometry x="688" width="344" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ir1d" value="&lt;div style=&#39;text-align:left;padding:4px;font-size:9px;&#39;&gt;20. Agent Init &amp;amp; Lifecycle&lt;br&gt;21. Heartbeat Thread&lt;br&gt;22. WhitelistSync + DNS&lt;br&gt;23. PacketSniffer + Domain&lt;br&gt;24. LogSender Thread&lt;br&gt;25. GUI &amp;amp; Firewall Manager&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;html=1;" vertex="1" parent="ir1">
+          <mxGeometry x="1032" width="344" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ir1e" value="&lt;div style=&#39;text-align:left;padding:4px;font-size:9px;&#39;&gt;26. Frontend Login &amp;amp; Auth&lt;br&gt;27. Dashboard &amp;amp; SocketIO&lt;br&gt;28. Agent &amp;amp; Group Pages&lt;br&gt;29. Whitelist &amp;amp; Logs Pages&lt;br&gt;30. Admin Pages&lt;br&gt;31. System Architecture&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;html=1;" vertex="1" parent="ir1">
+          <mxGeometry x="1376" width="344" height="195" as="geometry" />
+        </mxCell>
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;: 🔵 Frontend &amp;nbsp; 🟢 Server &amp;nbsp; 🟡 Agent/Security &amp;nbsp; 🔴 Firewall/Admin &amp;nbsp; 🟣 SocketIO/Audit &amp;nbsp; ⬜ Database" style="text;html=1;align=center;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1560" width="1000" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="SyaSfQw0daYO7aD5MW9N" name="Page-2">
+    <mxGraphModel dx="1034" dy="564" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

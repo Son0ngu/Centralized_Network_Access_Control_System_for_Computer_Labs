@@ -199,7 +199,9 @@ class WhitelistManager:
             # Build sync parameters
             params = {
                 "agent_id": agent_id,
-                "global_version": self._state._version if hasattr(self._state, '_version') and self._state._version else None,
+                "global_version": self._state._version if self._state._version else None,
+                "group_version": self._state._group_version if self._state._group_version else None,
+                "group_id": self._state._group_id if self._state._group_id else None,
                 "timestamp": now_iso()
             }
             

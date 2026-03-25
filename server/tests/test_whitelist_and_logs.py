@@ -2,13 +2,13 @@
 Comprehensive Test Suite: Whitelist & Log Management
 =====================================================
 Tests toàn bộ chức năng Whitelist và Log:
-1. WhitelistModel    — CRUD, validation, versioning, bulk, scope filtering
-2. WhitelistService  — add/delete/update entry, scoped whitelist, agent sync, statistics
-3. WhitelistController — HTTP endpoints, RBAC teacher filtering, bulk ops
-4. LogModel          — insert/query, count, pagination, summary
-5. LogService        — receive_logs, protocol detection, time range, statistics
-6. LogController     — HTTP endpoints, RBAC teacher isolation, clear/export blocked
-7. CrossTeacher      — Teacher whitelist/log isolation, admin full access
+1. WhitelistModel    - CRUD, validation, versioning, bulk, scope filtering
+2. WhitelistService  - add/delete/update entry, scoped whitelist, agent sync, statistics
+3. WhitelistController - HTTP endpoints, RBAC teacher filtering, bulk ops
+4. LogModel          - insert/query, count, pagination, summary
+5. LogService        - receive_logs, protocol detection, time range, statistics
+6. LogController     - HTTP endpoints, RBAC teacher isolation, clear/export blocked
+7. CrossTeacher      - Teacher whitelist/log isolation, admin full access
 
 Sử dụng REAL MongoDB (test database) để integration test chính xác.
 
@@ -45,7 +45,7 @@ from time_utils import now_vietnam, VIETNAM_TZ
 
 
 # ============================================================================
-# FIXTURES — Database & Models (real MongoDB)
+# FIXTURES - Database & Models (real MongoDB)
 # ============================================================================
 
 @pytest.fixture(scope='session')
@@ -69,7 +69,7 @@ TEST_DB = 'test_saint_whitelist_logs'
 
 @pytest.fixture
 def db(mongo_client):
-    """Fresh test database with Vietnam timezone codec — dropped after each test."""
+    """Fresh test database with Vietnam timezone codec - dropped after each test."""
     from bson.codec_options import CodecOptions
     codec = CodecOptions(tz_aware=True, tzinfo=VIETNAM_TZ)
     database = mongo_client.get_database(TEST_DB, codec_options=codec)
@@ -422,7 +422,7 @@ class TestWhitelistService:
             {"value": "grp-keep.com", "type": "domain"},
         ])
         gid = str(group["_id"])
-        pseudo_id = f"group|{gid}|domain|grp-del.com"
+        pseudo_id = f"group::{gid}::domain::grp-del.com"
         result = whitelist_service.bulk_delete_entries([pseudo_id])
         assert result["deleted_count"] == 1
 
@@ -819,7 +819,7 @@ class TestLogController:
         return app
 
     def test_receive_logs_via_jwt(self, agent_model, group_model):
-        """Agent sends logs via POST with JWT — no RBAC check."""
+        """Agent sends logs via POST with JWT - no RBAC check."""
         from flask import Flask
         import controllers.log_controller as lc_mod
 
@@ -890,7 +890,7 @@ class TestLogController:
 
 
 # ============================================================================
-# 7. RBAC — TEACHER WHITELIST ISOLATION
+# 7. RBAC - TEACHER WHITELIST ISOLATION
 # ============================================================================
 
 class TestRBACWhitelistTeacher:
@@ -980,7 +980,7 @@ class TestRBACWhitelistTeacher:
 
 
 # ============================================================================
-# 8. RBAC — TEACHER LOG ISOLATION
+# 8. RBAC - TEACHER LOG ISOLATION
 # ============================================================================
 
 class TestRBACLogTeacher:
@@ -1075,7 +1075,7 @@ class TestRBACLogTeacher:
 
 
 # ============================================================================
-# 9. PENDING GROUP — Agent logs invisible to all teachers
+# 9. PENDING GROUP - Agent logs invisible to all teachers
 # ============================================================================
 
 class TestPendingGroupIsolation:
@@ -1173,7 +1173,7 @@ class TestPendingGroupIsolation:
         teacher_group = create_group(group_model, "Teacher Adopt Group", created_by=teacher["_id"])
         teacher_gid = str(teacher_group["_id"])
 
-        # Before move — teacher cannot see
+        # Before move - teacher cannot see
         with _mock_auth(teacher):
             with app.test_client() as client:
                 resp = client.get('/api/logs')
@@ -1184,7 +1184,7 @@ class TestPendingGroupIsolation:
         # Move agent to teacher's group
         agent_model.update_agent("move-agent-1", {"group_id": teacher_gid})
 
-        # After move — teacher CAN see
+        # After move - teacher CAN see
         with _mock_auth(teacher):
             with app.test_client() as client:
                 resp = client.get('/api/logs')

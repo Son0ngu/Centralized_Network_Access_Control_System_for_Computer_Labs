@@ -49,11 +49,11 @@
                 renderTable(data.data.users || []);
                 renderPagination();
             } else {
-                showNotification('danger', data.error || 'Loi tai du lieu');
+                showNotification('danger', data.error || 'Error loading data');
             }
         } catch (err) {
             console.error('Load users error:', err);
-            showNotification('danger', 'Khong the tai danh sach tai khoan');
+            showNotification('danger', 'Cannot load account list');
         }
     }
 
@@ -82,7 +82,7 @@
 
         if (!users.length) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">
-                <i class="fas fa-users me-2"></i>Không có tài khoản nào
+                <i class="fas fa-users me-2"></i>No accounts found
             </td></tr>`;
             return;
         }
@@ -102,22 +102,22 @@
                         ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Active</span>'
                         : '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Inactive</span>'}
                 </td>
-                <td class="d-none d-lg-table-cell text-nowrap"><small>${u.last_login ? formatDate(u.last_login) : '<span class="text-muted">Chưa đăng nhập</span>'}</small></td>
+                <td class="d-none d-lg-table-cell text-nowrap"><small>${u.last_login ? formatDate(u.last_login) : '<span class="text-muted">Never logged in</span>'}</small></td>
                 <td class="d-none d-lg-table-cell text-nowrap"><small>${formatDate(u.created_at)}</small></td>
                 <td class="text-end text-nowrap">
                     <button class="btn btn-sm btn-outline-warning action-btn me-1"
                             onclick="userActions.toggleActive('${u._id}', ${!u.is_active})"
-                            title="${u.is_active ? 'Vô hiệu hóa' : 'Kích hoạt'}">
+                            title="${u.is_active ? 'Deactivate' : 'Activate'}">
                         <i class="fas fa-${u.is_active ? 'ban' : 'check'}"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-info action-btn me-1"
                             onclick="userActions.openResetPassword('${u._id}', '${escHtml(u.username)}')"
-                            title="Reset mật khẩu">
+                            title="Reset password">
                         <i class="fas fa-key"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger action-btn"
                             onclick="userActions.deleteUser('${u._id}', '${escHtml(u.username)}')"
-                            title="Xóa">
+                            title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -133,8 +133,8 @@
         const start = currentPage * PAGE_SIZE + 1;
         const end = Math.min((currentPage + 1) * PAGE_SIZE, totalUsers);
         info.textContent = totalUsers > 0
-            ? `Hiển thị ${start}-${end} trong ${totalUsers} tài khoản`
-            : 'Không có tài khoản nào';
+            ? `Showing ${start}-${end} of ${totalUsers} accounts`
+            : 'No accounts found';
 
         if (totalPages <= 1) { nav.innerHTML = ''; return; }
 
@@ -167,8 +167,8 @@
 
     window.userActions = {
         async toggleActive(userId, newState) {
-            const action = newState ? 'kích hoạt' : 'vô hiệu hóa';
-            if (!confirm(`Bạn có chắc muốn ${action} tài khoản này?`)) return;
+            const action = newState ? 'activate' : 'deactivate';
+            if (!confirm(`Are you sure you want to ${action} this account?`)) return;
 
             try {
                 const resp = await fetch(`${API_BASE}/${userId}/toggle-active`, {
@@ -186,7 +186,7 @@
                     showNotification('danger', data.error);
                 }
             } catch (err) {
-                showNotification('danger', 'Thao tác thất bại');
+                showNotification('danger', 'Operation failed');
             }
         },
 
@@ -199,7 +199,7 @@
         },
 
         async deleteUser(userId, username) {
-            if (!confirm(`Bạn có chắc muốn XÓA tài khoản "${username}"? Hành động này không thể hoàn tác!`)) return;
+            if (!confirm(`Are you sure you want to DELETE account "${username}"? This action cannot be undone!`)) return;
 
             try {
                 const resp = await fetch(`${API_BASE}/${userId}`, {
@@ -215,7 +215,7 @@
                     showNotification('danger', data.error);
                 }
             } catch (err) {
-                showNotification('danger', 'Xóa thất bại');
+                showNotification('danger', 'Delete failed');
             }
         },
     };
@@ -256,14 +256,14 @@
         const role = document.getElementById('createRole').value;
 
         if (!username || !password) {
-            alertEl.textContent = 'Username va password la bat buoc';
+            alertEl.textContent = 'Username and password are required';
             alertEl.classList.remove('d-none');
             return;
         }
 
         const btn = document.getElementById('createUserBtn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Dang tao...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating...';
 
         try {
             const resp = await fetch(API_BASE, {
@@ -275,21 +275,21 @@
             const data = await resp.json();
 
             if (data.success) {
-                showNotification('success', 'Tao tai khoan thanh cong!');
+                showNotification('success', 'Account created successfully!');
                 bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
                 document.getElementById('createUserForm').reset();
                 loadUsers();
                 loadStats();
             } else {
-                alertEl.textContent = data.error || 'Tao that bai';
+                alertEl.textContent = data.error || 'Creation failed';
                 alertEl.classList.remove('d-none');
             }
         } catch (err) {
-            alertEl.textContent = 'Loi ket noi server';
+            alertEl.textContent = 'Server connection error';
             alertEl.classList.remove('d-none');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-plus me-1"></i>Tao tai khoan';
+            btn.innerHTML = '<i class="fas fa-plus me-1"></i>Create account';
         }
     }
 
@@ -301,7 +301,7 @@
         const newPassword = document.getElementById('resetNewPassword').value;
 
         if (!newPassword || newPassword.length < 8) {
-            alertEl.textContent = 'Mat khau phai co it nhat 8 ky tu';
+            alertEl.textContent = 'Password must be at least 8 characters';
             alertEl.classList.remove('d-none');
             return;
         }
@@ -316,14 +316,14 @@
             const data = await resp.json();
 
             if (data.success) {
-                showNotification('success', 'Reset mat khau thanh cong!');
+                showNotification('success', 'Password reset successfully!');
                 bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
             } else {
                 alertEl.textContent = data.error;
                 alertEl.classList.remove('d-none');
             }
         } catch (err) {
-            alertEl.textContent = 'Loi ket noi server';
+            alertEl.textContent = 'Server connection error';
             alertEl.classList.remove('d-none');
         }
     }
@@ -342,7 +342,7 @@
         if (!dateStr) return '-';
         try {
             const d = new Date(dateStr);
-            return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         } catch (e) {
             return dateStr;
         }

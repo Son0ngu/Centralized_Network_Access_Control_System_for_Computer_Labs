@@ -6,11 +6,12 @@ let customWlDomains = [];      // Temp state for custom whitelist modal
 let ctxTargetAgentId = null;   // Agent currently targeted by context menu
 let wlEntries = [];            // Inline whitelist editor state
 let wlAllEntries = [];         // Unfiltered copy for search
+let currentView = 'list';      // Map/list view state (must be before first usage)
 const groupId = document.getElementById('groupId').value;
 
 // Whitelist Profiles state
 let wpProfiles = [];
-// wpEditDomains removed — profile domains now edited on /whitelist page
+// wpEditDomains removed - profile domains now edited on /whitelist page
 let wpAssignedTeachers = [];   // Current assigned teacher ObjectIds
 
 // ========================================
@@ -219,9 +220,9 @@ function renderAgentItem(agent) {
     const policyMode = policy?.override_mode || 'none';
     let policyBadgeHtml = '';
     if (policyMode === 'isolate') {
-        policyBadgeHtml = '<span class="badge bg-danger ms-2" title="Cắt mạng"><i class="fas fa-ban me-1"></i>Isolated</span>';
+        policyBadgeHtml = '<span class="badge bg-danger ms-2" title="Network Isolated"><i class="fas fa-ban me-1"></i>Isolated</span>';
     } else if (policyMode === 'custom_whitelist') {
-        policyBadgeHtml = '<span class="badge bg-warning text-dark ms-2" title="Whitelist riêng"><i class="fas fa-list-alt me-1"></i>Custom</span>';
+        policyBadgeHtml = '<span class="badge bg-warning text-dark ms-2" title="Custom Whitelist"><i class="fas fa-list-alt me-1"></i>Custom</span>';
     }
 
     return `
@@ -627,7 +628,6 @@ function showError(message) {
 // MAP VIEW & DRAG DROP
 // ========================================
 
-let currentView = 'list';
 let targetSlotPosition = null;
 let layoutSaveTimer = null;
 
@@ -880,9 +880,9 @@ function renderDraggableCard(agent, isCompact=false) {
     const policyClass = policyMode !== 'none' ? ` policy-${policyMode}` : '';
     let policyBadgeHtml = '';
     if (policyMode === 'isolate') {
-        policyBadgeHtml = '<span class="policy-badge policy-badge-isolate" title="Cắt mạng"><i class="fas fa-ban"></i></span>';
+        policyBadgeHtml = '<span class="policy-badge policy-badge-isolate" title="Network Isolated"><i class="fas fa-ban"></i></span>';
     } else if (policyMode === 'custom_whitelist') {
-        policyBadgeHtml = '<span class="policy-badge policy-badge-custom" title="Whitelist riêng"><i class="fas fa-list-alt"></i></span>';
+        policyBadgeHtml = '<span class="policy-badge policy-badge-custom" title="Custom Whitelist"><i class="fas fa-list-alt"></i></span>';
     }
 
     // Right-click handler for context menu
@@ -1023,7 +1023,7 @@ async function updateAgentPosition(agentId, position) {
 }
 
 // ========================================
-// AGENT POLICY — Context Menu & Actions
+// AGENT POLICY - Context Menu & Actions
 // ========================================
 
 function showAgentContextMenu(event, agentId) {
@@ -1089,7 +1089,7 @@ function ctxSetPolicy(mode) {
         btn.parentNode.replaceChild(newBtn, btn);
         newBtn.addEventListener('click', async () => {
             newBtn.disabled = true;
-            newBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+            newBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
 
             const reason = document.getElementById('isolateReason').value.trim();
             const durVal = document.getElementById('isolateDuration').value;
@@ -1098,7 +1098,7 @@ function ctxSetPolicy(mode) {
             await applyPolicy(ctxTargetAgentId, 'isolate', reason, duration);
             bootstrap.Modal.getInstance(document.getElementById('isolateConfirmModal')).hide();
             newBtn.disabled = false;
-            newBtn.innerHTML = '<i class="fas fa-ban me-1"></i>Cắt mạng';
+            newBtn.innerHTML = '<i class="fas fa-ban me-1"></i>Isolate';
         });
     }
 }
@@ -1133,11 +1133,11 @@ function ctxOpenCustomWhitelist() {
     btn.parentNode.replaceChild(newBtn, btn);
     newBtn.addEventListener('click', async () => {
         if (customWlDomains.length === 0) {
-            showError('Thêm ít nhất 1 domain');
+            showError('Add at least 1 domain');
             return;
         }
         newBtn.disabled = true;
-        newBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+        newBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
 
         const reason = document.getElementById('customWlReason').value.trim();
         const durVal = document.getElementById('customWlDuration').value;
@@ -1147,7 +1147,7 @@ function ctxOpenCustomWhitelist() {
         await applyPolicy(ctxTargetAgentId, 'custom_whitelist', reason, duration, entries);
         bootstrap.Modal.getInstance(document.getElementById('customWhitelistModal')).hide();
         newBtn.disabled = false;
-        newBtn.innerHTML = '<i class="fas fa-check me-1"></i>Áp dụng';
+        newBtn.innerHTML = '<i class="fas fa-check me-1"></i>Apply';
     });
 }
 
@@ -1180,7 +1180,7 @@ function removeCustomWlDomain(domain) {
 function renderCustomWlDomains() {
     const container = document.getElementById('customWlDomainList');
     if (customWlDomains.length === 0) {
-        container.innerHTML = '<div class="custom-wl-empty"><i class="fas fa-inbox me-1"></i>Chưa có domain nào</div>';
+        container.innerHTML = '<div class="custom-wl-empty"><i class="fas fa-inbox me-1"></i>No domains yet</div>';
         return;
     }
     container.innerHTML = customWlDomains.map(d => `
@@ -1214,18 +1214,18 @@ async function ctxViewPolicy() {
         const p = result.data || {};
 
         const modeLabels = {
-            none: '<span class="badge bg-success">Bình thường</span>',
-            isolate: '<span class="badge bg-danger">Cắt mạng</span>',
-            custom_whitelist: '<span class="badge bg-warning text-dark">Whitelist riêng</span>',
+            none: '<span class="badge bg-success">Normal</span>',
+            isolate: '<span class="badge bg-danger">Isolated</span>',
+            custom_whitelist: '<span class="badge bg-warning text-dark">Custom Whitelist</span>',
         };
 
         let html = `
             <div class="mb-2"><strong>Mode:</strong> ${modeLabels[p.override_mode] || modeLabels.none}</div>
         `;
-        if (p.reason) html += `<div class="mb-2"><strong>Lý do:</strong> ${escapeHtml(p.reason)}</div>`;
-        if (p.applied_by_username) html += `<div class="mb-2"><strong>Áp dụng bởi:</strong> ${escapeHtml(p.applied_by_username)}</div>`;
-        if (p.expires_at) html += `<div class="mb-2"><strong>Hết hạn:</strong> ${formatTimestamp(p.expires_at)}</div>`;
-        if (p.updated_at) html += `<div class="mb-2"><strong>Cập nhật:</strong> ${formatTimestamp(p.updated_at)}</div>`;
+        if (p.reason) html += `<div class="mb-2"><strong>Reason:</strong> ${escapeHtml(p.reason)}</div>`;
+        if (p.applied_by_username) html += `<div class="mb-2"><strong>Applied by:</strong> ${escapeHtml(p.applied_by_username)}</div>`;
+        if (p.expires_at) html += `<div class="mb-2"><strong>Expires:</strong> ${formatTimestamp(p.expires_at)}</div>`;
+        if (p.updated_at) html += `<div class="mb-2"><strong>Updated:</strong> ${formatTimestamp(p.updated_at)}</div>`;
 
         if (p.override_mode === 'custom_whitelist' && p.custom_whitelist?.length) {
             html += `<div class="mt-2"><strong>Domains (${p.custom_whitelist.length}):</strong>
@@ -1237,7 +1237,7 @@ async function ctxViewPolicy() {
 
         body.innerHTML = html;
     } catch (e) {
-        body.innerHTML = '<div class="text-danger small">Không tải được policy</div>';
+        body.innerHTML = '<div class="text-danger small">Failed to load policy</div>';
     }
 }
 
@@ -1273,15 +1273,15 @@ async function applyPolicy(agentId, mode, reason = '', durationMinutes = null, c
         }
 
         const modeMessages = {
-            none: 'Đã bỏ chặn — trở về bình thường',
-            isolate: 'Đã cắt mạng',
-            custom_whitelist: 'Đã áp dụng whitelist riêng',
+            none: 'Unblocked - back to normal',
+            isolate: 'Network isolated',
+            custom_whitelist: 'Custom whitelist applied',
         };
         showSuccess(modeMessages[mode] || 'Policy updated');
 
     } catch (error) {
         console.error('Error setting policy:', error);
-        showError(error.message || 'Không thể cập nhật policy');
+        showError(error.message || 'Cannot update policy');
     }
 }
 
@@ -1305,7 +1305,7 @@ async function wlLoadEntries() {
         const data = await res.json();
 
         if (!data.success) {
-            container.innerHTML = '<div class="wl-empty-state"><p>Lỗi tải whitelist</p></div>';
+            container.innerHTML = '<div class="wl-empty-state"><p>Error loading whitelist</p></div>';
             return;
         }
 
@@ -1345,7 +1345,7 @@ async function wlLoadEntries() {
         wpUpdateBanner(); // Update banner with latest default profile info
     } catch (err) {
         console.error('wlLoadEntries error:', err);
-        container.innerHTML = '<div class="wl-empty-state"><p>Lỗi kết nối</p></div>';
+        container.innerHTML = '<div class="wl-empty-state"><p>Connection error</p></div>';
     }
 }
 
@@ -1360,7 +1360,7 @@ function wlRenderList() {
         container.innerHTML = `
             <div class="wl-empty-state">
                 <i class="fas fa-shield-alt d-block"></i>
-                <p>Chưa có domain nào${wlAllEntries.length > 0 ? ' khớp bộ lọc' : ''}</p>
+                <p>No domains found${wlAllEntries.length > 0 ? ' matching filter' : ''}</p>
             </div>`;
         return;
     }
@@ -1394,13 +1394,13 @@ function wlRenderList() {
         // Priority star
         const star = priority === 'high' ? '<i class="fas fa-star wl-priority-star" title="High priority"></i>' : '';
 
-        // Delete button — uses domain index for Default Profile (admin only)
+        // Delete button - uses domain index for Default Profile (admin only)
         const entryIndex = entry._index !== undefined ? entry._index : '';
         const isAdminUser = window.SAINT_AUTH && window.SAINT_AUTH.isAdmin;
         const deleteBtn = (isGlobal || !isAdminUser)
             ? ''
             : `<div class="wl-actions">
-                <button class="btn btn-outline-danger btn-sm" onclick="wlDeleteEntry(${entryIndex})" title="Xoá">
+                <button class="btn btn-outline-danger btn-sm" onclick="wlDeleteEntry(${entryIndex})" title="Delete">
                     <i class="fas fa-trash-alt"></i>
                 </button>
                </div>`;
@@ -1478,7 +1478,7 @@ async function wlAddEntry() {
     }
 
     if (addedCount === 0) {
-        showNotification('warning', 'Tất cả domain đã tồn tại');
+        showNotification('warning', 'All domains already exist');
         return;
     }
 
@@ -1495,14 +1495,14 @@ async function wlAddEntry() {
 
         if (data.success) {
             input.value = '';
-            showNotification('success', `Đã thêm ${addedCount} domain`);
+            showNotification('success', `Added ${addedCount} domain(s)`);
             await wlLoadEntries();
         } else {
-            showNotification('danger', data.error || 'Không thể thêm domain');
+            showNotification('danger', data.error || 'Cannot add domain');
         }
     } catch (err) {
         console.error('wlAddEntry error:', err);
-        showNotification('danger', 'Lỗi kết nối server');
+        showNotification('danger', 'Server connection error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-plus"></i>';
@@ -1514,7 +1514,7 @@ async function wlAddEntry() {
  */
 async function wlDeleteEntry(entryIndex) {
     if (entryIndex === undefined || !wlDefaultProfile) return;
-    if (!confirm('Xoá domain này khỏi whitelist?')) return;
+    if (!confirm('Remove this domain from whitelist?')) return;
 
     const currentDomains = [...(wlDefaultProfile.domains || [])];
     const idx = parseInt(entryIndex);
@@ -1532,14 +1532,14 @@ async function wlDeleteEntry(entryIndex) {
         const data = await res.json();
 
         if (data.success) {
-            showNotification('success', `Đã xoá "${removedVal}"`);
+            showNotification('success', `Deleted "${removedVal}"`);
             await wlLoadEntries();
         } else {
-            showNotification('danger', data.error || 'Không thể xoá');
+            showNotification('danger', data.error || 'Cannot delete');
         }
     } catch (err) {
         console.error('wlDeleteEntry error:', err);
-        showNotification('danger', 'Lỗi kết nối');
+        showNotification('danger', 'Connection error');
     }
 }
 
@@ -1595,14 +1595,14 @@ function wpUpdateBanner() {
         iconEl.style.background = '#fff3e0';
         iconEl.innerHTML = '<i class="fas fa-user-shield text-warning fa-lg"></i>';
         titleEl.innerHTML = `<span class="text-warning">Teacher Profile Active</span>`;
-        descEl.innerHTML = `<i class="fas fa-play-circle me-1 text-warning"></i><strong>${wlEscapeHtml(activeProfile.name)}</strong> — ${wlEscapeHtml(activeProfile.teacher_username || '')} <span class="text-muted">(${(activeProfile.domains || []).length} domains)</span>`;
+        descEl.innerHTML = `<i class="fas fa-play-circle me-1 text-warning"></i><strong>${wlEscapeHtml(activeProfile.name)}</strong> - ${wlEscapeHtml(activeProfile.teacher_username || '')} <span class="text-muted">(${(activeProfile.domains || []).length} domains)</span>`;
     } else {
         // Default Profile is in use
         const defaultDomainCount = wlDefaultProfile ? (wlDefaultProfile.domains || []).length : '...';
         iconEl.style.background = '#e8f5e9';
         iconEl.innerHTML = '<i class="fas fa-shield-alt text-success fa-lg"></i>';
         titleEl.innerHTML = `<span class="text-success">Default Profile</span>`;
-        descEl.innerHTML = `<i class="fas fa-check-circle me-1 text-success"></i>Dang dung Default Whitelist Profile <span class="text-muted">(${defaultDomainCount} domains)</span>`;
+        descEl.innerHTML = `<i class="fas fa-check-circle me-1 text-success"></i>Using Default Whitelist Profile <span class="text-muted">(${defaultDomainCount} domains)</span>`;
     }
 }
 
@@ -1614,12 +1614,12 @@ function wpRenderProfiles() {
     const countEl = document.getElementById('profileCount');
     if (!container) return;
 
-    // Filter out the Default profile — it's shown in its own card
+    // Filter out the Default profile - it's shown in its own card
     const teacherProfiles = wpProfiles.filter(p => !p.is_default);
     if (countEl) countEl.textContent = teacherProfiles.length;
 
     if (teacherProfiles.length === 0) {
-        container.innerHTML = '<div class="text-center py-3 text-muted small">Chua co teacher profile nao</div>';
+        container.innerHTML = '<div class="text-center py-3 text-muted small">No teacher profiles yet</div>';
         return;
     }
 
@@ -1655,19 +1655,19 @@ function wpRenderProfiles() {
 
         // Activate / Deactivate
         if (isActive) {
-            actions += `<button class="btn btn-outline-warning btn-sm" onclick="wpDeactivate('${p._id}')" title="Tat profile"><i class="fas fa-pause"></i></button>`;
+            actions += `<button class="btn btn-outline-warning btn-sm" onclick="wpDeactivate('${p._id}')" title="Deactivate profile"><i class="fas fa-pause"></i></button>`;
         } else {
-            actions += `<button class="btn btn-outline-success btn-sm" onclick="wpActivate('${p._id}')" title="Kich hoat"><i class="fas fa-play"></i></button>`;
+            actions += `<button class="btn btn-outline-success btn-sm" onclick="wpActivate('${p._id}')" title="Activate"><i class="fas fa-play"></i></button>`;
         }
 
-        // Edit Rules — redirect to /whitelist?profile_id=...
+        // Edit Rules - redirect to /whitelist?profile_id=...
         if (canManage) {
-            actions += ` <a href="/whitelist?profile_id=${p._id}&group_id=${groupId}" class="btn btn-outline-primary btn-sm" title="Chinh sua Rule"><i class="fas fa-edit"></i></a>`;
+            actions += ` <a href="/whitelist?profile_id=${p._id}&group_id=${groupId}" class="btn btn-outline-primary btn-sm" title="Edit Rules"><i class="fas fa-edit"></i></a>`;
         }
 
         // Delete (only non-active, only owner/admin)
         if (canManage && !isActive) {
-            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="wpDeleteProfile('${p._id}')" title="Xoa"><i class="fas fa-trash"></i></button>`;
+            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="wpDeleteProfile('${p._id}')" title="Delete"><i class="fas fa-trash"></i></button>`;
         }
 
         html += `
@@ -1700,8 +1700,8 @@ async function wpActivate(profileId) {
     const activeProfile = wpProfiles.find(p => p.is_active);
     if (activeProfile && activeProfile._id !== profileId) {
         const confirmed = confirm(
-            `Profile "${activeProfile.name}" cua ${activeProfile.teacher_username} dang active.\n` +
-            `Ban co muon tat de activate profile moi?`
+            `Profile "${activeProfile.name}" by ${activeProfile.teacher_username} is currently active.\n` +
+            `Do you want to deactivate it and activate the new profile?`
         );
         if (!confirmed) return;
     }
@@ -1711,12 +1711,12 @@ async function wpActivate(profileId) {
         const data = await res.json();
         if (data.success) {
             await wpLoadProfiles();
-            showNotification('Profile activated', 'success');
+            showNotification('success', 'Profile activated');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error activating profile', 'danger');
+        showNotification('danger', 'Error activating profile');
     }
 }
 
@@ -1726,12 +1726,12 @@ async function wpDeactivate(profileId) {
         const data = await res.json();
         if (data.success) {
             await wpLoadProfiles();
-            showNotification('Profile deactivated — fallback ve Default', 'warning');
+            showNotification('warning', 'Profile deactivated - fallback to Default');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error deactivating profile', 'danger');
+        showNotification('danger', 'Error deactivating profile');
     }
 }
 
@@ -1743,19 +1743,19 @@ function openCreateProfileModal() {
 }
 
 /**
- * "Chinh sua Rule" — redirect to /whitelist page with profile_id
+ * "Edit Rules" - redirect to /whitelist page with profile_id
  */
 function wpEditProfile(profileId) {
     window.location.href = `/whitelist?profile_id=${profileId}&group_id=${groupId}`;
 }
 
 /**
- * Save new profile (name only — domains managed on /whitelist page)
+ * Save new profile (name only - domains managed on /whitelist page)
  */
 async function saveProfile() {
     const name = document.getElementById('profileName').value.trim();
     if (!name) {
-        showNotification('Ten profile khong duoc de trong', 'warning');
+        showNotification('warning', 'Profile name cannot be empty');
         return;
     }
 
@@ -1772,28 +1772,28 @@ async function saveProfile() {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('profileModal'))?.hide();
             await wpLoadProfiles();
-            showNotification('Profile da tao — dung "Chinh sua Rule" de them domain', 'success');
+            showNotification('success', 'Profile created - use "Edit Rules" to add domains');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error saving profile', 'danger');
+        showNotification('danger', 'Error saving profile');
     }
 }
 
 async function wpDeleteProfile(profileId) {
-    if (!confirm('Xoa profile nay?')) return;
+    if (!confirm('Delete this profile?')) return;
     try {
         const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
             wpLoadProfiles();
-            showNotification('Profile deleted', 'success');
+            showNotification('success', 'Profile deleted');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error deleting profile', 'danger');
+        showNotification('danger', 'Error deleting profile');
     }
 }
 
@@ -1828,7 +1828,7 @@ async function wpRenderTeachersList(group) {
     if (countEl) countEl.textContent = teacherIds.length;
 
     if (teacherIds.length === 0) {
-        container.innerHTML = '<div class="text-center py-3 text-muted small">Chua gan teacher nao</div>';
+        container.innerHTML = '<div class="text-center py-3 text-muted small">No teachers assigned</div>';
         return;
     }
 
@@ -1844,7 +1844,7 @@ async function wpRenderTeachersList(group) {
         );
 
         if (teachers.length === 0) {
-            container.innerHTML = '<div class="text-center py-3 text-muted small">Chua gan teacher nao</div>';
+            container.innerHTML = '<div class="text-center py-3 text-muted small">No teachers assigned</div>';
             return;
         }
 
@@ -1878,7 +1878,7 @@ async function openAssignTeacherModal() {
         const allUsers = data.data?.users || data.data || [];
         const teachers = allUsers.filter(u => u.role === 'teacher');
         if (teachers.length === 0) {
-            container.innerHTML = '<div class="text-center py-3 text-muted">Khong co teacher nao</div>';
+            container.innerHTML = '<div class="text-center py-3 text-muted">No teachers available</div>';
             return;
         }
 
@@ -1917,12 +1917,12 @@ async function saveTeacherAssignments() {
             bootstrap.Modal.getInstance(document.getElementById('assignTeacherModal'))?.hide();
             wpAssignedTeachers = selectedIds;
             wpLoadTeachers();
-            showNotification('Teachers updated', 'success');
+            showNotification('success', 'Teachers updated');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error saving teachers', 'danger');
+        showNotification('danger', 'Error saving teachers');
     }
 }
 
@@ -1940,11 +1940,11 @@ async function wpRemoveTeacher(teacherId) {
         if (data.success) {
             wpAssignedTeachers = newIds;
             wpLoadTeachers();
-            showNotification('Teacher removed', 'success');
+            showNotification('success', 'Teacher removed');
         } else {
-            showNotification(data.error || 'Failed', 'danger');
+            showNotification('danger', data.error || 'Failed');
         }
     } catch (e) {
-        showNotification('Error removing teacher', 'danger');
+        showNotification('danger', 'Error removing teacher');
     }
 }

@@ -2,12 +2,12 @@
 Comprehensive Test Suite: Agent + Agent Policy
 ================================================
 Tests toàn bộ chức năng Agent (mở rộng từ test_agents.py):
-1. AgentModel        — CRUD, heartbeat, status, statistics
-2. AgentService      — Registration, heartbeat, group move, display name
-3. AgentPolicyModel  — set/get/reset policy, expiry, custom whitelist, batch
-4. AgentPolicyService — isolate/reset, apply_policy_to_sync, system entries
-5. AgentController   — HTTP endpoints (register, heartbeat, list, policy CRUD)
-6. RBAC              — Teacher agent isolation, ownership checks
+1. AgentModel        - CRUD, heartbeat, status, statistics
+2. AgentService      - Registration, heartbeat, group move, display name
+3. AgentPolicyModel  - set/get/reset policy, expiry, custom whitelist, batch
+4. AgentPolicyService - isolate/reset, apply_policy_to_sync, system entries
+5. AgentController   - HTTP endpoints (register, heartbeat, list, policy CRUD)
+6. RBAC              - Teacher agent isolation, ownership checks
 
 Run:
   cd server && python -m pytest tests/test_agent_full.py -v
@@ -705,7 +705,7 @@ class TestAgentController:
 
 
 # ============================================================================
-# 6. RBAC — TEACHER AGENT ISOLATION
+# 6. RBAC - TEACHER AGENT ISOLATION
 # ============================================================================
 
 class TestRBACAgentTeacher:

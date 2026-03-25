@@ -1,10 +1,11 @@
 """
 User Model - Admin & Teacher accounts.
 - Brute-force protection (failed_login_attempts + locked_until)
-- Chi 2 role: admin, teacher
+- Only 2 roles: admin, teacher
 """
 
 import logging
+import re
 from datetime import timedelta
 from typing import Dict, List, Optional
 from bson import ObjectId
@@ -14,7 +15,7 @@ from pymongo.database import Database
 
 from time_utils import now_vietnam
 
-# Lock account sau 5 lan sai mat khau
+# Lock account after 5 failed password attempts
 MAX_FAILED_ATTEMPTS = 5
 LOCK_DURATION_MINUTES = 15
 
@@ -80,20 +81,22 @@ class UserModel:
             return None
 
     def find_by_username(self, username: str) -> Optional[Dict]:
-        """Find user by username (case-insensitive)"""
+        """Find user by username (case-insensitive, regex-safe)"""
         try:
+            safe_username = re.escape(username.strip())
             return self.collection.find_one(
-                {"username": {"$regex": f"^{username}$", "$options": "i"}}
+                {"username": {"$regex": f"^{safe_username}$", "$options": "i"}}
             )
         except Exception as e:
             self.logger.error(f"Error finding user by username {username}: {e}")
             return None
 
     def find_by_email(self, email: str) -> Optional[Dict]:
-        """Find user by email (case-insensitive)"""
+        """Find user by email (case-insensitive, regex-safe)"""
         try:
+            safe_email = re.escape(email.strip())
             return self.collection.find_one(
-                {"email": {"$regex": f"^{email}$", "$options": "i"}}
+                {"email": {"$regex": f"^{safe_email}$", "$options": "i"}}
             )
         except Exception as e:
             self.logger.error(f"Error finding user by email {email}: {e}")

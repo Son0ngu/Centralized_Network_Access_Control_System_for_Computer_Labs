@@ -1,6 +1,6 @@
 """
-Seed RBAC - Script khởi tạo default admin user.
-Chạy 1 lần khi deploy hoặc tự động khi server start.
+Seed RBAC - Script to initialize default admin user.
+Run once on deploy or automatically on server start.
 
 Usage:
     cd server

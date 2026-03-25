@@ -1,4 +1,4 @@
-# SAINT RBAC — Teacher Data Filtering Design Document
+# SAINT RBAC - Teacher Data Filtering Design Document
 
 ## 1. Bối cảnh vấn đề
 
@@ -11,7 +11,7 @@ Hiện tại hệ thống có 4 controller "cũ" phục vụ data cho cả Agent
 | `WhitelistController` | `/api/whitelist` | Agent (JWT) + Web UI |
 | `LogController` | `/api/logs` | Agent (JWT) + Web UI |
 
-**Vấn đề**: Khi Teacher đăng nhập web UI và vào `/groups`, `/agents`, `/whitelist`, `/logs`, frontend gọi đúng các API trên và nhận về **toàn bộ data** — không phân biệt group nào do Teacher tạo hay không. Theo thiết kế RBAC, Teacher chỉ được thấy data thuộc Group mình tạo (`created_by == user._id`).
+**Vấn đề**: Khi Teacher đăng nhập web UI và vào `/groups`, `/agents`, `/whitelist`, `/logs`, frontend gọi đúng các API trên và nhận về **toàn bộ data** - không phân biệt group nào do Teacher tạo hay không. Theo thiết kế RBAC, Teacher chỉ được thấy data thuộc Group mình tạo (`created_by == user._id`).
 
 ---
 
@@ -34,7 +34,7 @@ inject_current_user
 │   └── KHÔNG → g.current_user = None
 ```
 
-Decorator này **không block request** — chỉ gắn thông tin user vào Flask `g` context nếu có. Đây là chìa khóa để giữ Agent API hoạt động bình thường.
+Decorator này **không block request** - chỉ gắn thông tin user vào Flask `g` context nếu có. Đây là chìa khóa để giữ Agent API hoạt động bình thường.
 
 ### 2.3. Logic filter đã có sẵn trong RBACService
 
@@ -71,7 +71,7 @@ Request đến controller
 
 | File | Loại thay đổi | Mức độ |
 |---|---|---|
-| `middleware/rbac.py` | Không đổi | — |
+| `middleware/rbac.py` | Không đổi | - |
 | `services/rbac_service.py` | Sửa nhỏ: hoàn thiện `get_log_query_filter` | Thấp |
 | `controllers/group_controller.py` | Sửa: inject user + filter 4 endpoint | Trung bình |
 | `controllers/agent_controller.py` | Sửa: inject user + filter 2 endpoint | Trung bình |
@@ -79,13 +79,13 @@ Request đến controller
 | `controllers/log_controller.py` | Sửa: inject user + filter 2 endpoint | Trung bình |
 | `services/group_service.py` | Sửa: thêm tham số `query_filter` | Thấp |
 | `app.py` (`register_controllers`) | Sửa: truyền `rbac_service` vào 4 controller | Thấp |
-| Frontend JS (agents.js, groups.js...) | Không đổi | — |
+| Frontend JS (agents.js, groups.js...) | Không đổi | - |
 
 ---
 
 ## 4. Chi tiết thiết kế từng controller
 
-### 4.1. GroupController — `/api/groups`
+### 4.1. GroupController - `/api/groups`
 
 **Constructor mới**: Thêm `rbac_service` parameter.
 
@@ -95,7 +95,7 @@ GroupController(group_service, rbac_service, socketio=None)
 
 **Các endpoint cần sửa**:
 
-#### GET /api/groups — `list_groups()`
+#### GET /api/groups - `list_groups()`
 
 Hiện tại: `self.service.list_groups()` → trả tất cả groups.
 
@@ -110,11 +110,11 @@ Thiết kế mới:
    - Gọi self.service.list_groups() như cũ
 ```
 
-**Thay đổi service**: `GroupService.list_groups()` cần nhận tham số `query_filter=None`. Khi `query_filter` không None, model query thêm filter. Cụ thể `GroupModel.list_groups()` hiện gọi `collection.find()` — cần đổi thành `collection.find(query_filter or {})`.
+**Thay đổi service**: `GroupService.list_groups()` cần nhận tham số `query_filter=None`. Khi `query_filter` không None, model query thêm filter. Cụ thể `GroupModel.list_groups()` hiện gọi `collection.find()` - cần đổi thành `collection.find(query_filter or {})`.
 
-#### POST /api/groups — `create_group()`
+#### POST /api/groups - `create_group()`
 
-Hiện tại: `self.service.create_group(name, description, whitelist)` — không truyền `created_by`.
+Hiện tại: `self.service.create_group(name, description, whitelist)` - không truyền `created_by`.
 
 Thiết kế mới:
 
@@ -128,7 +128,7 @@ Thiết kế mới:
 
 **Thay đổi service**: `GroupService.create_group()` cần nhận thêm `created_by=None` và truyền xuống `GroupModel.create_group()` (đã hỗ trợ sẵn parameter này).
 
-#### GET /api/groups/<group_id> — `get_group()`
+#### GET /api/groups/<group_id> - `get_group()`
 
 Hiện tại: Trả group bất kỳ.
 
@@ -143,9 +143,9 @@ Thiết kế mới:
 4. Nếu không → trả bình thường
 ```
 
-#### PATCH /api/groups/<group_id> — `update_group()`
+#### PATCH /api/groups/<group_id> - `update_group()`
 
-Thiết kế mới: Tương tự `get_group` — kiểm tra ownership trước khi cho update.
+Thiết kế mới: Tương tự `get_group` - kiểm tra ownership trước khi cho update.
 
 ```
 1. inject_current_user chạy trước
@@ -155,13 +155,13 @@ Thiết kế mới: Tương tự `get_group` — kiểm tra ownership trước k
 3. Tiếp tục update như cũ
 ```
 
-#### DELETE /api/groups/<group_id> — `delete_group()`
+#### DELETE /api/groups/<group_id> - `delete_group()`
 
-Thiết kế mới: Tương tự — kiểm tra ownership trước khi cho xóa.
+Thiết kế mới: Tương tự - kiểm tra ownership trước khi cho xóa.
 
 ---
 
-### 4.2. AgentController — `/api/agents`
+### 4.2. AgentController - `/api/agents`
 
 **Constructor mới**: Thêm `rbac_service` parameter.
 
@@ -169,9 +169,9 @@ Thiết kế mới: Tương tự — kiểm tra ownership trước khi cho xóa.
 AgentController(agent_model, agent_service, rbac_service, socketio=None)
 ```
 
-**Nguyên tắc riêng**: Agent endpoints có 2 loại — endpoints cho agent gọi (register, heartbeat) dùng `require_api_key`/`require_jwt`, và endpoints cho web UI gọi (list, get, delete, update). Chỉ sửa nhóm web UI.
+**Nguyên tắc riêng**: Agent endpoints có 2 loại - endpoints cho agent gọi (register, heartbeat) dùng `require_api_key`/`require_jwt`, và endpoints cho web UI gọi (list, get, delete, update). Chỉ sửa nhóm web UI.
 
-#### GET /api/agents — `list_agents()`
+#### GET /api/agents - `list_agents()`
 
 Hiện tại: `self.service.get_agents_with_status()` → trả tất cả agents, rồi filter theo `status`, `hostname`, `group_id` trên Python.
 
@@ -187,9 +187,9 @@ Thiết kế mới:
 4. Tiếp tục apply các filter cũ (status, hostname...) như bình thường
 ```
 
-**Lưu ý**: Hiện tại `list_agents()` load toàn bộ agents vào memory rồi filter bằng Python (không dùng MongoDB query). Do đó filter ownership cũng thực hiện bằng Python — thêm 1 bước filter vào chuỗi `filtered_agents` hiện có. Không cần sửa service hay model.
+**Lưu ý**: Hiện tại `list_agents()` load toàn bộ agents vào memory rồi filter bằng Python (không dùng MongoDB query). Do đó filter ownership cũng thực hiện bằng Python - thêm 1 bước filter vào chuỗi `filtered_agents` hiện có. Không cần sửa service hay model.
 
-#### GET /api/agents/statistics — `get_statistics()`
+#### GET /api/agents/statistics - `get_statistics()`
 
 Hiện tại: Trả thống kê toàn bộ agents.
 
@@ -205,7 +205,7 @@ Thiết kế mới:
 
 **Lưu ý**: Hiện tại `calculate_statistics()` tính trên toàn bộ DB. Để không sửa service, controller sẽ tự tính stats từ `filtered_agents` (đã có logic load agents + tính status). Hoặc đơn giản hơn: trả stats toàn cục cho agent/admin, stats filtered cho teacher.
 
-#### GET /api/agents/<agent_id> — `get_agent()`
+#### GET /api/agents/<agent_id> - `get_agent()`
 
 Thiết kế mới:
 
@@ -221,23 +221,23 @@ Thiết kế mới:
 
 Teacher không có quyền `agents:delete` (chỉ admin có), nên middleware RBAC sẽ chặn ở tầng permission nếu thêm decorator `@require_permission`. Tuy nhiên hiện tại các endpoint này chưa có auth decorator nào. Cần cân nhắc:
 
-- `delete_agent`: Thêm ownership check — teacher chỉ xóa agent trong group mình (nếu muốn cho phép), hoặc để chỉ admin xóa (theo thiết kế hiện tại).
+- `delete_agent`: Thêm ownership check - teacher chỉ xóa agent trong group mình (nếu muốn cho phép), hoặc để chỉ admin xóa (theo thiết kế hiện tại).
 - `update_display_name`, `update_position`, `update_group`: Teacher có thể quản lý agent trong group mình → cần ownership check.
 
 **Quyết định thiết kế**: Theo RBAC config, teacher có `agents:read` + `agents:detail` nhưng KHÔNG có `agents:delete`, `agents:command`. Vậy:
 
 | Endpoint | Teacher có quyền? | Ownership check? |
 |---|---|---|
-| `list_agents` | Có (agents:read) | Có — filter by group |
-| `get_agent` | Có (agents:detail) | Có — check group |
+| `list_agents` | Có (agents:read) | Có - filter by group |
+| `get_agent` | Có (agents:detail) | Có - check group |
 | `delete_agent` | Không (agents:delete) | Block hoàn toàn |
 | `update_display_name` | Không rõ ràng | Block cho teacher |
 | `update_position` | Không rõ ràng | Block cho teacher |
-| `update_group` (move) | Có (groups:manage_agents) | Có — check cả 2 group |
+| `update_group` (move) | Có (groups:manage_agents) | Có - check cả 2 group |
 
 ---
 
-### 4.3. WhitelistController — `/api/whitelist`
+### 4.3. WhitelistController - `/api/whitelist`
 
 **Constructor mới**: Thêm `rbac_service` parameter.
 
@@ -245,12 +245,12 @@ Teacher không có quyền `agents:delete` (chỉ admin có), nên middleware RB
 WhitelistController(whitelist_model, whitelist_service, rbac_service, socketio=None)
 ```
 
-**Đặc thù whitelist**: Whitelist có 2 scope — **global** (không thuộc group nào) và **group-level** (gắn với group cụ thể qua `group_id`). Theo thiết kế:
+**Đặc thù whitelist**: Whitelist có 2 scope - **global** (không thuộc group nào) và **group-level** (gắn với group cụ thể qua `group_id`). Theo thiết kế:
 - Admin: thấy tất cả (global + mọi group).
 - Teacher: thấy global (read-only) + whitelist của group mình tạo (CRUD).
-- Agent: sync whitelist theo group mình thuộc (không đổi — dùng JWT, không cookie).
+- Agent: sync whitelist theo group mình thuộc (không đổi - dùng JWT, không cookie).
 
-#### GET /api/whitelist — `list_domains()`
+#### GET /api/whitelist - `list_domains()`
 
 Hiện tại: Nếu có `group_id` param thì trả scoped whitelist, nếu không thì trả tất cả.
 
@@ -269,7 +269,7 @@ Thiết kế mới:
    - Nếu không → trả tất cả như cũ
 ```
 
-#### POST /api/whitelist — `add_domain()`
+#### POST /api/whitelist - `add_domain()`
 
 Thiết kế mới:
 
@@ -282,7 +282,7 @@ Thiết kế mới:
 3. Nếu không → thêm như cũ
 ```
 
-#### DELETE /api/whitelist/<domain_id> — `delete_domain()`
+#### DELETE /api/whitelist/<domain_id> - `delete_domain()`
 
 Thiết kế mới:
 
@@ -297,11 +297,11 @@ Thiết kế mới:
 
 #### Bulk endpoints (bulk_add, bulk_update, bulk_delete)
 
-Tương tự logic trên — teacher chỉ thao tác trên whitelist entries thuộc group mình.
+Tương tự logic trên - teacher chỉ thao tác trên whitelist entries thuộc group mình.
 
 #### GET /api/whitelist/agent-sync
 
-**Không đổi** — endpoint này dùng `@require_jwt` (JWT của agent, không phải admin token). Agent gọi endpoint này để sync whitelist. Không bị ảnh hưởng.
+**Không đổi** - endpoint này dùng `@require_jwt` (JWT của agent, không phải admin token). Agent gọi endpoint này để sync whitelist. Không bị ảnh hưởng.
 
 #### GET /api/whitelist/statistics
 
@@ -314,7 +314,7 @@ Tương tự logic trên — teacher chỉ thao tác trên whitelist entries thu
 
 ---
 
-### 4.4. LogController — `/api/logs`
+### 4.4. LogController - `/api/logs`
 
 **Constructor mới**: Thêm `rbac_service` parameter.
 
@@ -324,7 +324,7 @@ LogController(log_model, log_service, rbac_service, socketio=None)
 
 **Đặc thù logs**: Logs được gửi từ agent, mỗi log có `agent_id`. Teacher chỉ thấy logs từ agents thuộc group mình tạo.
 
-#### GET /api/logs — `list_logs()`
+#### GET /api/logs - `list_logs()`
 
 Hiện tại: `self.service.get_all_logs(filters, limit, offset)` → trả tất cả.
 
@@ -339,7 +339,7 @@ Thiết kế mới:
 3. Truyền filters vào service.get_all_logs()
 ```
 
-**Thay đổi RBACService**: `get_log_query_filter()` hiện tại có TODO comment — cần hoàn thiện. Logic đúng:
+**Thay đổi RBACService**: `get_log_query_filter()` hiện tại có TODO comment - cần hoàn thiện. Logic đúng:
 
 ```
 get_log_query_filter(user):
@@ -349,9 +349,9 @@ get_log_query_filter(user):
     4. Return {"agent_id": {"$in": agent_ids}}
 ```
 
-Hiện tại bước 3 chưa hoàn thiện — đang return `group_id` filter thay vì `agent_id` filter. Cần sửa để query agents collection lấy đúng agent_ids.
+Hiện tại bước 3 chưa hoàn thiện - đang return `group_id` filter thay vì `agent_id` filter. Cần sửa để query agents collection lấy đúng agent_ids.
 
-#### GET /api/logs/stats — `get_statistics()`
+#### GET /api/logs/stats - `get_statistics()`
 
 Thiết kế mới:
 
@@ -363,11 +363,11 @@ Thiết kế mới:
 3. Nếu không → trả full stats
 ```
 
-#### POST /api/logs — `receive_logs()`
+#### POST /api/logs - `receive_logs()`
 
-**Không đổi** — endpoint này dùng `@require_jwt` (JWT của agent). Agent gửi logs qua endpoint này. Không bị ảnh hưởng.
+**Không đổi** - endpoint này dùng `@require_jwt` (JWT của agent). Agent gửi logs qua endpoint này. Không bị ảnh hưởng.
 
-#### DELETE /api/logs — `clear_logs()`
+#### DELETE /api/logs - `clear_logs()`
 
 ```
 1. inject_current_user chạy trước
@@ -376,7 +376,7 @@ Thiết kế mới:
 3. Nếu không → xóa như cũ
 ```
 
-#### GET /api/logs/export — `export_logs()`
+#### GET /api/logs/export - `export_logs()`
 
 ```
 1. inject_current_user chạy trước
@@ -391,7 +391,7 @@ Thiết kế mới:
 
 ### 5.1. Hoàn thiện `get_log_query_filter()`
 
-Hiện tại method này trả `{"group_id": {"$in": [...]}}` — sai vì logs collection dùng field `agent_id`, không phải `group_id`.
+Hiện tại method này trả `{"group_id": {"$in": [...]}}` - sai vì logs collection dùng field `agent_id`, không phải `group_id`.
 
 Cần sửa thành:
 
@@ -433,7 +433,7 @@ def get_teacher_group_ids(self, user):
 
 ### 5.3. Thêm method `get_whitelist_query_filter()`
 
-Chưa có — cần thêm:
+Chưa có - cần thêm:
 
 ```
 def get_whitelist_query_filter(self, user):
@@ -448,7 +448,7 @@ def get_whitelist_query_filter(self, user):
 
 ---
 
-## 6. Sửa `app.py` — Wiring
+## 6. Sửa `app.py` - Wiring
 
 ### 6.1. Truyền rbac_service vào 4 controller
 
@@ -525,8 +525,8 @@ def list_groups(self):
 | `PATCH /api/groups/<id>` | Như cũ | Như cũ | Kiểm tra ownership → 403 nếu sai |
 | `DELETE /api/groups/<id>` | Như cũ | Như cũ | Kiểm tra ownership → 403 nếu sai |
 | **AGENTS** | | | |
-| `POST /api/agents/register` | Require API Key (không đổi) | — | — |
-| `POST /api/agents/heartbeat` | Require JWT (không đổi) | — | — |
+| `POST /api/agents/register` | Require API Key (không đổi) | - | - |
+| `POST /api/agents/heartbeat` | Require JWT (không đổi) | - | - |
 | `GET /api/agents` | Tất cả (như cũ) | Tất cả | Chỉ agents trong teacher's groups |
 | `GET /api/agents/statistics` | Tất cả (như cũ) | Tất cả | Stats chỉ tính trên filtered agents |
 | `GET /api/agents/<id>` | Như cũ | Như cũ | Kiểm tra group ownership → 403 |
@@ -535,7 +535,7 @@ def list_groups(self):
 | `PATCH .../position` | Như cũ | Như cũ | Block hoặc ownership check |
 | `PATCH .../group` (move) | Như cũ | Như cũ | Ownership check cả source và target group |
 | **WHITELIST** | | | |
-| `GET /api/whitelist/agent-sync` | Require JWT (không đổi) | — | — |
+| `GET /api/whitelist/agent-sync` | Require JWT (không đổi) | - | - |
 | `GET /api/whitelist` | Tất cả (như cũ) | Tất cả | Global (read-only) + teacher's groups |
 | `POST /api/whitelist` | Như cũ | Như cũ | Chỉ thêm vào group mình, không thêm global |
 | `DELETE /api/whitelist/<id>` | Như cũ | Như cũ | Chỉ xóa entry trong group mình |
@@ -546,7 +546,7 @@ def list_groups(self):
 | `GET .../export` | Như cũ | Như cũ | Export filtered |
 | `POST .../import` | Như cũ | Như cũ | Import chỉ vào group mình |
 | **LOGS** | | | |
-| `POST /api/logs` | Require JWT (không đổi) | — | — |
+| `POST /api/logs` | Require JWT (không đổi) | - | - |
 | `GET /api/logs` | Tất cả (như cũ) | Tất cả | Chỉ logs từ agents trong teacher's groups |
 | `GET /api/logs/stats` | Tất cả (như cũ) | Tất cả | Stats filtered |
 | `DELETE /api/logs` | Như cũ | Như cũ | **Block** (không có quyền logs:delete) |
@@ -604,7 +604,7 @@ def list_groups(self):
 
 **Rủi ro**: Nếu agent request vô tình mang cookie (không thể xảy ra vì agent là phần mềm, không phải browser).
 
-**Giải pháp**: `inject_current_user` kiểm tra `token_for == "admin_user"` — agent JWT không có claim này → `g.current_user` sẽ là `None` → không filter.
+**Giải pháp**: `inject_current_user` kiểm tra `token_for == "admin_user"` - agent JWT không có claim này → `g.current_user` sẽ là `None` → không filter.
 
 ### 10.2. Performance khi query teacher's groups
 
@@ -621,15 +621,15 @@ def list_groups(self):
 **Rủi ro**: Groups tạo trước khi có RBAC không có field `created_by` → teacher sẽ không thấy.
 
 **Giải pháp**:
-- Đây là hành vi **đúng** — groups cũ không thuộc teacher nào
+- Đây là hành vi **đúng** - groups cũ không thuộc teacher nào
 - Admin vẫn thấy tất cả
 - Có thể thêm migration script gán `created_by` cho groups cũ nếu cần
 
 ### 10.4. Dashboard page
 
-**Lưu ý**: Dashboard (`/`) hiện hiển thị stats tổng hợp (total agents, total groups...). Sau khi apply filter, teacher sẽ thấy stats **chỉ thuộc về mình** — đây là hành vi đúng theo thiết kế.
+**Lưu ý**: Dashboard (`/`) hiện hiển thị stats tổng hợp (total agents, total groups...). Sau khi apply filter, teacher sẽ thấy stats **chỉ thuộc về mình** - đây là hành vi đúng theo thiết kế.
 
-Frontend dashboard JS cần gọi đúng các API đã filtered — vì cùng endpoint, data trả về sẽ tự động filtered nếu teacher đăng nhập.
+Frontend dashboard JS cần gọi đúng các API đã filtered - vì cùng endpoint, data trả về sẽ tự động filtered nếu teacher đăng nhập.
 
 ---
 

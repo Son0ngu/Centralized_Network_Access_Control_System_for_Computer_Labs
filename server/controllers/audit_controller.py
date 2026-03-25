@@ -82,7 +82,7 @@ class AuditController:
 
         except Exception as e:
             self.logger.error(f"List audit logs error: {e}")
-            return self._error("Lay audit logs that bai", 500)
+            return self._error("Failed to get audit logs", 500)
 
     @require_login
     @require_permission("audit:read")
@@ -96,4 +96,4 @@ class AuditController:
             return self._success({"logs": logs})
         except Exception as e:
             self.logger.error(f"User activity error: {e}")
-            return self._error("Lay activity that bai", 500)
+            return self._error("Failed to get activity", 500)

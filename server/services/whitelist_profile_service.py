@@ -1,5 +1,5 @@
 """
-Whitelist Profile Service — Business logic for per-teacher whitelist profiles.
+Whitelist Profile Service - Business logic for per-teacher whitelist profiles.
 """
 
 import logging

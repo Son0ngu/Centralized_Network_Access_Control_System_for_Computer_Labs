@@ -1,12 +1,12 @@
 """
 Test Suite: Users + Auth (Admin/Teacher accounts)
 ==================================================
-1. UserModel          — CRUD, brute-force protection, lock/unlock, statistics
-2. UserService        — create/update/delete with validation, toggle_active, last-admin protection
-3. SessionModel       — create/find/revoke sessions, is_session_revoked
-4. AdminAuthService   — login, logout, refresh, change_password, brute-force
-5. UserController     — admin-only CRUD endpoints
-6. AdminAuthController — login/logout/refresh/profile endpoints
+1. UserModel          - CRUD, brute-force protection, lock/unlock, statistics
+2. UserService        - create/update/delete with validation, toggle_active, last-admin protection
+3. SessionModel       - create/find/revoke sessions, is_session_revoked
+4. AdminAuthService   - login, logout, refresh, change_password, brute-force
+5. UserController     - admin-only CRUD endpoints
+6. AdminAuthController - login/logout/refresh/profile endpoints
 
 Run:
   cd server && python -m pytest tests/test_users_auth.py -v
@@ -113,7 +113,7 @@ def _create_user(user_model, username="testuser", password="password123",
         "role": role,
         "is_active": is_active,
     }
-    # Only include email if provided — sparse unique index rejects multiple null values
+    # Only include email if provided - sparse unique index rejects multiple null values
     if email:
         data["email"] = email
     return user_model.create(data)
@@ -569,14 +569,14 @@ class TestAdminAuthService:
         _create_user(user_model, username="login_disabled", password="password123", is_active=False)
         success, _, error = auth_service.login("login_disabled", "password123")
         assert success is False
-        assert "vo hieu hoa" in error
+        assert "disabled" in error.lower()
 
     def test_login_locked_account(self, auth_service, user_model):
         user = _create_user(user_model, username="login_locked", password="password123")
         user_model.lock_account(str(user["_id"]))
         success, _, error = auth_service.login("login_locked", "password123")
         assert success is False
-        assert "khoa" in error
+        assert "locked" in error.lower()
 
     def test_login_increments_failed_attempts(self, auth_service, user_model):
         user = _create_user(user_model, username="login_attempts", password="password123")
@@ -637,7 +637,7 @@ class TestAdminAuthService:
             str(user["_id"]), "wrongold", "newpassword1"
         )
         assert success is False
-        assert "khong dung" in error
+        assert "incorrect" in error.lower()
 
     def test_change_password_too_short(self, auth_service, user_model):
         _create_user(user_model, username="chpw_short", password="oldpassword1")

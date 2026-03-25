@@ -328,7 +328,7 @@ function renderItems(items) {
             try {
                 const dateObj = new Date(dateValue);
                 if (!isNaN(dateObj.getTime())) {
-                    created = dateObj.toLocaleDateString('vi-VN', {
+                    created = dateObj.toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: '2-digit',
                         day: '2-digit'
@@ -596,7 +596,7 @@ async function addItem() {
         // === PROFILE EDIT MODE: save to profile instead ===
         if (isProfileEditMode && selectedProfileData) {
             await addItemToProfile(itemData);
-            showSuccess(`${itemData.value} đã thêm vào profile "${selectedProfileData.name}"`);
+            showSuccess(`${itemData.value} added to profile "${selectedProfileData.name}"`);
 
             form.reset();
             const modalInstance = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
@@ -952,7 +952,7 @@ async function bulkImportItems() {
             }
 
             await saveProfileDomains(currentDomains);
-            showSuccess(`Import hoàn tất: ${addedCount} domain thêm vào profile "${selectedProfileData.name}"`);
+            showSuccess(`Import complete: ${addedCount} domain(s) added to profile "${selectedProfileData.name}"`);
 
             document.getElementById('bulkTextarea').value = '';
             const modal = bootstrap.Modal.getInstance(document.getElementById('bulkImportModal'));
@@ -963,28 +963,14 @@ async function bulkImportItems() {
             return;
         }
 
-        // If group scope, we might need a different API or simply pass group_id in payload
-        // The current controller bulk_add_entries handles global list mostly, 
-        // but let's check if it supports group_id. 
-        // Looking at whitelist_service.py, bulk_add_entries creates entries with "group_id" if we pass it 
-        // to processed_entry? Wait, whitelist_service.py bulk_add_entries implementation I read 
-        // DOES NOT seem to explicitly extract group_id from entry_data. 
-        // I need to update the service to handle group_id if it's missing.
-        // BUT, let's assume standard behavior first.
-        
         // Split into chunks of 100 to avoid timeouts
         const chunkSize = 100;
         let successCount = 0;
         let errorCount = 0;
-        
+
         for (let i = 0; i < items.length; i += chunkSize) {
             const chunk = items.slice(i, i + chunkSize);
-            
-            // Allow processing via group endpoint if scope is group? 
-            // Currently using /api/whitelist/bulk which is general.
-            // If the service doesn't backend support group_id in bulk, we might have issues.
-            // Let's rely on the payload passing.
-            
+
             const response = await fetch('/api/whitelist/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1057,12 +1043,12 @@ function populateProfileSelect() {
     if (!select) return;
 
     const current = select.value;
-    select.innerHTML = '<option value="">-- Chế độ xem (Read-only) --</option>';
+    select.innerHTML = '<option value="">-- View mode (Read-only) --</option>';
 
     teacherProfiles.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p._id;
-        opt.textContent = `${p.name} — ${p.group_name || 'Unknown Group'}`;
+        opt.textContent = `${p.name} - ${p.group_name || 'Unknown Group'}`;
         if (p.is_active) {
             opt.textContent += ' ⚡ Active';
         }
@@ -1164,8 +1150,8 @@ function renderProfileDomains() {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-list"></i>
-                <h5 class="fw-bold">Profile chưa có domain nào</h5>
-                <p>Thêm domain/IP/URL bằng các nút phía trên.</p>
+                <h5 class="fw-bold">Profile has no domains yet</h5>
+                <p>Add domains/IPs/URLs using the buttons above.</p>
             </div>
         `;
         return;
@@ -1217,7 +1203,7 @@ function renderProfileDomains() {
                 <div class="col-md-4 text-end">
                     <button class="btn btn-outline-danger btn-sm btn-action"
                             onclick="removeProfileDomain(${index})"
-                            title="Xóa khỏi profile">
+                            title="Remove from profile">
                         <i class="fas fa-trash-alt me-1"></i>Remove
                     </button>
                 </div>
@@ -1233,16 +1219,16 @@ function renderProfileDomains() {
  */
 async function removeProfileDomain(index) {
     if (!selectedProfileData) return;
-    if (!confirm('Xóa domain này khỏi profile?')) return;
+    if (!confirm('Remove this domain from profile?')) return;
 
     const domains = [...(selectedProfileData.domains || [])];
     const removed = domains.splice(index, 1);
 
     try {
         await saveProfileDomains(domains);
-        showSuccess(`Đã xóa "${removed[0]?.value || removed[0]}" khỏi profile`);
+        showSuccess(`Removed "${removed[0]?.value || removed[0]}" from profile`);
     } catch (error) {
-        showError('Lỗi khi xóa domain: ' + error.message);
+        showError('Error removing domain: ' + error.message);
     }
 }
 
@@ -1291,7 +1277,7 @@ async function addItemToProfile(itemData) {
         return dVal === itemData.value;
     });
     if (exists) {
-        throw new Error(`"${itemData.value}" đã có trong profile`);
+        throw new Error(`"${itemData.value}" already exists in profile`);
     }
 
     domains.push({

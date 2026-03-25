@@ -1,6 +1,6 @@
 """
-Admin Auth Service - Login, logout, refresh, change password cho Admin/Teacher.
-- Tach biet hoan toan voi Agent auth (auth_controller.py)
+Admin Auth Service - Login, logout, refresh, change password for Admin/Teacher.
+- Completely separate from Agent auth (auth_controller.py)
 - Brute-force protection
 - Session management
 - httpOnly cookie JWT
@@ -56,7 +56,7 @@ class AdminAuthService:
             # Find user
             user = self.user_model.find_by_username(username)
             if not user:
-                return False, {}, "Sai thong tin dang nhap"
+                return False, {}, "Invalid login credentials"
 
             user_id_str = str(user["_id"])
 
@@ -67,7 +67,7 @@ class AdminAuthService:
                     resource_type="auth", details={"reason": "account_disabled"},
                     ip_address=ip_address,
                 )
-                return False, {}, "Tai khoan da bi vo hieu hoa"
+                return False, {}, "Account has been disabled"
 
             # Check locked
             if self.user_model.is_locked(user):
@@ -76,7 +76,7 @@ class AdminAuthService:
                     resource_type="auth", details={"reason": "account_locked"},
                     ip_address=ip_address,
                 )
-                return False, {}, "Tai khoan bi khoa tam thoi. Vui long thu lai sau"
+                return False, {}, "Account temporarily locked. Please try again later"
 
             # Verify password
             if not self._verify_password(password, user.get("password_hash", "")):
@@ -88,7 +88,7 @@ class AdminAuthService:
                     details={"reason": "wrong_password", "attempts": attempts},
                     ip_address=ip_address,
                 )
-                return False, {}, "Sai thong tin dang nhap"
+                return False, {}, "Invalid login credentials"
 
             # === Login success ===
 
@@ -139,7 +139,7 @@ class AdminAuthService:
 
         except Exception as e:
             self.logger.error(f"Login error: {e}")
-            return False, {}, "Dang nhap that bai"
+            return False, {}, "Login failed"
 
     # ========================================================================
     # LOGOUT
@@ -168,7 +168,7 @@ class AdminAuthService:
 
         except Exception as e:
             self.logger.error(f"Logout error: {e}")
-            return False, "Dang xuat that bai"
+            return False, "Logout failed"
 
     # ========================================================================
     # REFRESH TOKEN
@@ -190,11 +190,11 @@ class AdminAuthService:
             user_id = payload.get("sub")
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, {}, "User khong ton tai"
+                return False, {}, "User not found"
             if not user.get("is_active", True):
-                return False, {}, "Tai khoan da bi vo hieu hoa"
+                return False, {}, "Account has been disabled"
             if self.user_model.is_locked(user):
-                return False, {}, "Tai khoan bi khoa tam thoi"
+                return False, {}, "Account temporarily locked"
 
             # Generate new tokens WITH admin claims
             tokens = self.jwt_service.generate_tokens(
@@ -216,7 +216,7 @@ class AdminAuthService:
 
         except Exception as e:
             self.logger.error(f"Refresh token error: {e}")
-            return False, {}, "Refresh token that bai"
+            return False, {}, "Refresh token failed"
 
     # ========================================================================
     # CHANGE PASSWORD
@@ -228,10 +228,10 @@ class AdminAuthService:
         try:
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, "User khong ton tai"
+                return False, "User not found"
 
             if not self._verify_password(old_password, user.get("password_hash", "")):
-                return False, "Mat khau hien tai khong dung"
+                return False, "Current password is incorrect"
 
             valid, error = self._validate_password(new_password)
             if not valid:
@@ -252,7 +252,7 @@ class AdminAuthService:
 
         except Exception as e:
             self.logger.error(f"Change password error: {e}")
-            return False, "Doi mat khau that bai"
+            return False, "Password change failed"
 
     # ========================================================================
     # PASSWORD HELPERS
@@ -281,9 +281,9 @@ class AdminAuthService:
     def _validate_password(password: str) -> Tuple[bool, Optional[str]]:
         """Validate password policy"""
         if len(password) < MIN_PASSWORD_LENGTH:
-            return False, f"Mat khau phai co it nhat {MIN_PASSWORD_LENGTH} ky tu"
+            return False, f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
         if len(password) > MAX_PASSWORD_LENGTH:
-            return False, f"Mat khau khong duoc qua {MAX_PASSWORD_LENGTH} ky tu"
+            return False, f"Password must not exceed {MAX_PASSWORD_LENGTH} characters"
         return True, None
 
     def _extract_jti(self, token: str) -> Optional[str]:

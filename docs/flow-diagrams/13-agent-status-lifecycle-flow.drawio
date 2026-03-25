@@ -1,0 +1,134 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="status-lifecycle" name="Agent Status Lifecycle">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 13: Agent Status Lifecycle&lt;/b&gt;&lt;br&gt;State Machine - Vòng đời trạng thái Agent&lt;br&gt;&lt;i&gt;Sơ đồ chuyển đổi trạng thái Agent&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="420" y="10" width="380" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- States -->
+        <!-- UNREGISTERED -->
+        <mxCell id="unreg" value="&lt;b&gt;⚪ UNREGISTERED&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chưa đăng ký&lt;/i&gt;&lt;br&gt;Agent mới khởi động,&lt;br&gt;chưa kết nối server" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="150" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- PENDING -->
+        <mxCell id="pending" value="&lt;b&gt;🟠 PENDING&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chờ duyệt&lt;/i&gt;&lt;br&gt;Đã đăng ký, chờ Admin&lt;br&gt;duyệt vào nhóm" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="440" y="150" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ACTIVE -->
+        <mxCell id="active" value="&lt;b&gt;🟢 ACTIVE&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đang hoạt động&lt;/i&gt;&lt;br&gt;Heartbeat ≤ 5 min&lt;br&gt;Whitelist sync OK" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=0;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="800" y="150" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- INACTIVE -->
+        <mxCell id="inactive" value="&lt;b&gt;🟡 INACTIVE&lt;/b&gt;&lt;br&gt;&lt;i&gt;Không hoạt động&lt;/i&gt;&lt;br&gt;Heartbeat 5-30 min&lt;br&gt;Có thể mất kết nối tạm" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="800" y="400" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- OFFLINE -->
+        <mxCell id="offline" value="&lt;b&gt;🔴 OFFLINE&lt;/b&gt;&lt;br&gt;&lt;i&gt;Ngoại tuyến&lt;/i&gt;&lt;br&gt;Heartbeat &gt; 30 min&lt;br&gt;Máy tắt hoặc mất mạng" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="440" y="400" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- DISABLED -->
+        <mxCell id="disabled" value="&lt;b&gt;⛔ DISABLED&lt;/b&gt;&lt;br&gt;&lt;i&gt;Bị vô hiệu hoá&lt;/i&gt;&lt;br&gt;Admin chủ động tắt&lt;br&gt;Không nhận sync" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- DELETED -->
+        <mxCell id="deleted" value="&lt;b&gt;❌ DELETED&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đã xoá&lt;/i&gt;&lt;br&gt;Bản ghi bị xoá khỏi DB" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=0;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="600" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Transitions -->
+        <!-- unreg → pending: register -->
+        <mxCell id="t1" value="&lt;b&gt;register()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đăng ký → nhóm Pending&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6b656;strokeWidth=2;fontSize=9;fontStyle=0;" edge="1" source="unreg" target="pending" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- pending → active: admin approves + heartbeat -->
+        <mxCell id="t2" value="&lt;b&gt;Admin assigns group&lt;/b&gt;&lt;br&gt;+ first heartbeat&lt;br&gt;&lt;i&gt;Admin gán nhóm + heartbeat đầu&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=0;" edge="1" source="pending" target="active" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- active → inactive: 5 min no heartbeat -->
+        <mxCell id="t3" value="&lt;b&gt;No heartbeat 5 min&lt;/b&gt;&lt;br&gt;&lt;i&gt;Không gửi heartbeat 5 phút&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6b656;strokeWidth=2;fontSize=9;fontStyle=0;" edge="1" source="active" target="inactive" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- inactive → active: heartbeat resumes -->
+        <mxCell id="t4" value="&lt;b&gt;Heartbeat resumes&lt;/b&gt;&lt;br&gt;&lt;i&gt;Heartbeat trở lại&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=0;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="inactive" target="active" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="450" />
+              <mxPoint x="1100" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- inactive → offline: 30 min no heartbeat -->
+        <mxCell id="t5" value="&lt;b&gt;No heartbeat 30 min&lt;/b&gt;&lt;br&gt;&lt;i&gt;Không gửi heartbeat 30 phút&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;fontStyle=0;" edge="1" source="inactive" target="offline" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- offline → active: heartbeat resumes -->
+        <mxCell id="t6" value="&lt;b&gt;Heartbeat resumes&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kết nối lại&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=0;curved=1;" edge="1" source="offline" target="active" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="340" />
+              <mxPoint x="900" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- any → disabled: admin disables -->
+        <mxCell id="t7" value="&lt;b&gt;Admin disables&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin vô hiệu hoá&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;fontStyle=0;dashed=1;" edge="1" source="active" target="disabled" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="550" />
+              <mxPoint x="170" y="550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- disabled → active: admin enables -->
+        <mxCell id="t8" value="&lt;b&gt;Admin enables&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin kích hoạt lại&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=0;dashed=1;exitX=0;exitY=0;entryX=0;entryY=1;" edge="1" source="disabled" target="unreg" parent="1">
+          <mxGeometry x="-0.2" y="-10" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="400" />
+              <mxPoint x="40" y="240" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- any → deleted: admin deletes -->
+        <mxCell id="t9" value="&lt;b&gt;Admin deletes&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin xoá&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;fontStyle=0;dashed=1;" edge="1" source="disabled" target="deleted" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Thresholds Legend -->
+        <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="580" width="340" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_title" value="&lt;b&gt;Status Thresholds / Ngưỡng trạng thái&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="480" y="585" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_table" value="&lt;table style='font-size:10px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#6c8ebf;color:white'&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Status&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Heartbeat&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Trigger&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;🟢 ACTIVE&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;≤ 300s (5 min)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Auto (heartbeat OK)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;🟡 INACTIVE&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;300s - 1800s&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Auto (heartbeat miss)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;🔴 OFFLINE&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&gt; 1800s (30 min)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Auto (no heartbeat)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;🟠 PENDING&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;N/A&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Auto (on register)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;⛔ DISABLED&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;N/A&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Manual (Admin only)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;❌ DELETED&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;N/A&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Manual (Admin only)&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="455" y="615" width="310" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- Note -->
+        <mxCell id="note" value="&lt;b&gt;Note / Ghi chú:&lt;/b&gt;&lt;br&gt;Status tính on-the-fly khi query,&lt;br&gt;KHÔNG dùng background job.&lt;br&gt;Heartbeat interval = 20s (Agent gửi)" style="text;html=1;align=left;fontSize=10;fillColor=#f5f5f5;strokeColor=#666;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="600" width="230" height="65" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

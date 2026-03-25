@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="admin-pages" name="Flow 30: Admin Pages (Users, API Keys, Audit, Profile)">
+    <mxGraphModel dx="1600" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 30: Admin Pages - Users, API Keys, Audit &amp;amp; Profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;Các trang quản trị hệ thống (Admin-only) và Hồ sơ cá nhân&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="1100" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== TOP-LEFT: USER MANAGEMENT ==================== -->
+        <mxCell id="sec1" value="&lt;b&gt;A. USER MANAGEMENT (/admin/users) 🔒 Admin Only&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quản lý tài khoản người dùng&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="u_feat" value="&lt;b&gt;User Management Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="480" height="340" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf1" value="&lt;b&gt;Stats Cards (4)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Total Users | Admins | Teachers | Inactive&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="u_feat">
+          <mxGeometry x="10" y="35" width="460" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf2" value="&lt;b&gt;Create User&lt;/b&gt;&lt;br&gt;&lt;i&gt;Modal: username, password,&lt;br&gt;role (admin/teacher), email&lt;br&gt;POST /api/admin/users&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="u_feat">
+          <mxGeometry x="10" y="80" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf3" value="&lt;b&gt;Update User&lt;/b&gt;&lt;br&gt;&lt;i&gt;Edit role, email, status&lt;br&gt;PUT /api/admin/users/:id&lt;br&gt;Activate/Deactivate toggle&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="u_feat">
+          <mxGeometry x="250" y="80" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf4" value="&lt;b&gt;Delete User&lt;/b&gt;&lt;br&gt;&lt;i&gt;DELETE /api/admin/users/:id&lt;br&gt;Last admin guard&lt;br&gt;Self-delete guard&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="u_feat">
+          <mxGeometry x="10" y="165" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf5" value="&lt;b&gt;Reset Password&lt;/b&gt;&lt;br&gt;&lt;i&gt;POST /api/admin/users&lt;br&gt;/:id/reset-password&lt;br&gt;Generate new password&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="u_feat">
+          <mxGeometry x="250" y="165" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf6" value="&lt;b&gt;Filters&lt;/b&gt;: Search (username/email) + Role filter (All/Admin/Teacher) + Status filter (All/Active/Inactive)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="u_feat">
+          <mxGeometry x="10" y="250" width="460" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uf7" value="&lt;b&gt;Table&lt;/b&gt;: Username | Email | Role Badge | Status Toggle | Created | Actions (Edit/Delete/Reset)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="u_feat">
+          <mxGeometry x="10" y="295" width="460" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== TOP-RIGHT: API KEYS ==================== -->
+        <mxCell id="sec2" value="&lt;b&gt;B. API KEYS (/api-keys) 🔒 Admin Only&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quản lý khóa API cho tích hợp bên ngoài&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="560" y="80" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="k_feat" value="&lt;b&gt;API Key Management Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="130" width="500" height="340" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf1" value="&lt;b&gt;Stats Cards (4)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Total Keys | Active 🟢 | Revoked 🔴 | Expired ⚪&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="k_feat">
+          <mxGeometry x="10" y="35" width="480" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf2" value="&lt;b&gt;Create API Key&lt;/b&gt;&lt;br&gt;&lt;i&gt;Modal: name + permissions checkboxes&lt;br&gt;POST /api/api-keys&lt;br&gt;⚠ Key shown ONCE - copy to clipboard&lt;br&gt;HMAC-SHA256 hashed on server&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="k_feat">
+          <mxGeometry x="10" y="80" width="230" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf3" value="&lt;b&gt;Key Display&lt;/b&gt;&lt;br&gt;&lt;i&gt;Monospace font (Consolas)&lt;br&gt;📋 Copy-to-clipboard button&lt;br&gt;Status badge (Active/Revoked)&lt;br&gt;Permission tags&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="k_feat">
+          <mxGeometry x="260" y="80" width="230" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf4" value="&lt;b&gt;Revoke Key&lt;/b&gt;&lt;br&gt;&lt;i&gt;PUT /api/api-keys/:id&lt;br&gt;{status: &quot;revoked&quot;}&lt;br&gt;Irreversible action&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="k_feat">
+          <mxGeometry x="10" y="185" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf5" value="&lt;b&gt;Delete Key&lt;/b&gt;&lt;br&gt;&lt;i&gt;DELETE /api/api-keys/:id&lt;br&gt;Confirm modal&lt;br&gt;Permanent removal&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="k_feat">
+          <mxGeometry x="260" y="185" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kf6" value="&lt;b&gt;Permissions&lt;/b&gt;: agents.read | agents.write | whitelist.read | whitelist.write | logs.read | groups.read | groups.write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="k_feat">
+          <mxGeometry x="10" y="270" width="480" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== BOTTOM-LEFT: AUDIT LOGS ==================== -->
+        <mxCell id="sec3" value="&lt;b&gt;C. AUDIT LOGS (/admin/audit) 🔒 Admin Only&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nhật ký kiểm toán hệ thống&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="a_feat" value="&lt;b&gt;Audit Log Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="550" width="480" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="af1" value="&lt;b&gt;Filters&lt;/b&gt;&lt;br&gt;&lt;i&gt;Username search&lt;br&gt;Action dropdown&lt;br&gt;Resource dropdown&lt;br&gt;Time range&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="a_feat">
+          <mxGeometry x="10" y="40" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="af2" value="&lt;b&gt;Audit Table&lt;/b&gt;&lt;br&gt;&lt;i&gt;Timestamp | User | Action&lt;br&gt;Resource | Status | Details&lt;br&gt;Timeline-style display&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="a_feat">
+          <mxGeometry x="250" y="40" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="af3" value="&lt;b&gt;Actions Tracked&lt;/b&gt;&lt;br&gt;&lt;i&gt;auth.login | auth.logout | user.create | user.delete | user.update&lt;br&gt;group.create | group.delete | whitelist.add | whitelist.delete&lt;br&gt;agent.delete | api_key.create | api_key.revoke | profile.update&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;align=left;" vertex="1" parent="a_feat">
+          <mxGeometry x="10" y="135" width="460" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="af4" value="&lt;b&gt;Resource Types&lt;/b&gt;: Auth | Users | Groups | Whitelist | Agents | Profile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="a_feat">
+          <mxGeometry x="10" y="210" width="460" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="af5" value="&lt;b&gt;API&lt;/b&gt;: GET /api/audit (filters) | POST /api/audit/export (CSV/JSON)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="a_feat">
+          <mxGeometry x="10" y="248" width="460" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== BOTTOM-RIGHT: PROFILE ==================== -->
+        <mxCell id="sec4" value="&lt;b&gt;D. USER PROFILE (/profile) - All Users&lt;/b&gt;&lt;br&gt;&lt;i&gt;Hồ sơ cá nhân và đổi mật khẩu&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="560" y="500" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p_feat" value="&lt;b&gt;Profile Page Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="550" width="500" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- Profile Hero -->
+        <mxCell id="pf1" value="&lt;b&gt;Hero Section&lt;/b&gt;&lt;br&gt;&lt;i&gt;User avatar, username&lt;br&gt;Role badge (Admin/Teacher)&lt;br&gt;Last login time&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="p_feat">
+          <mxGeometry x="10" y="40" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Profile Info -->
+        <mxCell id="pf2" value="&lt;b&gt;Profile Information Card&lt;/b&gt;&lt;br&gt;&lt;i&gt;Username (read-only)&lt;br&gt;Role (read-only)&lt;br&gt;Email (editable)&lt;br&gt;Created date&lt;br&gt;PUT /api/admin/auth/profile&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="p_feat">
+          <mxGeometry x="260" y="40" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Change Password -->
+        <mxCell id="pf3" value="&lt;b&gt;Change Password Card&lt;/b&gt;&lt;br&gt;&lt;i&gt;Current password (verify)&lt;br&gt;New password&lt;br&gt;Confirm new password&lt;br&gt;PUT /api/admin/auth/change-password&lt;br&gt;Client-side validation&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="p_feat">
+          <mxGeometry x="10" y="130" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Profile API -->
+        <mxCell id="pf4" value="&lt;b&gt;API Endpoints&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/admin/auth/me&lt;br&gt;PUT /api/admin/auth/profile&lt;br&gt;PUT /api/admin/auth/change-password&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontFamily=Segoe UI;fontSize=10;align=left;" vertex="1" parent="p_feat">
+          <mxGeometry x="260" y="155" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== BOTTOM: Navigation Map ==================== -->
+        <mxCell id="sec5" value="&lt;b&gt;E. FRONTEND NAVIGATION MAP&lt;/b&gt;&lt;br&gt;&lt;i&gt;Bản đồ điều hướng toàn bộ Frontend&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="870" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Navigation boxes -->
+        <mxCell id="nav_login" value="&lt;b&gt;/login&lt;/b&gt;&lt;br&gt;&lt;i&gt;Public&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="930" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="nav_dash" value="&lt;b&gt;/&lt;/b&gt;&lt;br&gt;&lt;i&gt;Dashboard&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="200" y="930" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="enld" value="login →" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=9;" edge="1" parent="1" source="nav_login" target="nav_dash"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Common pages row -->
+        <mxCell id="nav_agents" value="&lt;b&gt;/agents&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="340" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_groups" value="&lt;b&gt;/groups&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_gd" value="&lt;b&gt;/groups/:id&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_wl" value="&lt;b&gt;/whitelist&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_logs" value="&lt;b&gt;/logs&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="740" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_prof" value="&lt;b&gt;/profile&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="840" y="920" width="90" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin-only pages row -->
+        <mxCell id="nav_api" value="&lt;b&gt;/api-keys&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="970" width="90" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_users" value="&lt;b&gt;/admin/users&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="970" width="100" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav_audit" value="&lt;b&gt;/admin/audit&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="650" y="970" width="100" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows from dashboard -->
+        <mxCell id="end1" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="nav_dash" target="nav_agents"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Labels -->
+        <mxCell id="lbl_common" value="&lt;i&gt;All authenticated users&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;fontFamily=Segoe UI;fontColor=#0066cc;" vertex="1" parent="1">
+          <mxGeometry x="940" y="925" width="150" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_admin" value="&lt;i&gt;Admin only (rbac-admin-only)&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;fontFamily=Segoe UI;fontColor=#cc0000;" vertex="1" parent="1">
+          <mxGeometry x="760" y="978" width="200" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Page count summary -->
+        <mxCell id="summary" value="&lt;b&gt;📊 Frontend Pages Summary&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:11px;'&gt;• &lt;b&gt;Public&lt;/b&gt;: 1 page (/login)&lt;br&gt;• &lt;b&gt;All users&lt;/b&gt;: 7 pages (Dashboard, Agents, Groups, Group Detail, Whitelist, Logs, Profile)&lt;br&gt;• &lt;b&gt;Admin only&lt;/b&gt;: 3 pages (API Keys, Users, Audit)&lt;br&gt;• &lt;b&gt;Error&lt;/b&gt;: 2 pages (404, 500)&lt;br&gt;• &lt;b&gt;Total&lt;/b&gt;: 13 pages (11 functional + 2 error)&lt;br&gt;&lt;br&gt;• &lt;b&gt;Tech Stack&lt;/b&gt;: Jinja2 + Bootstrap 5.3 + Vanilla JS + Socket.IO&lt;br&gt;• &lt;b&gt;Auth&lt;/b&gt;: httpOnly cookies, sessionStorage cache, 20min refresh&lt;br&gt;• &lt;b&gt;RBAC&lt;/b&gt;: CSS classes (.rbac-admin-only, .rbac-teacher-only)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="500" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;align=left;fontSize=12;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1040" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1065" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1t" value="Process / Feature" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="625" y="1065" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1065" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2t" value="Create / Success" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="785" y="1065" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1090" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3t" value="Delete / Admin-only" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="625" y="1090" width="130" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg4" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1090" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg4t" value="Permission / Audit" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="785" y="1090" width="130" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

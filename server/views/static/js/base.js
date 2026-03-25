@@ -17,14 +17,18 @@
             primary: 'fas fa-bell'
         };
 
+        const needsDarkText = (type === 'warning' || type === 'success');
+        const textClass = needsDarkText ? 'text-dark' : 'text-white';
+        const closeBtnClass = needsDarkText ? 'btn-close me-2 m-auto' : 'btn-close btn-close-white me-2 m-auto';
+
         const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert">
+            <div id="${toastId}" class="toast align-items-center ${textClass} bg-${type} border-0" role="alert">
                 <div class="d-flex">
                     <div class="toast-body">
                         <i class="${icons[type] || icons.info} me-2"></i>
                         ${message}
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    <button type="button" class="${closeBtnClass}" data-bs-dismiss="toast"></button>
                 </div>
             </div>
         `;
@@ -165,7 +169,7 @@
 })();
 
 // ========================================
-// USER SESSION — fetch current user info & logout
+// USER SESSION - fetch current user info & logout
 // ========================================
 (function() {
     // Fetch current user info for navbar

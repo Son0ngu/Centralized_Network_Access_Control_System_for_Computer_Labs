@@ -1,4 +1,4 @@
-# Kế Hoạch Triển Khai 2 Tuần — Self-Hosted Ubuntu Server
+# Kế Hoạch Triển Khai 2 Tuần - Self-Hosted Ubuntu Server
 
 > **Vai trò:** Security Architect
 > **Mục tiêu:** Chuyển từ Render.io sang self-hosted Ubuntu Server trên VMware, kết nối Cloudflare, triển khai Docker, tự tạo TLS/SSL, xây dựng Admin Panel & RBAC
@@ -461,7 +461,7 @@ networks:
 ### Bước 7: File .env
 
 ```bash
-# .env — KHÔNG BAO GIỜ commit file này vào Git
+# .env - KHÔNG BAO GIỜ commit file này vào Git
 NODE_ENV=production
 PORT=3000
 
@@ -1172,13 +1172,13 @@ router.post('/logout', async (req, res) => {
 module.exports = router;
 ```
 
-**Checkpoint ngày 9:** API auth hoạt động — register, login, refresh token, logout.
+**Checkpoint ngày 9:** API auth hoạt động - register, login, refresh token, logout.
 
 ---
 
 ## Ngày 10–11: Code Admin Panel API
 
-### Bước 1: Admin Routes — User Management
+### Bước 1: Admin Routes - User Management
 
 ```javascript
 // src/routes/admin/users.js
@@ -1193,7 +1193,7 @@ const router = express.Router();
 router.use(authenticate);
 
 /**
- * GET /api/admin/users — Danh sách users (phân trang)
+ * GET /api/admin/users - Danh sách users (phân trang)
  */
 router.get('/', authorize('users', 'read'), async (req, res) => {
     try {
@@ -1243,7 +1243,7 @@ router.get('/', authorize('users', 'read'), async (req, res) => {
 });
 
 /**
- * PATCH /api/admin/users/:id/roles — Gán/huỷ role cho user
+ * PATCH /api/admin/users/:id/roles - Gán/huỷ role cho user
  */
 router.patch('/:id/roles', authorize('roles', 'assign'), async (req, res) => {
     try {
@@ -1306,7 +1306,7 @@ router.patch('/:id/roles', authorize('roles', 'assign'), async (req, res) => {
 });
 
 /**
- * PATCH /api/admin/users/:id/status — Activate/Deactivate user
+ * PATCH /api/admin/users/:id/status - Activate/Deactivate user
  */
 router.patch('/:id/status', authorize('users', 'update'), async (req, res) => {
     try {
@@ -1339,7 +1339,7 @@ router.patch('/:id/status', authorize('users', 'update'), async (req, res) => {
 });
 
 /**
- * GET /api/admin/audit-logs — Xem audit logs
+ * GET /api/admin/audit-logs - Xem audit logs
  */
 router.get(
     '/audit-logs',
@@ -1421,7 +1421,7 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 ```
 
-**Checkpoint ngày 11:** Admin API hoạt động — list users, assign roles, activate/deactivate, audit logs.
+**Checkpoint ngày 11:** Admin API hoạt động - list users, assign roles, activate/deactivate, audit logs.
 
 ---
 
@@ -1434,7 +1434,7 @@ nano /home/deploy/scripts/deploy.sh
 
 ```bash
 #!/bin/bash
-# deploy.sh — Zero-downtime deployment
+# deploy.sh - Zero-downtime deployment
 set -e
 
 APP_DIR="/home/deploy/app"
@@ -1460,7 +1460,7 @@ sleep 10
 if curl -sf http://localhost:3000/health > /dev/null; then
     echo "[$(date)] Deployment successful!"
 else
-    echo "[$(date)] DEPLOYMENT FAILED — Rolling back..."
+    echo "[$(date)] DEPLOYMENT FAILED - Rolling back..."
     docker compose down
     git checkout HEAD~1
     docker compose up -d
@@ -1551,4 +1551,4 @@ Sau khi triển khai xong, cần duy trì các hoạt động định kỳ: cậ
 
 ---
 
-> **Tài liệu này được soạn với vai trò Security Architect. Mọi quyết định kiến trúc đều ưu tiên nguyên tắc Defense in Depth — bảo mật nhiều lớp, không phụ thuộc vào một điểm bảo vệ duy nhất.**
+> **Tài liệu này được soạn với vai trò Security Architect. Mọi quyết định kiến trúc đều ưu tiên nguyên tắc Defense in Depth - bảo mật nhiều lớp, không phụ thuộc vào một điểm bảo vệ duy nhất.**

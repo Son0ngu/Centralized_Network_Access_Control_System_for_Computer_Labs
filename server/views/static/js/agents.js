@@ -1038,16 +1038,20 @@ async function removeAgent(agentId) {
  * Show notification
  */
 function showNotification(type, message) {
+    const needsDarkText = (type === 'warning' || type === 'success');
+    const textClass = needsDarkText ? 'text-dark' : 'text-white';
+    const closeBtnClass = needsDarkText ? 'btn-close me-2 m-auto' : 'btn-close btn-close-white me-2 m-auto';
+
     const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.className = `toast align-items-center ${textClass} bg-${type} border-0`;
     toast.setAttribute('role', 'alert');
     toast.setAttribute('aria-live', 'assertive');
     toast.setAttribute('aria-atomic', 'true');
-    
+
     toast.innerHTML = `
         <div class="d-flex">
             <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="${closeBtnClass}" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     `;
     

@@ -1,0 +1,162 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="log-submit" name="Log Submission Flow">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 11: Agent Log Submission&lt;/b&gt;&lt;br&gt;POST /api/logs (batch every 2s)&lt;br&gt;&lt;i&gt;Luồng gửi log từ Agent - xử lý theo batch&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="450" y="10" width="380" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Config -->
+        <mxCell id="config_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="75" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="config" value="&lt;b&gt;Agent Config / Cấu hình&lt;/b&gt;&lt;br&gt;&lt;br&gt;BATCH_SIZE = &lt;b&gt;100&lt;/b&gt; logs&lt;br&gt;SEND_INTERVAL = &lt;b&gt;2s&lt;/b&gt;&lt;br&gt;MAX_QUEUE = &lt;b&gt;1000&lt;/b&gt; logs&lt;br&gt;TIMEOUT = &lt;b&gt;15s&lt;/b&gt;" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="78" width="180" height="92" as="geometry" />
+        </mxCell>
+
+        <!-- Swimlanes -->
+        <mxCell id="lane_agent" value="&lt;b&gt;🖥️ AGENT&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="195" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_server" value="&lt;b&gt;🌐 SERVER&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="195" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_dash" value="&lt;b&gt;📊 DASHBOARD&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="195" width="130" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="div1" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#ccc;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="400" y="195" as="sourcePoint" /><mxPoint x="400" y="1250" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="div2" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#ccc;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="920" y="195" as="sourcePoint" /><mxPoint x="920" y="1250" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 1: Event detection -->
+        <mxCell id="phase1" value="&lt;b&gt;Phase 1: Event Detection&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giai đoạn 1: Phát hiện sự kiện&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="240" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_detect" value="&lt;b&gt;Network event detected&lt;/b&gt;&lt;br&gt;Domain access / IP connection&lt;br&gt;ALLOWED or BLOCKED&lt;br&gt;&lt;i&gt;Phát hiện sự kiện mạng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="280" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_queue" value="&lt;b&gt;queue_log(log_data)&lt;/b&gt;&lt;br&gt;Add: agent_id, timestamp&lt;br&gt;Put into queue (non-blocking)&lt;br&gt;&lt;i&gt;Đưa log vào hàng đợi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="65" y="370" width="180" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_detect" target="a_queue" parent="1" />
+
+        <mxCell id="a_d1" value="&lt;b&gt;Queue full?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Hàng đợi đầy?&lt;/i&gt;&lt;br&gt;(≥1000)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="455" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_queue" target="a_d1" parent="1" />
+
+        <mxCell id="a_drop" value="&lt;b&gt;DROP log&lt;/b&gt;&lt;br&gt;Log warning&lt;br&gt;&lt;i&gt;Bỏ log, ghi warning&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="260" y="462" width="110" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="a_d1" target="a_drop" parent="1" />
+
+        <!-- Phase 2: Batch sender -->
+        <mxCell id="phase2" value="&lt;b&gt;Phase 2: Batch Sender Loop (every 1s check)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giai đoạn 2: Vòng lặp gửi batch&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="555" width="290" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_check" value="&lt;b&gt;_sender_loop() checks:&lt;/b&gt;&lt;br&gt;1. Queue ≥ 100? → send batch&lt;br&gt;2. Queue &gt; 0 AND 2s elapsed? → send batch&lt;br&gt;3. Otherwise → sleep 1s&lt;br&gt;&lt;i&gt;Kiểm tra điều kiện gửi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="35" y="595" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="No (queued)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="a_d1" target="a_check" parent="1" />
+
+        <!-- Send batch -->
+        <mxCell id="a_send" value="&lt;b&gt;_send_batch()&lt;/b&gt;&lt;br&gt;POST /api/logs&lt;br&gt;{logs: [{domain, action, dest_ip,&lt;br&gt;protocol, port, timestamp}, ...]}&lt;br&gt;Timeout: 15s&lt;br&gt;&lt;i&gt;Gửi batch log đến server&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_check" target="a_send" parent="1" />
+
+        <!-- Arrow to server -->
+        <mxCell id="e_req" value="JWT + batch logs" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=2;fontSize=9;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="740" as="sourcePoint" /><mxPoint x="490" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Server processing -->
+        <mxCell id="s_auth" value="&lt;b&gt;@require_jwt&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="725" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_process" value="&lt;b&gt;LogService.receive_logs()&lt;/b&gt;&lt;br&gt;For each log entry:&lt;br&gt;1. Detect protocol from port (443→HTTPS)&lt;br&gt;2. Parse destination (domain/url/ip)&lt;br&gt;3. Parse timestamp → Vietnam TZ&lt;br&gt;4. Normalize action (ALLOW→ALLOWED)&lt;br&gt;&lt;i&gt;Xử lý và chuẩn hoá log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="785" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_auth" target="s_process" parent="1" />
+
+        <!-- Insert to DB -->
+        <mxCell id="s_db" value="&lt;b&gt;insert_many(logs)&lt;/b&gt;&lt;br&gt;Bulk insert to MongoDB&lt;br&gt;&lt;i&gt;Lưu hàng loạt vào DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="505" y="920" width="170" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_process" target="s_db" parent="1" />
+
+        <!-- SocketIO -->
+        <mxCell id="s_socket" value="&lt;b&gt;SocketIO.emit(&quot;logs_received&quot;)&lt;/b&gt;&lt;br&gt;{count, agents_affected, timestamp}&lt;br&gt;&lt;i&gt;Thông báo realtime&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1000" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_db" target="s_socket" parent="1" />
+
+        <!-- Arrow to dashboard -->
+        <mxCell id="e_socket" value="WebSocket" style="endArrow=classic;html=1;strokeColor=#d6b656;strokeWidth=2;fontSize=9;fontStyle=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="1025" as="sourcePoint" /><mxPoint x="1080" y="1025" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Dashboard -->
+        <mxCell id="dash" value="&lt;b&gt;Logs page refresh&lt;/b&gt;&lt;br&gt;New entries appear&lt;br&gt;Stats update&lt;br&gt;&lt;i&gt;Trang logs cập nhật&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="1000" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Response -->
+        <mxCell id="s_resp" value="&lt;b&gt;201 Created&lt;/b&gt;&lt;br&gt;{success: true, inserted_count: 100}&lt;br&gt;&lt;i&gt;Xác nhận đã nhận log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="500" y="1085" width="190" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_socket" target="s_resp" parent="1" />
+
+        <!-- Arrow back -->
+        <mxCell id="e_resp" value="201 Created" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="1110" as="sourcePoint" /><mxPoint x="260" y="1110" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agent: handle response -->
+        <mxCell id="a_result" value="&lt;b&gt;Log result&lt;/b&gt;&lt;br&gt;200/201/202 → success&lt;br&gt;401 → token expired warning&lt;br&gt;Other → retry next batch&lt;br&gt;&lt;i&gt;Xử lý kết quả&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1085" width="175" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Log entry sample -->
+        <mxCell id="sample_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="250" width="320" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="sample_title" value="&lt;b&gt;Log Entry Sample / Mẫu log&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="255" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sample" value="&lt;pre style='font-size:9px;margin:3px'&gt;{&lt;br&gt;  &quot;agent_id&quot;: &quot;abc-123&quot;,&lt;br&gt;  &quot;timestamp&quot;: &quot;2026-03-23T10:30:00+07:00&quot;,&lt;br&gt;  &quot;action&quot;: &quot;ALLOWED&quot;,&lt;br&gt;  &quot;level&quot;: &quot;ALLOWED&quot;,&lt;br&gt;  &quot;domain&quot;: &quot;google.com&quot;,&lt;br&gt;  &quot;destination&quot;: &quot;142.251.41.14&quot;,&lt;br&gt;  &quot;source_ip&quot;: &quot;192.168.1.100&quot;,&lt;br&gt;  &quot;dest_ip&quot;: &quot;142.251.41.14&quot;,&lt;br&gt;  &quot;protocol&quot;: &quot;HTTPS&quot;,&lt;br&gt;  &quot;port&quot;: &quot;443&quot;,&lt;br&gt;  &quot;message&quot;: &quot;Connection allowed&quot;&lt;br&gt;}&lt;/pre&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="960" y="278" width="300" height="175" as="geometry" />
+        </mxCell>
+
+        <!-- Protocol detection -->
+        <mxCell id="proto_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="490" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="proto_title" value="&lt;b&gt;Protocol Detection / Nhận diện giao thức&lt;/b&gt;" style="text;html=1;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="495" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="proto" value="Port 443 → &lt;b&gt;HTTPS&lt;/b&gt;&lt;br&gt;Port 80 → &lt;b&gt;HTTP&lt;/b&gt;&lt;br&gt;Port 53 → &lt;b&gt;DNS&lt;/b&gt;&lt;br&gt;Other → Keep original" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="975" y="520" width="230" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

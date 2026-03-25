@@ -1,0 +1,415 @@
+<mxfile host="app.diagrams.net" modified="2024-01-01T00:00:00.000Z" agent="Claude" version="22.1.2">
+  <diagram id="whitelist-detailed-examples" name="Whitelist Detailed Examples - ALL Cases">
+    <mxGraphModel dx="2200" dy="8400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="8400" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ============================================================ -->
+        <!-- TITLE -->
+        <!-- ============================================================ -->
+        <mxCell id="title" value="&lt;b&gt;Flow 33: Whitelist Pipeline — ALL Scenarios (Tất cả trường hợp)&lt;/b&gt;&lt;br&gt;&lt;i&gt;8 Scenarios: Active Profile, Isolate, Custom Whitelist, Version Match, Default Fallback, Legacy Fallback, No Group, Empty State&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="150" y="10" width="1700" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;Legend:&lt;/b&gt;  🔵 Process &amp;nbsp; 🟡 Decision &amp;nbsp; 🟢 Allowed &amp;nbsp; 🔴 Blocked &amp;nbsp; 🟣 Audit/Version &amp;nbsp; | &lt;b&gt;3 Policies: none / isolate / custom_whitelist&lt;/b&gt; &amp;nbsp;|&amp;nbsp; &lt;b&gt;3 Cascade Levels: Active &gt; Default &gt; Legacy&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=11;fontColor=#555555;fillColor=#f5f5f5;strokeColor=#cccccc;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="75" width="1600" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SETUP: DATABASE STATE -->
+        <!-- ============================================================ -->
+        <mxCell id="setup_title" value="&lt;b&gt;📋 SETUP: Dữ liệu trong MongoDB trước khi Agent sync&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontColor=#1a1a2e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="115" width="700" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- GLOBAL WHITELIST -->
+        <mxCell id="global_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="350" height="270" as="geometry"/>
+        </mxCell>
+        <mxCell id="global_title" value="&lt;b&gt;🌍 GLOBAL WHITELIST&lt;/b&gt;&lt;br&gt;&lt;i&gt;scope=&quot;global&quot; — TẤT CẢ agent nhận&lt;/i&gt;&lt;br&gt;&lt;b&gt;global_version = 5&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=11;fontColor=#4a148c;" vertex="1" parent="1">
+          <mxGeometry x="55" y="168" width="320" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="global_entries" value="&lt;table style='font-size:10px;width:100%'&gt;&lt;tr&gt;&lt;th style='background:#e1bee7;padding:3px'&gt;Entry&lt;/th&gt;&lt;th style='background:#e1bee7;padding:3px'&gt;Type&lt;/th&gt;&lt;th style='background:#e1bee7;padding:3px'&gt;Dedup Key&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px'&gt;google.com&lt;/td&gt;&lt;td&gt;domain&lt;/td&gt;&lt;td style='color:#9673a6;font-size:9px'&gt;domain:google.com&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px'&gt;wikipedia.org&lt;/td&gt;&lt;td&gt;domain&lt;/td&gt;&lt;td style='color:#9673a6;font-size:9px'&gt;domain:wikipedia.org&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px'&gt;10.0.0.0/24&lt;/td&gt;&lt;td&gt;ip_range&lt;/td&gt;&lt;td style='color:#9673a6;font-size:9px'&gt;ip_range:10.0.0.0/24&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px'&gt;*.edu.vn&lt;/td&gt;&lt;td&gt;pattern&lt;/td&gt;&lt;td style='color:#9673a6;font-size:9px'&gt;pattern:*.edu.vn&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:2px'&gt;&lt;b&gt;stackoverflow.com&lt;/b&gt;&lt;/td&gt;&lt;td&gt;domain&lt;/td&gt;&lt;td style='color:#e65100;font-size:9px'&gt;&lt;b&gt;⚠️ TRÙNG Group A!&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="55" y="218" width="320" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- GROUP A -->
+        <mxCell id="grpA_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="420" y="160" width="530" height="640" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpA_title" value="&lt;b&gt;📘 GROUP A: &quot;Lớp 10A — Tin học&quot;&lt;/b&gt;&lt;br&gt;&lt;i&gt;teacher_nguyen | wl_version=12&lt;/i&gt;&lt;br&gt;&lt;b&gt;4 agents: A1(none), A2(isolate), A3(custom), A4(none,up-to-date)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#0d47a1;" vertex="1" parent="1">
+          <mxGeometry x="435" y="168" width="500" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- Active Profile -->
+        <mxCell id="grpA_prof1" value="&lt;b&gt;✅ Active: &quot;Bài thực hành Python&quot;&lt;/b&gt;&lt;br&gt;&lt;i&gt;teacher_nguyen | is_active=True&lt;/i&gt;&lt;hr&gt;docs.python.org, replit.com,&lt;br&gt;&lt;b&gt;stackoverflow.com&lt;/b&gt; ⚠️ trùng, github.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="660" y="220" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpA_prof2" value="&lt;b&gt;Default: &quot;Mặc định 10A&quot;&lt;/b&gt;&lt;br&gt;is_default=True | python.org, w3schools" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="660" y="320" width="270" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpA_legacy" value="&lt;b&gt;Legacy:&lt;/b&gt; python.org, scratch.mit.edu, code.org" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="660" y="370" width="270" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 4 Agents in Group A -->
+        <mxCell id="agentA1" value="&lt;b&gt;🖥 A1&lt;/b&gt; PC-01 | &lt;b style='color:#2e7d32'&gt;none&lt;/b&gt; | g=4,grp=10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="220" width="190" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentA2" value="&lt;b&gt;🖥 A2&lt;/b&gt; PC-02 | &lt;b style='color:#c62828'&gt;ISOLATE&lt;/b&gt; | g=4,grp=10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="265" width="190" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentA3" value="&lt;b&gt;🖥 A3&lt;/b&gt; PC-03 | &lt;b style='color:#e65100'&gt;CUSTOM_WL&lt;/b&gt; | g=4,grp=10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="310" width="190" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentA4" value="&lt;b&gt;🖥 A4&lt;/b&gt; PC-04 | &lt;b style='color:#2e7d32'&gt;none&lt;/b&gt; | &lt;b&gt;g=5,grp=12&lt;/b&gt; (mới nhất)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="355" width="190" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpA_note" value="&lt;b&gt;⚠️ 4 agent CÙNG GROUP A&lt;br&gt;→ 4 kết quả KHÁC NHAU!&lt;/b&gt;" style="text;html=1;align=center;fontSize=10;fontColor=#c62828;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="395" width="190" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Custom Whitelist Policy Detail -->
+        <mxCell id="custom_policy_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="435" width="490" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="custom_policy_title" value="&lt;b&gt;Agent A3 — custom_whitelist Policy Detail&lt;/b&gt;&lt;br&gt;&lt;i&gt;Collection: agent_policies&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontColor=#e65100;" vertex="1" parent="1">
+          <mxGeometry x="455" y="440" width="460" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="custom_policy_doc" value="{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;agent_id&quot;: &quot;agent_a3&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;override_mode&quot;: &lt;b&gt;&quot;custom_whitelist&quot;&lt;/b&gt;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;custom_whitelist&quot;: [&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;{&quot;domain&quot;: &quot;docs.python.org&quot;, &quot;category&quot;: &quot;education&quot;},&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;{&quot;domain&quot;: &quot;w3schools.com&quot;, &quot;category&quot;: &quot;education&quot;}&lt;br&gt;&amp;nbsp;&amp;nbsp;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;applied_by_username&quot;: &quot;teacher_nguyen&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;reason&quot;: &quot;Ôn thi cuối kỳ — chỉ cho truy cập tài liệu&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&lt;b&gt;&quot;expires_at&quot;: &quot;2024-12-20T17:00:00&quot;&lt;/b&gt;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;override_version&quot;: 2&lt;br&gt;}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e65100;fontSize=9;align=left;spacingLeft=6;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="455" y="475" width="460" height="145" as="geometry"/>
+        </mxCell>
+
+        <!-- Valid Modes -->
+        <mxCell id="valid_modes" value="&lt;b&gt;VALID_MODES (agent_policy_model.py:40)&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px'&gt;Mode&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px'&gt;Hành vi&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px'&gt;Entries&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;background:#e8f5e9'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px'&gt;Bình thường&lt;/td&gt;&lt;td style='padding:3px'&gt;Giữ nguyên merged&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;background:#ffebee'&gt;&lt;b&gt;isolate&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px'&gt;Cô lập&lt;/td&gt;&lt;td style='padding:3px'&gt;CHỈ system entries&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;background:#fff3e0'&gt;&lt;b&gt;custom_whitelist&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px'&gt;DS tùy chỉnh&lt;/td&gt;&lt;td style='padding:3px'&gt;System + custom list&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;br&gt;&lt;b&gt;expires_at:&lt;/b&gt; Policy tự hết hạn&lt;br&gt;→ auto reset về &quot;none&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="640" width="230" height="150" as="geometry"/>
+        </mxCell>
+
+        <!-- System Entries -->
+        <mxCell id="system_entries" value="&lt;b&gt;_build_system_entries() — LUÔN có&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kể cả isolate hay custom_whitelist&lt;/i&gt;&lt;hr&gt;✅ Server host IP (heartbeat+sync)&lt;br&gt;✅ 8.8.8.8 (DNS)&lt;br&gt;✅ 8.8.4.4 (DNS backup)&lt;br&gt;✅ 1.1.1.1 (DNS backup)&lt;hr&gt;&lt;i&gt;Nếu không có → agent mất kết nối&lt;br&gt;→ không nhận được lệnh gỡ policy&lt;br&gt;→ DEADLOCK!&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="700" y="640" width="240" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- GROUP B -->
+        <mxCell id="grpB_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="980" y="160" width="440" height="280" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpB_title" value="&lt;b&gt;📙 GROUP B: &quot;Lớp 11B — Ngoại ngữ&quot;&lt;/b&gt;&lt;br&gt;&lt;i&gt;teacher_tran | wl_version=8&lt;/i&gt;&lt;br&gt;&lt;b&gt;❌ Không Active → Fallback Default&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#e65100;" vertex="1" parent="1">
+          <mxGeometry x="995" y="168" width="410" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpB_default" value="&lt;b&gt;Default: &quot;Học online cơ bản&quot;&lt;/b&gt;&lt;br&gt;&lt;i&gt;is_default=True&lt;/i&gt;&lt;hr&gt;duolingo.com, cambridge.org,&lt;br&gt;merriam-webster.com, bbc.co.uk/learning" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="220" width="250" height="85" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpB_legacy" value="&lt;b&gt;Legacy:&lt;/b&gt; duolingo, bbc, cambridge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="220" width="130" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentB1" value="&lt;b&gt;🖥 B1&lt;/b&gt; PC-05 | &lt;b style='color:#2e7d32'&gt;none&lt;/b&gt; | g=5,grp=6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="320" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- GROUP C -->
+        <mxCell id="grpC_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="980" y="460" width="440" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpC_title" value="&lt;b&gt;📕 GROUP C: &quot;Phòng máy tự do&quot;&lt;/b&gt;&lt;br&gt;&lt;i&gt;admin | wl_version=3&lt;/i&gt;&lt;br&gt;&lt;b&gt;❌❌ Không profile nào → Legacy fallback&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#880e4f;" vertex="1" parent="1">
+          <mxGeometry x="995" y="468" width="410" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpC_legacy" value="&lt;b&gt;Legacy:&lt;/b&gt; youtube, facebook, tiktok, spotify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="520" width="250" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentC1" value="&lt;b&gt;🖥 C1&lt;/b&gt; PC-10 | &lt;b style='color:#2e7d32'&gt;none&lt;/b&gt; | g=5,grp=2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8bbd0;strokeColor=#880e4f;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="570" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- PENDING GROUP -->
+        <mxCell id="grpP_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="160" width="510" height="280" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpP_title" value="&lt;b&gt;📓 PENDING GROUP (System)&lt;/b&gt;&lt;br&gt;&lt;i&gt;is_system=True | wl_version=1&lt;/i&gt;&lt;br&gt;&lt;b&gt;Agent mới (group_id=None) tự vào đây&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#283593;" vertex="1" parent="1">
+          <mxGeometry x="1465" y="168" width="480" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="grpP_wl" value="&lt;b&gt;whitelist[]: [] (rỗng)&lt;/b&gt;&lt;br&gt;❌ No profiles at all" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#283593;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="220" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="agentD1" value="&lt;b&gt;🖥 D1 (MỚI)&lt;/b&gt; | &lt;b style='color:#283593'&gt;group_id=None→auto pending&lt;/b&gt;&lt;br&gt;g=0, grp=0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#283593;fontSize=9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="275" width="230" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="pending_code" value="&lt;b&gt;ensure_pending_group()&lt;/b&gt;&lt;br&gt;&lt;i&gt;group_model.py:28-49&lt;/i&gt;&lt;hr&gt;if group_id = None:&lt;br&gt;&amp;nbsp;&amp;nbsp;group = find({is_system:True})&lt;br&gt;&amp;nbsp;&amp;nbsp;or create {name:&quot;pending&quot;}&lt;br&gt;&amp;nbsp;&amp;nbsp;agent.group_id = pending._id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="325" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 1: A1 — ACTIVE PROFILE + DUPLICATE MERGE -->
+        <!-- ============================================================ -->
+        <mxCell id="s1_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="830" width="1920" height="430" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1_label" value="&lt;b&gt;SCENARIO 1: Agent A1 — Active Profile + DUPLICATE MERGE DETAIL (policy=none)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cascade Level ①: Có Active Profile → dùng ngay. Entry trùng stackoverflow.com: group ghi đè global&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#1b5e20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="838" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_step1" value="&lt;b&gt;Step 1: Sync&lt;/b&gt;&lt;br&gt;g=4,grp=10&lt;br&gt;Server: g=5,grp=12&lt;br&gt;&lt;b style='color:#c62828'&gt;→ CHANGED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="885" width="140" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_step2" value="&lt;b&gt;Step 2: Cascade&lt;/b&gt;&lt;hr&gt;① Active? → &lt;b style='color:#2e7d32'&gt;YES ✅&lt;/b&gt;&lt;br&gt;&quot;Bài thực hành Python&quot;&lt;br&gt;② ❌ Skip Default&lt;br&gt;③ ❌ Skip Legacy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="230" y="880" width="190" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- DUPLICATE MERGE TABLE -->
+        <mxCell id="s1_merge" value="&lt;b&gt;Step 3: _merge_whitelists() — DUPLICATE DETAIL&lt;/b&gt;&lt;br&gt;&lt;i&gt;Key = &quot;{type}:{value}&quot; | Duyệt: global_entries + group_entries → group ghi đè&lt;/i&gt;&lt;hr&gt;&lt;table style='font-size:9px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;#&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Entry&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Key&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Source&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Scope&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;merged[key]&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#f3e5f5'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;1&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;google.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;domain:google.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f3e5f5'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;2&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;wikipedia.org&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;domain:wikipedia.org&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f3e5f5'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;3&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;10.0.0.0/24&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;ip_range:10.0.0.0/24&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f3e5f5'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;4&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;*.edu.vn&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;pattern:*.edu.vn&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;&lt;b&gt;5&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;&lt;b&gt;stackoverflow.com&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;&lt;b&gt;domain:stackoverflow.com&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;&lt;b&gt;Global&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;global&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New (lần 1)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;6&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;docs.python.org&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;domain:docs.python.org&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Profile A&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;group&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;7&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;replit.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;domain:replit.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Profile A&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;group&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#ffebee;border:2px solid #c62828'&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b&gt;stackoverflow.com&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b&gt;domain:stackoverflow.com&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b&gt;Profile A&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b&gt;group&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:2px;border:2px solid #c62828'&gt;&lt;b style='color:#c62828'&gt;⚠️ OVERWRITE #5!&lt;br&gt;global→group&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;9&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;github.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;domain:github.com&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Profile A&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;group&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;✅ New&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;b&gt;Result: 8 unique (9 input, 1 dup overwritten)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="878" width="570" height="360" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_policy" value="&lt;b&gt;Step 4: Policy&lt;/b&gt;&lt;br&gt;A1 = &lt;b&gt;&quot;none&quot;&lt;/b&gt;&lt;br&gt;&lt;b style='color:#2e7d32'&gt;→ Giữ 8 entries&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f9a825;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="900" width="150" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_result" value="&lt;b&gt;✅ A1 Firewall (8 entries):&lt;/b&gt;&lt;hr&gt;✅ System IPs + google, wiki, 10.0.0.0/24,&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;*.edu.vn, docs.python, replit,&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;stackoverflow (scope=group)&lt;/b&gt;, github&lt;hr&gt;❌ facebook, youtube, tiktok — BLOCKED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="885" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- S1 Arrows -->
+        <mxCell id="s1a1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1_step1" target="s1_step2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1_step2" target="s1_merge" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1_merge" target="s1_policy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#2e7d32;strokeWidth=2;" edge="1" source="s1_policy" target="s1_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 2: A2 — ISOLATE -->
+        <!-- ============================================================ -->
+        <mxCell id="s2_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1280" width="1920" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2_label" value="&lt;b&gt;SCENARIO 2: Agent A2 — ISOLATE (Cùng Group A! Policy per-agent, không per-group)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Step 1-3 giống A1 (cùng group → cùng cascade + merge → 8 entries). KHÁC ở Step 4: Policy!&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#b71c1c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1288" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_same" value="&lt;b&gt;Step 1-3: GIỐNG A1&lt;/b&gt;&lt;br&gt;Same cascade → Active&lt;br&gt;Same merge → 8 entries&lt;br&gt;&lt;b&gt;Đến đây = giống hệt&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1340" width="180" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_policy" value="&lt;b style='font-size:14px'&gt;Step 4: Policy&lt;/b&gt;&lt;hr&gt;A2.policy =&lt;br&gt;&lt;b style='color:#c62828;font-size:16px'&gt;&quot;ISOLATE&quot;&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#c62828'&gt;entries = system_entries ONLY&lt;br&gt;8 merged entries → XÓA HẾT!&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="290" y="1330" width="220" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_result" value="&lt;b&gt;🔒 A2 Firewall (ISOLATED):&lt;/b&gt;&lt;hr&gt;DEFAULT DENY + CHỈ:&lt;br&gt;✅ Server IP (heartbeat+sync)&lt;br&gt;✅ 8.8.8.8, 8.8.4.4, 1.1.1.1 (DNS)&lt;hr&gt;&lt;b style='color:#c62828;font-size:12px'&gt;❌ TẤT CẢ WEBSITE CHẶN&lt;/b&gt;&lt;br&gt;❌ google, python, replit, github...&lt;hr&gt;&lt;i&gt;Cùng Group A nhưng A1=8 entries, A2=0!&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=6;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="560" y="1330" width="280" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_explain" value="&lt;b&gt;Isolate dùng khi:&lt;/b&gt;&lt;br&gt;• Thi cử (chặn internet)&lt;br&gt;• PC bị virus/malware&lt;br&gt;• Kỷ luật học sinh&lt;hr&gt;&lt;b&gt;Tại sao giữ system IPs?&lt;/b&gt;&lt;br&gt;→ Để agent vẫn heartbeat&lt;br&gt;→ Nhận lệnh GỠ isolate&lt;br&gt;→ Nếu chặn cả → DEADLOCK!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1335" width="220" height="175" as="geometry"/>
+        </mxCell>
+
+        <!-- A1 vs A2 comparison -->
+        <mxCell id="s2_compare" value="&lt;b&gt;⚡ A1 vs A2 (CÙNG GROUP A!)&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;&lt;/th&gt;&lt;th style='background:#e8f5e9;padding:4px;border:1px solid #ccc'&gt;A1 (none)&lt;/th&gt;&lt;th style='background:#ffebee;padding:4px;border:1px solid #ccc'&gt;A2 (isolate)&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Group&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A (giống!)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Profile&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Active ✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Active (giống!)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Merged&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;8&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;8 (giống!)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;After policy&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;8 ✅&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;0 ❌&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;google?&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1330" width="320" height="210" as="geometry"/>
+        </mxCell>
+
+        <!-- S2 Arrows -->
+        <mxCell id="s2a1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#c62828;" edge="1" source="s2_same" target="s2_policy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s2a2" value="ISOLATE!" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;fontColor=#c62828;fontStyle=1;strokeColor=#c62828;strokeWidth=2;" edge="1" source="s2_policy" target="s2_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 3: A3 — CUSTOM_WHITELIST -->
+        <!-- ============================================================ -->
+        <mxCell id="s3_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1610" width="1920" height="380" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_label" value="&lt;b&gt;SCENARIO 3: Agent A3 — CUSTOM_WHITELIST (Cùng Group A! Teacher set danh sách riêng cho PC này)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trường hợp: Teacher muốn 1 PC cụ thể chỉ truy cập vài trang đặc biệt (ôn thi) — có thời hạn (expires_at)&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#e65100;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1618" width="1200" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_same" value="&lt;b&gt;Step 1-3: GIỐNG A1&lt;/b&gt;&lt;br&gt;Same cascade → Active&lt;br&gt;Same merge → 8 entries&lt;br&gt;&lt;b&gt;Vẫn giống A1 và A2&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1670" width="180" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_policy" value="&lt;b style='font-size:14px'&gt;Step 4: Policy&lt;/b&gt;&lt;hr&gt;A3.policy =&lt;br&gt;&lt;b style='color:#e65100;font-size:14px'&gt;&quot;custom_whitelist&quot;&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#e65100'&gt;8 merged entries → THAY THẾ&lt;br&gt;bằng custom list + system!&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="290" y="1660" width="230" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_build" value="&lt;b&gt;apply_policy_to_sync():&lt;/b&gt;&lt;br&gt;&lt;i&gt;agent_policy_service.py:183&lt;/i&gt;&lt;hr&gt;&lt;b&gt;1. _build_system_entries():&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;+ server_host (source: policy_custom)&lt;br&gt;&amp;nbsp;&amp;nbsp;+ 8.8.8.8, 8.8.4.4, 1.1.1.1&lt;br&gt;&lt;br&gt;&lt;b&gt;2. get_custom_whitelist(agent_a3):&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;+ docs.python.org (education)&lt;br&gt;&amp;nbsp;&amp;nbsp;+ w3schools.com (education)&lt;br&gt;&lt;br&gt;&lt;b&gt;3. Combined:&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;= 4 system + 2 custom = &lt;b&gt;6 entries&lt;/b&gt;&lt;hr&gt;&lt;i&gt;8 merged entries hoàn toàn bị thay thế!&lt;br&gt;google.com, github.com → KHÔNG CÓ!&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="560" y="1655" width="280" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_result" value="&lt;b&gt;🔧 A3 Firewall (CUSTOM):&lt;/b&gt;&lt;hr&gt;DEFAULT DENY + ALLOW:&lt;br&gt;✅ Server IP (system)&lt;br&gt;✅ 8.8.8.8, 8.8.4.4, 1.1.1.1 (DNS)&lt;br&gt;✅ &lt;b&gt;docs.python.org&lt;/b&gt; (custom)&lt;br&gt;✅ &lt;b&gt;w3schools.com&lt;/b&gt; (custom)&lt;hr&gt;&lt;b style='color:#c62828'&gt;❌ google.com — BLOCKED&lt;/b&gt;&lt;br&gt;❌ wikipedia.org — BLOCKED&lt;br&gt;❌ replit.com — BLOCKED&lt;br&gt;❌ github.com — BLOCKED&lt;br&gt;❌ stackoverflow.com — BLOCKED&lt;br&gt;&lt;i&gt;(khác A1: chỉ 2 trang thay vì 8!)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1660" width="280" height="270" as="geometry"/>
+        </mxCell>
+
+        <!-- Expiry detail -->
+        <mxCell id="s3_expiry" value="&lt;b style='font-size:12px'&gt;⏱ EXPIRES_AT — Tự hết hạn&lt;/b&gt;&lt;hr&gt;&lt;b&gt;Agent A3 policy:&lt;/b&gt;&lt;br&gt;expires_at = &quot;2024-12-20T17:00:00&quot;&lt;br&gt;&lt;i&gt;(Hết hạn lúc 5 chiều ngày 20/12)&lt;/i&gt;&lt;hr&gt;&lt;b&gt;Khi hết hạn:&lt;/b&gt;&lt;br&gt;get_effective_mode() kiểm tra:&lt;br&gt;if expires &amp;lt; now_vietnam():&lt;br&gt;&amp;nbsp;&amp;nbsp;→ update override_mode = &quot;none&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ update custom_whitelist = []&lt;br&gt;&amp;nbsp;&amp;nbsp;→ return &lt;b&gt;&quot;none&quot;&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#2e7d32'&gt;→ A3 tự động trở về bình thường!&lt;/b&gt;&lt;br&gt;→ Lần sync sau: nhận 8 entries như A1&lt;br&gt;→ Không cần teacher gỡ thủ công" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1660" width="280" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- 3 Policy comparison -->
+        <mxCell id="s3_3way" value="&lt;b style='font-size:12px'&gt;⚡ SO SÁNH 3 POLICIES (cùng Group A!)&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;&lt;/th&gt;&lt;th style='background:#e8f5e9;padding:4px;border:1px solid #ccc'&gt;A1 none&lt;/th&gt;&lt;th style='background:#ffebee;padding:4px;border:1px solid #ccc'&gt;A2 isolate&lt;/th&gt;&lt;th style='background:#fff3e0;padding:4px;border:1px solid #ccc'&gt;A3 custom&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Merged&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;8&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;8&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;After policy&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;8 ✅&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;0 ❌&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#fff3e0'&gt;&lt;b&gt;6 🔧&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;google?&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;python?&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Hết hạn?&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;N/A&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Manual reset&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;Tự hết hạn!&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="1660" width="420" height="240" as="geometry"/>
+        </mxCell>
+
+        <!-- S3 Arrows -->
+        <mxCell id="s3a1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#e65100;" edge="1" source="s3_same" target="s3_policy" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s3a2" value="CUSTOM!" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;fontColor=#e65100;fontStyle=1;strokeColor=#e65100;strokeWidth=2;" edge="1" source="s3_policy" target="s3_build" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s3a3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#e65100;strokeWidth=2;" edge="1" source="s3_build" target="s3_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 4: A4 — VERSION MATCH (up_to_date) -->
+        <!-- ============================================================ -->
+        <mxCell id="s4_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2010" width="1920" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4_label" value="&lt;b&gt;SCENARIO 4: Agent A4 — VERSION MATCH (Đã cập nhật → Server trả up_to_date=true → SKIP ALL)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trường hợp: Agent đã sync trước đó, versions trùng → không query DB, không merge, response nhỏ&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#1a237e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2018" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s4_step1" value="&lt;b&gt;Sync:&lt;/b&gt; g=&lt;b&gt;5&lt;/b&gt;,grp=&lt;b&gt;12&lt;/b&gt;&lt;br&gt;Server: g=5,grp=12&lt;br&gt;&lt;b style='color:#2e7d32'&gt;MATCH! ✅&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3f51b5;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2065" width="160" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4_skip" value="&lt;b style='color:#2e7d32;font-size:12px'&gt;SKIP ALL:&lt;/b&gt;&lt;br&gt;❌ Profile Cascade&lt;br&gt;❌ Merge&lt;br&gt;❌ Policy Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="260" y="2060" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4_response" value="{&quot;domains&quot;:[],&quot;count&quot;:0,&lt;br&gt;&amp;nbsp;&lt;b&gt;&quot;up_to_date&quot;:true&lt;/b&gt;,&lt;br&gt;&amp;nbsp;&quot;type&quot;:&quot;versioned&quot;}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3f51b5;fontSize=9;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="470" y="2065" width="230" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4_result" value="&lt;b&gt;✅ A4: Giữ nguyên firewall hiện tại&lt;/b&gt;&lt;br&gt;Không re-resolve DNS, không update rules&lt;br&gt;&lt;i&gt;Tiết kiệm CPU + bandwidth (~200 bytes response)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="740" y="2060" width="340" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4_code" value="&lt;b&gt;Code:&lt;/b&gt; whitelist_service.py:490-502&lt;br&gt;if global_v == current AND group_v == current → return early" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=9;fontColor=#3f51b5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="740" y="2130" width="400" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- S4 Arrows -->
+        <mxCell id="s4a1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s4_step1" target="s4_skip" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s4a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s4_skip" target="s4_response" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s4a3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s4_response" target="s4_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 5: B1 — DEFAULT PROFILE FALLBACK -->
+        <!-- ============================================================ -->
+        <mxCell id="s5_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2290" width="1920" height="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5_label" value="&lt;b&gt;SCENARIO 5: Agent B1 — DEFAULT PROFILE FALLBACK (Không Active → dùng Default)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cascade Level ②: Active=None → tìm Default Profile (is_default=True) → dùng Default. Legacy bị bỏ qua.&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#e65100;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2298" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s5_step1" value="&lt;b&gt;Sync:&lt;/b&gt; g=5,grp=6&lt;br&gt;Server: g=5,grp=8&lt;br&gt;&lt;b&gt;→ group changed&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2350" width="140" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5_cascade" value="&lt;b&gt;Cascade:&lt;/b&gt;&lt;hr&gt;① Active? → &lt;b style='color:#c62828'&gt;None ❌&lt;/b&gt;&lt;br&gt;② Default? → &lt;b style='color:#e65100'&gt;&quot;Học online&quot; ✅&lt;/b&gt;&lt;br&gt;③ ❌ Skip Legacy&lt;hr&gt;&lt;i&gt;Legacy (duolingo, bbc, cambridge)&lt;br&gt;KHÔNG DÙNG — Default ưu tiên hơn!&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="230" y="2340" width="240" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5_result" value="&lt;b&gt;✅ B1 Firewall (9 entries):&lt;/b&gt;&lt;hr&gt;✅ System + Global (5) + Default Profile (4):&lt;br&gt;google, wiki, 10.0.0.0/24, *.edu.vn, SO,&lt;br&gt;duolingo, cambridge, merriam-webster, bbc&lt;hr&gt;❌ github, replit — BLOCKED&lt;br&gt;&lt;i&gt;(khác Group A → khác whitelist)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="500" y="2340" width="280" height="145" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5_when" value="&lt;b&gt;💡 Default Profile = &quot;baseline&quot;&lt;/b&gt;&lt;hr&gt;1. Teacher tạo Default (luôn có sẵn)&lt;br&gt;2. Teacher activate &quot;Bài kiểm tra&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Active ghi đè Default&lt;br&gt;3. Teacher deactivate →&lt;br&gt;&amp;nbsp;&amp;nbsp;&lt;b&gt;Tự fallback về Default!&lt;/b&gt;&lt;br&gt;&lt;i&gt;→ Không bao giờ mất whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="810" y="2340" width="240" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- S5 Arrows -->
+        <mxCell id="s5a1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s5_step1" target="s5_cascade" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s5a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s5_cascade" target="s5_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 6: C1 — LEGACY FALLBACK -->
+        <!-- ============================================================ -->
+        <mxCell id="s6_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2640" width="1920" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="s6_label" value="&lt;b&gt;SCENARIO 6: Agent C1 — LEGACY FALLBACK (Không profile nào → dùng group.whitelist[] gốc)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cascade Level ③: Active=None, Default=None → fallback Legacy. Group chưa có teacher tạo profile.&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#880e4f;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2648" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s6_step1" value="&lt;b&gt;Sync:&lt;/b&gt; g=5,grp=2&lt;br&gt;Server: g=5,grp=3&lt;br&gt;&lt;b&gt;→ group changed&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8bbd0;strokeColor=#880e4f;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2700" width="140" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="s6_cascade" value="&lt;b&gt;Cascade:&lt;/b&gt;&lt;hr&gt;① Active? → &lt;b style='color:#c62828'&gt;None ❌&lt;/b&gt;&lt;br&gt;② Default? → &lt;b style='color:#c62828'&gt;None ❌&lt;/b&gt;&lt;br&gt;③ Legacy? → &lt;b style='color:#880e4f'&gt;4 entries ✅&lt;/b&gt;&lt;br&gt;youtube, facebook, tiktok, spotify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8bbd0;strokeColor=#880e4f;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="230" y="2690" width="230" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="s6_result" value="&lt;b&gt;✅ C1 Firewall (9 entries):&lt;/b&gt;&lt;hr&gt;✅ System + Global (5) + Legacy (4):&lt;br&gt;google, wiki, 10.0.0.0/24, *.edu.vn, SO,&lt;br&gt;&lt;b&gt;youtube, facebook, tiktok, spotify&lt;/b&gt;&lt;hr&gt;❌ docs.python, duolingo, github — BLOCKED&lt;br&gt;&lt;i&gt;(Phòng tự do → giải trí OK, không học)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="490" y="2690" width="290" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="s6_note" value="&lt;b&gt;Legacy = cách cũ trước Profile system&lt;/b&gt;&lt;br&gt;Admin thêm entry vào group trực tiếp.&lt;br&gt;Khi teacher tạo profile → Legacy bị &quot;đè&quot;.&lt;br&gt;&lt;b&gt;Chỉ dùng 1/3 cấp, KHÔNG gộp.&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="810" y="2700" width="280" height="85" as="geometry"/>
+        </mxCell>
+
+        <!-- S6 Arrows -->
+        <mxCell id="s6a1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s6_step1" target="s6_cascade" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s6a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s6_cascade" target="s6_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 7: D1 — NO GROUP (AUTO PENDING) -->
+        <!-- ============================================================ -->
+        <mxCell id="s7_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2970" width="1920" height="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_label" value="&lt;b&gt;SCENARIO 7: Agent D1 — NO GROUP (group_id=None → Auto gán Pending Group → Chỉ Global)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trường hợp: Agent mới cài, chưa admin gán group. Server tự tạo/gán pending system group.&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#1a237e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="2978" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s7_step1" value="&lt;b&gt;Sync:&lt;/b&gt; g=0,grp=0&lt;br&gt;&lt;b style='color:#283593'&gt;group_id = None&lt;/b&gt;&lt;br&gt;Agent mới cài!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#283593;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="3030" width="155" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_pending" value="&lt;b&gt;ensure_pending_group()&lt;/b&gt;&lt;hr&gt;1. Tìm/tạo {is_system:True}&lt;br&gt;2. agent.group_id = pending._id&lt;br&gt;3. Update agent trong DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#283593;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="245" y="3025" width="210" height="85" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_cascade" value="&lt;b&gt;Cascade (pending group):&lt;/b&gt;&lt;hr&gt;① Active? → None ❌&lt;br&gt;② Default? → None ❌&lt;br&gt;③ Legacy? → [] (rỗng) ❌&lt;br&gt;&lt;b&gt;Group entries = 0&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="485" y="3020" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_merge" value="&lt;b&gt;Merge:&lt;/b&gt;&lt;br&gt;Global(5) + Pending(0)&lt;br&gt;&lt;b&gt;= 5 entries (Global only)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="715" y="3030" width="190" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_result" value="&lt;b&gt;✅ D1 Firewall (5 entries):&lt;/b&gt;&lt;hr&gt;✅ System + Global only:&lt;br&gt;google, wiki, 10.0.0.0/24, *.edu.vn, SO&lt;hr&gt;❌ Tất cả trang group-specific — BLOCKED&lt;br&gt;&lt;i&gt;Chờ admin gán group thật&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="935" y="3020" width="260" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7_next" value="&lt;b&gt;Cuộc đời D1 tiếp:&lt;/b&gt;&lt;hr&gt;1. D1 hiện trong /agents (status=pending)&lt;br&gt;2. Admin drag-drop D1 → Group A&lt;br&gt;3. Lần sync sau (≤60s):&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Nhận Active Profile Group A&lt;br&gt;&amp;nbsp;&amp;nbsp;→ 8 entries → &lt;b style='color:#2e7d32'&gt;giống A1 ✅&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="3020" width="260" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- S7 Arrows -->
+        <mxCell id="s7a1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s7_step1" target="s7_pending" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s7a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s7_pending" target="s7_cascade" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s7a3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s7_cascade" target="s7_merge" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s7a4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s7_merge" target="s7_result" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 8: EMPTY STATE -->
+        <!-- ============================================================ -->
+        <mxCell id="s8_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#424242;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="3330" width="1920" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="s8_label" value="&lt;b&gt;SCENARIO 8: EMPTY STATE (Hệ thống mới — Không Global + Pending rỗng = KHÔNG CÓ GÌ)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Edge case: Hệ thống mới cài, admin chưa thêm global entry nào. Khác isolate: tự khôi phục khi có data.&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#212121;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="3338" width="1200" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_flow" value="&lt;b&gt;Agent → pending group → Global:[] + Pending:[] → Merge:[] → domains:[], count:0&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#424242;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="3385" width="550" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="s8_result" value="&lt;b&gt;🔒 MAXIMUM LOCKDOWN:&lt;/b&gt;&lt;br&gt;CHỈ system IPs (DNS+server)&lt;br&gt;❌ Tất cả internet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="3425" width="250" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="s8_vs" value="&lt;b&gt;Empty vs Isolate:&lt;/b&gt;&lt;br&gt;• Empty: tự khôi phục khi admin thêm data ✅&lt;br&gt;• Isolate: phải admin gỡ thủ công ❌&lt;br&gt;• Cùng kết quả firewall, khác nguyên nhân" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;align=left;spacingLeft=6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="340" y="3425" width="320" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- GRAND SUMMARY TABLE -->
+        <!-- ============================================================ -->
+        <mxCell id="sum_title" value="&lt;b&gt;📊 BẢNG TỔNG KẾT: 8 SCENARIOS — 5 Agents, 4 Groups&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontColor=#1a1a2e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="3590" width="700" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="summary" value="&lt;table style='font-size:10px;width:100%;border-collapse:collapse;'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;#&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Agent&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Group&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Policy&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Cascade&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Source&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Final&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Truy cập được&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:2px solid #999'&gt;Điểm đặc biệt&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;1&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;① Active&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&quot;Bài thực hành&quot;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;google,wiki,python,replit,SO,github,edu.vn,10.x&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Duplicate SO: group wins&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#ffebee'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;2&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A2&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#c62828'&gt;&lt;b&gt;isolate&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;① Active&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;N/A (xóa hết)&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;0&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;CHỈ system IPs&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Cùng group A, chặn hết!&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;3&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A3&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#e65100'&gt;&lt;b&gt;custom_wl&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;① Active&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Custom list&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#fff3e0'&gt;&lt;b&gt;6&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;system + python + w3schools&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Thay thế merged, có expires_at&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;4&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A4&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;SKIP&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;up_to_date&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;—&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Giữ nguyên (đã sync)&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Version match → skip all&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff8e1'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;B1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;B&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;② Default&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&quot;Học online&quot;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;9&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;google,wiki,duolingo,cambridge,MW,bbc,SO,edu,10.x&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;No Active → Default fallback&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fce4ec'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;6&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;C1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;C&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;③ Legacy&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;group.whitelist&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;9&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;google,wiki,youtube,fb,tiktok,spotify,SO,edu,10.x&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;No profiles → Legacy&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;7&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;D1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;i&gt;pending&lt;/i&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Auto-pending&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Pending (rỗng)&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;5&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Chỉ Global&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;group_id=None → auto&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f5f5f5'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;8&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;D1*&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;i&gt;pending&lt;/i&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Empty&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Nothing&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;0&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;CHỈ system IPs&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Tự khôi phục ≠ isolate&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="shape=table;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#616161;verticalAlign=top;spacingTop=0;strokeWidth=2;overflow=auto;" vertex="1" parent="1">
+          <mxGeometry x="40" y="3635" width="1920" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- KEY INSIGHTS -->
+        <!-- ============================================================ -->
+        <mxCell id="insights" value="&lt;b style='font-size:13px'&gt;💡 KEY INSIGHTS (10 bài học)&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:11px;width:100%'&gt;&lt;tr&gt;&lt;td style='padding:5px;width:5%'&gt;&lt;b&gt;1.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;width:18%'&gt;&lt;b&gt;Policy PER-AGENT&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Cùng Group A: A1(none)=8, A2(isolate)=0, A3(custom)=6, A4(up_to_date)=skip. &lt;b&gt;4 agent cùng group → 4 kết quả khác nhau!&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;2.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;3 Policies: none / isolate / custom_whitelist&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;none=giữ merged, isolate=system IPs only, custom_whitelist=thay thế bằng custom list. Áp dụng SAU merge (step cuối).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;3.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;Profile PER-GROUP&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Active/Default Profile gắn với group. Tất cả agent cùng group dùng chung (trước policy override).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;4.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;Cascade 3 cấp, KHÔNG gộp&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Active &amp;gt; Default &amp;gt; Legacy. Chỉ dùng 1/3. Active có → bỏ hết Default + Legacy.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;5.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;Global luôn merge&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Global entries LUÔN gộp (trừ khi isolate/custom thay thế toàn bộ response).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;6.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;Duplicate: Group scope wins&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Key=&quot;{type}:{value}&quot;. Duyệt global trước, group sau → group ghi đè. Không tạo duplicate.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;7.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;Version match = Skip all&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Both versions match → return up_to_date:true. Không query DB, merge, hay policy check. ~200 bytes response.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;8.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;No group = Auto pending&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;group_id=None → ensure_pending_group() → chỉ nhận Global. Chờ admin gán group.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;9.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;System IPs luôn có&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;DNS (8.8.8.8/8.8.4.4/1.1.1.1) + Server IP: luôn ALLOW. Kể cả isolate/custom/empty. Tránh deadlock.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;10.&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;&lt;b&gt;expires_at = tự hết hạn&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px'&gt;Policy (isolate/custom) có thể set duration. Khi hết hạn → get_effective_mode() auto reset về &quot;none&quot;. Không cần teacher gỡ.&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="3930" width="1920" height="310" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

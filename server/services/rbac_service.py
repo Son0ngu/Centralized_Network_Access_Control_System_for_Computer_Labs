@@ -1,7 +1,7 @@
 """
 RBAC Service - Permission check & ownership check.
-- Admin: toan quyen, khong bi gioi han boi ownership
-- Teacher: chi thao tac tren Group ma minh duoc assign vao (teacher_ids)
+- Admin: full access, not limited by ownership
+- Teacher: can only operate on Groups they are assigned to (teacher_ids)
 """
 
 import logging
@@ -44,7 +44,7 @@ class RBACService:
         return is_admin(role)
 
     # ========================================================================
-    # OWNERSHIP CHECK (core logic cho Teacher)
+    # OWNERSHIP CHECK (core logic for Teacher)
     # ========================================================================
 
     def is_owner(self, user_id: str, resource: Dict) -> bool:
@@ -97,12 +97,12 @@ class RBACService:
 
     def get_teacher_group_ids(self, user: Dict) -> Optional[List[str]]:
         """
-        Tra ve list string group_ids ma teacher duoc assign vao.
-        Returns None cho admin (nghia la tat ca).
-        Returns [] neu khong co group_model.
+        Return list of group_id strings that the teacher is assigned to.
+        Returns None for admin (meaning all).
+        Returns [] if group_model is not available.
         """
         if user.get("role") == "admin":
-            return None  # Admin thay tat ca
+            return None  # Admin sees all
 
         if self.group_model:
             user_id = user.get("_id")
@@ -125,7 +125,7 @@ class RBACService:
         """
         Get MongoDB query filter for groups based on user role.
         Returns:
-            None for admin (no filter needed - toan quyen)
+            None for admin (no filter needed - full access)
             Filter by teacher_ids for teacher
         """
         if user.get("role") == "admin":
@@ -139,7 +139,7 @@ class RBACService:
     def get_agent_query_filter(self, user: Dict) -> Optional[Dict]:
         """
         Get MongoDB query filter for agents based on user role.
-        Teacher chi thay agents trong groups minh tao.
+        Teacher only sees agents in their own groups.
         Returns:
             None for admin
             {"group_id": {"$in": [...]}} for teacher
@@ -155,23 +155,23 @@ class RBACService:
     def get_log_query_filter(self, user: Dict) -> Optional[Dict]:
         """
         Get MongoDB query filter for logs based on user role.
-        Teacher chi thay logs tu agents trong groups minh tao.
+        Teacher only sees logs from agents in their own groups.
         Query chain: teacher -> groups -> agents -> logs
         """
         if user.get("role") == "admin":
             return None
 
-        # Buoc 1: Lay group_ids cua teacher
+        # Step 1: Get teacher's group_ids
         group_ids = self.get_teacher_group_ids(user)
         if group_ids is None:
             return None
         if not group_ids:
             return {"agent_id": {"$in": []}}
 
-        # Buoc 2: Lay agent_ids trong cac groups do
+        # Step 2: Get agent_ids in those groups
         if self.agent_model:
-            # agent_model luu group_id dang string hoac ObjectId
-            # Can match ca 2 format
+            # agent_model stores group_id as string or ObjectId
+            # Need to match both formats
             group_id_variants = []
             for gid in group_ids:
                 group_id_variants.append(gid)
@@ -192,9 +192,9 @@ class RBACService:
     def get_whitelist_query_filter(self, user: Dict) -> Optional[Dict]:
         """
         Get query filter for whitelist based on user role.
-        Teacher thay: global + entries trong groups minh.
+        Teacher sees: global + entries in their own groups.
         Returns:
-            None for admin (toan quyen)
+            None for admin (full access)
             {"$or": [{"scope": "global"}, {"group_id": {"$in": [...]}}]} for teacher
         """
         if user.get("role") == "admin":

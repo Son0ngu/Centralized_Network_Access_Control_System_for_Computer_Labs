@@ -1,8 +1,8 @@
 """
 Admin Auth Controller - Login, logout, refresh, profile, change password.
 - Blueprint prefix: /admin/auth/*
-- Tach biet voi Agent auth (/api/auth/*)
-- Token luu trong httpOnly cookie
+- Separate from Agent auth (/api/auth/*)
+- Token stored in httpOnly cookie
 """
 
 import logging
@@ -93,7 +93,7 @@ class AdminAuthController:
             password = data.get("password", "")
 
             if not username or not password:
-                return self._error("Username va password la bat buoc", 400)
+                return self._error("Username and password are required", 400)
 
             success, result, error = self.auth_service.login(
                 username=username,
@@ -103,13 +103,13 @@ class AdminAuthController:
             )
 
             if not success:
-                return self._error(error or "Dang nhap that bai", 401)
+                return self._error(error or "Login failed", 401)
 
             # Build response with httpOnly cookies
             tokens = result["tokens"]
             resp = make_response(jsonify({
                 "success": True,
-                "message": "Dang nhap thanh cong",
+                "message": "Login successful",
                 "data": {
                     "user": result["user"],
                     "tokens": tokens,  # Also return in body for API clients
@@ -140,7 +140,7 @@ class AdminAuthController:
 
         except Exception as e:
             self.logger.error(f"Login error: {e}")
-            return self._error("Dang nhap that bai", 500)
+            return self._error("Login failed", 500)
 
     # ========================================================================
     # PROTECTED
@@ -166,7 +166,7 @@ class AdminAuthController:
             return self._success(safe_user)
         except Exception as e:
             self.logger.error(f"Get profile error: {e}")
-            return self._error("Lay thong tin that bai", 500)
+            return self._error("Failed to get info", 500)
 
     @require_login
     def refresh_token(self):
@@ -191,7 +191,7 @@ class AdminAuthController:
             if not success:
                 if "expired" in (error or "").lower():
                     return self._error(error, 401, "REFRESH_TOKEN_EXPIRED")
-                return self._error(error or "Refresh that bai", 401)
+                return self._error(error or "Refresh failed", 401)
 
             # Update access_token cookie
             resp = make_response(jsonify({
@@ -212,7 +212,7 @@ class AdminAuthController:
 
         except Exception as e:
             self.logger.error(f"Refresh error: {e}")
-            return self._error("Refresh that bai", 500)
+            return self._error("Refresh failed", 500)
 
     @require_login
     def logout(self):
@@ -234,7 +234,7 @@ class AdminAuthController:
             # Clear cookies
             resp = make_response(jsonify({
                 "success": True,
-                "message": "Dang xuat thanh cong",
+                "message": "Logout successful",
             }))
             resp.delete_cookie(COOKIE_ACCESS_NAME, path=COOKIE_PATH)
             resp.delete_cookie(COOKIE_REFRESH_NAME, path=COOKIE_PATH)
@@ -243,7 +243,7 @@ class AdminAuthController:
 
         except Exception as e:
             self.logger.error(f"Logout error: {e}")
-            return self._error("Dang xuat that bai", 500)
+            return self._error("Logout failed", 500)
 
     @require_login
     def change_password(self):
@@ -260,7 +260,7 @@ class AdminAuthController:
             new_password = data.get("new_password", "")
 
             if not old_password or not new_password:
-                return self._error("old_password va new_password la bat buoc", 400)
+                return self._error("old_password and new_password are required", 400)
 
             success, error = self.auth_service.change_password(
                 g.current_user_id, old_password, new_password
@@ -269,11 +269,11 @@ class AdminAuthController:
             if not success:
                 return self._error(error, 400)
 
-            return self._success(None, "Doi mat khau thanh cong")
+            return self._success(None, "Password changed successfully")
 
         except Exception as e:
             self.logger.error(f"Change password error: {e}")
-            return self._error("Doi mat khau that bai", 500)
+            return self._error("Password change failed", 500)
 
     @require_login
     def update_profile(self):
@@ -293,7 +293,7 @@ class AdminAuthController:
                 # Check email duplicate
                 existing = self.auth_service.user_model.find_by_email(email)
                 if existing and str(existing.get("_id")) != str(g.current_user_id):
-                    return self._error("Email da duoc su dung boi nguoi khac", 400)
+                    return self._error("Email already in use by another user", 400)
                 update_data["email"] = email
 
             if update_data:
@@ -312,11 +312,11 @@ class AdminAuthController:
                     except Exception as e:
                         self.logger.error(f"Failed to log profile update: {e}")
                         
-                    return self._success(None, "Cap nhat ho so thanh cong")
-                return self._error("Khong the cap nhat ho so", 500)
+                    return self._success(None, "Profile updated successfully")
+                return self._error("Cannot update profile", 500)
 
-            return self._success(None, "Khong co thay doi")
+            return self._success(None, "No changes")
 
         except Exception as e:
             self.logger.error(f"Update profile error: {e}")
-            return self._error("Cap nhat ho so that bai", 500)
+            return self._error("Profile update failed", 500)

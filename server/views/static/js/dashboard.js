@@ -126,7 +126,7 @@
     }, 30000);
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Load initial stats (no animation — just set values directly)
+        // Load initial stats (no animation - just set values directly)
         loadDashboardStats(false);
 
         // Animate cards

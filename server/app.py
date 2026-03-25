@@ -192,11 +192,11 @@ def initialize_database_indexes(app, db):
         app.logger.debug(f"Index initialization traceback: {traceback.format_exc()}")
 
 def register_controllers(app, socketio, db):
-    """Register all controllers với proper parameters"""
+    """Register all controllers with proper parameters"""
     try:
         logger.info(" Initializing MVC components...")
         
-        #  FIX: Initialize models với db parameter
+        #  FIX: Initialize models with db parameter
         whitelist_model = WhitelistModel(db)
         agent_model = AgentModel(db)
         log_model = LogModel(db)
@@ -314,7 +314,7 @@ def register_controllers(app, socketio, db):
                 methods = ', '.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
                 logger.info(f"  {methods:15} {rule.rule}")
         
-        #  FIX: Return services để dùng trong main routes
+        #  FIX: Return services for use in main routes
         return log_service, agent_service, group_service, api_key_service, user_service
         
     except Exception as e:
@@ -513,7 +513,7 @@ if __name__ == "__main__":
         logger.info(f" Database: {config.MONGO_DBNAME}")
         logger.info(f" Timezone: vietnam (Clean & Simple)")
         
-        #  FIX: Disable reloader để tránh double initialization
+        #  FIX: Disable reloader to avoid double initialization
         socketio.run(
             app, 
             host=config.HOST, 

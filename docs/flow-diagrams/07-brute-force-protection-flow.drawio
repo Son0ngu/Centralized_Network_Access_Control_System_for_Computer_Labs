@@ -1,0 +1,185 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="brute-force" name="Brute-Force Protection Flow">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 7: Brute-Force Protection&lt;/b&gt;&lt;br&gt;Account Locking Mechanism&lt;br&gt;&lt;i&gt;Cơ chế chống tấn công brute-force&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="430" y="15" width="320" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Config box -->
+        <mxCell id="config_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="90" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="config" value="&lt;b&gt;Configuration / Cấu hình&lt;/b&gt;&lt;br&gt;&lt;br&gt;MAX_FAILED_ATTEMPTS = &lt;b&gt;5&lt;/b&gt;&lt;br&gt;LOCK_DURATION_MINUTES = &lt;b&gt;15&lt;/b&gt;&lt;br&gt;Hash: bcrypt (rounds=12)" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="95" width="230" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- Start: Login attempt -->
+        <mxCell id="start" value="&lt;b&gt;Login Attempt&lt;/b&gt;&lt;br&gt;&lt;i&gt;Có request đăng nhập&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="520" y="95" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Check locked -->
+        <mxCell id="d1" value="&lt;b&gt;is_locked(user)?&lt;/b&gt;&lt;br&gt;now() &lt; locked_until?&lt;br&gt;&lt;i&gt;TK đang bị khoá?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="510" y="195" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="d1" parent="1" />
+
+        <!-- Locked -->
+        <mxCell id="locked" value="&lt;b&gt;🔒 401 LOCKED&lt;/b&gt;&lt;br&gt;&quot;Tai khoan bi khoa tam thoi.&lt;br&gt;Vui long thu lai sau&quot;&lt;br&gt;&lt;i&gt;Tài khoản bị khoá tạm thời&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="800" y="195" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Yes (Locked)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=11;" edge="1" source="d1" target="locked" parent="1" />
+
+        <!-- Verify password -->
+        <mxCell id="s1" value="&lt;b&gt;bcrypt.checkpw()&lt;/b&gt;&lt;br&gt;Verify password hash&lt;br&gt;&lt;i&gt;Xác thực mật khẩu&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="510" y="330" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="No (Not locked)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=11;" edge="1" source="d1" target="s1" parent="1" />
+
+        <!-- Password correct? -->
+        <mxCell id="d2" value="&lt;b&gt;Password&lt;br&gt;correct?&lt;/b&gt;&lt;br&gt;&lt;i&gt;MK đúng?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="530" y="425" width="130" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1" target="d2" parent="1" />
+
+        <!-- ===== WRONG PASSWORD PATH (RIGHT) ===== -->
+        <mxCell id="wrong_title" value="&lt;b&gt;❌ Wrong Password Path&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đường sai mật khẩu&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="800" y="310" width="180" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_s1" value="&lt;b&gt;increment_failed_attempts()&lt;/b&gt;&lt;br&gt;failed_login_attempts += 1&lt;br&gt;&lt;i&gt;Tăng bộ đếm sai&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="770" y="360" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="No (Wrong)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=11;" edge="1" source="d2" target="w_s1" parent="1" />
+
+        <mxCell id="w_d1" value="&lt;b&gt;attempts ≥ 5?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Sai ≥ 5 lần?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="810" y="450" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="w_s1" target="w_d1" parent="1" />
+
+        <!-- Lock account -->
+        <mxCell id="w_lock" value="&lt;b&gt;🔒 LOCK ACCOUNT&lt;/b&gt;&lt;br&gt;locked_until = now + 15 min&lt;br&gt;&lt;i&gt;Khoá tài khoản 15 phút&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="450" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Yes (≥5)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=11;" edge="1" source="w_d1" target="w_lock" parent="1" />
+
+        <!-- Not yet locked -->
+        <mxCell id="w_notyet" value="&lt;b&gt;Keep counting&lt;/b&gt;&lt;br&gt;attempts = {1,2,3,4}&lt;br&gt;&lt;i&gt;Tiếp tục đếm&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="800" y="560" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="No (&lt;5)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d6b656;fontSize=11;" edge="1" source="w_d1" target="w_notyet" parent="1" />
+
+        <!-- Audit log wrong -->
+        <mxCell id="w_audit" value="&lt;b&gt;AuditService.log(&quot;wrong_password&quot;)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Ghi audit log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="810" y="650" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="w_notyet" target="w_audit" parent="1" />
+        <mxCell id="e9b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="w_lock" target="w_audit" parent="1" />
+
+        <mxCell id="w_resp" value="&lt;b&gt;401&lt;/b&gt; &quot;Sai thong tin dang nhap&quot;&lt;br&gt;&lt;i&gt;Sai thông tin đăng nhập&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="725" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="w_audit" target="w_resp" parent="1" />
+
+        <!-- ===== CORRECT PASSWORD PATH (LEFT) ===== -->
+        <mxCell id="ok_title" value="&lt;b&gt;✅ Correct Password Path&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đường mật khẩu đúng&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="170" y="360" width="200" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ok_s1" value="&lt;b&gt;reset_failed_attempts()&lt;/b&gt;&lt;br&gt;failed_login_attempts = 0&lt;br&gt;locked_until = null&lt;br&gt;&lt;i&gt;Reset bộ đếm, mở khoá&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="170" y="410" width="210" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="Yes (Correct)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=11;" edge="1" source="d2" target="ok_s1" parent="1" />
+
+        <mxCell id="ok_s2" value="&lt;b&gt;Generate JWT tokens&lt;/b&gt;&lt;br&gt;access (24h) + refresh (7d)&lt;br&gt;Set httpOnly cookies&lt;br&gt;&lt;i&gt;Tạo token + cookie&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="180" y="510" width="190" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ok_s1" target="ok_s2" parent="1" />
+
+        <mxCell id="ok_resp" value="&lt;b&gt;200 OK&lt;/b&gt;&lt;br&gt;&quot;Dang nhap thanh cong&quot;&lt;br&gt;&lt;i&gt;Đăng nhập thành công&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="610" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ok_s2" target="ok_resp" parent="1" />
+
+        <!-- ===== TIMELINE EXAMPLE ===== -->
+        <mxCell id="timeline_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="820" width="1000" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline_title" value="&lt;b&gt;Example Timeline / Ví dụ chuỗi sự kiện&lt;/b&gt;" style="text;html=1;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="400" y="825" width="300" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Timeline entries -->
+        <mxCell id="t1" value="&lt;b&gt;Attempt 1&lt;/b&gt;&lt;br&gt;Wrong password&lt;br&gt;attempts = 1&lt;br&gt;&lt;i&gt;Lần 1: sai&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="860" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="&lt;b&gt;Attempt 2&lt;/b&gt;&lt;br&gt;Wrong password&lt;br&gt;attempts = 2&lt;br&gt;&lt;i&gt;Lần 2: sai&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="260" y="860" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="&lt;b&gt;Attempt 3-4&lt;/b&gt;&lt;br&gt;Wrong password&lt;br&gt;attempts = 3,4&lt;br&gt;&lt;i&gt;Lần 3-4: sai&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="860" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="&lt;b&gt;Attempt 5&lt;/b&gt;&lt;br&gt;Wrong password&lt;br&gt;attempts = 5&lt;br&gt;&lt;b&gt;🔒 LOCKED!&lt;/b&gt;&lt;br&gt;&lt;i&gt;Lần 5: KHOÁ!&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="855" width="120" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="&lt;b&gt;Attempt 6&lt;/b&gt;&lt;br&gt;(immediately)&lt;br&gt;&lt;b&gt;REJECTED&lt;/b&gt;&lt;br&gt;Still locked&lt;br&gt;&lt;i&gt;Bị từ chối&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="855" width="120" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="&lt;b&gt;⏰ Wait 15 min&lt;/b&gt;&lt;br&gt;Lock expires&lt;br&gt;&lt;i&gt;Chờ 15 phút&lt;br&gt;Khoá hết hạn&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="820" y="860" width="120" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="&lt;b&gt;Attempt 7&lt;/b&gt;&lt;br&gt;Correct password&lt;br&gt;&lt;b&gt;✅ SUCCESS&lt;/b&gt;&lt;br&gt;attempts = 0&lt;br&gt;&lt;i&gt;Đúng! Reset&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="960" y="855" width="120" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- Timeline arrows -->
+        <mxCell id="ta1" value="" style="endArrow=classic;html=1;strokeColor=#999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="240" y="890" as="sourcePoint" />
+            <mxPoint x="260" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta2" value="" style="endArrow=classic;html=1;strokeColor=#999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="890" as="sourcePoint" />
+            <mxPoint x="400" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta3" value="" style="endArrow=classic;html=1;strokeColor=#999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="890" as="sourcePoint" />
+            <mxPoint x="540" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4" value="" style="endArrow=classic;html=1;strokeColor=#999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="660" y="890" as="sourcePoint" />
+            <mxPoint x="680" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta5" value="" style="endArrow=classic;html=1;strokeColor=#999;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="890" as="sourcePoint" />
+            <mxPoint x="820" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta6" value="" style="endArrow=classic;html=1;strokeColor=#999;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="890" as="sourcePoint" />
+            <mxPoint x="960" y="890" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- DB fields note -->
+        <mxCell id="db_note" value="&lt;b&gt;DB Fields / Trường trong MongoDB:&lt;/b&gt;&lt;br&gt;• &lt;code&gt;failed_login_attempts&lt;/code&gt;: int (0 → 5)&lt;br&gt;• &lt;code&gt;locked_until&lt;/code&gt;: datetime | null" style="text;html=1;align=left;fontSize=11;fillColor=#f5f5f5;strokeColor=#666666;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="950" width="350" height="55" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

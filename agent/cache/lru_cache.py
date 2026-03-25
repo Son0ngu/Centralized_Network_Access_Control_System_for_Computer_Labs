@@ -1,4 +1,4 @@
-# """High-performance LRU Cache implementation. Phần này đang cải tiến"""
+# """High-performance LRU Cache implementation. This section is being improved"""
 import logging
 import threading
 from collections import OrderedDict

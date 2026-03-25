@@ -1,5 +1,5 @@
 """
-Whitelist Profile Controller — Per-teacher whitelist profiles within groups.
+Whitelist Profile Controller - Per-teacher whitelist profiles within groups.
 """
 
 import logging
@@ -67,12 +67,12 @@ class WhitelistProfileController:
             return None, (jsonify({"success": False, "error": "Group not found"}), 404)
 
         if not self.rbac_service.can_access_group(user, group):
-            return None, (jsonify({"success": False, "error": "Khong co quyen tren Group nay"}), 403)
+            return None, (jsonify({"success": False, "error": "No permission for this Group"}), 403)
 
         return group, None
 
     def my_profiles(self):
-        """GET /api/my-profiles — Return all profiles owned by current teacher."""
+        """GET /api/my-profiles - Return all profiles owned by current teacher."""
         try:
             user = self._get_user()
             if not user:
@@ -81,7 +81,7 @@ class WhitelistProfileController:
             # Get groups this teacher has access to
             teacher_group_ids = self.rbac_service.get_teacher_group_ids(user)
             if teacher_group_ids is None:
-                # Admin — return empty (admin doesn't use profile selector)
+                # Admin - return empty (admin doesn't use profile selector)
                 return jsonify({"success": True, "data": []}), 200
             if not teacher_group_ids:
                 return jsonify({"success": True, "data": []}), 200
@@ -96,7 +96,7 @@ class WhitelistProfileController:
             return jsonify({"success": False, "error": str(exc)}), 500
 
     def default_profile(self, group_id):
-        """GET /api/groups/<group_id>/default-profile — Return or create the Default profile."""
+        """GET /api/groups/<group_id>/default-profile - Return or create the Default profile."""
         try:
             group, err = self._check_group_access(group_id)
             if err:

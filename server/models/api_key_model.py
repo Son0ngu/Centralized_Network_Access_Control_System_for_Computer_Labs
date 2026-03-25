@@ -4,8 +4,10 @@ API Key Model - handles API key data operations for agent authentication.
 """
 
 import logging
+import os
 import secrets
 import hashlib
+import hmac
 from typing import Dict, List, Optional
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
@@ -18,10 +20,17 @@ from time_utils import now_vietnam
 
 logger = logging.getLogger(__name__)
 
+# HMAC key for API key hashing - set in .env for production
+# If not set, falls back to a static default (less secure but functional)
+API_KEY_HMAC_SECRET = os.environ.get("API_KEY_HMAC_SECRET", None)
+if not API_KEY_HMAC_SECRET:
+    API_KEY_HMAC_SECRET = "saint-firewall-api-key-hmac-default"
+    logger.warning("API_KEY_HMAC_SECRET not set - using default. Set in .env for production!")
+
 
 class APIKeyModel:
     """Model for API Key data operations"""
-    
+
     # API Key prefix for identification
     KEY_PREFIX = "fc_"  # FirewallController prefix
     
@@ -60,14 +69,23 @@ class APIKeyModel:
     @staticmethod
     def hash_api_key(api_key: str) -> str:
         """
-        Hash an API key for secure storage.
-        
+        Hash an API key for secure storage using HMAC-SHA256.
+
         Args:
             api_key: Plaintext API key
-            
+
         Returns:
-            str: SHA-256 hash of the key
+            str: HMAC-SHA256 hash of the key
         """
+        return hmac.new(
+            API_KEY_HMAC_SECRET.encode(),
+            api_key.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+    @staticmethod
+    def _hash_api_key_legacy(api_key: str) -> str:
+        """Legacy plain SHA-256 hash - for backward compat with old keys only."""
         return hashlib.sha256(api_key.encode()).hexdigest()
     
     def create_api_key(
@@ -162,10 +180,22 @@ class APIKeyModel:
                     "error": "Invalid API key format"
                 }
             
-            # Hash and lookup
+            # Hash and lookup - try HMAC first, then legacy SHA-256
             key_hash = self.hash_api_key(api_key)
             key_doc = self.collection.find_one({"key_hash": key_hash})
-            
+
+            if not key_doc:
+                # Fallback: try legacy plain SHA-256 for old keys
+                legacy_hash = self._hash_api_key_legacy(api_key)
+                key_doc = self.collection.find_one({"key_hash": legacy_hash})
+                if key_doc:
+                    # Lazy migration: upgrade to HMAC hash
+                    self.collection.update_one(
+                        {"_id": key_doc["_id"]},
+                        {"$set": {"key_hash": key_hash}}
+                    )
+                    self.logger.info(f"Migrated API key {key_doc.get('name')} to HMAC hash")
+
             if not key_doc:
                 return {
                     "valid": False,

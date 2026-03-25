@@ -70,9 +70,24 @@ class GroupService:
             raise ValueError("Group not found")
         if group.get("is_system"):
             raise ValueError("Cannot delete system groups")
+
+        # Move any remaining agents to pending BEFORE deletion
+        # to avoid race condition where agents are added between check and delete
         agent_count = self.agent_model.count_by_group(group_id)
         if agent_count > 0:
-            raise ValueError("Cannot delete group with assigned agents")
+            # Get the pending group to reassign
+            pending = self.model.collection.find_one({"is_system": True, "name": "pending"})
+            if pending:
+                pending_id = str(pending["_id"])
+                # Bulk move all agents from this group to pending
+                self.agent_model.collection.update_many(
+                    {"group_id": group_id},
+                    {"$set": {"group_id": pending_id}}
+                )
+                self.logger.info(f"Moved {agent_count} agents to pending before group deletion")
+            else:
+                raise ValueError("Cannot delete group with assigned agents (pending group not found)")
+
         return self.model.delete_group(group_id)
 
     def bump_group_whitelist_version(self, group_id: str) -> Dict:

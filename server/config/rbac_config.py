@@ -1,6 +1,6 @@
 """
 RBAC Configuration - Role hierarchy, permissions mapping.
-Chi 2 role: admin (toan quyen) va teacher (gioi han boi ownership).
+Only 2 roles: admin (full access) and teacher (limited by ownership).
 Format permission: resource:action
 """
 
@@ -9,8 +9,8 @@ Format permission: resource:action
 # ============================================================================
 
 ROLE_HIERARCHY = {
-    "admin": 100,    # Toan quyen
-    "teacher": 50,   # Gioi han boi ownership
+    "admin": 100,    # Full access
+    "teacher": 50,   # Limited by ownership
 }
 
 VALID_ROLES = list(ROLE_HIERARCHY.keys())
@@ -27,41 +27,41 @@ TEACHER_PERMISSIONS = [
     # Dashboard
     "dashboard:read",
 
-    # Groups (chi xem Group duoc admin gan vao - khong tao/xoa)
+    # Groups (view only Groups assigned by admin - no create/delete)
     "groups:read",
     "groups:update",
     "groups:manage_agents",
 
-    # Whitelist Profiles (per-teacher whitelist trong Group)
+    # Whitelist Profiles (per-teacher whitelist in Group)
     "whitelist_profile:create",
     "whitelist_profile:update",
     "whitelist_profile:delete",
     "whitelist_profile:activate",
 
-    # Agents (chi xem Agents trong Group cua minh)
+    # Agents (view only Agents in own Groups)
     "agents:read",
     "agents:detail",
 
-    # Whitelist (gioi han boi ownership - chi Group minh tao)
+    # Whitelist (limited by ownership - own Groups only)
     "whitelist:read",
     "whitelist:create",
     "whitelist:update",
     "whitelist:delete",
     "whitelist:sync",
 
-    # Logs (chi thay logs tu Agents trong Group minh)
+    # Logs (view only logs from Agents in own Groups)
     "logs:read",
 ]
 
 ADMIN_EXTRA_PERMISSIONS = [
-    # User management (chi Admin)
+    # User management (Admin only)
     "users:create",
     "users:read",
     "users:update",
     "users:delete",
     "users:reset_password",
 
-    # Agent management day du
+    # Full agent management
     "agents:delete",
     "agents:command",
 
@@ -70,7 +70,7 @@ ADMIN_EXTRA_PERMISSIONS = [
     "api_keys:create",
     "api_keys:revoke",
 
-    # Logs day du
+    # Full logs access
     "logs:export",
     "logs:delete",
 
@@ -79,7 +79,7 @@ ADMIN_EXTRA_PERMISSIONS = [
     "audit:read",
 ]
 
-# Admin ke thua toan bo quyen teacher + quyen rieng
+# Admin inherits all teacher permissions + exclusive permissions
 ROLE_PERMISSIONS = {
     "teacher": TEACHER_PERMISSIONS,
     "admin": TEACHER_PERMISSIONS + ADMIN_EXTRA_PERMISSIONS,
@@ -107,7 +107,7 @@ def check_permission(role: str, permission: str) -> bool:
 def can_access_group(user: dict, group: dict) -> bool:
     """
     Check if user can access a specific group.
-    Admin: always True (toan quyen)
+    Admin: always True (full access)
     Teacher: if user._id in group.teacher_ids OR group.created_by == user._id (legacy)
     """
     if user.get("role") == "admin":

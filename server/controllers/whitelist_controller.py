@@ -1,7 +1,7 @@
 """
 Whitelist Controller - handles whitelist HTTP requests
 RBAC: inject_current_user on web-facing endpoints for teacher data filtering.
-- Agent endpoint (agent-sync) keeps require_jwt — NOT affected
+- Agent endpoint (agent-sync) keeps require_jwt - NOT affected
 - Web-facing endpoints apply teacher ownership filter on group-level whitelist
 """
 
@@ -43,7 +43,7 @@ class WhitelistController:
                                    methods=['GET'],
                                    view_func=require_jwt(self.agent_sync))
 
-        # Web-facing endpoints — wrapped with inject_current_user
+        # Web-facing endpoints - wrapped with inject_current_user
         self.blueprint.add_url_rule('/whitelist',
                                    methods=['GET'],
                                    view_func=inject_current_user(self.list_domains))
@@ -129,16 +129,19 @@ class WhitelistController:
             )
 
             if not isinstance(result, dict):
-                result = {"domains": [], "error": "Invalid response format"}
+                result = {"domains": [], "error": "Invalid response format", "success": False}
             if "domains" not in result:
                 result["domains"] = []
 
-            result["success"] = True
+            # Preserve service's success field - don't override errors
+            if "success" not in result:
+                result["success"] = True
             result["agent_id"] = agent_id
             result["timestamp"] = now_iso()
             result["count"] = len(result.get("domains", []))
 
-            return jsonify(result), 200
+            status_code = 200 if result["success"] else 502
+            return jsonify(result), status_code
 
         except Exception as e:
             self.logger.error(f"Error in agent sync: {str(e)}", exc_info=True)
@@ -163,7 +166,7 @@ class WhitelistController:
                 # RBAC: Teacher can only view whitelist of their own groups
                 if is_teacher and group_id:
                     if not self._teacher_can_access_group(user, group_id):
-                        return self._error_response("Khong co quyen xem whitelist cua Group nay", 403)
+                        return self._error_response("No permission to view whitelist for this Group", 403)
 
                 scoped = self.service.get_scoped_whitelist(agent_id=agent_id, group_id=group_id)
                 status_code = 200 if scoped.get("success") else 400
@@ -174,7 +177,7 @@ class WhitelistController:
             offset = int(request.args.get('offset', 0))
             search = request.args.get('search', '').strip()
 
-            # RBAC: Teacher — fetch ALL then filter + paginate in Python
+            # RBAC: Teacher - fetch ALL then filter + paginate in Python
             # (post-filter approach; for large datasets, push filter into model)
             if is_teacher:
                 teacher_group_ids = self.rbac_service.get_teacher_group_ids(user)
@@ -236,9 +239,9 @@ class WhitelistController:
                 entry_group_id = data.get('group_id')
                 entry_scope = data.get('scope', 'global')
                 if entry_scope == 'global' and not entry_group_id:
-                    return self._error_response("Teacher khong duoc them vao whitelist global", 403)
+                    return self._error_response("Teachers cannot add to global whitelist", 403)
                 if entry_group_id and not self._teacher_can_access_group(user, entry_group_id):
-                    return self._error_response("Khong co quyen them whitelist vao Group nay", 403)
+                    return self._error_response("No permission to add whitelist to this Group", 403)
 
             result = self.service.add_entry({**data, "type": entry_type, "value": entry_value}, client_ip)
 
@@ -280,10 +283,10 @@ class WhitelistController:
 
                 if entry:
                     if entry.get("scope") == "global" and not entry.get("group_id"):
-                        return self._error_response("Teacher khong duoc xoa whitelist global", 403)
+                        return self._error_response("Teachers cannot delete from global whitelist", 403)
                     entry_group = entry.get("group_id")
                     if entry_group and not self._teacher_can_access_group(user, entry_group):
-                        return self._error_response("Khong co quyen xoa entry nay", 403)
+                        return self._error_response("No permission to delete this entry", 403)
 
             result = self.service.delete_domain(domain_id)
 
@@ -326,7 +329,7 @@ class WhitelistController:
                 if not import_group_id:
                     return self._error_response("Teacher phai chi dinh group_id khi import", 403)
                 if not self._teacher_can_access_group(user, import_group_id):
-                    return self._error_response("Khong co quyen import vao Group nay", 403)
+                    return self._error_response("No permission to import to this Group", 403)
 
             result = self.service.import_domains(domains, data.get('category', 'imported'))
 
@@ -412,7 +415,7 @@ class WhitelistController:
                     item_group = item.get('group_id')
                     if not item_group or str(item_group) not in teacher_group_ids:
                         return self._error_response(
-                            "Teacher chi duoc them whitelist vao Group cua minh", 403)
+                            "Teachers can only add whitelist to their own Groups", 403)
 
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if ',' in client_ip:
@@ -444,6 +447,16 @@ class WhitelistController:
                 teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
                 from bson import ObjectId as BsonObjectId
                 for item_id in item_ids:
+                    # Handle group pseudo-IDs: group::<gid>::<type>::<value>
+                    if item_id.startswith("group::") or item_id.startswith("group|"):
+                        sep = "::" if "::" in item_id else "|"
+                        parts = item_id.split(sep, 3)
+                        if len(parts) == 4:
+                            gid = parts[1]
+                            if gid not in teacher_group_ids:
+                                return self._error_response("No permission to edit this entry", 403)
+                        continue
+                    # Global entry - check via DB
                     try:
                         entry = self.model.collection.find_one(
                             {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
@@ -451,10 +464,10 @@ class WhitelistController:
                         entry = None
                     if entry:
                         if entry.get("scope") == "global" and not entry.get("group_id"):
-                            return self._error_response("Teacher khong duoc sua whitelist global", 403)
+                            return self._error_response("Teachers cannot edit global whitelist", 403)
                         entry_group = entry.get("group_id")
                         if entry_group and str(entry_group) not in teacher_group_ids:
-                            return self._error_response("Khong co quyen sua entry nay", 403)
+                            return self._error_response("No permission to edit this entry", 403)
 
             updated_count = 0
             errors = []
@@ -495,6 +508,16 @@ class WhitelistController:
                 teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
                 from bson import ObjectId as BsonObjectId
                 for item_id in item_ids:
+                    # Handle group pseudo-IDs
+                    if item_id.startswith("group::") or item_id.startswith("group|"):
+                        sep = "::" if "::" in item_id else "|"
+                        parts = item_id.split(sep, 3)
+                        if len(parts) == 4:
+                            gid = parts[1]
+                            if gid not in teacher_group_ids:
+                                return self._error_response("No permission to delete this entry", 403)
+                        continue
+                    # Global entry
                     try:
                         entry = self.model.collection.find_one(
                             {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
@@ -502,10 +525,10 @@ class WhitelistController:
                         entry = None
                     if entry:
                         if entry.get("scope") == "global" and not entry.get("group_id"):
-                            return self._error_response("Teacher khong duoc xoa whitelist global", 403)
+                            return self._error_response("Teachers cannot delete from global whitelist", 403)
                         entry_group = entry.get("group_id")
                         if entry_group and str(entry_group) not in teacher_group_ids:
-                            return self._error_response("Khong co quyen xoa entry nay", 403)
+                            return self._error_response("No permission to delete this entry", 403)
 
             result = self.service.bulk_delete_entries(item_ids)
             return jsonify(result), 200

@@ -2,10 +2,10 @@
 Comprehensive Test Suite: Group Management
 ============================================
 Tests toàn bộ chức năng Group:
-1. GroupModel     — CRUD operations trực tiếp trên MongoDB
-2. GroupService   — Business logic, ObjectId serialization, validation
-3. GroupController — HTTP endpoints, RBAC teacher/admin filtering
-4. Agent Policy   — Policy wiring qua group context
+1. GroupModel     - CRUD operations trực tiếp trên MongoDB
+2. GroupService   - Business logic, ObjectId serialization, validation
+3. GroupController - HTTP endpoints, RBAC teacher/admin filtering
+4. Agent Policy   - Policy wiring qua group context
 
 Sử dụng REAL MongoDB (test database) thay vì mock để đảm bảo
 integration đúng. Database tự cleanup sau mỗi test.
@@ -36,7 +36,7 @@ from controllers.group_controller import GroupController
 
 
 # ============================================================================
-# FIXTURES — Database & Models (real MongoDB)
+# FIXTURES - Database & Models (real MongoDB)
 # ============================================================================
 
 @pytest.fixture(scope='session')
@@ -62,7 +62,7 @@ TEST_DB_NAME = 'test_saint_groups'
 
 @pytest.fixture
 def db(mongo_client):
-    """Fresh test database — dropped after each test."""
+    """Fresh test database - dropped after each test."""
     database = mongo_client[TEST_DB_NAME]
     yield database
     mongo_client.drop_database(TEST_DB_NAME)
@@ -89,7 +89,7 @@ def rbac_service(group_model, agent_model):
 
 
 # ============================================================================
-# FIXTURES — Users
+# FIXTURES - Users
 # ============================================================================
 
 ADMIN_ID = ObjectId("650000000000000000000001")
@@ -128,7 +128,7 @@ def teacher_b():
 
 
 # ============================================================================
-# FIXTURES — Flask App & Controller
+# FIXTURES - Flask App & Controller
 # ============================================================================
 
 @pytest.fixture
@@ -152,14 +152,14 @@ def client(app, group_controller):
 
 
 # ============================================================================
-# 1. MODEL TESTS — GroupModel CRUD trực tiếp trên MongoDB
+# 1. MODEL TESTS - GroupModel CRUD trực tiếp trên MongoDB
 # ============================================================================
 
 class TestGroupModel:
-    """Test GroupModel — thao tác trực tiếp MongoDB collection."""
+    """Test GroupModel - thao tác trực tiếp MongoDB collection."""
 
     def test_model_create_group_basic(self, group_model):
-        """Tạo group cơ bản — phải có đầy đủ fields."""
+        """Tạo group cơ bản - phải có đầy đủ fields."""
         group = group_model.create_group("Lop 10A", "Mo ta", [])
         assert group["name"] == "Lop 10A"
         assert group["description"] == "Mo ta"
@@ -171,7 +171,7 @@ class TestGroupModel:
         assert group["updated_at"] is not None
 
     def test_model_create_group_with_owner(self, group_model):
-        """Tạo group với created_by — cho RBAC ownership."""
+        """Tạo group với created_by - cho RBAC ownership."""
         group = group_model.create_group("Lop 10B", "", [], created_by=TEACHER_A_ID)
         assert group["created_by"] == TEACHER_A_ID
         assert isinstance(group["created_by"], ObjectId)
@@ -184,13 +184,13 @@ class TestGroupModel:
         assert group["whitelist"][0]["domain"] == "google.com"
 
     def test_model_create_duplicate_name_fails(self, group_model):
-        """Tạo 2 group cùng tên — MongoDB unique index phải reject."""
+        """Tạo 2 group cùng tên - MongoDB unique index phải reject."""
         group_model.create_group("DuplicateName", "", [])
         with pytest.raises(Exception):
             group_model.create_group("DuplicateName", "", [])
 
     def test_model_find_by_id(self, group_model):
-        """Tìm group bằng ID — cả string và ObjectId."""
+        """Tìm group bằng ID - cả string và ObjectId."""
         created = group_model.create_group("FindMe", "", [])
         gid = str(created["_id"])
 
@@ -199,24 +199,24 @@ class TestGroupModel:
         assert found["name"] == "FindMe"
 
     def test_model_find_by_id_not_found(self, group_model):
-        """Tìm group không tồn tại — trả None."""
+        """Tìm group không tồn tại - trả None."""
         found = group_model.find_by_id(str(ObjectId()))
         assert found is None
 
     def test_model_find_by_id_invalid(self, group_model):
-        """ID không hợp lệ — trả None thay vì crash."""
+        """ID không hợp lệ - trả None thay vì crash."""
         found = group_model.find_by_id("invalid-id")
         assert found is None
 
     def test_model_list_groups_empty(self, group_model):
-        """List groups khi DB rỗng — trả empty list."""
+        """List groups khi DB rỗng - trả empty list."""
         # Drop the pending group if exists
         group_model.collection.delete_many({})
         groups = group_model.list_groups()
         assert groups == []
 
     def test_model_list_groups_all(self, group_model):
-        """List tất cả groups — không filter."""
+        """List tất cả groups - không filter."""
         group_model.create_group("G1", "", [])
         group_model.create_group("G2", "", [])
         groups = group_model.list_groups()
@@ -225,7 +225,7 @@ class TestGroupModel:
         assert "G2" in names
 
     def test_model_list_groups_with_filter(self, group_model):
-        """List groups với query filter — chỉ trả groups match."""
+        """List groups với query filter - chỉ trả groups match."""
         group_model.create_group("TeacherA_G1", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("TeacherB_G1", "", [], created_by=TEACHER_B_ID)
 
@@ -273,12 +273,12 @@ class TestGroupModel:
         assert updated["layout"] == layout
 
     def test_model_update_nonexistent_group(self, group_model):
-        """Update group không tồn tại — trả None."""
+        """Update group không tồn tại - trả None."""
         result = group_model.update_group(str(ObjectId()), {"name": "Ghost"})
         assert result is None
 
     def test_model_delete_group(self, group_model):
-        """Xóa group — trả True."""
+        """Xóa group - trả True."""
         created = group_model.create_group("DeleteMe", "", [])
         gid = str(created["_id"])
 
@@ -286,11 +286,11 @@ class TestGroupModel:
         assert group_model.find_by_id(gid) is None
 
     def test_model_delete_nonexistent_group(self, group_model):
-        """Xóa group không tồn tại — trả False."""
+        """Xóa group không tồn tại - trả False."""
         assert group_model.delete_group(str(ObjectId())) is False
 
     def test_model_bump_whitelist_version(self, group_model):
-        """Bump whitelist version — tăng 1."""
+        """Bump whitelist version - tăng 1."""
         created = group_model.create_group("BumpTest", "", [])
         gid = str(created["_id"])
         assert created["whitelist_version"] == 1
@@ -302,7 +302,7 @@ class TestGroupModel:
         assert bumped2["whitelist_version"] == 3
 
     def test_model_ensure_pending_group_created(self, group_model):
-        """Ensure pending group — tạo nếu chưa có."""
+        """Ensure pending group - tạo nếu chưa có."""
         # Call ensure_pending_group explicitly (also called in __init__)
         pending = group_model.ensure_pending_group()
         assert pending is not None
@@ -310,21 +310,21 @@ class TestGroupModel:
         assert pending["name"] == "pending"
 
     def test_model_ensure_pending_group_idempotent(self, group_model):
-        """Ensure pending group — gọi lại không tạo duplicate."""
+        """Ensure pending group - gọi lại không tạo duplicate."""
         p1 = group_model.ensure_pending_group()
         p2 = group_model.ensure_pending_group()
         assert p1["_id"] == p2["_id"]
 
 
 # ============================================================================
-# 2. SERVICE TESTS — GroupService business logic
+# 2. SERVICE TESTS - GroupService business logic
 # ============================================================================
 
 class TestGroupService:
-    """Test GroupService — business logic + ObjectId serialization."""
+    """Test GroupService - business logic + ObjectId serialization."""
 
     def test_service_list_groups_serialization(self, group_service, group_model):
-        """List groups — _id và created_by phải là string, không phải ObjectId."""
+        """List groups - _id và created_by phải là string, không phải ObjectId."""
         group_model.create_group("SerG1", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("SerG2", "", [], created_by=TEACHER_B_ID)
 
@@ -336,7 +336,7 @@ class TestGroupService:
                     f"created_by should be str, got {type(g['created_by'])}"
 
     def test_service_list_groups_with_filter(self, group_service, group_model):
-        """List groups với teacher filter — chỉ trả groups thuộc teacher."""
+        """List groups với teacher filter - chỉ trả groups thuộc teacher."""
         group_model.create_group("SvFilterA", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("SvFilterB", "", [], created_by=TEACHER_B_ID)
 
@@ -347,19 +347,19 @@ class TestGroupService:
         assert "SvFilterB" not in names
 
     def test_service_create_group(self, group_service):
-        """Tạo group qua service — _id phải là string."""
+        """Tạo group qua service - _id phải là string."""
         group = group_service.create_group("SvcNew", "desc", [])
         assert isinstance(group["_id"], str)
         assert group["name"] == "SvcNew"
 
     def test_service_create_group_with_owner(self, group_service):
-        """Tạo group với owner — created_by phải là string sau serialize."""
+        """Tạo group với owner - created_by phải là string sau serialize."""
         group = group_service.create_group("SvcOwned", "", [], created_by=TEACHER_A_ID)
         assert isinstance(group["created_by"], str)
         assert group["created_by"] == str(TEACHER_A_ID)
 
     def test_service_get_group(self, group_service, group_model):
-        """Get single group — serialized correctly."""
+        """Get single group - serialized correctly."""
         created = group_model.create_group("SvcGet", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -369,12 +369,12 @@ class TestGroupService:
         assert isinstance(group["created_by"], str)
 
     def test_service_get_group_not_found(self, group_service):
-        """Get group không tồn tại — raise ValueError."""
+        """Get group không tồn tại - raise ValueError."""
         with pytest.raises(ValueError, match="Group not found"):
             group_service.get_group(str(ObjectId()))
 
     def test_service_update_group(self, group_service, group_model):
-        """Update group — serialized correctly."""
+        """Update group - serialized correctly."""
         created = group_model.create_group("SvcUpd", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -385,12 +385,12 @@ class TestGroupService:
             assert isinstance(updated["created_by"], str)
 
     def test_service_update_group_not_found(self, group_service):
-        """Update group không tồn tại — raise ValueError."""
+        """Update group không tồn tại - raise ValueError."""
         with pytest.raises(ValueError, match="Group not found"):
             group_service.update_group(str(ObjectId()), {"name": "Ghost"})
 
     def test_service_update_whitelist_bumps_version(self, group_service, group_model):
-        """Update whitelist — version tự tăng."""
+        """Update whitelist - version tự tăng."""
         created = group_model.create_group("SvcWLBump", "", [])
         gid = str(created["_id"])
 
@@ -420,7 +420,7 @@ class TestGroupService:
             group_service.get_group(gid)
 
     def test_service_delete_group_not_found(self, group_service):
-        """Xóa group không tồn tại — raise ValueError."""
+        """Xóa group không tồn tại - raise ValueError."""
         with pytest.raises(ValueError, match="Group not found"):
             group_service.delete_group(str(ObjectId()))
 
@@ -457,13 +457,13 @@ class TestGroupService:
         assert isinstance(bumped["_id"], str)
 
     def test_service_get_pending_group_id(self, group_service):
-        """Get pending group ID — string format."""
+        """Get pending group ID - string format."""
         pid = group_service.get_pending_group_id()
         assert isinstance(pid, str)
         assert len(pid) == 24  # ObjectId hex length
 
     def test_service_json_serializable(self, group_service, group_model):
-        """Tất cả output của service phải JSON serializable — không còn ObjectId."""
+        """Tất cả output của service phải JSON serializable - không còn ObjectId."""
         group_model.create_group("JsonTest", "desc", [{"domain": "x.com"}], created_by=TEACHER_A_ID)
 
         groups = group_service.list_groups()
@@ -471,7 +471,7 @@ class TestGroupService:
         json_str = json.dumps(groups, default=str)
         assert json_str is not None
 
-        # Stricter check — không dùng default=str
+        # Stricter check - không dùng default=str
         for g in groups:
             for key, val in g.items():
                 assert not isinstance(val, ObjectId), \
@@ -479,14 +479,14 @@ class TestGroupService:
 
 
 # ============================================================================
-# 3. CONTROLLER TESTS — HTTP endpoints + RBAC
+# 3. CONTROLLER TESTS - HTTP endpoints + RBAC
 # ============================================================================
 
 class TestGroupController:
-    """Test GroupController — HTTP endpoints qua Flask test client.
+    """Test GroupController - HTTP endpoints qua Flask test client.
 
     Sử dụng patch middleware.rbac._validate_admin_token để giả lập
-    authentication — inject_current_user decorator sẽ gọi hàm này
+    authentication - inject_current_user decorator sẽ gọi hàm này
     và set g.current_user tự động.
     """
 
@@ -501,7 +501,7 @@ class TestGroupController:
     # ── LIST GROUPS ──
 
     def test_controller_list_groups_admin(self, app, client, group_model, admin_user):
-        """Admin list groups — thấy tất cả."""
+        """Admin list groups - thấy tất cả."""
         group_model.create_group("CtrlA1", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("CtrlB1", "", [], created_by=TEACHER_B_ID)
 
@@ -516,7 +516,7 @@ class TestGroupController:
         assert "CtrlB1" in names
 
     def test_controller_list_groups_teacher_filtered(self, app, client, group_model, teacher_a):
-        """Teacher list groups — chỉ thấy groups mình tạo."""
+        """Teacher list groups - chỉ thấy groups mình tạo."""
         group_model.create_group("TeacherAGroup", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("TeacherBGroup", "", [], created_by=TEACHER_B_ID)
 
@@ -530,7 +530,7 @@ class TestGroupController:
         assert "TeacherBGroup" not in names
 
     def test_controller_list_groups_teacher_empty(self, app, client, group_model, teacher_b):
-        """Teacher mới — chưa tạo group nào, list trả rỗng (trừ pending)."""
+        """Teacher mới - chưa tạo group nào, list trả rỗng (trừ pending)."""
         group_model.create_group("OtherGroup", "", [], created_by=TEACHER_A_ID)
 
         with self._mock_auth(teacher_b):
@@ -545,7 +545,7 @@ class TestGroupController:
     # ── GET SINGLE GROUP ──
 
     def test_controller_get_group_admin(self, app, client, group_model, admin_user):
-        """Admin get bất kỳ group nào — OK."""
+        """Admin get bất kỳ group nào - OK."""
         created = group_model.create_group("AdminGet", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -556,7 +556,7 @@ class TestGroupController:
         assert resp.get_json()["data"]["name"] == "AdminGet"
 
     def test_controller_get_group_teacher_own(self, app, client, group_model, teacher_a):
-        """Teacher get group mình tạo — OK."""
+        """Teacher get group mình tạo - OK."""
         created = group_model.create_group("MyGroup", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -567,7 +567,7 @@ class TestGroupController:
         assert resp.get_json()["data"]["name"] == "MyGroup"
 
     def test_controller_get_group_teacher_forbidden(self, app, client, group_model, teacher_a):
-        """Teacher get group của teacher khác — 403."""
+        """Teacher get group của teacher khác - 403."""
         created = group_model.create_group("NotMine", "", [], created_by=TEACHER_B_ID)
         gid = str(created["_id"])
 
@@ -577,7 +577,7 @@ class TestGroupController:
         assert resp.status_code == 403
 
     def test_controller_get_group_not_found(self, app, client, admin_user):
-        """Get group không tồn tại — 404."""
+        """Get group không tồn tại - 404."""
         with self._mock_auth(admin_user):
             resp = client.get(f'/api/groups/{str(ObjectId())}')
 
@@ -586,7 +586,7 @@ class TestGroupController:
     # ── CREATE GROUP ──
 
     def test_controller_create_group_admin(self, app, client, admin_user):
-        """Admin tạo group — created_by = admin ID."""
+        """Admin tạo group - created_by = admin ID."""
         with self._mock_auth(admin_user):
             resp = client.post('/api/groups', json={
                 "name": "AdminCreated",
@@ -599,7 +599,7 @@ class TestGroupController:
         assert data["created_by"] == str(ADMIN_ID)
 
     def test_controller_create_group_teacher(self, app, client, teacher_a):
-        """Teacher tạo group — created_by = teacher ID."""
+        """Teacher tạo group - created_by = teacher ID."""
         with self._mock_auth(teacher_a):
             resp = client.post('/api/groups', json={
                 "name": "TeacherCreated",
@@ -611,7 +611,7 @@ class TestGroupController:
         assert data["created_by"] == str(TEACHER_A_ID)
 
     def test_controller_create_group_no_name(self, app, client, admin_user):
-        """Tạo group thiếu name — 400."""
+        """Tạo group thiếu name - 400."""
         with self._mock_auth(admin_user):
             resp = client.post('/api/groups', json={"description": "no name"})
 
@@ -630,7 +630,7 @@ class TestGroupController:
         assert len(resp.get_json()["data"]["whitelist"]) == 1
 
     def test_controller_create_group_duplicate_name(self, app, client, group_model, admin_user):
-        """Tạo group trùng tên — 400."""
+        """Tạo group trùng tên - 400."""
         group_model.create_group("DupCtrl", "", [])
 
         with self._mock_auth(admin_user):
@@ -641,7 +641,7 @@ class TestGroupController:
     # ── UPDATE GROUP ──
 
     def test_controller_update_group_admin(self, app, client, group_model, admin_user):
-        """Admin update bất kỳ group — OK."""
+        """Admin update bất kỳ group - OK."""
         created = group_model.create_group("UpdAdmin", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -652,7 +652,7 @@ class TestGroupController:
         assert resp.get_json()["data"]["name"] == "UpdAdminNew"
 
     def test_controller_update_group_teacher_own(self, app, client, group_model, teacher_a):
-        """Teacher update group mình tạo — OK."""
+        """Teacher update group mình tạo - OK."""
         created = group_model.create_group("UpdTeacher", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -662,7 +662,7 @@ class TestGroupController:
         assert resp.status_code == 200
 
     def test_controller_update_group_teacher_forbidden(self, app, client, group_model, teacher_a):
-        """Teacher update group của teacher khác — 403."""
+        """Teacher update group của teacher khác - 403."""
         created = group_model.create_group("UpdForbid", "", [], created_by=TEACHER_B_ID)
         gid = str(created["_id"])
 
@@ -674,7 +674,7 @@ class TestGroupController:
     # ── DELETE GROUP ──
 
     def test_controller_delete_group_admin(self, app, client, group_model, admin_user):
-        """Admin xóa group — OK."""
+        """Admin xóa group - OK."""
         created = group_model.create_group("DelAdmin", "", [])
         gid = str(created["_id"])
 
@@ -685,7 +685,7 @@ class TestGroupController:
         assert resp.get_json()["success"] is True
 
     def test_controller_delete_group_teacher_own(self, app, client, group_model, teacher_a):
-        """Teacher xóa group mình tạo — OK."""
+        """Teacher xóa group mình tạo - OK."""
         created = group_model.create_group("DelTeacher", "", [], created_by=TEACHER_A_ID)
         gid = str(created["_id"])
 
@@ -695,7 +695,7 @@ class TestGroupController:
         assert resp.status_code == 200
 
     def test_controller_delete_group_teacher_forbidden(self, app, client, group_model, teacher_a):
-        """Teacher xóa group của teacher khác — 403."""
+        """Teacher xóa group của teacher khác - 403."""
         created = group_model.create_group("DelForbid", "", [], created_by=TEACHER_B_ID)
         gid = str(created["_id"])
 
@@ -705,7 +705,7 @@ class TestGroupController:
         assert resp.status_code == 403
 
     def test_controller_delete_system_group_rejected(self, app, client, group_model, admin_user):
-        """Xóa system group (pending) — 400."""
+        """Xóa system group (pending) - 400."""
         pending = group_model.ensure_pending_group()
         gid = str(pending["_id"])
 
@@ -717,19 +717,19 @@ class TestGroupController:
 
 
 # ============================================================================
-# 4. RBAC SERVICE TESTS — Permission & ownership logic for groups
+# 4. RBAC SERVICE TESTS - Permission & ownership logic for groups
 # ============================================================================
 
 class TestRBACGroupFiltering:
-    """Test RBACService — group-related filtering logic."""
+    """Test RBACService - group-related filtering logic."""
 
     def test_rbac_admin_sees_all_groups(self, rbac_service, admin_user):
-        """Admin — get_group_query_filter trả None (no filter)."""
+        """Admin - get_group_query_filter trả None (no filter)."""
         qf = rbac_service.get_group_query_filter(admin_user)
         assert qf is None
 
     def test_rbac_teacher_filter_by_ownership(self, rbac_service, teacher_a):
-        """Teacher — filter groups by created_by."""
+        """Teacher - filter groups by created_by."""
         qf = rbac_service.get_group_query_filter(teacher_a)
         assert qf == {"created_by": TEACHER_A_ID}
 
@@ -754,13 +754,13 @@ class TestRBACGroupFiltering:
         assert rbac_service.can_access_group(teacher_a, group) is False
 
     def test_rbac_is_owner(self, rbac_service):
-        """is_owner — match by string comparison."""
+        """is_owner - match by string comparison."""
         resource = {"created_by": TEACHER_A_ID}
         assert rbac_service.is_owner(str(TEACHER_A_ID), resource) is True
         assert rbac_service.is_owner(str(TEACHER_B_ID), resource) is False
 
     def test_rbac_filter_groups_in_memory(self, rbac_service, admin_user, teacher_a):
-        """filter_groups_for_user — admin gets all, teacher gets own."""
+        """filter_groups_for_user - admin gets all, teacher gets own."""
         groups = [
             {"_id": "1", "name": "A", "created_by": TEACHER_A_ID},
             {"_id": "2", "name": "B", "created_by": TEACHER_B_ID},
@@ -774,7 +774,7 @@ class TestRBACGroupFiltering:
         assert teacher_result[0]["name"] == "A"
 
     def test_rbac_get_teacher_group_ids(self, rbac_service, group_model, teacher_a, admin_user):
-        """get_teacher_group_ids — teacher gets list, admin gets None."""
+        """get_teacher_group_ids - teacher gets list, admin gets None."""
         group_model.create_group("RBACG1", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("RBACG2", "", [], created_by=TEACHER_A_ID)
         group_model.create_group("RBACG3", "", [], created_by=TEACHER_B_ID)
@@ -782,22 +782,22 @@ class TestRBACGroupFiltering:
         # Admin
         assert rbac_service.get_teacher_group_ids(admin_user) is None
 
-        # Teacher A — should have 2 groups
+        # Teacher A - should have 2 groups
         ids = rbac_service.get_teacher_group_ids(teacher_a)
         assert isinstance(ids, list)
         assert len(ids) == 2
 
     def test_rbac_validate_group_ids_ownership(self, rbac_service, group_model, teacher_a, admin_user):
-        """validate_group_ids_ownership — teacher chỉ sở hữu groups mình tạo."""
+        """validate_group_ids_ownership - teacher chỉ sở hữu groups mình tạo."""
         g1 = group_model.create_group("OwnA", "", [], created_by=TEACHER_A_ID)
         g2 = group_model.create_group("OwnB", "", [], created_by=TEACHER_B_ID)
         gid1, gid2 = str(g1["_id"]), str(g2["_id"])
 
-        # Admin — always valid
+        # Admin - always valid
         valid, invalid = rbac_service.validate_group_ids_ownership(admin_user, [gid1, gid2])
         assert valid is True
 
-        # Teacher A — owns gid1 but not gid2
+        # Teacher A - owns gid1 but not gid2
         valid, invalid = rbac_service.validate_group_ids_ownership(teacher_a, [gid1])
         assert valid is True
 
@@ -807,11 +807,11 @@ class TestRBACGroupFiltering:
 
 
 # ============================================================================
-# 5. INTEGRATION TESTS — Cross-layer scenarios
+# 5. INTEGRATION TESTS - Cross-layer scenarios
 # ============================================================================
 
 class TestGroupIntegration:
-    """Integration tests — full flow qua nhiều layer."""
+    """Integration tests - full flow qua nhiều layer."""
 
     def test_create_then_list_then_delete(self, group_service):
         """Full lifecycle: create → list → delete."""
@@ -849,7 +849,7 @@ class TestGroupIntegration:
         assert "IsoA" not in names_b
 
     def test_update_whitelist_version_consistency(self, group_service, group_model):
-        """Update whitelist qua service — version tăng đúng."""
+        """Update whitelist qua service - version tăng đúng."""
         created = group_model.create_group("VerConsist", "", [])
         gid = str(created["_id"])
 
@@ -864,7 +864,7 @@ class TestGroupIntegration:
         assert group["whitelist"][0]["domain"] == "v3.com"
 
     def test_json_response_no_objectid(self, app, client, group_model, admin_user):
-        """API response phải JSON-safe — không có ObjectId nào leak."""
+        """API response phải JSON-safe - không có ObjectId nào leak."""
         group_model.create_group("JsonSafe", "test", [], created_by=TEACHER_A_ID)
 
         with patch.multiple(

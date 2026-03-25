@@ -173,7 +173,7 @@ class AgentController:
                 client_ip
             )
             
-            # ENHANCED: Broadcast với detailed status info
+            # ENHANCED: Broadcast with detailed status info
             if self.socketio:
                 agent = self.model.find_by_agent_id(data['agent_id'])
                 
@@ -219,7 +219,7 @@ class AgentController:
         """Check if current teacher can access this agent. Returns error response or None."""
         rbac = get_rbac_service()
         if rbac and not rbac.can_teacher_access_agent(g.current_user, agent):
-            return self._error_response("Không có quyền truy cập agent này", 403)
+            return self._error_response("No permission to access this agent", 403)
         return None
 
     def list_agents(self):
@@ -356,7 +356,7 @@ class AgentController:
             success = self.service.delete_agent(agent_id)
             
             if success:
-                #  THÊM: Broadcast deletion qua SocketIO - vietnam only
+                #  ADD: Broadcast deletion via SocketIO
                 if self.socketio:
                     self.socketio.emit("agent_deleted", {
                         "agent_id": agent_id,
@@ -427,7 +427,7 @@ class AgentController:
                 )
                 if not is_valid:
                     return self._error_response(
-                        "Không có quyền chuyển agent vào group này", 403
+                        "No permission to move agent to this group", 403
                     )
 
             agent = self.service.move_agent_to_group(agent_id, target_group_id)
@@ -459,7 +459,7 @@ class AgentController:
     # ── Agent Policy endpoints ─────────────────────────────────
 
     def get_agent_policy(self, agent_id: str):
-        """GET /agents/<agent_id>/policy — Xem policy hiện tại của agent"""
+        """GET /agents/<agent_id>/policy - View current policy of agent"""
         try:
             agent = self.model.find_by_agent_id(agent_id)
             if not agent:
@@ -480,13 +480,13 @@ class AgentController:
 
     def set_agent_policy(self, agent_id: str):
         """
-        PATCH /agents/<agent_id>/policy — Set policy cho agent
+        PATCH /agents/<agent_id>/policy - Set policy for agent
         Body:
         {
             "mode": "isolate" | "none" | "custom_whitelist",
-            "reason": "Xem YouTube trong giờ",           // optional
-            "duration_minutes": 15,                       // optional, null = vĩnh viễn
-            "custom_whitelist": [{"domain": "x.com"}]     // chỉ khi mode=custom_whitelist
+            "reason": "Watched YouTube during class",     // optional
+            "duration_minutes": 15,                       // optional, null = permanent
+            "custom_whitelist": [{"domain": "x.com"}]     // only when mode=custom_whitelist
         }
         """
         try:
@@ -531,7 +531,7 @@ class AgentController:
             return self._error_response("Failed to set policy", 500)
 
     def get_statistics(self):
-        """Get agent statistics — RBAC-aware: teacher only sees their agents"""
+        """Get agent statistics - RBAC-aware: teacher only sees their agents"""
         try:
             stats = self.service.calculate_statistics()
 

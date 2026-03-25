@@ -25,7 +25,7 @@ class UserController:
         self._register_routes()
 
     def _register_routes(self):
-        """Register all user management routes — admin only"""
+        """Register all user management routes - admin only"""
         rl = require_login  # shortcut
         ra = require_admin
 
@@ -100,7 +100,7 @@ class UserController:
 
         except Exception as e:
             self.logger.error(f'list_users error: {e}')
-            return self._err('Lỗi tải danh sách user', 500)
+            return self._err('Error loading user list', 500)
 
     # ------------------------------------------------------------------
     # GET
@@ -109,11 +109,11 @@ class UserController:
         try:
             user = self.user_service.get_user_by_id(user_id)
             if not user:
-                return self._err('User không tồn tại', 404)
+                return self._err('User does not exist', 404)
             return jsonify({'success': True, 'user': user}), 200
         except Exception as e:
             self.logger.error(f'get_user error: {e}')
-            return self._err('Lỗi', 500)
+            return self._err('Error', 500)
 
     # ------------------------------------------------------------------
     # CREATE
@@ -137,17 +137,17 @@ class UserController:
             )
 
             if not success:
-                return self._err(error or 'Lỗi tạo user', 400)
+                return self._err(error or 'Error creating user', 400)
 
             return jsonify({
                 'success': True,
                 'user': user,
-                'message': f'Tạo tài khoản {username} thành công',
+                'message': f'Account {username} created successfully',
             }), 201
 
         except Exception as e:
             self.logger.error(f'create_user error: {e}')
-            return self._err('Lỗi tạo user', 500)
+            return self._err('Error creating user', 500)
 
     # ------------------------------------------------------------------
     # UPDATE
@@ -172,25 +172,25 @@ class UserController:
                     update_data['is_active'] = bool(data['is_active'])
 
                 if not update_data:
-                    return self._err('Không có gì thay đổi', 400)
+                    return self._err('No changes made', 400)
 
                 success, error = self.user_service.update_user(
                     user_id, update_data, current_user
                 )
 
             if not success:
-                return self._err(error or 'Lỗi cập nhật', 400)
+                return self._err(error or 'Update error', 400)
 
             updated = self.user_service.get_user_by_id(user_id)
             return jsonify({
                 'success': True,
                 'user': updated,
-                'message': 'Cập nhật thành công',
+                'message': 'Updated successfully',
             }), 200
 
         except Exception as e:
             self.logger.error(f'update_user error: {e}')
-            return self._err('Lỗi cập nhật', 500)
+            return self._err('Update error', 500)
 
     # ------------------------------------------------------------------
     # DELETE
@@ -202,21 +202,21 @@ class UserController:
             # Self-delete check
             current_id = str(current_user.get('_id', '')) if current_user else ''
             if current_id == user_id:
-                return self._err('Không thể xoá chính mình', 400)
+                return self._err('Cannot delete yourself', 400)
 
             success, error = self.user_service.delete_user(user_id, current_user)
 
             if not success:
-                return self._err(error or 'Lỗi xoá user', 400)
+                return self._err(error or 'Error deleting user', 400)
 
             return jsonify({
                 'success': True,
-                'message': 'Đã xoá tài khoản thành công',
+                'message': 'Account deleted successfully',
             }), 200
 
         except Exception as e:
             self.logger.error(f'delete_user error: {e}')
-            return self._err('Lỗi xoá user', 500)
+            return self._err('Error deleting user', 500)
 
     # ------------------------------------------------------------------
     # RESET PASSWORD
@@ -226,7 +226,7 @@ class UserController:
             data = request.get_json() or {}
             new_password = data.get('new_password', '').strip()
             if not new_password:
-                return self._err('Password không được để trống', 400)
+                return self._err('Password cannot be empty', 400)
 
             current_user = getattr(g, 'current_user', None)
 
@@ -235,16 +235,16 @@ class UserController:
             )
 
             if not success:
-                return self._err(error or 'Lỗi đặt lại mật khẩu', 400)
+                return self._err(error or 'Error resetting password', 400)
 
             return jsonify({
                 'success': True,
-                'message': 'Đã đặt lại mật khẩu thành công',
+                'message': 'Password reset successfully',
             }), 200
 
         except Exception as e:
             self.logger.error(f'reset_password error: {e}')
-            return self._err('Lỗi đặt lại mật khẩu', 500)
+            return self._err('Error resetting password', 500)
 
     # ------------------------------------------------------------------
     # STATISTICS
@@ -255,7 +255,7 @@ class UserController:
             return jsonify({'success': True, 'data': stats, 'timestamp': now_iso()}), 200
         except Exception as e:
             self.logger.error(f'get_statistics error: {e}')
-            return self._err('Lỗi', 500)
+            return self._err('Error', 500)
 
     # ------------------------------------------------------------------
     # HELPERS

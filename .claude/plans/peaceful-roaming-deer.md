@@ -6,7 +6,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
 ## Trải nghiệm theo Role
 
 ### Admin
-- Không thay đổi gì — thấy toàn bộ whitelist items (global + group) như hiện tại
+- Không thay đổi gì - thấy toàn bộ whitelist items (global + group) như hiện tại
 - Không hiện profile selector (admin quản lý profile qua trang Group Detail)
 
 ### Teacher
@@ -22,7 +22,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
 
 ## Phases
 
-### Phase 1: Backend — API lấy danh sách profiles của teacher (across all groups)
+### Phase 1: Backend - API lấy danh sách profiles của teacher (across all groups)
 
 **File: `server/controllers/whitelist_profile_controller.py`**
 - Thêm endpoint mới: `GET /api/my-profiles`
@@ -35,7 +35,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
   - Query: `{ teacher_id: ObjectId(teacher_id), group_id: { $in: group_ids } }`
   - Join group name vào mỗi profile
 
-### Phase 2: Frontend — Profile Selector Bar (chỉ Teacher thấy)
+### Phase 2: Frontend - Profile Selector Bar (chỉ Teacher thấy)
 
 **File: `server/views/templates/whitelist.html`**
 - Thêm section mới giữa Stats Cards và Add Items Section:
@@ -61,7 +61,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
 </div>
 ```
 
-### Phase 3: Frontend — JS Logic thay đổi behavior khi chọn Profile
+### Phase 3: Frontend - JS Logic thay đổi behavior khi chọn Profile
 
 **File: `server/views/static/js/whitelist.js`**
 - Thêm state vars:
@@ -74,7 +74,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
 
 - Thêm function `loadTeacherProfiles()`:
   - Gọi `GET /api/my-profiles`
-  - Populate dropdown `#profileSelect` với format: "[Profile Name] — [Group Name]"
+  - Populate dropdown `#profileSelect` với format: "[Profile Name] - [Group Name]"
 
 - Thêm handler `onProfileSelected(profileId)`:
   - Nếu `profileId == ''`: chuyển về mode xem (read-only), gọi `loadItems()` bình thường
@@ -101,7 +101,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
   - Sau `loadGroups()`, check `window.SAINT_AUTH.isTeacher` → show `#profileSelectorBar`, gọi `loadTeacherProfiles()`
   - Bind event change trên `#profileSelect` → `onProfileSelected()`
 
-### Phase 4: RBAC UI — Ẩn/hiện phù hợp
+### Phase 4: RBAC UI - Ẩn/hiện phù hợp
 
 **File: `server/views/static/js/whitelist.js`**
 - Khi teacher chưa chọn profile:
@@ -138,7 +138,7 @@ Khi teacher mở `/whitelist`, hiện dropdown chọn Profile. Teacher thêm/xó
 | `whitelist.js` | +Profile state, +load/select/save profile functions, sửa addItem/removeItem/renderItems/bulkImport |
 
 ## Không thay đổi
-- `whitelist_controller.py` — không cần sửa backend whitelist endpoints
-- `whitelist_service.py` — không cần sửa
-- Agent sync logic — không ảnh hưởng (vẫn dùng active profile override)
-- Admin experience — hoàn toàn không đổi
+- `whitelist_controller.py` - không cần sửa backend whitelist endpoints
+- `whitelist_service.py` - không cần sửa
+- Agent sync logic - không ảnh hưởng (vẫn dùng active profile override)
+- Admin experience - hoàn toàn không đổi

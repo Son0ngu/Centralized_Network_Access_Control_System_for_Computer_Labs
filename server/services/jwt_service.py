@@ -19,18 +19,23 @@ ACCESS_TOKEN_EXPIRY_HOURS = 24  # 24 hours for access token
 REFRESH_TOKEN_EXPIRY_DAYS = 7   # 7 days for refresh token
 JWT_ALGORITHM = "HS256"
 
-# Get secret key from environment or generate a secure one
+# Get secret keys from environment - REQUIRED for production stability
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", None)
 JWT_REFRESH_SECRET_KEY = os.environ.get("JWT_REFRESH_SECRET_KEY", None)
 
-# If no secret key is set, generate a random one (will reset on server restart)
+# In development, fall back to random keys (tokens invalidated on restart)
+# In production, set JWT_SECRET_KEY and JWT_REFRESH_SECRET_KEY in .env
 if not JWT_SECRET_KEY:
+    if os.environ.get("FLASK_ENV") == "production":
+        raise RuntimeError("JWT_SECRET_KEY must be set in production environment!")
     JWT_SECRET_KEY = secrets.token_hex(32)
-    logger.warning("JWT_SECRET_KEY not set in environment, using random key. Tokens will be invalidated on restart!")
+    logger.warning("JWT_SECRET_KEY not set - using random key. Tokens will be invalidated on restart!")
 
 if not JWT_REFRESH_SECRET_KEY:
+    if os.environ.get("FLASK_ENV") == "production":
+        raise RuntimeError("JWT_REFRESH_SECRET_KEY must be set in production environment!")
     JWT_REFRESH_SECRET_KEY = secrets.token_hex(32)
-    logger.warning("JWT_REFRESH_SECRET_KEY not set in environment, using random key.")
+    logger.warning("JWT_REFRESH_SECRET_KEY not set - using random key.")
 
 
 class JWTService:

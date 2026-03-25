@@ -98,10 +98,10 @@ class WhitelistService:
         if not validation_result["valid"]:
             raise ValueError(validation_result["message"])
         
-        # Check for duplicates
-        existing = self.model.find_entry_by_value(value)
-        if existing:
-            raise ValueError("Entry already exists")
+        # Check for duplicates in global whitelist (only active entries)
+        existing = self.model.find_entry_by_value(value, active_only=True)
+        if existing and existing.get("scope", "global") == "global":
+            raise ValueError("Entry already exists in global whitelist")
         
         # Use vietnam time for timestamps
         current_time = now_vietnam()
@@ -370,8 +370,9 @@ class WhitelistService:
                 category = "uncategorized"
 
             # Create a pseudo-ID for group items so they can be selected/manipulated on frontend
-            # format: group|group_id|type|value
-            pseudo_id = f"group|{group_id}|{entry_type}|{value}"
+            # format: group::<group_id>::<type>::<value>
+            # Using :: as separator to avoid conflicts with | in URLs
+            pseudo_id = f"group::{group_id}::{entry_type}::{value}"
 
             entries.append({
                 "_id": pseudo_id,
@@ -387,30 +388,33 @@ class WhitelistService:
         return entries
 
     def _merge_whitelists(self, global_entries: List[Dict], group_entries: List[Dict]) -> List[Dict]:
+        """Merge global and group whitelists.
+        When the same type:value exists in both scopes, group entry wins
+        (more specific scope takes priority) with consistent _id and scope.
+        """
         merged = {}
         for entry in global_entries + group_entries:
             key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
-            merged_entry = merged.get(key, {})
-            
-            # Prefer existing ID if available (especially global ID)
-            entry_id = merged_entry.get("_id") or entry.get("_id")
-            
-            merged[key] = {
-                **merged_entry,
-                "_id": entry_id,
-                "id": entry_id,
-                "value": entry.get("value"),
-                "type": entry.get("type", "domain"),
-                "priority": entry.get("priority", "normal"),
-                "category": entry.get("category", "uncategorized"),
-                "scope": entry.get("scope", "global"),
-                "group_id": entry.get("group_id") or merged_entry.get("group_id"),
-                "group_name": entry.get("group_name") or merged_entry.get("group_name"),
-                "agent_id": entry.get("agent_id") or merged_entry.get("agent_id"),
-                "added_date": entry.get("added_date") or merged_entry.get("added_date"),
-                "notes": entry.get("notes") or merged_entry.get("notes"),
-            }
-            
+            existing = merged.get(key)
+
+            if existing:
+                # Group scope wins over global (more specific)
+                incoming_scope = entry.get("scope", "global")
+                existing_scope = existing.get("scope", "global")
+                if incoming_scope == "group" or existing_scope != "group":
+                    # Incoming is group or existing is not group → use incoming
+                    entry_copy = {**entry}
+                    # Use higher priority if different
+                    if existing.get("priority") == "high" and entry_copy.get("priority") != "high":
+                        entry_copy["priority"] = "high"
+                    merged[key] = entry_copy
+                else:
+                    # Existing is group, incoming is global → keep existing, merge optional fields
+                    if entry.get("priority") == "high":
+                        existing["priority"] = "high"
+            else:
+                merged[key] = {**entry}
+
         return list(merged.values())
 
     def get_scoped_whitelist(self, agent_id: Optional[str] = None, group_id: Optional[str] = None) -> Dict:
@@ -510,7 +514,7 @@ class WhitelistService:
                 global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
                 response_type = "incremental"
 
-            # Check for active whitelist profile — overrides group base whitelist
+            # Check for active whitelist profile - overrides group base whitelist
             active_profile = None
             if self.profile_service:
                 active_profile = self.profile_service.get_active_profile(str(group.get("_id")))
@@ -619,9 +623,11 @@ class WhitelistService:
         
         for item_id in item_ids:
             try:
-                if item_id.startswith("group|"):
-                    # Parse group item ID: group|group_id|type|value
-                    parts = item_id.split("|", 3)
+                if item_id.startswith("group::") or item_id.startswith("group|"):
+                    # Parse group item ID: group::<group_id>::<type>::<value>
+                    # Also support legacy separator | for backwards compat
+                    sep = "::" if "::" in item_id else "|"
+                    parts = item_id.split(sep, 3)
                     if len(parts) == 4:
                         _, gid, gtype, gvalue = parts
                         if gid not in group_deletes:
@@ -710,10 +716,16 @@ class WhitelistService:
                     errors.append(f"Entry {i+1}: {validation_result['message']}")
                     continue
                 
-                # Check duplicates in current batch
-                if any(e.get("value") == value and e.get("scope") == scope for e in global_entries):
-                    errors.append(f"Entry {i+1}: Duplicate value in batch")
-                    continue
+                # Check duplicates in current batch (within same scope)
+                if scope == "group" and group_id:
+                    batch_group = group_entries_map.get(group_id, [])
+                    if any(e.get("value") == value for e in batch_group):
+                        errors.append(f"Entry {i+1}: Duplicate value in batch (group)")
+                        continue
+                else:
+                    if any(e.get("value") == value for e in global_entries):
+                        errors.append(f"Entry {i+1}: Duplicate value in batch (global)")
+                        continue
                 
                 # Process entry
                 processed_entry = {
@@ -762,16 +774,13 @@ class WhitelistService:
                 # Filter out duplicates
                 new_unique = []
                 for ne in entries:
-                     if not any(curr.get("value") == ne["value"] and curr.get("type") == ne["type"] for curr in current_whitelist):
-                         new_unique.append(ne)
-                     else:
-                         errors.append(f"Entry {ne['value']} already exists in group {group.get('name')}")
-                
+                    if not any(curr.get("value") == ne["value"] and curr.get("type") == ne["type"] for curr in current_whitelist):
+                        new_unique.append(ne)
+                    else:
+                        errors.append(f"Entry {ne['value']} already exists in group {group.get('name')}")
+
                 if new_unique:
-                    # Append new items
                     updated_whitelist = current_whitelist + new_unique
-                    # Convert dates in list to be JSON serializable if needed or keep as object (Mongo handles datetime)
-                     
                     self.group_model.update_group(grp_id, {
                         "whitelist": updated_whitelist,
                         "whitelist_version": (group.get("whitelist_version", 1) + 1)
@@ -817,64 +826,94 @@ class WhitelistService:
             }
     
     def update_entry(self, entry_id: str, update_data: Dict) -> bool:
-        """Update an entry - vietnam ONLY"""
+        """Update an entry - supports both global ObjectIds and group pseudo-IDs"""
+
+        # Check if this is a group pseudo-ID (group::<gid>::<type>::<value>)
+        if entry_id.startswith("group::") or entry_id.startswith("group|"):
+            return self._update_group_entry(entry_id, update_data)
+
         entry = self.model.find_entry_by_id(entry_id)
         if not entry:
             raise ValueError("Entry not found")
-        
+
         # Validate update data
         if 'value' in update_data:
             value = update_data['value'].strip().lower()
             entry_type = update_data.get('type', entry.get('type', 'domain'))
-            
+
             validation_result = self.model.validate_entry_value(entry_type, value)
             if not validation_result["valid"]:
                 raise ValueError(validation_result["message"])
-            
+
             update_data['value'] = value
-        
+
         # Update timestamp
         update_data['updated_at'] = now_vietnam()
-        
+
         success = self.model.update_entry(entry_id, update_data)
-        
+
         if success and self.socketio:
             self.socketio.emit("whitelist_updated", {
                 "id": entry_id,
                 "value": update_data.get('value', entry.get('value')),
                 "type": update_data.get('type', entry.get('type', 'domain')),
-                "timestamp": now_iso()  # vietnam ISO
+                "timestamp": now_iso()
             })
-        
+
         return success
-    
-    def sync_for_agent(self, agent_id: str, token: str, since_datetime: datetime = None) -> Dict:
-        """Sync whitelist for agent - vietnam ONLY"""
-        try:
-            # Get entries for sync
-            domains = self.model.get_entries_for_sync(since_datetime)
-            
-            self.logger.info(f"Syncing {len(domains)} domains for agent {agent_id}")
-            
-            return {
-                "success": True,
-                "domains": domains,
-                "count": len(domains),
-                "agent_id": agent_id,
-                "server_time": now_iso(),  # FIX: Thêm dấu phẩy ở đây
-                "since": since_datetime.isoformat() if since_datetime else None
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error syncing for agent {agent_id}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "domains": [],
-                "count": 0,
-                "server_time": now_iso()  # vietnam ISO
-            }
-    
+
+    def _update_group_entry(self, pseudo_id: str, update_data: Dict) -> bool:
+        """Update a group whitelist entry identified by pseudo-ID."""
+        sep = "::" if "::" in pseudo_id else "|"
+        parts = pseudo_id.split(sep, 3)
+        if len(parts) != 4:
+            raise ValueError(f"Invalid group entry ID: {pseudo_id}")
+
+        _, gid, gtype, gvalue = parts
+        group = self.group_model.find_by_id(gid)
+        if not group:
+            raise ValueError(f"Group {gid} not found")
+
+        whitelist = group.get("whitelist", [])
+        updated = False
+        for entry in whitelist:
+            e_val = entry.get("value") if isinstance(entry, dict) else entry
+            e_type = entry.get("type", "domain") if isinstance(entry, dict) else "domain"
+            if e_val == gvalue and e_type == gtype:
+                if isinstance(entry, dict):
+                    for k, v in update_data.items():
+                        if k not in ("updated_at",):
+                            entry[k] = v
+                    updated = True
+                break
+
+        if updated:
+            self.group_model.update_group(gid, {"whitelist": whitelist})
+        return updated
+
+    def _delete_group_entry(self, group_id: str, value: str, entry_type: str = "domain") -> bool:
+        """Delete an entry from a group's whitelist by value and type."""
+        group = self.group_model.find_by_id(group_id)
+        if not group:
+            return False
+
+        whitelist = group.get("whitelist", [])
+        original_len = len(whitelist)
+        whitelist = [
+            e for e in whitelist
+            if not (
+                (e.get("value") if isinstance(e, dict) else e) == value
+                and (e.get("type", "domain") if isinstance(e, dict) else "domain") == entry_type
+            )
+        ]
+
+        if len(whitelist) < original_len:
+            self.group_model.update_group(group_id, {"whitelist": whitelist})
+            return True
+        return False
+
+    # sync_for_agent removed - dead code, replaced by get_agent_sync_data()
+
     def get_all_domains(self, limit: int = 100, offset: int = 0, search: str = None) -> Dict:
         """Get all domains with pagination - vietnam ONLY"""
         try:
@@ -964,32 +1003,43 @@ class WhitelistService:
             }
     
     def delete_domain(self, domain_id: str) -> Dict:
-        """Delete domain from whitelist - vietnam ONLY"""
+        """Delete domain from whitelist - supports both global entries and group pseudo-IDs"""
         try:
-            # Check if domain exists
+            # Handle group pseudo-IDs: group::<gid>::<type>::<value>
+            if domain_id.startswith("group::") or domain_id.startswith("group|"):
+                sep = "::" if "::" in domain_id else "|"
+                parts = domain_id.split(sep, 3)
+                if len(parts) == 4:
+                    _, gid, gtype, gvalue = parts
+                    result = self._delete_group_entry(gid, gvalue, gtype)
+                    if result:
+                        return {"success": True, "domain_id": domain_id, "domain_value": gvalue, "server_time": now_iso()}
+                    return {"success": False, "error": "Entry not found in group", "server_time": now_iso()}
+                return {"success": False, "error": "Invalid group pseudo-ID format", "server_time": now_iso()}
+
+            # Global entry: check if domain exists
             existing = self.model.find_entry_by_id(domain_id)
             if not existing:
                 return {
                     "success": False,
                     "error": "Domain not found",
-                    "server_time": now_iso()  # vietnam ISO
+                    "server_time": now_iso()
                 }
-            
-            # Delete domain
+
             success = self.model.delete_entry(domain_id)
-            
+
             if success:
                 return {
                     "success": True,
                     "domain_id": domain_id,
                     "domain_value": existing.get("value"),
-                    "server_time": now_iso()  # vietnam ISO
+                    "server_time": now_iso()
                 }
             else:
                 return {
                     "success": False,
                     "error": "Failed to delete domain",
-                    "server_time": now_iso()  # vietnam ISO
+                    "server_time": now_iso()
                 }
                 
         except Exception as e:

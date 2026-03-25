@@ -1,9 +1,9 @@
 """
 Test Suite: Audit Model, Service, Controller
 =============================================
-1. AuditModel  — log, get_logs, get_user_activity, count_logs
-2. AuditService — log_action, get_logs, get_user_activity, count_logs, serialization
-3. AuditController — list_logs, user_activity (permission checks)
+1. AuditModel  - log, get_logs, get_user_activity, count_logs
+2. AuditService - log_action, get_logs, get_user_activity, count_logs, serialization
+3. AuditController - list_logs, user_activity (permission checks)
 
 Run:
   cd server && python -m pytest tests/test_audit.py -v
@@ -259,7 +259,7 @@ class TestAuditService:
 
     def test_log_action_never_raises(self, audit_service):
         """Audit logging should never block the main operation."""
-        # Pass garbage user — should not raise
+        # Pass garbage user - should not raise
         audit_service.log_action(
             user={},
             action="test.safe",

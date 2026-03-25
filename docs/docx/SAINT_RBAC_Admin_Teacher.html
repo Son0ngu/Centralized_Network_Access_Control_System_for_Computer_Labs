@@ -299,25 +299,25 @@
 <body>
 
 <div class="header">
-    <h1>SAINT — Admin & Teacher RBAC System Design</h1>
-    <div class="subtitle">Security Agent Integrated Network Tool — Classroom-based Role Access Control</div>
-    <div class="meta">Sinh vien: Bui Xuan Son — MSSV: 20225586 — HUST/SOICT<br>Tai lieu thiet ke he thong phan quyen Admin/Teacher — Phien ban 2.0</div>
+    <h1>SAINT - Admin & Teacher RBAC System Design</h1>
+    <div class="subtitle">Security Agent Integrated Network Tool - Classroom-based Role Access Control</div>
+    <div class="meta">Sinh vien: Bui Xuan Son - MSSV: 20225586 - HUST/SOICT<br>Tai lieu thiet ke he thong phan quyen Admin/Teacher - Phien ban 2.0</div>
 </div>
 
 <div class="toc">
     <h2>Muc luc Diagrams</h2>
     <ol>
-        <li><a href="#d1">Use Case Diagram — Chuc nang theo vai tro Admin & Teacher</a></li>
-        <li><a href="#d2">ER Diagram — Thiet ke co so du lieu MongoDB (RBAC)</a></li>
-        <li><a href="#d3">Class Diagram — Kien truc Backend RBAC</a></li>
-        <li><a href="#d4">Sequence Diagram — Luong dang nhap Admin/Teacher</a></li>
-        <li><a href="#d5">Sequence Diagram — Luong kiem tra quyen (Authorization)</a></li>
-        <li><a href="#d6">Activity Diagram — Quy trinh xac thuc & phan quyen tong quat</a></li>
-        <li><a href="#d7">State Diagram — Vong doi phien dang nhap</a></li>
-        <li><a href="#d8">Component Diagram — Tich hop RBAC vao kien truc SAINT</a></li>
-        <li><a href="#d9">Deployment Diagram — Trien khai he thong</a></li>
-        <li><a href="#d10">Permission Matrix — Ma tran quyen chi tiet</a></li>
-        <li><a href="#d11">Cau truc thu muc — Files moi & thay doi</a></li>
+        <li><a href="#d1">Use Case Diagram - Chuc nang theo vai tro Admin & Teacher</a></li>
+        <li><a href="#d2">ER Diagram - Thiet ke co so du lieu MongoDB (RBAC)</a></li>
+        <li><a href="#d3">Class Diagram - Kien truc Backend RBAC</a></li>
+        <li><a href="#d4">Sequence Diagram - Luong dang nhap Admin/Teacher</a></li>
+        <li><a href="#d5">Sequence Diagram - Luong kiem tra quyen (Authorization)</a></li>
+        <li><a href="#d6">Activity Diagram - Quy trinh xac thuc & phan quyen tong quat</a></li>
+        <li><a href="#d7">State Diagram - Vong doi phien dang nhap</a></li>
+        <li><a href="#d8">Component Diagram - Tich hop RBAC vao kien truc SAINT</a></li>
+        <li><a href="#d9">Deployment Diagram - Trien khai he thong</a></li>
+        <li><a href="#d10">Permission Matrix - Ma tran quyen chi tiet</a></li>
+        <li><a href="#d11">Cau truc thu muc - Files moi & thay doi</a></li>
     </ol>
 </div>
 
@@ -327,7 +327,7 @@
     <div class="diagram-section" id="d1">
         <div class="section-header">
             <div class="section-number">1</div>
-            <h2>Use Case Diagram — Chuc nang theo vai tro Admin & Teacher</h2>
+            <h2>Use Case Diagram - Chuc nang theo vai tro Admin & Teacher</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -457,7 +457,7 @@ graph TB
     <div class="diagram-section" id="d2">
         <div class="section-header">
             <div class="section-number">2</div>
-            <h2>ER Diagram — Thiet ke co so du lieu MongoDB (RBAC)</h2>
+            <h2>ER Diagram - Thiet ke co so du lieu MongoDB (RBAC)</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -574,12 +574,12 @@ erDiagram
                 <h3>Giai thich ER Diagram</h3>
                 <p>He thong su dung <strong>MongoDB</strong> (document-based). Cac collection duoc thiet ke voi quan he ro rang:</p>
                 <ul>
-                    <li><strong>USERS (MOI)</strong> — Collection trung tam cho RBAC. Luu tai khoan Admin va Teacher. Truong <code>role</code> la enum string (<code>admin</code> hoac <code>teacher</code>). Co che chong brute-force qua <code>failed_login_attempts</code> + <code>locked_until</code>. Truong <code>created_by</code> lien ket toi User da tao (Admin tao Teacher).</li>
-                    <li><strong>SESSIONS (MOI)</strong> — Moi lan dang nhap Admin/Teacher tao session. Luu JTI cua access_token va refresh_token de ho tro thu hoi (revoke). TTL index tu xoa session het han.</li>
-                    <li><strong>AUDIT_LOGS (MOI)</strong> — Ghi lai moi hanh dong thay doi du lieu. Truong <code>details</code> luu JSON diff (before/after). Ghi nhan ca <code>role</code> cua nguoi thuc hien de audit.</li>
-                    <li><strong>GROUPS (SUA)</strong> — Them truong <code>created_by</code> de xac dinh Teacher nao so huu Group. Day la truong <strong>quan trong nhat</strong> cho viec phan quyen — Teacher chi thay Groups co <code>created_by</code> = <code>user_id</code> cua minh.</li>
-                    <li><strong>WHITELIST_RULES (GIU NGUYEN)</strong> — Them <code>created_by</code> de tracking. Teacher chi quan ly rules trong Group cua minh.</li>
-                    <li><strong>AGENTS, API_KEYS, REVOKED_TOKENS (GIU NGUYEN)</strong> — Khong thay doi logic hien tai. Chi them <code>created_by</code> cho API_KEYS.</li>
+                    <li><strong>USERS (MOI)</strong> - Collection trung tam cho RBAC. Luu tai khoan Admin va Teacher. Truong <code>role</code> la enum string (<code>admin</code> hoac <code>teacher</code>). Co che chong brute-force qua <code>failed_login_attempts</code> + <code>locked_until</code>. Truong <code>created_by</code> lien ket toi User da tao (Admin tao Teacher).</li>
+                    <li><strong>SESSIONS (MOI)</strong> - Moi lan dang nhap Admin/Teacher tao session. Luu JTI cua access_token va refresh_token de ho tro thu hoi (revoke). TTL index tu xoa session het han.</li>
+                    <li><strong>AUDIT_LOGS (MOI)</strong> - Ghi lai moi hanh dong thay doi du lieu. Truong <code>details</code> luu JSON diff (before/after). Ghi nhan ca <code>role</code> cua nguoi thuc hien de audit.</li>
+                    <li><strong>GROUPS (SUA)</strong> - Them truong <code>created_by</code> de xac dinh Teacher nao so huu Group. Day la truong <strong>quan trong nhat</strong> cho viec phan quyen - Teacher chi thay Groups co <code>created_by</code> = <code>user_id</code> cua minh.</li>
+                    <li><strong>WHITELIST_RULES (GIU NGUYEN)</strong> - Them <code>created_by</code> de tracking. Teacher chi quan ly rules trong Group cua minh.</li>
+                    <li><strong>AGENTS, API_KEYS, REVOKED_TOKENS (GIU NGUYEN)</strong> - Khong thay doi logic hien tai. Chi them <code>created_by</code> cho API_KEYS.</li>
                 </ul>
             </div>
 
@@ -593,7 +593,7 @@ erDiagram
     <div class="diagram-section" id="d3">
         <div class="section-header">
             <div class="section-number">3</div>
-            <h2>Class Diagram — Kien truc Backend RBAC</h2>
+            <h2>Class Diagram - Kien truc Backend RBAC</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -741,15 +741,15 @@ classDiagram
                 <h3>Giai thich Class Diagram</h3>
                 <p>Thiet ke theo kien truc <strong>MVC + Service Layer</strong>, tuong thich hoan toan voi cau truc Flask hien tai cua SAINT:</p>
                 <ul>
-                    <li><strong>UserModel (MOI)</strong> — MongoDB operations cho collection <code>users</code>. Tuong tu cac model hien co (AgentModel, GroupModel...). Cac method: CRUD, lock account, failed attempts tracking.</li>
-                    <li><strong>AdminAuthService (MOI)</strong> — Xu ly toan bo logic dang nhap Admin/Teacher. <strong>Tach biet hoan toan</strong> voi auth Agent hien tai (<code>auth_controller.py</code>). Password hash bang bcrypt, brute-force protection, session management.</li>
-                    <li><strong>RBACService (MOI)</strong> — Logic phan quyen thuan tuy. Method quan trong nhat: <code>can_access_group(user, group)</code> — kiem tra Teacher co phai owner cua Group khong. Admin luon tra ve <code>true</code>.</li>
-                    <li><strong>RBACMiddleware (MOI)</strong> — Tich hop voi Flask decorator pattern. <code>@require_login()</code> kiem tra cookie JWT. <code>@require_admin()</code> chi cho Admin. Hoat dong <strong>song song</strong> voi middleware <code>auth.py</code> hien tai (cho Agent API).</li>
-                    <li><strong>AdminAuthController (MOI)</strong> — Blueprint moi, prefix <code>/admin/auth/*</code>. Khong xung dot voi routes hien tai (<code>/api/auth/*</code> cho agents).</li>
-                    <li><strong>UserManagementController (MOI)</strong> — Chi Admin truy cap. CRUD tai khoan Teacher.</li>
-                    <li><strong>DashboardController (SUA)</strong> — Them <code>@require_login()</code> vao cac route dashboard hien tai + tao route <code>/login</code> moi. Teacher thay Dashboard gioi han theo Groups cua minh.</li>
-                    <li><strong>JWTService (TAI SU DUNG)</strong> — Service JWT hien tai duoc dung chung. Them payload fields <code>user_id</code>, <code>role</code>, <code>username</code> cho admin tokens.</li>
-                    <li><strong>AuditService (MOI)</strong> — Ghi log moi hanh dong thay doi. Format: <code>user.create</code>, <code>group.update</code>, <code>whitelist.delete</code>...</li>
+                    <li><strong>UserModel (MOI)</strong> - MongoDB operations cho collection <code>users</code>. Tuong tu cac model hien co (AgentModel, GroupModel...). Cac method: CRUD, lock account, failed attempts tracking.</li>
+                    <li><strong>AdminAuthService (MOI)</strong> - Xu ly toan bo logic dang nhap Admin/Teacher. <strong>Tach biet hoan toan</strong> voi auth Agent hien tai (<code>auth_controller.py</code>). Password hash bang bcrypt, brute-force protection, session management.</li>
+                    <li><strong>RBACService (MOI)</strong> - Logic phan quyen thuan tuy. Method quan trong nhat: <code>can_access_group(user, group)</code> - kiem tra Teacher co phai owner cua Group khong. Admin luon tra ve <code>true</code>.</li>
+                    <li><strong>RBACMiddleware (MOI)</strong> - Tich hop voi Flask decorator pattern. <code>@require_login()</code> kiem tra cookie JWT. <code>@require_admin()</code> chi cho Admin. Hoat dong <strong>song song</strong> voi middleware <code>auth.py</code> hien tai (cho Agent API).</li>
+                    <li><strong>AdminAuthController (MOI)</strong> - Blueprint moi, prefix <code>/admin/auth/*</code>. Khong xung dot voi routes hien tai (<code>/api/auth/*</code> cho agents).</li>
+                    <li><strong>UserManagementController (MOI)</strong> - Chi Admin truy cap. CRUD tai khoan Teacher.</li>
+                    <li><strong>DashboardController (SUA)</strong> - Them <code>@require_login()</code> vao cac route dashboard hien tai + tao route <code>/login</code> moi. Teacher thay Dashboard gioi han theo Groups cua minh.</li>
+                    <li><strong>JWTService (TAI SU DUNG)</strong> - Service JWT hien tai duoc dung chung. Them payload fields <code>user_id</code>, <code>role</code>, <code>username</code> cho admin tokens.</li>
+                    <li><strong>AuditService (MOI)</strong> - Ghi log moi hanh dong thay doi. Format: <code>user.create</code>, <code>group.update</code>, <code>whitelist.delete</code>...</li>
                 </ul>
             </div>
         </div>
@@ -759,7 +759,7 @@ classDiagram
     <div class="diagram-section" id="d4">
         <div class="section-header">
             <div class="section-number">4</div>
-            <h2>Sequence Diagram — Luong dang nhap Admin/Teacher</h2>
+            <h2>Sequence Diagram - Luong dang nhap Admin/Teacher</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -838,12 +838,12 @@ sequenceDiagram
                 <ul>
                     <li><strong>Buoc 1-2:</strong> User (Admin hoac Teacher) truy cap <code>/login</code>, server render trang login bang Jinja2.</li>
                     <li><strong>Buoc 3-5:</strong> Form submit POST toi <code>/admin/auth/login</code>. AdminAuthService tim user trong MongoDB.</li>
-                    <li><strong>Buoc 6:</strong> Kiem tra account lock — neu da sai mat khau 5 lan lien tiep, tai khoan bi khoa 15 phut (chong brute-force).</li>
+                    <li><strong>Buoc 6:</strong> Kiem tra account lock - neu da sai mat khau 5 lan lien tiep, tai khoan bi khoa 15 phut (chong brute-force).</li>
                     <li><strong>Buoc 7:</strong> So sanh password bang <strong>bcrypt</strong> (constant-time comparison, chong timing attack).</li>
                     <li><strong>Buoc 8-9:</strong> Tao cap JWT tokens. Access token chua <code>{user_id, role, username}</code> dung cho authorization. Refresh token chi chua <code>{user_id}</code>.</li>
                     <li><strong>Buoc 10:</strong> Tao session record trong DB de ho tro: xem sessions dang active, revoke tu xa, audit trail.</li>
                     <li><strong>Buoc 11:</strong> Ghi audit log. Moi lan dang nhap thanh cong/that bai deu duoc ghi lai.</li>
-                    <li><strong>Buoc 12:</strong> Token duoc luu trong <strong>httpOnly cookie</strong> (khong phai localStorage) — chong XSS attack. Sau do redirect toi Dashboard.</li>
+                    <li><strong>Buoc 12:</strong> Token duoc luu trong <strong>httpOnly cookie</strong> (khong phai localStorage) - chong XSS attack. Sau do redirect toi Dashboard.</li>
                 </ul>
             </div>
 
@@ -857,7 +857,7 @@ sequenceDiagram
     <div class="diagram-section" id="d5">
         <div class="section-header">
             <div class="section-number">5</div>
-            <h2>Sequence Diagram — Luong kiem tra quyen (Authorization)</h2>
+            <h2>Sequence Diagram - Luong kiem tra quyen (Authorization)</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -925,9 +925,9 @@ sequenceDiagram
                 <h3>Giai thich Luong Authorization</h3>
                 <p>Moi request toi protected route deu di qua <strong>3 lop kiem tra</strong>:</p>
                 <ol>
-                    <li><strong>Authentication (Lop 1)</strong> — Co token hop le khong? Token co bi revoke khong? Neu het han, tu dong refresh.</li>
-                    <li><strong>Permission Check (Lop 2)</strong> — User co quyen <code>whitelist:create</code> khong? RBACService kiem tra role &rarr; permissions mapping.</li>
-                    <li><strong>Ownership Check (Lop 3 — DAC BIET CHO TEACHER)</strong> — Teacher co phai owner cua Group nay khong? Kiem tra <code>group.created_by == user.user_id</code>. Admin bo qua buoc nay (toan quyen).</li>
+                    <li><strong>Authentication (Lop 1)</strong> - Co token hop le khong? Token co bi revoke khong? Neu het han, tu dong refresh.</li>
+                    <li><strong>Permission Check (Lop 2)</strong> - User co quyen <code>whitelist:create</code> khong? RBACService kiem tra role &rarr; permissions mapping.</li>
+                    <li><strong>Ownership Check (Lop 3 - DAC BIET CHO TEACHER)</strong> - Teacher co phai owner cua Group nay khong? Kiem tra <code>group.created_by == user.user_id</code>. Admin bo qua buoc nay (toan quyen).</li>
                 </ol>
                 <p><strong>Day la diem khac biet quan trong nhat:</strong> Teacher co quyen <code>whitelist:create</code> (tao rule), nhung chi duoc tao rule trong Group cua chinh minh. Admin co the tao rule trong bat ky Group nao.</p>
             </div>
@@ -942,7 +942,7 @@ sequenceDiagram
     <div class="diagram-section" id="d6">
         <div class="section-header">
             <div class="section-number">6</div>
-            <h2>Activity Diagram — Quy trinh xac thuc & phan quyen tong quat</h2>
+            <h2>Activity Diagram - Quy trinh xac thuc & phan quyen tong quat</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -1018,10 +1018,10 @@ flowchart TD
                 <h3>Giai thich Activity Diagram</h3>
                 <p>Day la <strong>luong tong quat</strong> cua moi HTTP request trong he thong SAINT sau khi tich hop RBAC. Diem quan trong:</p>
                 <ul>
-                    <li><strong>Tach biet 2 luong auth:</strong> Agent API (<code>/api/*</code>) van dung API Key + JWT hien tai — khong thay doi gi. Admin/Teacher Web (dashboard routes) dung cookie-based JWT moi.</li>
+                    <li><strong>Tach biet 2 luong auth:</strong> Agent API (<code>/api/*</code>) van dung API Key + JWT hien tai - khong thay doi gi. Admin/Teacher Web (dashboard routes) dung cookie-based JWT moi.</li>
                     <li><strong>Auto-refresh token:</strong> Khi access token het han, he thong tu dong thu refresh bang refresh token. User khong can dang nhap lai trong 7 ngay.</li>
                     <li><strong>3 lop bao ve cho Teacher:</strong> Authentication &rarr; Permission Check &rarr; <strong>Ownership Check</strong>. Buoc Ownership la diem dac biet: Teacher phai la owner cua resource (Group) moi duoc thao tac.</li>
-                    <li><strong>Admin bypass Ownership:</strong> Admin luon pass buoc Ownership check — co quyen thao tac tren moi resource.</li>
+                    <li><strong>Admin bypass Ownership:</strong> Admin luon pass buoc Ownership check - co quyen thao tac tren moi resource.</li>
                     <li><strong>Audit logging:</strong> Moi request thanh cong den protected route deu ghi audit log (ai, lam gi, luc nao, tu IP nao).</li>
                 </ul>
             </div>
@@ -1032,7 +1032,7 @@ flowchart TD
     <div class="diagram-section" id="d7">
         <div class="section-header">
             <div class="section-number">7</div>
-            <h2>State Diagram — Vong doi phien dang nhap</h2>
+            <h2>State Diagram - Vong doi phien dang nhap</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -1089,7 +1089,7 @@ stateDiagram-v2
                     <li><strong>Unauthenticated:</strong> Trang thai mac dinh. Moi request toi protected route deu redirect ve <code>/login</code>.</li>
                     <li><strong>Authenticating:</strong> Trang thai chuyen tiep khi user submit form. Server xac minh credentials.</li>
                     <li><strong>Authenticated &rarr; ActiveSession:</strong> User dang online, access token con han. Moi request deu kiem tra token validity.</li>
-                    <li><strong>TokenExpired:</strong> Access token het han (24h). Browser tu gui refresh token de lay access token moi — transparent cho user.</li>
+                    <li><strong>TokenExpired:</strong> Access token het han (24h). Browser tu gui refresh token de lay access token moi - transparent cho user.</li>
                     <li><strong>SessionExpired:</strong> Ca refresh token cung het han (7 ngay). User phai dang nhap lai.</li>
                     <li><strong>AccountLocked:</strong> Sau 5 lan dang nhap sai lien tiep &rarr; khoa 15 phut. Bao ve chong brute-force attack.</li>
                     <li><strong>Force logout:</strong> Co 3 cach ket thuc session som: user tu logout, Admin revoke tu xa, hoac tai khoan bi deactivate boi Admin.</li>
@@ -1102,7 +1102,7 @@ stateDiagram-v2
     <div class="diagram-section" id="d8">
         <div class="section-header">
             <div class="section-number">8</div>
-            <h2>Component Diagram — Tich hop RBAC vao kien truc SAINT</h2>
+            <h2>Component Diagram - Tich hop RBAC vao kien truc SAINT</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -1219,16 +1219,16 @@ graph TB
                 <h3>Giai thich Component Diagram</h3>
                 <p>Diagram nay cho thay RBAC duoc <strong>them vao (additive)</strong> chu khong thay the kien truc hien tai:</p>
                 <ul>
-                    <li><strong>Mau xanh la (Existing):</strong> 6 Controllers, 6 Services, 6 Collections hien tai — <strong>HOAN TOAN KHONG THAY DOI</strong>. Agent auth, API controllers, services deu giu nguyen.</li>
+                    <li><strong>Mau xanh la (Existing):</strong> 6 Controllers, 6 Services, 6 Collections hien tai - <strong>HOAN TOAN KHONG THAY DOI</strong>. Agent auth, API controllers, services deu giu nguyen.</li>
                     <li><strong>Mau xanh duong (NEW):</strong> 3 Controllers moi (AdminAuthController, UserMgmtController, AuditController), 4 Services moi (AdminAuthService, RBACService, UserService, AuditService), va 3 Collections moi (users, admin_sessions, audit_logs).</li>
                     <li><strong>2 middleware song song:</strong> <code>AUTH_MW</code> (cu) xu ly Agent API Key + JWT. <code>RBAC_MW</code> (moi) xu ly Admin/Teacher cookie-based JWT + permission check + ownership check.</li>
                     <li><strong>Reuse JWTService:</strong> Service JWT hien tai duoc dung chung cho ca agent va admin tokens (chi khac payload).</li>
-                    <li><strong>Groups collection:</strong> Them truong <code>created_by</code> — thay doi nho nhung <strong>then chot</strong> cho ownership-based access control.</li>
+                    <li><strong>Groups collection:</strong> Them truong <code>created_by</code> - thay doi nho nhung <strong>then chot</strong> cho ownership-based access control.</li>
                 </ul>
             </div>
 
             <div class="note-box">
-                <strong>Quan trong — Zero Breaking Changes:</strong> Tat ca Agent API hien tai (<code>/api/*</code>) hoat dong binh thuong. RBAC chi them routes moi (<code>/admin/*</code>, <code>/login</code>) va them decorator vao dashboard routes hien co. Khong xoa, khong sua bat ky API endpoint nao cua Agent.
+                <strong>Quan trong - Zero Breaking Changes:</strong> Tat ca Agent API hien tai (<code>/api/*</code>) hoat dong binh thuong. RBAC chi them routes moi (<code>/admin/*</code>, <code>/login</code>) va them decorator vao dashboard routes hien co. Khong xoa, khong sua bat ky API endpoint nao cua Agent.
             </div>
         </div>
     </div>
@@ -1237,7 +1237,7 @@ graph TB
     <div class="diagram-section" id="d9">
         <div class="section-header">
             <div class="section-number">9</div>
-            <h2>Deployment Diagram — Trien khai he thong</h2>
+            <h2>Deployment Diagram - Trien khai he thong</h2>
         </div>
         <div class="section-body">
             <div class="diagram-box">
@@ -1321,12 +1321,12 @@ graph TB
     <div class="diagram-section" id="d10">
         <div class="section-header">
             <div class="section-number">10</div>
-            <h2>Permission Matrix — Ma tran quyen chi tiet</h2>
+            <h2>Permission Matrix - Ma tran quyen chi tiet</h2>
         </div>
         <div class="section-body">
             <div class="explanation" style="margin-top:0">
-                <h3>Ma tran phan quyen day du — Admin vs Teacher</h3>
-                <p>Bang duoi day mo ta chi tiet quyen cua tung role doi voi moi resource va action. Luu y cot <strong>"Ownership"</strong> — cho biet Teacher co bi gioi han boi ownership khong.</p>
+                <h3>Ma tran phan quyen day du - Admin vs Teacher</h3>
+                <p>Bang duoi day mo ta chi tiet quyen cua tung role doi voi moi resource va action. Luu y cot <strong>"Ownership"</strong> - cho biet Teacher co bi gioi han boi ownership khong.</p>
             </div>
 
             <table>
@@ -1545,16 +1545,16 @@ graph TB
             <div class="explanation">
                 <h3>Giai thich Permission Matrix</h3>
                 <ul>
-                    <li><strong>&#10003; = Co quyen day du</strong> — Thao tac tren tat ca resources.</li>
-                    <li><strong class="partial">~ Own = Co quyen gioi han boi Ownership</strong> — Chi thao tac tren resources ma Teacher so huu (created_by = user_id). Day la diem <strong>then chot</strong> cua thiet ke.</li>
-                    <li><strong>&#10007; = Khong co quyen</strong> — Khong the truy cap chuc nang nay.</li>
-                    <li><strong>Format permission:</strong> <code>resource:action</code> — de mo rong, de kiem tra. Vi du: <code>whitelist:create</code> = quyen tao whitelist rule.</li>
+                    <li><strong>&#10003; = Co quyen day du</strong> - Thao tac tren tat ca resources.</li>
+                    <li><strong class="partial">~ Own = Co quyen gioi han boi Ownership</strong> - Chi thao tac tren resources ma Teacher so huu (created_by = user_id). Day la diem <strong>then chot</strong> cua thiet ke.</li>
+                    <li><strong>&#10007; = Khong co quyen</strong> - Khong the truy cap chuc nang nay.</li>
+                    <li><strong>Format permission:</strong> <code>resource:action</code> - de mo rong, de kiem tra. Vi du: <code>whitelist:create</code> = quyen tao whitelist rule.</li>
                     <li><strong>Nguyen tac:</strong> Admin co <strong>toan quyen</strong> (30 permissions). Teacher co <strong>15 permissions</strong> nhung bi gioi han boi ownership tren Groups/Whitelist/Agents.</li>
                 </ul>
             </div>
 
             <div class="explanation">
-                <h3>Implementation Code — Permission Config</h3>
+                <h3>Implementation Code - Permission Config</h3>
             </div>
             <div class="code-block">
 <span class="cmt"># server/config/rbac_config.py</span>
@@ -1633,7 +1633,7 @@ graph TB
     <div class="diagram-section" id="d11">
         <div class="section-header">
             <div class="section-number">11</div>
-            <h2>Cau truc thu muc — Files moi & thay doi</h2>
+            <h2>Cau truc thu muc - Files moi & thay doi</h2>
         </div>
         <div class="section-body">
             <div class="explanation" style="margin-top:0">
@@ -1711,9 +1711,9 @@ graph TB
             <div class="explanation">
                 <h3>Thong ke thay doi</h3>
                 <ul>
-                    <li><strong class="new" style="color:#3fb950">Files MOI:</strong> 16 files — 3 models, 4 services, 3 controllers, 1 middleware, 1 config, 1 script, 4 templates/static</li>
-                    <li><strong class="modified" style="color:#d29922">Files SUA:</strong> 10 files — app.py, requirements.txt, base.html, va 7 templates can them role-based filtering</li>
-                    <li><strong class="existing" style="color:#8b949e">Files GIU NGUYEN:</strong> 17 files — Toan bo Agent auth, controllers, services, models hien tai</li>
+                    <li><strong class="new" style="color:#3fb950">Files MOI:</strong> 16 files - 3 models, 4 services, 3 controllers, 1 middleware, 1 config, 1 script, 4 templates/static</li>
+                    <li><strong class="modified" style="color:#d29922">Files SUA:</strong> 10 files - app.py, requirements.txt, base.html, va 7 templates can them role-based filtering</li>
+                    <li><strong class="existing" style="color:#8b949e">Files GIU NGUYEN:</strong> 17 files - Toan bo Agent auth, controllers, services, models hien tai</li>
                     <li><strong>Tong cong:</strong> ~43 files, trong do ~60% giu nguyen, dam bao <strong>zero breaking changes</strong></li>
                 </ul>
             </div>
@@ -1757,8 +1757,8 @@ graph TB
 </div>
 
 <div class="footer">
-    SAINT — Security Agent Integrated Network Tool | Admin & Teacher RBAC System Design v2.0<br/>
-    Bui Xuan Son — 20225586 — HUST/SOICT — 2026
+    SAINT - Security Agent Integrated Network Tool | Admin & Teacher RBAC System Design v2.0<br/>
+    Bui Xuan Son - 20225586 - HUST/SOICT - 2026
 </div>
 
 <script>

@@ -1,0 +1,178 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="whitelist-sync" name="Whitelist Sync Flow">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 10: Whitelist Sync (Agent ↔ Server)&lt;/b&gt;&lt;br&gt;GET /api/whitelist/agent-sync&lt;br&gt;&lt;i&gt;Luồng đồng bộ whitelist - Full vs Incremental&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="420" y="10" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Swimlanes -->
+        <mxCell id="lane_agent" value="&lt;b&gt;🖥️ AGENT&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_server" value="&lt;b&gt;🌐 SERVER&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="80" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_fw" value="&lt;b&gt;🛡️ FIREWALL&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="130" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="div1" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#ccc;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="380" y="80" as="sourcePoint" /><mxPoint x="380" y="1450" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="div2" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#ccc;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="900" y="80" as="sourcePoint" /><mxPoint x="900" y="1450" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Agent: Build params -->
+        <mxCell id="a_start" value="&lt;b&gt;WhitelistManager.sync_now()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Bắt đầu đồng bộ&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="170" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_params" value="&lt;b&gt;Build sync params&lt;/b&gt;&lt;br&gt;{agent_id,&lt;br&gt;global_version: state._version,&lt;br&gt;group_version: state._group_version,&lt;br&gt;group_id: state._group_id}&lt;br&gt;&lt;i&gt;Gửi kèm version hiện tại&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="45" y="205" width="200" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_start" target="a_params" parent="1" />
+
+        <!-- Send request -->
+        <mxCell id="a_send" value="&lt;b&gt;GET /api/whitelist/agent-sync&lt;/b&gt;&lt;br&gt;?agent_id=...&amp;global_version=...&lt;br&gt;&amp;group_version=...&lt;br&gt;&lt;i&gt;Gửi request sync&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="325" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_params" target="a_send" parent="1" />
+
+        <!-- Arrow to server -->
+        <mxCell id="e_req" value="JWT + version params" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=2;fontSize=9;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="235" y="355" as="sourcePoint" /><mxPoint x="480" y="355" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Server: get_agent_sync_data -->
+        <mxCell id="s_auth" value="&lt;b&gt;@require_jwt&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xác thực Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="340" width="130" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_find" value="&lt;b&gt;Validate agent + get group&lt;/b&gt;&lt;br&gt;Find agent → get group_id&lt;br&gt;Get current global_version&lt;br&gt;Get current group_version&lt;br&gt;&lt;i&gt;Tìm agent + lấy version hiện tại&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="405" width="210" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_auth" target="s_find" parent="1" />
+
+        <!-- Version check -->
+        <mxCell id="s_d1" value="&lt;b&gt;Versions match?&lt;/b&gt;&lt;br&gt;global_version == current?&lt;br&gt;group_version == current?&lt;br&gt;&lt;i&gt;Version khớp?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="520" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_find" target="s_d1" parent="1" />
+
+        <!-- Up to date -->
+        <mxCell id="s_uptodate" value="&lt;b&gt;200 OK (up_to_date)&lt;/b&gt;&lt;br&gt;{domains: [], up_to_date: true,&lt;br&gt;count: 0}&lt;br&gt;&lt;i&gt;Agent đã có data mới nhất&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="730" y="520" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Yes (match)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="s_d1" target="s_uptodate" parent="1" />
+
+        <!-- Need sync -->
+        <mxCell id="s_d2" value="&lt;b&gt;Has previous&lt;br&gt;version?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Có version cũ?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="505" y="660" width="120" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="No (mismatch)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="s_d1" target="s_d2" parent="1" />
+
+        <!-- Full sync -->
+        <mxCell id="s_full" value="&lt;b&gt;🔄 FULL SYNC&lt;/b&gt;&lt;br&gt;Get ALL active entries&lt;br&gt;Global + Group merged&lt;br&gt;type: &quot;full&quot;&lt;br&gt;&lt;i&gt;Đồng bộ toàn bộ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="695" y="670" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="No (first sync)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="s_d2" target="s_full" parent="1" />
+
+        <!-- Incremental sync -->
+        <mxCell id="s_incr" value="&lt;b&gt;📥 INCREMENTAL SYNC&lt;/b&gt;&lt;br&gt;Get entries modified since timestamp&lt;br&gt;type: &quot;incremental&quot;&lt;br&gt;&lt;i&gt;Chỉ lấy thay đổi mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="785" width="210" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Yes (has version)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#6c8ebf;fontSize=10;" edge="1" source="s_d2" target="s_incr" parent="1" />
+
+        <!-- Merge global + group -->
+        <mxCell id="s_merge" value="&lt;b&gt;_merge_whitelists()&lt;/b&gt;&lt;br&gt;Global entries + Group entries&lt;br&gt;Group scope wins on conflict&lt;br&gt;&lt;i&gt;Gộp whitelist global + nhóm&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="885" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_full" target="s_merge" parent="1" />
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_incr" target="s_merge" parent="1" />
+
+        <!-- Server response -->
+        <mxCell id="s_resp" value="&lt;b&gt;200 OK&lt;/b&gt;&lt;br&gt;{domains: [...], global_version,&lt;br&gt;group_version, group_id,&lt;br&gt;type: &quot;full|incremental&quot;, count}&lt;br&gt;&lt;i&gt;Trả whitelist cho Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="985" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_merge" target="s_resp" parent="1" />
+
+        <!-- Arrow back to agent -->
+        <mxCell id="e_resp" value="200 + whitelist data" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=9;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="1020" as="sourcePoint" /><mxPoint x="235" y="1020" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agent: handle response -->
+        <mxCell id="a_d1" value="&lt;b&gt;type?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="995" width="80" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Full: REPLACE -->
+        <mxCell id="a_full" value="&lt;b&gt;REPLACE state&lt;/b&gt;&lt;br&gt;_domains = new_domains&lt;br&gt;_patterns = new_patterns&lt;br&gt;_ips = new_ips&lt;br&gt;&lt;i&gt;Thay thế toàn bộ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1090" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="full" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="a_d1" target="a_full" parent="1" />
+
+        <!-- Incremental: MERGE -->
+        <mxCell id="a_incr" value="&lt;b&gt;MERGE into state&lt;/b&gt;&lt;br&gt;_domains |= new_domains&lt;br&gt;_patterns |= new_patterns&lt;br&gt;_ips |= new_ips&lt;br&gt;&lt;i&gt;Gộp thêm vào&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1090" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="incremental" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#6c8ebf;fontSize=10;" edge="1" source="a_d1" target="a_incr" parent="1" />
+
+        <!-- Update versions -->
+        <mxCell id="a_ver" value="&lt;b&gt;Update state versions&lt;/b&gt;&lt;br&gt;_version = global_version&lt;br&gt;_group_version = group_version&lt;br&gt;_group_id = group_id&lt;br&gt;&lt;i&gt;Cập nhật version mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1200" width="190" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_full" target="a_ver" parent="1" />
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_incr" target="a_ver" parent="1" />
+
+        <!-- Trigger firewall -->
+        <mxCell id="a_fw" value="&lt;b&gt;_update_firewall_rules()&lt;/b&gt;&lt;br&gt;1. DNS resolve all domains&lt;br&gt;2. Combine: direct IPs + resolved IPs&lt;br&gt;3. Always whitelist server URLs&lt;br&gt;&lt;i&gt;Cập nhật firewall&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1305" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_ver" target="a_fw" parent="1" />
+
+        <!-- Arrow to firewall -->
+        <mxCell id="e_fw" value="Update rules" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="1340" as="sourcePoint" /><mxPoint x="1080" y="1340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Firewall -->
+        <mxCell id="fw" value="&lt;b&gt;🛡️ Windows Firewall&lt;/b&gt;&lt;br&gt;Update outbound rules&lt;br&gt;Allow IPs in whitelist&lt;br&gt;Block all others&lt;br&gt;&lt;i&gt;Cập nhật quy tắc tường lửa&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="1310" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Entry type legend -->
+        <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="130" width="260" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_title" value="&lt;b&gt;Entry Types / Loại entry&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="135" width="170" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="&lt;b&gt;domain&lt;/b&gt;: google.com → DNS → IPs&lt;br&gt;&lt;i&gt;Tên miền, cần phân giải DNS&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="160" width="230" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" value="&lt;b&gt;ip&lt;/b&gt;: 192.168.1.0/24 → direct rule&lt;br&gt;&lt;i&gt;Địa chỉ IP, áp dụng trực tiếp&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="190" width="230" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" value="&lt;b&gt;pattern&lt;/b&gt;: *.google.com → wildcard&lt;br&gt;&lt;i&gt;Mẫu ký tự đại diện&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="220" width="230" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" value="&lt;b&gt;scope&lt;/b&gt;: global (tất cả) | group (nhóm)" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="248" width="230" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

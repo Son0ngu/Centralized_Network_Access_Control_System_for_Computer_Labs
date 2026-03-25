@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Callable, Optional
 
-from shared.time_utils import now, now_iso, sleep
+from shared.time_utils import now, now_iso, now_server_compatible, sleep
 
 logger = logging.getLogger("whitelist.monitor")
 
@@ -14,7 +14,7 @@ class WhitelistMonitor:
         self._interval = interval
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._last_sync = now()
+        self._last_sync = None
         self._sync_count = 0
         self._error_count = 0
     
@@ -65,7 +65,7 @@ class WhitelistMonitor:
         return {
             "running": self._running,
             "interval": self._interval,
-            "last_sync": now_iso() if self._last_sync else None,
+            "last_sync": now_server_compatible(self._last_sync) if self._last_sync else None,
             "sync_count": self._sync_count,
             "error_count": self._error_count
         }

@@ -1,7 +1,7 @@
 """
-Audit Service - Ghi log moi hanh dong thay doi du lieu.
+Audit Service - Log every data-changing action.
 - Format action: resource.action (e.g. user.create, whitelist.update)
-- Ghi nhan user, role, IP, timestamp, change details
+- Records user, role, IP, timestamp, change details
 """
 
 import logging

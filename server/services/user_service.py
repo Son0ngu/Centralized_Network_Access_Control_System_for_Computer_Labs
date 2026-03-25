@@ -1,7 +1,7 @@
 """
 User Service - CRUD Teacher accounts (Admin only).
-- Admin tao/sua/xoa Teacher accounts
-- Khong co register public
+- Admin creates/edits/deletes Teacher accounts
+- No public registration
 """
 
 import logging
@@ -29,7 +29,7 @@ class UserService:
         self.socketio = socketio
 
     # ========================================================================
-    # CREATE (Admin tao Teacher)
+    # CREATE (Admin creates Teacher)
     # ========================================================================
 
     def create_user(self, username: str, password: str, role: str = "teacher",
@@ -51,30 +51,30 @@ class UserService:
             # Validate username
             username = username.strip().lower()
             if len(username) < 3 or len(username) > 50:
-                return False, {}, "Username phai tu 3-50 ky tu"
+                return False, {}, "Username must be 3-50 characters"
 
             if not all(c.isalnum() or c in "_.-" for c in username):
-                return False, {}, "Username chi chua chu, so, dau gach va dau cham"
+                return False, {}, "Username may only contain letters, numbers, hyphens, and dots"
 
             # Check duplicate
             if self.user_model.find_by_username(username):
-                return False, {}, "Username da ton tai"
+                return False, {}, "Username already exists"
 
             # Validate email
             if email:
                 email = email.strip().lower()
                 if self.user_model.find_by_email(email):
-                    return False, {}, "Email da duoc su dung"
+                    return False, {}, "Email already in use"
 
             # Validate role
             if role not in VALID_ROLES:
-                return False, {}, f"Role khong hop le. Chi chap nhan: {VALID_ROLES}"
+                return False, {}, f"Invalid role. Only accepted: {VALID_ROLES}"
 
             # Validate password
             if len(password) < MIN_PASSWORD_LENGTH:
-                return False, {}, f"Password phai co it nhat {MIN_PASSWORD_LENGTH} ky tu"
+                return False, {}, f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
             if len(password) > MAX_PASSWORD_LENGTH:
-                return False, {}, f"Password khong duoc qua {MAX_PASSWORD_LENGTH} ky tu"
+                return False, {}, f"Password must not exceed {MAX_PASSWORD_LENGTH} characters"
 
             # Hash password
             password_hash = bcrypt.hashpw(
@@ -113,7 +113,7 @@ class UserService:
 
         except Exception as e:
             self.logger.error(f"Error creating user: {e}")
-            return False, {}, f"Tao user that bai: {str(e)}"
+            return False, {}, f"Failed to create user: {str(e)}"
 
     # ========================================================================
     # READ
@@ -142,19 +142,19 @@ class UserService:
         try:
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, "User khong ton tai"
+                return False, "User not found"
 
             # Only allow safe fields
             allowed = {"email", "role", "is_active"}
             safe_data = {k: v for k, v in update_data.items() if k in allowed}
 
             if "role" in safe_data and safe_data["role"] not in VALID_ROLES:
-                return False, f"Role khong hop le. Chi chap nhan: {VALID_ROLES}"
+                return False, f"Invalid role. Only accepted: {VALID_ROLES}"
 
             if "email" in safe_data and safe_data["email"]:
                 existing = self.user_model.find_by_email(safe_data["email"])
                 if existing and str(existing["_id"]) != user_id:
-                    return False, "Email da duoc su dung"
+                    return False, "Email already in use"
 
             success = self.user_model.update(user_id, safe_data)
 
@@ -171,7 +171,7 @@ class UserService:
 
         except Exception as e:
             self.logger.error(f"Error updating user: {e}")
-            return False, f"Cap nhat that bai: {str(e)}"
+            return False, f"Update failed: {str(e)}"
 
     def toggle_active(self, user_id: str, is_active: bool,
                       updated_by_user: Dict = None) -> Tuple[bool, Optional[str]]:
@@ -179,13 +179,13 @@ class UserService:
         try:
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, "User khong ton tai"
+                return False, "User not found"
 
             # Cannot disable last admin
             if not is_active and user.get("role") == "admin":
                 count = self.user_model.count_users({"role": "admin", "is_active": True})
                 if count <= 1:
-                    return False, "Khong the vo hieu hoa admin cuoi cung"
+                    return False, "Cannot deactivate the last admin"
 
             success = self.user_model.update(user_id, {"is_active": is_active})
 
@@ -203,7 +203,7 @@ class UserService:
 
         except Exception as e:
             self.logger.error(f"Error toggling user active: {e}")
-            return False, "Thao tac that bai"
+            return False, "Operation failed"
 
     def reset_password(self, user_id: str, new_password: str,
                        reset_by_user: Dict = None) -> Tuple[bool, Optional[str]]:
@@ -211,10 +211,10 @@ class UserService:
         try:
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, "User khong ton tai"
+                return False, "User not found"
 
             if len(new_password) < MIN_PASSWORD_LENGTH:
-                return False, f"Password phai co it nhat {MIN_PASSWORD_LENGTH} ky tu"
+                return False, f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
 
             new_hash = bcrypt.hashpw(
                 new_password.encode("utf-8"),
@@ -236,7 +236,7 @@ class UserService:
 
         except Exception as e:
             self.logger.error(f"Error resetting password: {e}")
-            return False, "Reset mat khau that bai"
+            return False, "Password reset failed"
 
     # ========================================================================
     # DELETE
@@ -248,17 +248,17 @@ class UserService:
         try:
             user = self.user_model.find_by_id(user_id)
             if not user:
-                return False, "User khong ton tai"
+                return False, "User not found"
 
             # Cannot delete last admin
             if user.get("role") == "admin":
                 count = self.user_model.count_users({"role": "admin", "is_active": True})
                 if count <= 1:
-                    return False, "Khong the xoa admin cuoi cung"
+                    return False, "Cannot delete the last admin"
 
             # Cannot self-delete
             if deleted_by_user and str(deleted_by_user.get("_id")) == user_id:
-                return False, "Khong the tu xoa chinh minh"
+                return False, "Cannot delete yourself"
 
             success = self.user_model.delete(user_id)
 
@@ -275,7 +275,7 @@ class UserService:
 
         except Exception as e:
             self.logger.error(f"Error deleting user: {e}")
-            return False, f"Xoa user that bai: {str(e)}"
+            return False, f"Failed to delete user: {str(e)}"
 
     # ========================================================================
     # SEED DEFAULT ADMIN

@@ -48,15 +48,15 @@ class AgentPolicyService:
                    reason: str = "", custom_whitelist: List[Dict] = None,
                    duration_minutes: int = None) -> Dict:
         """
-        Set policy cho agent.
+        Set policy for agent.
 
         Args:
             agent_id: target agent
             mode: "none" | "isolate" | "custom_whitelist"
             applied_by_user: g.current_user dict
-            reason: lý do áp dụng
-            custom_whitelist: danh sách domain (chỉ khi mode=custom_whitelist)
-            duration_minutes: tự hết hạn sau N phút (None = vĩnh viễn)
+            reason: reason for applying
+            custom_whitelist: list of domains (only when mode=custom_whitelist)
+            duration_minutes: auto-expire after N minutes (None = permanent)
         """
         # Validate agent exists
         agent = self.agent_model.find_by_agent_id(agent_id)
@@ -77,7 +77,7 @@ class AgentPolicyService:
             expires_at=expires_at,
         )
 
-        # Broadcast qua SocketIO để frontend cập nhật real-time
+        # Broadcast via SocketIO for real-time frontend updates
         if self.socketio:
             self.socketio.emit("agent_policy_changed", {
                 "agent_id": agent_id,
@@ -98,7 +98,7 @@ class AgentPolicyService:
     def isolate_agent(self, agent_id: str, applied_by_user: Dict,
                       reason: str = "Isolated by teacher",
                       duration_minutes: int = None) -> Dict:
-        """Shortcut: cắt mạng hoàn toàn 1 agent."""
+        """Shortcut: completely cut network for an agent."""
         return self.set_policy(
             agent_id=agent_id,
             mode="isolate",
@@ -108,7 +108,7 @@ class AgentPolicyService:
         )
 
     def reset_agent(self, agent_id: str, applied_by_user: Dict) -> Dict:
-        """Shortcut: bỏ isolate/custom, trả về group whitelist bình thường."""
+        """Shortcut: remove isolate/custom, return to normal group whitelist."""
         return self.set_policy(
             agent_id=agent_id,
             mode="none",
@@ -116,18 +116,18 @@ class AgentPolicyService:
             reason="Reset to group default",
         )
 
-    # ── Merge policy vào sync response ────────────────────────
+    # ── Merge policy into sync response ────────────────────────
 
-    # DNS servers cần thiết để agent resolve domain của SAINT server.
-    # Nếu chặn DNS → agent không resolve được server domain → Deadlock.
+    # DNS servers required for agent to resolve SAINT server domain.
+    # If DNS is blocked → agent cannot resolve server domain → Deadlock.
     ESSENTIAL_DNS_IPS = ["8.8.8.8", "8.8.4.4", "1.1.1.1"]
 
     def _build_system_entries(self, server_host: str = None, source: str = "policy_system") -> List[Dict]:
         """
-        Build danh sách domain/IP hệ thống LUÔN phải có trong mọi policy override.
-        Bao gồm:
-          - Server host (để agent duy trì kết nối API)
-          - DNS servers (để resolve server domain nếu server dùng domain thay vì IP)
+        Build list of system domains/IPs that MUST be present in all policy overrides.
+        Includes:
+          - Server host (so agent maintains API connection)
+          - DNS servers (to resolve server domain if server uses domain instead of IP)
         """
         entries = []
         if server_host:
@@ -137,7 +137,7 @@ class AgentPolicyService:
                 "is_active": True,
                 "source": source,
             })
-        # Luôn cho phép DNS — tránh deadlock khi server dùng domain
+        # Always allow DNS - avoid deadlock when server uses domain
         for dns_ip in self.ESSENTIAL_DNS_IPS:
             entries.append({
                 "domain": dns_ip,
@@ -151,20 +151,20 @@ class AgentPolicyService:
                              group_domains: List[Dict],
                              server_host: str = None) -> Dict:
         """
-        Core function: Merge agent policy vào whitelist sync response.
-        Gọi từ whitelist_service.get_agent_sync_data().
+        Core function: Merge agent policy into whitelist sync response.
+        Called from whitelist_service.get_agent_sync_data().
 
         Returns:
             {
-                "domains": [...],       # Whitelist sau khi merge
-                "policy_mode": "none",  # Mode hiện tại
-                "policy_active": False, # Có override không
+                "domains": [...],       # Whitelist after merge
+                "policy_mode": "none",  # Current mode
+                "policy_active": False, # Whether override is active
             }
         """
         effective_mode = self.policy_model.get_effective_mode(agent_id)
 
         if effective_mode == "none":
-            # Không override → trả nguyên group whitelist
+            # No override → return original group whitelist
             return {
                 "domains": group_domains,
                 "policy_mode": "none",
@@ -172,7 +172,7 @@ class AgentPolicyService:
             }
 
         if effective_mode == "isolate":
-            # Chặn toàn bộ — chỉ giữ server IP + DNS để agent không mất kết nối
+            # Block all - only keep server IP + DNS so agent doesn't lose connection
             minimal_domains = self._build_system_entries(server_host, "policy_isolate")
             return {
                 "domains": minimal_domains,
@@ -181,9 +181,9 @@ class AgentPolicyService:
             }
 
         if effective_mode == "custom_whitelist":
-            # Thay thế group whitelist bằng custom list
+            # Replace group whitelist with custom list
             custom_entries = self.policy_model.get_custom_whitelist(agent_id)
-            # Server host + DNS luôn có trong list
+            # Server host + DNS always included in list
             domains = self._build_system_entries(server_host, "policy_custom")
             for entry in custom_entries:
                 domains.append({
@@ -208,9 +208,9 @@ class AgentPolicyService:
     # ── Dashboard helpers ─────────────────────────────────────
 
     def get_policies_for_agents(self, agent_ids: List[str]) -> Dict[str, Dict]:
-        """Batch load policies (cho list_agents dashboard)."""
+        """Batch load policies (for list_agents dashboard)."""
         return self.policy_model.list_policies_by_agent_ids(agent_ids)
 
     def get_stats(self) -> Dict:
-        """Thống kê policy (cho dashboard)."""
+        """Policy statistics (for dashboard)."""
         return self.policy_model.count_by_mode()

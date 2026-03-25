@@ -1,0 +1,130 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="heartbeat" name="Heartbeat Thread">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 21: Heartbeat Thread&lt;/b&gt;&lt;br&gt;HeartbeatSender - services/heartbeat.py&lt;br&gt;&lt;i&gt;Luồng gửi heartbeat định kỳ (20s)&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="420" y="10" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Config -->
+        <mxCell id="config" value="&lt;b&gt;Configuration:&lt;/b&gt;&lt;br&gt;interval = &lt;b&gt;20s&lt;/b&gt; | timeout = &lt;b&gt;10s&lt;/b&gt;&lt;br&gt;retry_interval = &lt;b&gt;5s&lt;/b&gt; | max_failures = &lt;b&gt;3&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="250" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="&lt;b&gt;Thread Start&lt;/b&gt;&lt;br&gt;daemon=True" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="540" y="80" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Collect metrics -->
+        <mxCell id="s1" value="&lt;b&gt;_collect_metrics()&lt;/b&gt;&lt;br&gt;CPU%, memory%, disk%, uptime_seconds&lt;br&gt;&lt;i&gt;Thu thập thông số hệ thống&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="165" width="270" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="s1" parent="1" />
+
+        <!-- Build payload -->
+        <mxCell id="s2" value="&lt;b&gt;Build heartbeat_data&lt;/b&gt;&lt;br&gt;{agent_id, token, device_id, timestamp,&lt;br&gt;metrics, status: &quot;active&quot;,&lt;br&gt;platform, os_info, agent_version: &quot;1.0.0&quot;}&lt;br&gt;&lt;i&gt;Tạo dữ liệu heartbeat&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="245" width="290" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1" target="s2" parent="1" />
+
+        <!-- POST -->
+        <mxCell id="s3" value="&lt;b&gt;POST /api/agents/heartbeat&lt;/b&gt;&lt;br&gt;timeout: 10s, JWT auth header&lt;br&gt;&lt;i&gt;Gửi heartbeat đến Server&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="345" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s2" target="s3" parent="1" />
+
+        <!-- Success? -->
+        <mxCell id="d1" value="&lt;b&gt;Success?&lt;/b&gt;&lt;br&gt;HTTP 200?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="545" y="425" width="120" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s3" target="d1" parent="1" />
+
+        <!-- Success path -->
+        <mxCell id="ok_reset" value="&lt;b&gt;consecutive_failures = 0&lt;/b&gt;&lt;br&gt;last_successful = now()&lt;br&gt;&lt;i&gt;Reset bộ đếm lỗi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="430" width="210" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;" edge="1" source="d1" target="ok_reset" parent="1" />
+
+        <!-- Check force_sync -->
+        <mxCell id="d2" value="&lt;b&gt;Server says&lt;br&gt;force_sync?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Yêu cầu đồng bộ?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="285" y="505" width="130" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ok_reset" target="d2" parent="1" />
+
+        <mxCell id="force_sync" value="&lt;b&gt;on_force_sync()&lt;/b&gt;&lt;br&gt;→ whitelist.sync_now()&lt;br&gt;&lt;i&gt;Đồng bộ whitelist ngay&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="510" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d6b656;fontSize=9;" edge="1" source="d2" target="force_sync" parent="1" />
+
+        <!-- Sleep 20s -->
+        <mxCell id="sleep_ok" value="&lt;b&gt;Sleep 20s&lt;/b&gt; (interruptible)&lt;br&gt;&lt;i&gt;Chờ 20 giây&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="285" y="610" width="180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=9;" edge="1" source="d2" target="sleep_ok" parent="1" />
+        <mxCell id="e8b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="force_sync" target="sleep_ok" parent="1" />
+
+        <!-- Failure path -->
+        <mxCell id="fail" value="&lt;b&gt;consecutive_failures++&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tăng bộ đếm lỗi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="750" y="435" width="180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;" edge="1" source="d1" target="fail" parent="1" />
+
+        <mxCell id="d3" value="&lt;b&gt;failures ≥ 3?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="775" y="500" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="fail" target="d3" parent="1" />
+
+        <mxCell id="critical" value="&lt;b&gt;⚠️ CRITICAL ERROR&lt;/b&gt;&lt;br&gt;Too many consecutive failures&lt;br&gt;Log error, continue trying&lt;br&gt;&lt;i&gt;Lỗi nghiêm trọng - tiếp tục thử&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="960" y="495" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="d3" target="critical" parent="1" />
+
+        <!-- Sleep 5s -->
+        <mxCell id="sleep_fail" value="&lt;b&gt;Sleep 5s&lt;/b&gt; (retry interval)&lt;br&gt;&lt;i&gt;Chờ 5 giây rồi thử lại&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="775" y="610" width="180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=9;" edge="1" source="d3" target="sleep_fail" parent="1" />
+        <mxCell id="e12b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="critical" target="sleep_fail" parent="1" />
+
+        <!-- Loop back -->
+        <mxCell id="d_running" value="&lt;b&gt;_running?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="690" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sleep_ok" target="d_running" parent="1" />
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sleep_fail" target="d_running" parent="1" />
+
+        <mxCell id="loop_back" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;entryX=1;entryY=0.5;" edge="1" source="d_running" target="s1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="715" />
+              <mxPoint x="430" y="190" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop_label" value="Yes (loop)" style="text;html=1;fontSize=9;fontStyle=1;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="435" y="695" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end" value="&lt;b&gt;Thread Exit&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kết thúc luồng&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="690" y="700" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="No (shutdown)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="d_running" target="end" parent="1" />
+
+        <!-- Data sent box -->
+        <mxCell id="data_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="160" width="350" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="data_title" value="&lt;b&gt;Heartbeat Payload / Dữ liệu gửi đi&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="165" width="230" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="data" value="&lt;pre style='font-size:9px;margin:2px'&gt;POST /api/agents/heartbeat&lt;br&gt;Authorization: Bearer &lt;jwt_token&gt;&lt;br&gt;&lt;br&gt;{&lt;br&gt;  &quot;agent_id&quot;: &quot;abc123&quot;,&lt;br&gt;  &quot;token&quot;: &quot;legacy_token&quot;,&lt;br&gt;  &quot;device_id&quot;: &quot;SAINT-PC01&quot;,&lt;br&gt;  &quot;timestamp&quot;: &quot;2026-03-23T10:00:00+07:00&quot;,&lt;br&gt;  &quot;metrics&quot;: {&lt;br&gt;    &quot;cpu_percent&quot;: 25.3,&lt;br&gt;    &quot;memory_percent&quot;: 68.1,&lt;br&gt;    &quot;disk_percent&quot;: 45.2,&lt;br&gt;    &quot;uptime_seconds&quot;: 86400&lt;br&gt;  },&lt;br&gt;  &quot;status&quot;: &quot;active&quot;,&lt;br&gt;  &quot;platform&quot;: &quot;Windows&quot;,&lt;br&gt;  &quot;os_info&quot;: &quot;Windows 11 Pro 10.0.26200&quot;,&lt;br&gt;  &quot;agent_version&quot;: &quot;1.0.0&quot;&lt;br&gt;}&lt;/pre&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="40" y="190" width="330" height="190" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

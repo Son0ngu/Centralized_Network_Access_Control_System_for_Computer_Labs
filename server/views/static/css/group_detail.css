@@ -799,7 +799,7 @@
 }
 
 /* ========================================
-   AGENT POLICY — Context Menu
+   AGENT POLICY - Context Menu
    ======================================== */
 
 .agent-context-menu {
@@ -869,10 +869,10 @@
 }
 
 /* ========================================
-   AGENT POLICY — Visual Overlay on Device Cards
+   AGENT POLICY - Visual Overlay on Device Cards
    ======================================== */
 
-/* Isolate overlay — red cage effect */
+/* Isolate overlay - red cage effect */
 .device-card.policy-isolate {
     border-color: #dc3545 !important;
     background: repeating-linear-gradient(
@@ -887,7 +887,7 @@
     color: #dc3545 !important;
 }
 
-/* Custom whitelist overlay — yellow/warning */
+/* Custom whitelist overlay - yellow/warning */
 .device-card.policy-custom_whitelist {
     border-color: #ffc107 !important;
     background: #fffbe6 !important;
@@ -923,7 +923,7 @@
 }
 
 /* ========================================
-   AGENT POLICY — Custom Whitelist Modal
+   AGENT POLICY - Custom Whitelist Modal
    ======================================== */
 
 .custom-wl-domain-list {
@@ -978,7 +978,7 @@
     box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
 }
 
-/* Domain list item — editable row */
+/* Domain list item - editable row */
 .wl-entry {
     display: flex;
     align-items: center;
@@ -1042,7 +1042,7 @@
     padding: 0.15em 0.4em;
 }
 
-/* Action buttons — hidden by default, show on hover */
+/* Action buttons - hidden by default, show on hover */
 .wl-actions {
     display: flex;
     gap: 2px;

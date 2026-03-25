@@ -28,26 +28,32 @@ class GroupModel:
             self.logger.warning(f"Error creating group indexes: {exc}")
 
     def ensure_pending_group(self) -> Dict:
-        existing = self.collection.find_one({"is_system": True, "name": "pending"})
-        if existing:
-            return existing
-
         now = now_vietnam()
-        group = {
-            "name": "pending",
-            "description": "System group for pending agents",
-            "created_at": now,
-            "updated_at": now,
-            "is_system": True,
-            "whitelist": [],
-            "whitelist_version": 1,
-        }
         try:
-            inserted = self.collection.insert_one(group)
-            group["_id"] = inserted.inserted_id
-            return group
+            # Atomic upsert to avoid race condition between check and insert
+            result = self.collection.find_one_and_update(
+                {"is_system": True, "name": "pending"},
+                {
+                    "$setOnInsert": {
+                        "name": "pending",
+                        "description": "System group for pending agents",
+                        "created_at": now,
+                        "updated_at": now,
+                        "is_system": True,
+                        "whitelist": [],
+                        "whitelist_version": 1,
+                    }
+                },
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+            return result
         except Exception as exc:
-            self.logger.error(f"Failed to create pending group: {exc}")
+            self.logger.error(f"Failed to ensure pending group: {exc}")
+            # Fallback: try to find existing (may have been created by another process)
+            existing = self.collection.find_one({"is_system": True, "name": "pending"})
+            if existing:
+                return existing
             raise
 
     def create_group(self, name: str, description: str = "", whitelist: Optional[List[Dict]] = None, is_system: bool = False, created_by=None) -> Dict:
@@ -112,8 +118,15 @@ class GroupModel:
             update_payload["layout"] = update_data["layout"]
         if "whitelist" in update_data:
             update_payload["whitelist"] = update_data.get("whitelist") or []
+            # Always bump whitelist_version when whitelist changes
             if "whitelist_version" in update_data:
-                update_payload["whitelist_version"] = update_data.get("whitelist_version")
+                update_payload["whitelist_version"] = update_data["whitelist_version"]
+            else:
+                # Auto-bump: caller didn't provide version, use $inc after $set
+                # For simplicity, read current and increment
+                current = self.collection.find_one({"_id": ObjectId(group_id)})
+                if current:
+                    update_payload["whitelist_version"] = current.get("whitelist_version", 0) + 1
 
         result = self.collection.find_one_and_update(
             {"_id": ObjectId(group_id)},

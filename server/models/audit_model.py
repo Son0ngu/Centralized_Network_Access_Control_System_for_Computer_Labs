@@ -1,7 +1,7 @@
 """
-Audit Model - Ghi lai moi hanh dong thay doi du lieu.
+Audit Model - Records every data-changing action.
 - Format action: resource.action (e.g. user.create, whitelist.update)
-- Luu change diff JSON trong truong details
+- Stores change diff JSON in the details field
 """
 
 import logging

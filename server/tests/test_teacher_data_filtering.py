@@ -44,7 +44,7 @@ def app():
 
 @pytest.fixture
 def admin_user():
-    """Admin user — toan quyen, no ownership filter."""
+    """Admin user - toan quyen, no ownership filter."""
     return {
         "_id": ObjectId("650000000000000000000001"),
         "username": "admin_user",
@@ -55,7 +55,7 @@ def admin_user():
 
 @pytest.fixture
 def teacher_user():
-    """Teacher user — limited by ownership."""
+    """Teacher user - limited by ownership."""
     return {
         "_id": ObjectId("650000000000000000000002"),
         "username": "teacher_nguyen",
@@ -66,7 +66,7 @@ def teacher_user():
 
 @pytest.fixture
 def teacher_user_2():
-    """Second teacher — different user, different groups."""
+    """Second teacher - different user, different groups."""
     return {
         "_id": ObjectId("650000000000000000000003"),
         "username": "teacher_tran",
@@ -118,7 +118,7 @@ def sample_agents():
 # ============================================================================
 
 class TestRBACServiceGetTeacherGroupIds:
-    """Test get_teacher_group_ids() — core helper."""
+    """Test get_teacher_group_ids() - core helper."""
 
     def test_admin_returns_none(self, mock_group_model, mock_agent_model, admin_user):
         from services.rbac_service import RBACService
@@ -182,7 +182,7 @@ class TestRBACServiceGetGroupQueryFilter:
 
 
 class TestRBACServiceGetLogQueryFilter:
-    """Test get_log_query_filter() — chains teacher → groups → agents → logs."""
+    """Test get_log_query_filter() - chains teacher → groups → agents → logs."""
 
     def test_admin_returns_none(self, mock_group_model, mock_agent_model, admin_user):
         from services.rbac_service import RBACService
@@ -324,7 +324,7 @@ class TestRBACServiceCanTeacherAccessAgent:
 
 
 class TestRBACServiceCanAccessGroup:
-    """Test can_access_group() — ownership check for groups."""
+    """Test can_access_group() - ownership check for groups."""
 
     def test_admin_always_true(self, mock_group_model, admin_user):
         from services.rbac_service import RBACService
@@ -1235,7 +1235,7 @@ class TestEdgeCases:
 # ============================================================================
 
 class TestInjectCurrentUserDecorator:
-    """Test inject_current_user — the key mechanism."""
+    """Test inject_current_user - the key mechanism."""
 
     def test_no_token_sets_none(self, app):
         """No cookie/token → g.current_user = None."""
@@ -1251,7 +1251,7 @@ class TestInjectCurrentUserDecorator:
             assert result is None
 
     def test_decorator_does_not_block_request(self, app):
-        """inject_current_user should NEVER return 401/403 — it's non-blocking."""
+        """inject_current_user should NEVER return 401/403 - it's non-blocking."""
         from middleware.rbac import inject_current_user
 
         @inject_current_user

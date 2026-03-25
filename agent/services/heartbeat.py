@@ -38,8 +38,8 @@ class HeartbeatSender:
         self._consecutive_failures = 0
         self._last_successful_heartbeat: Optional[float] = None
 
-        # Callback khi server yêu cầu force sync (agent policy changed)
-        self.on_force_sync = None  # Set bởi caller: fn() -> None
+        # Callback when server requests force sync (agent policy changed)
+        self.on_force_sync = None  # Set by caller: fn() -> None
     
     def _get_server_urls(self) -> list:
         urls = []

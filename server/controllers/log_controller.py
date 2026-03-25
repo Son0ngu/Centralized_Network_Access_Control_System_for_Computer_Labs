@@ -1,7 +1,7 @@
 """
 Log Controller - handles log HTTP requests
 RBAC: inject_current_user on web-facing endpoints for teacher data filtering.
-- Agent endpoint (receive_logs via POST) keeps require_jwt — NOT affected
+- Agent endpoint (receive_logs via POST) keeps require_jwt - NOT affected
 - Web-facing endpoints apply teacher ownership filter (logs from teacher's agents only)
 - Teacher does NOT have logs:delete or logs:export permissions
 """
@@ -46,29 +46,29 @@ class LogController:
                                    methods=['GET'],
                                    view_func=inject_current_user(self.get_statistics))
 
-        # POST /api/logs - Receive logs from agents (requires JWT — NOT affected)
+        # POST /api/logs - Receive logs from agents (requires JWT - NOT affected)
         self.blueprint.add_url_rule('/logs',
                                    methods=['POST'],
                                    view_func=require_jwt(self.receive_logs))
 
-        # GET /api/logs - List logs (web-facing — teacher filtered)
+        # GET /api/logs - List logs (web-facing - teacher filtered)
         self.blueprint.add_url_rule('/logs',
                                    methods=['GET'],
                                    view_func=inject_current_user(self.list_logs))
 
-        # DELETE /api/logs/clear - Clear logs (web-facing — teacher blocked)
+        # DELETE /api/logs/clear - Clear logs (web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs/clear',
                                    methods=['DELETE'],
                                    endpoint='clear_logs',
                                    view_func=inject_current_user(self.clear_logs))
 
-        # DELETE /api/logs - Clear all logs (legacy, web-facing — teacher blocked)
+        # DELETE /api/logs - Clear all logs (legacy, web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs',
                                    methods=['DELETE'],
                                    endpoint='clear_logs_legacy',
                                    view_func=inject_current_user(self.clear_logs))
 
-        # GET /api/logs/export - Export logs (web-facing — teacher blocked)
+        # GET /api/logs/export - Export logs (web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs/export',
                                    methods=['GET'],
                                    view_func=inject_current_user(self.export_logs))
@@ -85,7 +85,7 @@ class LogController:
         return False, user
 
     def _get_teacher_log_filter(self, user):
-        """Get log filter for teacher — only logs from agents in teacher's groups."""
+        """Get log filter for teacher - only logs from agents in teacher's groups."""
         return self.rbac_service.get_log_query_filter(user)
 
     # ========================================================================
@@ -161,7 +161,7 @@ class LogController:
             # RBAC: Teacher does NOT have logs:delete permission
             is_teacher, user = self._is_teacher()
             if is_teacher:
-                return self._error_response("Khong du quyen xoa logs", 403)
+                return self._error_response("Insufficient permissions to delete logs", 403)
 
             if request.is_json:
                 data = request.get_json() or {}
@@ -220,7 +220,7 @@ class LogController:
             # RBAC: Teacher does NOT have logs:export permission
             is_teacher, user = self._is_teacher()
             if is_teacher:
-                return self._error_response("Khong du quyen export logs", 403)
+                return self._error_response("Insufficient permissions to export logs", 403)
 
             filters = self._get_filter_params()
             format = request.args.get('format', 'json')

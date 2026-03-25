@@ -1,0 +1,99 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="token-refresh" name="Agent Token Refresh Flow">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 3: Agent Token Refresh&lt;/b&gt;&lt;br&gt;POST /api/auth/refresh&lt;br&gt;&lt;i&gt;Luồng làm mới token của Agent&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="440" y="20" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="100" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Input -->
+        <mxCell id="s1" value="&lt;b&gt;Agent sends&lt;/b&gt;&lt;br&gt;{refresh_token, rotate: false}&lt;br&gt;&lt;i&gt;Agent gửi refresh token&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="490" y="180" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="s1" parent="1" />
+
+        <!-- Validate input -->
+        <mxCell id="d1" value="&lt;b&gt;refresh_token&lt;br&gt;present?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Có token?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="520" y="275" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1" target="d1" parent="1" />
+
+        <mxCell id="err400" value="&lt;b&gt;400&lt;/b&gt; &quot;refresh_token is required&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="770" y="290" width="220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;" edge="1" source="d1" target="err400" parent="1" />
+
+        <!-- Validate token -->
+        <mxCell id="s2" value="&lt;b&gt;JWTService.validate_refresh_token()&lt;/b&gt;&lt;br&gt;Decode → check type==&quot;refresh&quot;&lt;br&gt;→ check NOT in revoked_tokens&lt;br&gt;&lt;i&gt;Giải mã và kiểm tra token&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="470" y="395" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;" edge="1" source="d1" target="s2" parent="1" />
+
+        <!-- Valid? -->
+        <mxCell id="d2" value="&lt;b&gt;Token valid?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Token hợp lệ?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="530" y="500" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s2" target="d2" parent="1" />
+
+        <!-- Error branches -->
+        <mxCell id="err401a" value="&lt;b&gt;401&lt;/b&gt; TOKEN_EXPIRED&lt;br&gt;&lt;i&gt;Token hết hạn → Agent phải re-register&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="770" y="420" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="err401b" value="&lt;b&gt;401&lt;/b&gt; TOKEN_REVOKED&lt;br&gt;&lt;i&gt;Token đã bị thu hồi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="770" y="490" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;" edge="1" source="d2" target="err401b" parent="1" />
+
+        <!-- Rotate decision -->
+        <mxCell id="d3" value="&lt;b&gt;rotate == true?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xoay token?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="520" y="620" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;" edge="1" source="d2" target="d3" parent="1" />
+
+        <!-- No rotate: new access only -->
+        <mxCell id="s3a" value="&lt;b&gt;Generate NEW access_token only&lt;/b&gt;&lt;br&gt;New JTI, same agent_id&lt;br&gt;Expires: 24 hours&lt;br&gt;&lt;i&gt;Tạo access token mới (giữ refresh cũ)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="250" y="740" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#6c8ebf;" edge="1" source="d3" target="s3a" parent="1" />
+
+        <!-- Rotate: revoke old + new pair -->
+        <mxCell id="s3b_revoke" value="&lt;b&gt;Revoke old refresh_token&lt;/b&gt;&lt;br&gt;reason: &quot;rotation&quot;&lt;br&gt;&lt;i&gt;Thu hồi refresh token cũ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="640" width="210" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d6b656;" edge="1" source="d3" target="s3b_revoke" parent="1" />
+
+        <mxCell id="s3b" value="&lt;b&gt;Generate NEW access + refresh&lt;/b&gt;&lt;br&gt;Both with new JTI&lt;br&gt;access: 24h | refresh: 7d&lt;br&gt;&lt;i&gt;Tạo cả cặp token mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="680" y="740" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s3b_revoke" target="s3b" parent="1" />
+
+        <!-- Socket emit -->
+        <mxCell id="s4" value="&lt;b&gt;SocketIO.emit(&quot;token_refreshed&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, rotated, timestamp}&lt;br&gt;&lt;i&gt;Thông báo realtime&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="860" width="240" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s3a" target="s4" parent="1" />
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s3b" target="s4" parent="1" />
+
+        <!-- Response -->
+        <mxCell id="resp" value="&lt;b&gt;200 OK&lt;/b&gt;&lt;br&gt;{success: true, data: {access_token, [refresh_token],&lt;br&gt;token_type: &quot;Bearer&quot;, expires_in: 86400}}&lt;br&gt;&lt;i&gt;Trả token mới cho Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="950" width="320" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s4" target="resp" parent="1" />
+
+        <mxCell id="end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1050" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="resp" target="end" parent="1" />
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

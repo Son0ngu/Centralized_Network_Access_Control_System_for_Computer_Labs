@@ -5,7 +5,7 @@ from typing import Any, Optional
 from pymongo import MongoClient
 from bson.codec_options import CodecOptions
 
-# Import dotenv để load .env file
+# Import dotenv to load .env file
 from dotenv import load_dotenv
 
 #Time utilities - vietnam ONLY
@@ -42,7 +42,7 @@ class Config:
     DEBUG = get_env('DEBUG', True)
     TESTING = get_env('TESTING', False)
     
-    # MongoDB Settings - Sẽ đọc từ .env file
+    # MongoDB Settings - Reads from .env file
     MONGO_URI = get_env('MONGO_URI', 'mongodb://localhost:27017/')
     MONGO_DBNAME = get_env('MONGO_DBNAME', 'Monitoring')
     
@@ -78,7 +78,7 @@ def get_mongo_client(config):
         try:
             logger.info(f"[{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
             
-            # FIX: Optimized connection settings để reduce Win32 exceptions
+            # FIX: Optimized connection settings to reduce Win32 exceptions
             _mongo_client = MongoClient(
                 config.MONGO_URI,
                 serverSelectionTimeoutMS=5000,
@@ -113,7 +113,7 @@ def close_mongo_client():
     if _mongo_client:
         _mongo_client.close()
         _mongo_client = None
-        logger.info(f"🔌 [{now_iso()}] MongoDB client closed")
+        logger.info(f" [{now_iso()}] MongoDB client closed")
 
 def get_config() -> Config:
     """Get configuration instance."""
@@ -176,7 +176,7 @@ def validate_config(config: Config = None) -> bool:
             logger.error(f" [{now_iso()}] Missing required configuration: {setting}")
             return False
     
-    # Log current MongoDB URI (cẩn thận với credentials)
+    # Log current MongoDB URI (careful with credentials)
     mongo_uri = config.MONGO_URI
     if 'mongodb+srv://' in mongo_uri:
         # Mask credentials in log

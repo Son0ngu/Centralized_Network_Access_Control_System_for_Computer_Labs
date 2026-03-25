@@ -1,5 +1,5 @@
 """
-Whitelist Profile Model — Per-teacher whitelist profiles within a group.
+Whitelist Profile Model - Per-teacher whitelist profiles within a group.
 
 Each teacher can have multiple profiles per group (e.g., different subjects).
 Only ONE profile can be active per group at any time.

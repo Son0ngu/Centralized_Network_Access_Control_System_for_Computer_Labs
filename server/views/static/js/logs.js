@@ -124,7 +124,7 @@ async function updateStatistics() {
                 if (hasClientFilters && hasFilters) {
                     el.innerHTML = `${(filteredVal || 0).toLocaleString()}<small class="text-muted d-block" style="font-size:0.7rem;">of ${(totalVal || 0).toLocaleString()}</small>`;
                 } else if (hasFilters) {
-                    // Server-side RBAC filter only — don't leak global totals
+                    // Server-side RBAC filter only - don't leak global totals
                     el.textContent = (filteredVal || 0).toLocaleString();
                 } else {
                     el.textContent = (totalVal || 0).toLocaleString();

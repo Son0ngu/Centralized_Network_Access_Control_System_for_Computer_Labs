@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="agent-group-pages" name="Flow 28: Agent &amp; Group Management Pages">
+    <mxGraphModel dx="1600" dy="1800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 28: Agent &amp;amp; Group Management Pages&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trang quản lý Agent (/agents) và Group (/groups, /groups/:id)&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== LEFT: AGENTS PAGE ==================== -->
+        <mxCell id="sec1" value="&lt;b&gt;A. AGENTS PAGE (/agents)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trang quản lý Agent - danh sách, tìm kiếm, drag-and-drop&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="a1" value="&lt;b&gt;Page Load&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/agents (pagination)&lt;br&gt;GET /api/groups (for board)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="a2" value="&lt;b&gt;Render Statistics Cards (5)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Total | Active 🟢 | Inactive 🟡 | Offline 🔴 | Pending ⚪&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="220" width="400" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea1a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="a3" value="&lt;b&gt;Render Agent List + Group Board&lt;/b&gt;&lt;br&gt;&lt;i&gt;Search bar + Status filter + Refresh btn&lt;br&gt;Agent cards with status badges&lt;br&gt;Group columns for drag-and-drop&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="290" width="400" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea2a3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Agent actions -->
+        <mxCell id="a_actions" value="&lt;b&gt;Agent Actions&lt;/b&gt;&lt;br&gt;&lt;i&gt;Các thao tác trên Agent&lt;/i&gt;" style="swimlane;startSize=35;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="480" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aa1" value="&lt;b&gt;Search &amp;amp; Filter&lt;/b&gt;&lt;br&gt;&lt;i&gt;hostname, agent_id, device_id,&lt;br&gt;display_name + status filter&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="a_actions">
+          <mxGeometry x="10" y="45" width="220" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aa2" value="&lt;b&gt;Edit Display Name&lt;/b&gt;&lt;br&gt;&lt;i&gt;Modal → PATCH /api/agents/:id&lt;br&gt;/display-name&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="a_actions">
+          <mxGeometry x="250" y="45" width="220" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aa3" value="&lt;b&gt;Drag to Group&lt;/b&gt;&lt;br&gt;&lt;i&gt;HTML5 Drag-and-Drop&lt;br&gt;PATCH /api/agents/:id/group&lt;br&gt;SocketIO: agent_group_updated&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="a_actions">
+          <mxGeometry x="10" y="120" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aa4" value="&lt;b&gt;Delete Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin only&lt;br&gt;DELETE /api/agents/:id&lt;br&gt;Confirm modal&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="a_actions">
+          <mxGeometry x="250" y="120" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="aa5" value="&lt;b&gt;Real-time Updates (SocketIO)&lt;/b&gt;&lt;br&gt;&lt;i&gt;agent_heartbeat → status badge update | agent_registered → add card | agent_deleted → remove card&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="a_actions">
+          <mxGeometry x="10" y="210" width="460" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== RIGHT: GROUPS PAGES ==================== -->
+        <mxCell id="sec2" value="&lt;b&gt;B. GROUPS LIST PAGE (/groups)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Danh sách nhóm Agent&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="g1" value="&lt;b&gt;Page Load&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/groups (with counts)&lt;br&gt;GET /api/agents (for stats)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="140" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="g2" value="&lt;b&gt;Hero + Controls&lt;/b&gt;&lt;br&gt;&lt;i&gt;Search box + Sort dropdown&lt;br&gt;Grid/List toggle + Create btn 🔒&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="220" width="280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg1g2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g1" target="g2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="g3" value="&lt;b&gt;Group Cards (Grid/List)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Color tags (8 colors)&lt;br&gt;Agent count + Whitelist count&lt;br&gt;Sort: Name/Agents/Whitelist/Updated&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="300" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg2g3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g2" target="g3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="g4" value="&lt;b&gt;Create Group Modal&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin only&lt;br&gt;POST /api/groups&lt;br&gt;{name, color, description, domains}&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="390" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg3g4" value="Create btn" style="edgeStyle=orthogonalEdgeStyle;dashed=1;fontFamily=Segoe UI;fontSize=10;" edge="1" parent="1" source="g3" target="g4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== GROUP DETAIL ==================== -->
+        <mxCell id="sec3" value="&lt;b&gt;C. GROUP DETAIL PAGE (/groups/:id)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chi tiết nhóm - Agent, Whitelist, Policy&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="710" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gd1" value="&lt;b&gt;Page Load&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/groups/:id (detail)&lt;br&gt;GET /api/agents (for assignment)&lt;br&gt;GET /api/whitelist?group_id=:id&lt;br&gt;GET /api/whitelist-profiles&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="770" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gd2" value="&lt;b&gt;Hero Section&lt;/b&gt;&lt;br&gt;&lt;i&gt;Group name, description, owner badge&lt;br&gt;Agent count + Whitelist count&lt;br&gt;Breadcrumb: Agents &gt; Groups &gt; Name&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="870" width="300" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="egd1gd2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="gd1" target="gd2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Group Detail features in swimlane -->
+        <mxCell id="gd_features" value="&lt;b&gt;Group Detail Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="960" width="520" height="380" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gdf1" value="&lt;b&gt;Agent Management&lt;/b&gt;&lt;br&gt;&lt;i&gt;List/Map view toggle&lt;br&gt;Search + Status filter&lt;br&gt;Add agents modal (bulk)&lt;br&gt;Remove agent from group&lt;br&gt;Drag agent positioning on map&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="gd_features">
+          <mxGeometry x="10" y="40" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gdf2" value="&lt;b&gt;Policy Override&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin only&lt;br&gt;Set override_mode per agent&lt;br&gt;reason + expires_at&lt;br&gt;GET/PATCH /api/agents/:id/policy&lt;br&gt;SocketIO: agent_policy_changed&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="gd_features">
+          <mxGeometry x="270" y="40" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gdf3" value="&lt;b&gt;Whitelist Section&lt;/b&gt;&lt;br&gt;&lt;i&gt;Add domain/IP/URL entries&lt;br&gt;POST /api/whitelist&lt;br&gt;Delete entries (admin/teacher)&lt;br&gt;Scope: group-level whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="gd_features">
+          <mxGeometry x="10" y="160" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gdf4" value="&lt;b&gt;Whitelist Profiles&lt;/b&gt;&lt;br&gt;&lt;i&gt;Teacher-specific whitelists&lt;br&gt;Profile assignment management&lt;br&gt;GET /api/whitelist-profiles&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="gd_features">
+          <mxGeometry x="270" y="160" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gdf5" value="&lt;b&gt;Delete Group&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Admin only - DELETE /api/groups/:id - Agents → pending status&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="gd_features">
+          <mxGeometry x="10" y="270" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== RIGHT BOTTOM: API Endpoints Table ==================== -->
+        <mxCell id="api_table" value="&lt;b&gt;📡 API Endpoints Summary&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="500" width="560" height="420" as="geometry"/>
+        </mxCell>
+        <mxCell id="ah1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="30" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ah1a" value="Method" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ah1">
+          <mxGeometry width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ah1b" value="Endpoint" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ah1">
+          <mxGeometry x="70" width="240" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ah1c" value="Action" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ah1">
+          <mxGeometry x="310" width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ah1d" value="RBAC" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ah1">
+          <mxGeometry x="460" width="100" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- API rows -->
+        <mxCell id="ar1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="58" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1a" value="GET" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#0066cc;" vertex="1" parent="ar1">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1b" value="/api/agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar1">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1c" value="List agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar1">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1d" value="All (scoped)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar1">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="84" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2a" value="DELETE" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar2">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2b" value="/api/agents/:id" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2c" value="Delete agent" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2d" value="Admin only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar2">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="110" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3a" value="PATCH" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc6600;" vertex="1" parent="ar3">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3b" value="/api/agents/:id/display-name" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar3">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3c" value="Set display name" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar3">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3d" value="All" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar3">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="136" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4a" value="PATCH" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc6600;" vertex="1" parent="ar4">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4b" value="/api/agents/:id/group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar4">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4c" value="Assign to group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar4">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4d" value="All" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar4">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="162" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5a" value="GET" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#0066cc;" vertex="1" parent="ar5">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5b" value="/api/groups" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar5">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5c" value="List groups" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar5">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5d" value="All (scoped)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar5">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="188" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6a" value="POST" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#009900;" vertex="1" parent="ar6">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6b" value="/api/groups" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar6">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6c" value="Create group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar6">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6d" value="Admin only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar6">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="214" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7a" value="GET" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#0066cc;" vertex="1" parent="ar7">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7b" value="/api/groups/:id" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar7">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7c" value="Group detail" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar7">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7d" value="All (scoped)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar7">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="240" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8a" value="DELETE" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar8">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8b" value="/api/groups/:id" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar8">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8c" value="Delete group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar8">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8d" value="Admin only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar8">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="266" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar9a" value="GET" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#0066cc;" vertex="1" parent="ar9">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar9b" value="/api/agents/:id/policy" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar9">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar9c" value="Get agent policy" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar9">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar9d" value="Admin only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar9">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar10" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="292" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar10a" value="PATCH" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc6600;" vertex="1" parent="ar10">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar10b" value="/api/agents/:id/policy" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar10">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar10c" value="Set policy override" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar10">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar10d" value="Admin only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar10">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar11" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="318" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar11a" value="POST" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#009900;" vertex="1" parent="ar11">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar11b" value="/api/groups/:id/agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar11">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar11c" value="Bulk add agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar11">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar11d" value="All" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar11">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar12" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="344" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar12a" value="DELETE" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc0000;" vertex="1" parent="ar12">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar12b" value="/api/groups/:id/agents/:agent_id" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar12">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar12c" value="Remove agent" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar12">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar12d" value="All" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar12">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar13" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="api_table">
+          <mxGeometry y="370" width="560" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar13a" value="PATCH" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontColor=#cc6600;" vertex="1" parent="ar13">
+          <mxGeometry width="70" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar13b" value="/api/agents/:id/position" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar13">
+          <mxGeometry x="70" width="240" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar13c" value="Set map position" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar13">
+          <mxGeometry x="310" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar13d" value="All" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar13">
+          <mxGeometry x="460" width="100" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;: 🔵 Process &amp;nbsp; 🟡 Decision &amp;nbsp; 🟢 Success &amp;nbsp; 🔴 Error/Admin-only &amp;nbsp; 🟣 SocketIO/Policy" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="600" y="940" width="560" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

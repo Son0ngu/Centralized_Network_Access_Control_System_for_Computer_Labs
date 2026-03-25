@@ -69,7 +69,7 @@ class GroupController:
             # Teacher ownership check
             is_teacher, user = self._is_teacher()
             if is_teacher and not self.rbac_service.can_access_group(user, group):
-                return jsonify({"success": False, "error": "Khong co quyen tren Group nay"}), 403
+                return jsonify({"success": False, "error": "No permission for this Group"}), 403
 
             return jsonify({"success": True, "data": group}), 200
         except ValueError as exc:
@@ -106,7 +106,7 @@ class GroupController:
             if is_teacher:
                 group = self.service.get_group(group_id)
                 if not self.rbac_service.can_access_group(user, group):
-                    return jsonify({"success": False, "error": "Khong co quyen tren Group nay"}), 403
+                    return jsonify({"success": False, "error": "No permission for this Group"}), 403
 
             data = request.get_json() or {}
             updated = self.service.update_group(group_id, data)
@@ -124,7 +124,7 @@ class GroupController:
             if is_teacher:
                 group = self.service.get_group(group_id)
                 if not self.rbac_service.can_access_group(user, group):
-                    return jsonify({"success": False, "error": "Khong co quyen tren Group nay"}), 403
+                    return jsonify({"success": False, "error": "No permission for this Group"}), 403
 
             self.service.delete_group(group_id)
             return jsonify({"success": True, "message": "Group deleted"}), 200
@@ -139,7 +139,7 @@ class GroupController:
         try:
             user = getattr(g, 'current_user', None)
             if not user or user.get('role') != 'admin':
-                return jsonify({"success": False, "error": "Chi Admin moi co quyen"}), 403
+                return jsonify({"success": False, "error": "Admin access only"}), 403
 
             data = request.get_json() or {}
             teacher_ids = data.get("teacher_ids", [])
