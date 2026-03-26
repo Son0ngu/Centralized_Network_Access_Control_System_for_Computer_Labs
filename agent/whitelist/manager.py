@@ -202,6 +202,7 @@ class WhitelistManager:
                 "global_version": self._state._version if self._state._version else None,
                 "group_version": self._state._group_version if self._state._group_version else None,
                 "group_id": self._state._group_id if self._state._group_id else None,
+                "policy_mode": self._state._policy_mode if self._state._policy_mode else "none",
                 "timestamp": now_iso()
             }
             

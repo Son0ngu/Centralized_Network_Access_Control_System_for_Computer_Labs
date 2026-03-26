@@ -112,6 +112,7 @@ class WhitelistController:
             agent_id = request.args.get('agent_id')
             global_version = request.args.get('global_version')
             group_version = request.args.get('group_version')
+            agent_policy_mode = request.args.get('policy_mode', 'none')
 
             self.logger.debug(f"Agent sync request - since: {since}, agent_id: {agent_id}")
 
@@ -126,6 +127,7 @@ class WhitelistController:
                 since_datetime, agent_id,
                 int(global_version) if global_version else None,
                 int(group_version) if group_version else None,
+                agent_policy_mode=agent_policy_mode,
             )
 
             if not isinstance(result, dict):

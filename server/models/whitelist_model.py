@@ -430,17 +430,20 @@ class WhitelistModel:
             self.logger.error(f"Error getting statistics: {e}")
             return {"total": 0, "active": 0, "inactive": 0, "by_type": {}}
     
-    def find_entry_by_id(self, entry_id: str) -> Optional[Dict]:
-        """Find entry by ID"""
+    def find_entry_by_id(self, entry_id: str, active_only: bool = False) -> Optional[Dict]:
+        """Find entry by ID. Set active_only=True to skip inactive entries."""
         try:
-            entry = self.collection.find_one({"_id": ObjectId(entry_id)})
-            
+            query = {"_id": ObjectId(entry_id)}
+            if active_only:
+                query["is_active"] = True
+            entry = self.collection.find_one(query)
+
             if entry:
                 entry["_id"] = str(entry["_id"])
                 entry = self._convert_entry_timezones(entry)
-                
+
             return entry
-            
+
         except Exception as e:
             self.logger.error(f"Error finding entry by ID: {e}")
             return None

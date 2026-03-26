@@ -56,7 +56,7 @@
         </mxCell>
 
         <!-- SocketIO Events Table -->
-        <mxCell id="sio_table" value="&lt;b&gt;⚡ SocketIO Event Map (Server → Frontend)&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+        <mxCell id="sio_table" value="&lt;b&gt;SocketIO Event Map (Server → Frontend)&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
           <mxGeometry x="460" y="130" width="700" height="390" as="geometry"/>
         </mxCell>
         <mxCell id="sh1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#e1d5e7;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">

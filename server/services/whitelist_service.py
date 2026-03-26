@@ -6,6 +6,7 @@ Whitelist Service - Business logic for whitelist operations
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+from bson import ObjectId
 from models.whitelist_model import WhitelistModel
 
 # Import time utilities - vietnam ONLY
@@ -98,10 +99,19 @@ class WhitelistService:
         if not validation_result["valid"]:
             raise ValueError(validation_result["message"])
         
-        # Check for duplicates in global whitelist (only active entries)
-        existing = self.model.find_entry_by_value(value, active_only=True)
+        # Check for duplicates in global whitelist (both active and inactive)
+        existing = self.model.find_entry_by_value(value, active_only=False)
         if existing and existing.get("scope", "global") == "global":
-            raise ValueError("Entry already exists in global whitelist")
+            if existing.get("is_active", True):
+                raise ValueError("Entry already exists in global whitelist")
+            else:
+                # Re-activate the existing inactive entry instead of creating duplicate
+                self.model.collection.update_one(
+                    {"_id": ObjectId(existing["_id"])},
+                    {"$set": {"is_active": True, "updated_at": now_vietnam()}}
+                )
+                self.model.bump_global_version()
+                return self.model.find_entry_by_id(existing["_id"])
         
         # Use vietnam time for timestamps
         current_time = now_vietnam()
@@ -466,7 +476,8 @@ class WhitelistService:
             }
 
     def get_agent_sync_data(self, since_datetime: Optional[object] = None, agent_id: str = None,
-                            global_version: Optional[int] = None, group_version: Optional[int] = None) -> Dict:
+                            global_version: Optional[int] = None, group_version: Optional[int] = None,
+                            agent_policy_mode: str = "none") -> Dict:
         """Get whitelist data for agent synchronization with group awareness"""
         try:
             if not agent_id:
@@ -487,7 +498,17 @@ class WhitelistService:
             current_global_version = self.model.get_global_version()
             current_group_version = group.get("whitelist_version", 1)
 
-            if global_version == current_global_version and group_version == current_group_version:
+            # Check if agent has an active policy override BEFORE version short-circuit.
+            # Skip version cache if:
+            #   1. Policy is currently active (isolate/custom_whitelist) → agent needs policy-modified whitelist
+            #   2. Policy changed since last sync (e.g. was isolate, now none) → agent needs fresh normal whitelist
+            policy_changed = False
+            if self.policy_service:
+                effective_mode = self.policy_service.policy_model.get_effective_mode(agent_id)
+                if effective_mode != "none" or effective_mode != agent_policy_mode:
+                    policy_changed = True
+
+            if not policy_changed and global_version == current_global_version and group_version == current_group_version:
                 return {
                     "domains": [],
                     "timestamp": now_iso(),
@@ -498,7 +519,7 @@ class WhitelistService:
                     "global_version": current_global_version,
                     "group_version": current_group_version,
                     "group_id": str(group.get("_id")),
-                    "up_to_date": True,        
+                    "up_to_date": True,
                 }
             # If versions are out of date or versions are missing, perform a full sync to prevent agents from losing existing global entries when requesting incremental updates.
             needs_full_global = (

@@ -20,6 +20,7 @@ class WhitelistState:
         self._version: str = ""
         self._group_version: str = ""
         self._group_id: str = ""
+        self._policy_mode: str = "none"
         self._checksum: str = ""
         self._metadata: Dict[str, Any] = {}
     
@@ -68,8 +69,17 @@ class WhitelistState:
                 sync_type = data.get("type", "full")
                 up_to_date = data.get("up_to_date", False)
 
+                # Detect group change — if agent moved to a different group,
+                # force full sync even if server says up_to_date
+                new_group_id = str(data.get("group_id", ""))
+                group_changed = (self._group_id and new_group_id
+                                 and new_group_id != self._group_id)
+                if group_changed:
+                    logger.info(f"Group changed: {self._group_id} -> {new_group_id}, forcing full sync")
+                    sync_type = "full"
+
                 # Server says we're already up to date - no changes needed
-                if up_to_date:
+                if up_to_date and not group_changed:
                     logger.debug("Server says up_to_date, no changes")
                     return False
 
@@ -95,14 +105,15 @@ class WhitelistState:
                     self._ips = merged_ips
                 else:
                     # Full sync: REPLACE entire state
-                    if (new_domains == self._domains and
-                        new_patterns == self._patterns and
-                        new_ips == self._ips):
+                    if (not group_changed
+                        and new_domains == self._domains
+                        and new_patterns == self._patterns
+                        and new_ips == self._ips):
                         logger.debug("No changes in whitelist data")
                         # Still update version info even if data unchanged
                         self._version = str(data.get("global_version", data.get("version", self._version)))
                         self._group_version = str(data.get("group_version", self._group_version))
-                        self._group_id = str(data.get("group_id", self._group_id))
+                        self._group_id = new_group_id
                         return False
 
                     self._domains = new_domains
@@ -113,7 +124,8 @@ class WhitelistState:
                 self._last_updated = now()
                 self._version = str(data.get("global_version", data.get("version", "")))
                 self._group_version = str(data.get("group_version", ""))
-                self._group_id = str(data.get("group_id", ""))
+                self._group_id = new_group_id
+                self._policy_mode = data.get("policy_mode", "none")
                 self._checksum = self._calculate_checksum()
                 self._metadata = data.get("metadata", {})
 

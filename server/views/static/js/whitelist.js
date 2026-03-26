@@ -1050,7 +1050,7 @@ function populateProfileSelect() {
         opt.value = p._id;
         opt.textContent = `${p.name} - ${p.group_name || 'Unknown Group'}`;
         if (p.is_active) {
-            opt.textContent += ' ⚡ Active';
+            opt.textContent += ' Active';
         }
         select.appendChild(opt);
     });
