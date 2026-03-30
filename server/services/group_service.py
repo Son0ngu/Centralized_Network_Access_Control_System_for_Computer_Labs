@@ -17,6 +17,17 @@ class GroupService:
         self.user_model = user_model
         self.pending_group = self.model.ensure_pending_group()
 
+    def _serialize(self, group: Dict) -> Dict:
+        """Convert ObjectIds to strings for JSON response."""
+        if not group:
+            return group
+        group["_id"] = str(group.get("_id", ""))
+        if group.get("created_by"):
+            group["created_by"] = str(group["created_by"])
+        if group.get("teacher_ids"):
+            group["teacher_ids"] = [str(tid) for tid in group["teacher_ids"]]
+        return group
+
     def _enrich_owner(self, group: Dict) -> Dict:
         """Add created_by_username to group if user_model available."""
         if self.user_model and group.get("created_by"):
@@ -28,23 +39,11 @@ class GroupService:
 
     def list_groups(self, query_filter: dict = None) -> List[Dict]:
         groups = self.model.list_groups(query_filter=query_filter)
-        formatted = []
-        for group in groups:
-            group["_id"] = str(group.get("_id"))
-            if group.get("created_by"):
-                group["created_by"] = str(group["created_by"])
-            if group.get("teacher_ids"):
-                group["teacher_ids"] = [str(tid) for tid in group["teacher_ids"]]
-            self._enrich_owner(group)
-            formatted.append(group)
-        return formatted
+        return [self._enrich_owner(self._serialize(g)) for g in groups]
 
     def create_group(self, name: str, description: str = "", whitelist: List[Dict] = None, created_by=None) -> Dict:
         group = self.model.create_group(name, description, whitelist or [], created_by=created_by)
-        group["_id"] = str(group.get("_id"))
-        if group.get("created_by"):
-            group["created_by"] = str(group["created_by"])
-        return group
+        return self._serialize(group)
 
     def update_group(self, group_id: str, payload: Dict) -> Dict:
         group = self.model.find_by_id(group_id)
@@ -59,12 +58,7 @@ class GroupService:
         updated = self.model.update_group(group_id, payload)
         if not updated:
             raise ValueError("Failed to update group")
-        updated["_id"] = str(updated.get("_id"))
-        if updated.get("created_by"):
-            updated["created_by"] = str(updated["created_by"])
-        if updated.get("teacher_ids"):
-            updated["teacher_ids"] = [str(tid) for tid in updated["teacher_ids"]]
-        return updated
+        return self._serialize(updated)
 
     def delete_group(self, group_id: str) -> bool:
         group = self.model.find_by_id(group_id)
@@ -96,8 +90,7 @@ class GroupService:
         updated = self.model.bump_whitelist_version(group_id)
         if not updated:
             raise ValueError("Group not found")
-        updated["_id"] = str(updated.get("_id"))
-        return updated
+        return self._serialize(updated)
 
     def get_pending_group_id(self) -> str:
         return str(self.pending_group.get("_id"))
@@ -106,13 +99,7 @@ class GroupService:
         group = self.model.find_by_id(group_id)
         if not group:
             raise ValueError("Group not found")
-        group["_id"] = str(group.get("_id"))
-        if group.get("created_by"):
-            group["created_by"] = str(group["created_by"])
-        if group.get("teacher_ids"):
-            group["teacher_ids"] = [str(tid) for tid in group["teacher_ids"]]
-        self._enrich_owner(group)
-        return group
+        return self._enrich_owner(self._serialize(group))
 
     def get_default_metadata(self) -> Dict:
         return {
