@@ -177,7 +177,7 @@ class WhitelistManager:
                         try:
                             record = self.resolver.resolve_domain_sync(domain)
                             # Create a set of IPs
-                            ips = set(record.ipv4) | set(record.ipv6)
+                            ips = set(record.ipv4)
                             if ips:
                                 self.dns_cache.set(domain, ips, ttl=self._cache_ttl)
                                 updated = True
@@ -332,7 +332,7 @@ class WhitelistManager:
                     results = self.resolver.resolve_multiple_parallel(list(domains_to_resolve))
                     
                     for domain, record in results.items():
-                        domain_ips = set(record.ipv4) | set(record.ipv6)
+                        domain_ips = set(record.ipv4)
                         if domain_ips:
                             resolved_ips.update(domain_ips)
                             self.dns_cache.set(domain, domain_ips, ttl=self._cache_ttl)

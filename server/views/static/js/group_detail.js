@@ -196,9 +196,10 @@ function renderGroupAgents(agents) {
                 </div>
                 <h5 class="fw-bold mt-3">No Agents in this Group</h5>
                 <p class="text-muted mb-4">Add agents to this group to manage them together.</p>
+                ${window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                 <button class="btn btn-primary" onclick="openAddAgentModal()">
                     <i class="fas fa-plus me-2"></i>Add Agent
-                </button>
+                </button>` : ''}
             </div>
         `;
         return;
@@ -280,6 +281,10 @@ function updateStatistics() {
 // ========================================
 
 async function openAddAgentModal() {
+    if (!(window.SAINT_AUTH && window.SAINT_AUTH.isAdmin)) {
+        showError('Only admin can add agents to groups');
+        return;
+    }
     // Reset target position if called directly from "Add Agent" button
     if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('onclick') === 'openAddAgentModal()') {
         targetSlotPosition = null;
@@ -456,6 +461,10 @@ async function addSelectedAgents() {
 // ========================================
 
 async function removeAgentFromGroup(agentId) {
+    if (!(window.SAINT_AUTH && window.SAINT_AUTH.isAdmin)) {
+        showError('Only admin can remove agents from groups');
+        return;
+    }
     const agent = groupAgents.find(a => a.agent_id === agentId);
     const displayName = agent?.display_name || agent?.hostname || agentId;
     
@@ -931,6 +940,7 @@ function renderDraggableCard(agent, isCompact=false) {
 // Drag and Drop Handlers
 
 function allowDrop(ev) {
+    if (!(window.SAINT_AUTH && window.SAINT_AUTH.isAdmin)) return;
     ev.preventDefault();
     const slot = ev.currentTarget;
     if (slot && !slot.classList.contains('drag-over')) {
@@ -939,6 +949,7 @@ function allowDrop(ev) {
 }
 
 function drag(ev, agentId) {
+    if (!(window.SAINT_AUTH && window.SAINT_AUTH.isAdmin)) { ev.preventDefault(); return; }
     ev.dataTransfer.setData("agent_id", agentId);
     ev.dataTransfer.effectAllowed = 'move';
     const card = ev.currentTarget.closest('.device-card');
@@ -1660,9 +1671,9 @@ function wpRenderProfiles() {
             actions += `<button class="btn btn-outline-success btn-sm" onclick="wpActivate('${p._id}')" title="Activate"><i class="fas fa-play"></i></button>`;
         }
 
-        // Edit Rules - redirect to /whitelist?profile_id=...
+        // Edit Rules - inline modal editor
         if (canManage) {
-            actions += ` <a href="/whitelist?profile_id=${p._id}&group_id=${groupId}" class="btn btn-outline-primary btn-sm" title="Edit Rules"><i class="fas fa-edit"></i></a>`;
+            actions += ` <button class="btn btn-outline-primary btn-sm" onclick="wpOpenEditDomains('${p._id}')" title="Edit Rules"><i class="fas fa-edit"></i></button>`;
         }
 
         // Delete (only non-active, only owner/admin)
@@ -1742,12 +1753,7 @@ function openCreateProfileModal() {
     new bootstrap.Modal(document.getElementById('profileModal')).show();
 }
 
-/**
- * "Edit Rules" - redirect to /whitelist page with profile_id
- */
-function wpEditProfile(profileId) {
-    window.location.href = `/whitelist?profile_id=${profileId}&group_id=${groupId}`;
-}
+// wpEditProfile removed - replaced by wpOpenEditDomains() inline modal
 
 /**
  * Save new profile (name only - domains managed on /whitelist page)
@@ -1946,5 +1952,121 @@ async function wpRemoveTeacher(teacherId) {
         }
     } catch (e) {
         showNotification('danger', 'Error removing teacher');
+    }
+}
+
+// ========================================
+// INLINE PROFILE DOMAIN EDITOR
+// ========================================
+
+let epdEditingProfile = null;   // profile object being edited
+let epdDomains = [];            // local copy of domains for editing
+
+function wpOpenEditDomains(profileId) {
+    const profile = wpProfiles.find(p => p._id === profileId);
+    if (!profile) {
+        showNotification('danger', 'Profile not found');
+        return;
+    }
+
+    epdEditingProfile = profile;
+    epdDomains = JSON.parse(JSON.stringify(profile.domains || []));
+
+    document.getElementById('epd-profileId').value = profileId;
+    document.getElementById('epd-title').innerHTML =
+        `<i class="fas fa-edit me-2"></i>Edit: ${wlEscapeHtml(profile.name)}`;
+    document.getElementById('epd-profileName').textContent = profile.name;
+    document.getElementById('epd-owner').textContent =
+        profile.teacher_username ? `by ${profile.teacher_username}` : '';
+    document.getElementById('epd-newValue').value = '';
+
+    epdRenderDomains();
+    new bootstrap.Modal(document.getElementById('editProfileDomainsModal')).show();
+}
+
+function epdRenderDomains() {
+    const container = document.getElementById('epd-domainList');
+    const countEl = document.getElementById('epd-count');
+    if (countEl) countEl.textContent = epdDomains.length;
+
+    if (epdDomains.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3">No domains yet. Add some above.</div>';
+        return;
+    }
+
+    container.innerHTML = epdDomains.map((d, i) => {
+        const val = typeof d === 'string' ? d : (d.value || '');
+        const type = typeof d === 'string' ? 'domain' : (d.type || 'domain');
+        const typeBadge = type === 'ip' ? 'bg-warning text-dark' : type === 'url' ? 'bg-info text-white' : 'bg-primary';
+        return `
+            <div class="d-flex align-items-center justify-content-between py-1 px-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge ${typeBadge}" style="font-size:0.65rem; min-width:50px;">${wlEscapeHtml(type)}</span>
+                    <code class="small">${wlEscapeHtml(val)}</code>
+                </div>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="wpRemoveDomainFromProfile(${i})" title="Remove">
+                    <i class="fas fa-times" style="font-size:0.7rem;"></i>
+                </button>
+            </div>`;
+    }).join('');
+}
+
+function wpAddDomainToProfile() {
+    const input = document.getElementById('epd-newValue');
+    const typeSelect = document.getElementById('epd-newType');
+    const raw = input.value.trim();
+    if (!raw) { input.focus(); return; }
+
+    const type = typeSelect?.value || 'domain';
+    const values = raw.split(/[,\n\s]+/).map(v => v.trim().toLowerCase()).filter(Boolean);
+    let addedCount = 0;
+
+    for (const val of values) {
+        const exists = epdDomains.some(d => {
+            const dVal = typeof d === 'string' ? d : d.value;
+            return dVal === val;
+        });
+        if (!exists) {
+            epdDomains.push({ value: val, type: type });
+            addedCount++;
+        }
+    }
+
+    if (addedCount === 0) {
+        showNotification('warning', 'All domains already exist');
+        return;
+    }
+
+    input.value = '';
+    epdRenderDomains();
+}
+
+function wpRemoveDomainFromProfile(index) {
+    epdDomains.splice(index, 1);
+    epdRenderDomains();
+}
+
+async function wpSaveProfileDomains() {
+    if (!epdEditingProfile) return;
+    const profileId = epdEditingProfile._id;
+
+    try {
+        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domains: epdDomains })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editProfileDomainsModal'))?.hide();
+            showNotification('success', `Saved ${epdDomains.length} domain(s)`);
+            await wpLoadProfiles();
+        } else {
+            showNotification('danger', data.error || 'Failed to save');
+        }
+    } catch (e) {
+        console.error('wpSaveProfileDomains error:', e);
+        showNotification('danger', 'Server connection error');
     }
 }

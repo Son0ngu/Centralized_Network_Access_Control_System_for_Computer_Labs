@@ -58,16 +58,6 @@ class FirewallUtils:
         except Exception as e:
             logger.debug(f"Could not detect local IPv4 network: {e}")
         
-        # Try to detect local IPv6 address
-        try:
-            with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s6:
-                s6.connect(("2001:4860:4860::8888", 80))
-                local_ip6 = s6.getsockname()[0]
-                essential.add(local_ip6)
-                logger.debug(f"Detected local IPv6 address: {local_ip6}")
-        except Exception as e:
-            logger.debug(f"Could not detect local IPv6 network: {e}")
-        
         return essential
     
     @staticmethod
@@ -97,21 +87,17 @@ class FirewallUtils:
             ports = [80, 443, 53]
         
         try:
-            addr = ipaddress.ip_address(ip)
-            family = socket.AF_INET6 if isinstance(addr, ipaddress.IPv6Address) else socket.AF_INET
+            ipaddress.ip_address(ip)
         except ValueError:
             logger.debug(f"Connectivity test skipped - invalid IP: {ip}")
             return False
-        
+
         try:
             for port in ports:
                 try:
-                    with socket.socket(family, socket.SOCK_STREAM) as sock:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                         sock.settimeout(timeout)
-                        if family == socket.AF_INET6:
-                            result = sock.connect_ex((ip, port, 0, 0))
-                        else:
-                            result = sock.connect_ex((ip, port))
+                        result = sock.connect_ex((ip, port))
                         if result == 0:
                             return True
                 except Exception:

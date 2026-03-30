@@ -75,60 +75,43 @@ class OptimizedDNSResolver:
             return self._fallback_resolve(domain)
             
         ipv4_ips = []
-        ipv6_ips = []
         cname = None
-        min_ttl = None  # Initialize as None to capture actual TTL from DNS response
-        
+        min_ttl = None
+
         try:
-            # Resolve A records (IPv4)
+            # Resolve A records (IPv4 only)
             try:
                 answers = self.resolver.resolve(domain, 'A')
                 ipv4_ips = [str(rdata) for rdata in answers]
-                # Get min TTL from entire response (includes CNAME chain if any)
                 ttl_value = _min_ttl_dnspython(answers)
                 if ttl_value is not None:
                     min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
-            
-            # Resolve AAAA records (IPv6)
-            try:
-                answers = self.resolver.resolve(domain, 'AAAA')
-                ipv6_ips = [str(rdata) for rdata in answers]
-                # Get min TTL from entire response (includes CNAME chain if any)
-                ttl_value = _min_ttl_dnspython(answers)
-                if ttl_value is not None:
-                    min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
-                pass
-            
-            # Resolve CNAME if no direct records
-            if not ipv4_ips and not ipv6_ips:
+
+            # Resolve CNAME if no A records
+            if not ipv4_ips:
                 try:
                     answers = self.resolver.resolve(domain, 'CNAME')
                     if answers:
                         cname = str(answers[0].target).rstrip('.')
-                        # Get min TTL from CNAME response
                         ttl_value = _min_ttl_dnspython(answers)
                         if ttl_value is not None:
                             min_ttl = ttl_value if min_ttl is None else min(min_ttl, ttl_value)
                 except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                     pass
-            
-            # If nothing found via dnspython, try system fallback
-            if not ipv4_ips and not ipv6_ips and not cname:
-                 return self._fallback_resolve(domain)
-        
+
+            if not ipv4_ips and not cname:
+                return self._fallback_resolve(domain)
+
         except Exception as e:
             logger.debug(f"DNS resolution error for {domain}: {e}")
             return self._fallback_resolve(domain)
-        
-        # Use default TTL of 300 only if no actual TTL was obtained from DNS
+
         final_ttl = min_ttl if min_ttl is not None else 300
-        
+
         return DNSRecord(
             ipv4=tuple(ipv4_ips),
-            ipv6=tuple(ipv6_ips),
             cname=cname,
             ttl=final_ttl,
             resolved_at=now()

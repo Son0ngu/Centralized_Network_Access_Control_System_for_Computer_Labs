@@ -419,16 +419,12 @@ class AgentController:
             data = self._validate_json_request(['group_id'])
             target_group_id = data.get('group_id')
 
-            # Validate ownership: teacher can only move agents to their own groups
-            rbac = get_rbac_service()
-            if rbac and target_group_id:
-                is_valid, invalid_ids = rbac.validate_group_ids_ownership(
-                    g.current_user, [str(target_group_id)]
+            # Only admin can move agents between groups
+            user = getattr(g, 'current_user', None)
+            if user and user.get('role') != 'admin':
+                return self._error_response(
+                    "Only admin can move agents between groups", 403
                 )
-                if not is_valid:
-                    return self._error_response(
-                        "No permission to move agent to this group", 403
-                    )
 
             agent = self.service.move_agent_to_group(agent_id, target_group_id)
             

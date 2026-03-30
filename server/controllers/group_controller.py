@@ -11,7 +11,7 @@ from flask import Blueprint, request, jsonify, g
 
 from services.group_service import GroupService
 from services.rbac_service import RBACService
-from middleware.rbac import inject_current_user
+from middleware.rbac import inject_current_user, require_admin
 
 
 class GroupController:
@@ -27,7 +27,7 @@ class GroupController:
         self.blueprint.add_url_rule('/groups', 'list_groups',
             inject_current_user(self.list_groups), methods=['GET'])
         self.blueprint.add_url_rule('/groups', 'create_group',
-            inject_current_user(self.create_group), methods=['POST'])
+            require_admin(self.create_group), methods=['POST'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'get_group',
             inject_current_user(self.get_group), methods=['GET'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'update_group',

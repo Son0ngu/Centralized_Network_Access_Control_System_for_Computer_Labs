@@ -120,20 +120,11 @@ def initialize_components(config: Dict) -> bool:
             from firewall import FirewallManager
             agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
             
-            # Backup / Restore Hook
+            # Always save pre-SAINT firewall state so Restore can revert to it
             backup_cfg = firewall_config.get("backup", {})
-            if backup_cfg.get("enabled", False):
-                backup_path = backup_cfg.get("path", "profiles/backup.wfw")
-                
-                if backup_cfg.get("restore_on_startup", False):
-                    logger.info("Backup: restore_on_startup is enabled. Attempting restore...")
-                    agent.firewall.restore_snapshot(backup_path)
-                else:
-                    # Create initial backup if it doesn't exist (Preserve clean state)
-                    from pathlib import Path
-                    if not Path(backup_path).exists():
-                        logger.info("Backup: No existing backup found. Creating initial snapshot...")
-                        agent.firewall.save_snapshot(backup_path)
+            backup_path = backup_cfg.get("path", "profiles/backup.wfw")
+            logger.info("Saving pre-SAINT firewall snapshot...")
+            agent.firewall.save_snapshot(backup_path)
 
             # Link firewall to whitelist
             if agent.whitelist:

@@ -15,7 +15,7 @@ class DataTable(ctk.CTkFrame):
         row_height: int = 40,
         **kwargs
     ):
-        super().__init__(parent, fg_color="#1a1a2e", corner_radius=12, **kwargs)
+        super().__init__(parent, fg_color="#e8e8ed", corner_radius=12, **kwargs)
         
         self._columns = columns
         self._on_delete = on_delete
@@ -30,7 +30,7 @@ class DataTable(ctk.CTkFrame):
     def _setup_ui(self):
         """Setup table UI."""
         # Header
-        self._header_frame = ctk.CTkFrame(self, fg_color="#0f0f1a", corner_radius=0)
+        self._header_frame = ctk.CTkFrame(self, fg_color="#f5f5f7", corner_radius=0)
         self._header_frame.pack(fill="x", padx=2, pady=(2, 0))
         
         self._create_header()
@@ -63,7 +63,7 @@ class DataTable(ctk.CTkFrame):
                 self._header_frame,
                 text=col.get("title", col.get("key", "")),
                 font=ctk.CTkFont(size=12, weight="bold"),
-                text_color="#00d4ff",
+                text_color="#0077cc",
                 anchor="w"
             )
             header_cell.grid(row=0, column=i, padx=10, pady=8, sticky="ew")
@@ -74,7 +74,7 @@ class DataTable(ctk.CTkFrame):
                 self._header_frame,
                 text="Actions",
                 font=ctk.CTkFont(size=12, weight="bold"),
-                text_color="#00d4ff",
+                text_color="#0077cc",
                 anchor="center"
             )
             action_header.grid(row=0, column=len(self._columns), padx=10, pady=8)
@@ -145,7 +145,7 @@ class DataTable(ctk.CTkFrame):
         row_widgets = []
         
         # Alternate row colors
-        bg_color = "#1a1a2e" if row_idx % 2 == 0 else "#22223a"
+        bg_color = "#f5f5f7" if row_idx % 2 == 0 else "#e8e8ed"
         
         # Data cells - place directly in body_frame for proper grid alignment
         for col_idx, col in enumerate(self._columns):
@@ -156,7 +156,7 @@ class DataTable(ctk.CTkFrame):
             display_value = self._format_value(value, col.get("type"))
             
             # Color based on status
-            text_color = "#ffffff"
+            text_color = "#1a1a2e"
             if key == "status":
                 if str(value).lower() in ["active", "allowed", "online"]:
                     text_color = "#00ff88"
@@ -275,7 +275,7 @@ class SearchableDataTable(ctk.CTkFrame):
             width=300,
             height=35,
             corner_radius=8,
-            fg_color="#1a1a2e"
+            fg_color="#e8e8ed"
         )
         self._search_entry.pack(side="left")
         self._search_entry.bind("<KeyRelease>", self._on_search)
@@ -286,8 +286,9 @@ class SearchableDataTable(ctk.CTkFrame):
             text="Clear",
             width=60,
             height=35,
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._clear_search
         )
         clear_btn.pack(side="left", padx=(10, 0))
@@ -297,7 +298,7 @@ class SearchableDataTable(ctk.CTkFrame):
             search_frame,
             text="0 items",
             font=ctk.CTkFont(size=12),
-            text_color="#888888"
+            text_color="#6a6a7a"
         )
         self._count_label.pack(side="right")
         

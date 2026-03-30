@@ -59,7 +59,7 @@ class FirewallManager:
             if essential_ips is None:
                 essential_ips = FirewallUtils.get_essential_ips()
             
-            # Allow both IPv4 and IPv6
+            # Validate IPs
             whitelisted_ips_valid = {ip for ip in whitelisted_ips if FirewallUtils.is_valid_ip(ip)}
             essential_ips_valid = {ip for ip in essential_ips if FirewallUtils.is_valid_ip(ip)}
             
@@ -385,7 +385,7 @@ class FirewallManager:
                 if FirewallUtils.is_valid_ip(ip):
                     new_ips.add(ip)
             
-            # Resolve domains to IPs (IPv4/IPv6)
+            # Resolve domains to IPs
             resolved_ips = self._resolve_domains_to_ips(domains)
             new_ips.update(resolved_ips)
             
@@ -448,9 +448,6 @@ class FirewallManager:
 
                 for domain, record in results.items():
                     for ip in (record.ipv4 or []):
-                        if FirewallUtils.is_valid_ip(ip):
-                            resolved_ips.add(ip)
-                    for ip in (getattr(record, "ipv6", []) or []):
                         if FirewallUtils.is_valid_ip(ip):
                             resolved_ips.add(ip)
 

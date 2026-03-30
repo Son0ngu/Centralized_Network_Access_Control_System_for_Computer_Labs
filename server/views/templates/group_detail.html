@@ -688,6 +688,53 @@
     </div>
 </div>
 
+<!-- Edit Profile Domains Modal -->
+<div class="modal fade" id="editProfileDomainsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title" id="epd-title">
+                    <i class="fas fa-edit me-2"></i>Edit Profile Domains
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="epd-profileId" value="">
+                <!-- Profile info -->
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-info text-white" id="epd-profileName"></span>
+                    <span class="text-muted small" id="epd-owner"></span>
+                </div>
+                <!-- Add domain input -->
+                <div class="input-group input-group-sm mb-3">
+                    <select class="form-select form-select-sm" id="epd-newType" style="max-width: 110px;">
+                        <option value="domain">Domain</option>
+                        <option value="ip">IP</option>
+                        <option value="url">URL</option>
+                    </select>
+                    <input type="text" class="form-control" id="epd-newValue"
+                           placeholder="Enter domain, IP, or URL (comma/space separated for bulk)">
+                    <button class="btn btn-primary" id="epd-addBtn" onclick="wpAddDomainToProfile()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <!-- Domains list -->
+                <div id="epd-domainList" style="max-height: 350px; overflow-y: auto;">
+                </div>
+                <div class="text-muted small mt-2">
+                    <span id="epd-count">0</span> domain(s)
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="wpSaveProfileDomains()">
+                    <i class="fas fa-save me-1"></i>Save Domains
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden data -->
 <input type="hidden" id="groupId" value="{{ group._id }}">
 {% endblock %}

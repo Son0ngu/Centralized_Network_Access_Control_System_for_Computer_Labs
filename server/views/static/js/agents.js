@@ -392,9 +392,13 @@ function renderAgents(agents) {
         agentElement.dataset.status = agent.status || 'unknown';
         agentElement.dataset.groupId = agent.group_id || '';
         agentElement.dataset.id = agentId || '';
-        agentElement.draggable = true;
-        agentElement.addEventListener('dragstart', handleAgentDragStart);
-        agentElement.addEventListener('dragend', handleAgentDragEnd);
+        // Only admin can drag-drop agents between groups
+        const isAdmin = window.SAINT_AUTH && window.SAINT_AUTH.isAdmin;
+        agentElement.draggable = !!isAdmin;
+        if (isAdmin) {
+            agentElement.addEventListener('dragstart', handleAgentDragStart);
+            agentElement.addEventListener('dragend', handleAgentDragEnd);
+        }
         
         agentElement.innerHTML = `
             <div class="row align-items-center">
@@ -549,9 +553,12 @@ function renderGroups() {
         const card = document.createElement('div');
         card.className = 'group-card';
         card.dataset.groupId = group._id;
-        card.addEventListener('dragover', handleGroupDragOver);
-        card.addEventListener('dragleave', handleGroupDragLeave);
-        card.addEventListener('drop', handleGroupDrop);
+        // Only admin can drop agents into groups
+        if (window.SAINT_AUTH && window.SAINT_AUTH.isAdmin) {
+            card.addEventListener('dragover', handleGroupDragOver);
+            card.addEventListener('dragleave', handleGroupDragLeave);
+            card.addEventListener('drop', handleGroupDrop);
+        }
 
         const agentsListHtml = agentsInGroup.map(agent => {
             const statusInfo = getStatusInfo(agent.status);

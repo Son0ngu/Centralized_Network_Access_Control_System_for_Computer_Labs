@@ -66,7 +66,6 @@ class WhitelistState:
 
         with self._lock:
             try:
-                sync_type = data.get("type", "full")
                 up_to_date = data.get("up_to_date", False)
 
                 # Detect group change — if agent moved to a different group,
@@ -76,7 +75,6 @@ class WhitelistState:
                                  and new_group_id != self._group_id)
                 if group_changed:
                     logger.info(f"Group changed: {self._group_id} -> {new_group_id}, forcing full sync")
-                    sync_type = "full"
 
                 # Server says we're already up to date - no changes needed
                 if up_to_date and not group_changed:
@@ -85,40 +83,23 @@ class WhitelistState:
 
                 new_domains, new_patterns, new_ips = self._parse_entries(data)
 
-                logger.debug(f"Parsed from server ({sync_type}): {len(new_domains)} domains, "
+                logger.debug(f"Parsed from server: {len(new_domains)} domains, "
                            f"{len(new_patterns)} patterns, {len(new_ips)} IPs")
 
-                if sync_type == "incremental" and self._domains:
-                    # Incremental: MERGE new entries into existing state
-                    merged_domains = self._domains | new_domains
-                    merged_patterns = self._patterns | new_patterns
-                    merged_ips = self._ips | new_ips
+                # Full sync: REPLACE entire state
+                if (not group_changed
+                    and new_domains == self._domains
+                    and new_patterns == self._patterns
+                    and new_ips == self._ips):
+                    logger.debug("No changes in whitelist data")
+                    self._version = str(data.get("global_version", data.get("version", self._version)))
+                    self._group_version = str(data.get("group_version", self._group_version))
+                    self._group_id = new_group_id
+                    return False
 
-                    if (merged_domains == self._domains and
-                        merged_patterns == self._patterns and
-                        merged_ips == self._ips):
-                        logger.debug("No new entries in incremental sync")
-                        return False
-
-                    self._domains = merged_domains
-                    self._patterns = merged_patterns
-                    self._ips = merged_ips
-                else:
-                    # Full sync: REPLACE entire state
-                    if (not group_changed
-                        and new_domains == self._domains
-                        and new_patterns == self._patterns
-                        and new_ips == self._ips):
-                        logger.debug("No changes in whitelist data")
-                        # Still update version info even if data unchanged
-                        self._version = str(data.get("global_version", data.get("version", self._version)))
-                        self._group_version = str(data.get("group_version", self._group_version))
-                        self._group_id = new_group_id
-                        return False
-
-                    self._domains = new_domains
-                    self._patterns = new_patterns
-                    self._ips = new_ips
+                self._domains = new_domains
+                self._patterns = new_patterns
+                self._ips = new_ips
 
                 # Update metadata
                 self._last_updated = now()
@@ -130,7 +111,7 @@ class WhitelistState:
                 self._metadata = data.get("metadata", {})
 
                 logger.info(
-                    f"Whitelist updated ({sync_type}): {len(self._domains)} domains, "
+                    f"Whitelist updated: {len(self._domains)} domains, "
                     f"{len(self._patterns)} patterns, {len(self._ips)} IPs "
                     f"[v{self._version}/g{self._group_version}]"
                 )

@@ -44,24 +44,25 @@ class LogsView(ctk.CTkFrame):
             header,
             text="Activity Logs",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#00d4ff"
+            text_color="#0077cc"
         )
         title.pack(side="left", anchor="w")
-    
+
     def _create_controls(self):
         """Create control buttons and filters."""
         controls = ctk.CTkFrame(self, fg_color="transparent", height=45)
         controls.pack(fill="x", pady=(0, 15))
         controls.pack_propagate(False)
-        
+
         # Filter dropdown
         filter_label = ctk.CTkLabel(
-            controls, 
-            text="Level:", 
-            font=ctk.CTkFont(size=13)
+            controls,
+            text="Level:",
+            font=ctk.CTkFont(size=13),
+            text_color="#1a1a2e"
         )
         filter_label.pack(side="left", padx=(0, 8))
-        
+
         self._filter_var = ctk.StringVar(value="ALL")
         filter_menu = ctk.CTkOptionMenu(
             controls,
@@ -70,13 +71,14 @@ class LogsView(ctk.CTkFrame):
             width=100,
             height=32,
             font=ctk.CTkFont(size=12),
-            fg_color="#1a1a2e",
-            button_color="#00d4ff",
-            button_hover_color="#00b8d4",
+            fg_color="#e8e8ed",
+            button_color="#0077cc",
+            button_hover_color="#005fa3",
+            text_color="#1a1a2e",
             command=self._on_filter_change
         )
         filter_menu.pack(side="left", padx=(0, 15))
-        
+
         # Search
         self._search_entry = ctk.CTkEntry(
             controls,
@@ -85,11 +87,11 @@ class LogsView(ctk.CTkFrame):
             height=32,
             font=ctk.CTkFont(size=12),
             corner_radius=6,
-            border_color="#3d3d54",
-            fg_color="#0a0a12"
+            border_color="#d0d0d8",
+            fg_color="#ffffff"
         )
         self._search_entry.pack(side="left", padx=(0, 15))
-        
+
         # Export button
         export_btn = ctk.CTkButton(
             controls,
@@ -97,12 +99,13 @@ class LogsView(ctk.CTkFrame):
             width=90,
             height=32,
             font=ctk.CTkFont(size=12),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._on_export
         )
         export_btn.pack(side="right")
-        
+
         # Clear button
         clear_btn = ctk.CTkButton(
             controls,
@@ -116,11 +119,11 @@ class LogsView(ctk.CTkFrame):
             command=self._on_clear
         )
         clear_btn.pack(side="right", padx=(0, 10))
-    
+
     def _create_console(self):
         """Create terminal-style log console."""
         # Console container
-        console_frame = ctk.CTkFrame(self, fg_color="#0a0a12", corner_radius=12)
+        console_frame = ctk.CTkFrame(self, fg_color="#e8e8ed", corner_radius=12)
         console_frame.pack(fill="both", expand=True)
         
         # Log Console widget

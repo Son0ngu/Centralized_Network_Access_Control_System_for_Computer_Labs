@@ -72,7 +72,7 @@ class DashboardView(ctk.CTkFrame):
             header_frame,
             text="📊 Dashboard",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#00d4ff"
+            text_color="#0077cc"
         )
         title.pack(side="left")
         
@@ -223,21 +223,21 @@ class DashboardView(ctk.CTkFrame):
     
     def _setup_activity_log(self):
         """Setup activity log section."""
-        log_frame = ctk.CTkFrame(self, corner_radius=12, fg_color="#1a1a2e")
+        log_frame = ctk.CTkFrame(self, corner_radius=12, fg_color="#e8e8ed")
         log_frame.pack(fill="both", expand=True, pady=(10, 0))
-        
+
         # Log header
         log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
         log_header.pack(fill="x", padx=15, pady=(15, 10))
-        
+
         log_title = ctk.CTkLabel(
             log_header,
             text="Activity Log",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#ffffff"
+            text_color="#1a1a2e"
         )
         log_title.pack(side="left")
-        
+
         # Log controls
         clear_btn = ctk.CTkButton(
             log_header,
@@ -245,18 +245,19 @@ class DashboardView(ctk.CTkFrame):
             width=70,
             height=28,
             font=ctk.CTkFont(size=12),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._clear_log
         )
         clear_btn.pack(side="right")
-        
+
         # Log textbox
         self._log_textbox = ctk.CTkTextbox(
             log_frame,
             font=ctk.CTkFont(family="Consolas", size=11),
-            fg_color="#0f0f1a",
-            text_color="#00ff88",
+            fg_color="#ffffff",
+            text_color="#1a1a2e",
             corner_radius=8,
             height=180
         )

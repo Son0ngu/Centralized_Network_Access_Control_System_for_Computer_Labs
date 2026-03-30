@@ -95,21 +95,35 @@ LIGHT_PALETTE = ColorPalette(
     bg_elevated="#ffffff",
     bg_hover="#e0e0e5",
     bg_active="#d0d0d8",
-    
+
+    accent_primary="#0077cc",
+    accent_secondary="#5b21b6",
+    accent_tertiary="#0891b2",
+
     text_primary="#1a1a2e",
     text_secondary="#4a4a5a",
     text_muted="#6a6a7a",
     text_disabled="#9a9aaa",
     text_inverse="#ffffff",
-    
+
     border_default="#d0d0d8",
     border_light="#e0e0e5",
-    
+    border_focus="#0077cc",
+
     sidebar_bg="#ffffff",
     sidebar_item_hover="#f0f0f5",
-    sidebar_item_active="#00d4ff20",
-    
-    console_bg="#1a1a2e",  # Keep console dark even in light mode
+    sidebar_item_active="#e0eef8",
+
+    info="#0077cc",
+    info_dark="#005fa3",
+    info_bg="#e8f4fd",
+
+    success_bg="#e8f8f0",
+    warning_bg="#fef8e8",
+    error_bg="#fde8e8",
+
+    console_bg="#ffffff",
+    console_text="#1a1a2e",
 )
 
 # High Contrast (Accessibility)

@@ -74,10 +74,10 @@ class WhitelistView(ctk.CTkFrame):
             header,
             text="IP Whitelist Manager",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#00d4ff"
+            text_color="#0077cc"
         )
         title.pack(side="left", anchor="w")
-        
+
         # Refresh button
         refresh_btn = ctk.CTkButton(
             header,
@@ -85,12 +85,13 @@ class WhitelistView(ctk.CTkFrame):
             width=100,
             height=36,
             font=ctk.CTkFont(size=13),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._on_refresh
         )
         refresh_btn.pack(side="right")
-        
+
         # Sync button
         sync_btn = ctk.CTkButton(
             header,
@@ -98,9 +99,9 @@ class WhitelistView(ctk.CTkFrame):
             width=120,
             height=36,
             font=ctk.CTkFont(size=13),
-            fg_color="#00d4ff",
-            hover_color="#00b8d4",
-            text_color="#000000",
+            fg_color="#0077cc",
+            hover_color="#005fa3",
+            text_color="#ffffff",
             command=self._on_sync
         )
         sync_btn.pack(side="right", padx=(0, 10))
@@ -116,7 +117,7 @@ class WhitelistView(ctk.CTkFrame):
             stats_frame,
             text="📊 Loading statistics...",
             font=ctk.CTkFont(size=13),
-            text_color="#aaaaaa"
+            text_color="#4a4a5a"
         )
         self._stats_label.pack(side="left", anchor="w", fill="x", expand=True)
         
@@ -139,16 +140,16 @@ class WhitelistView(ctk.CTkFrame):
             height=28,
             font=ctk.CTkFont(size=12),
             corner_radius=6,
-            border_color="#3d3d54",
-            fg_color="#0a0a12"
+            border_color="#d0d0d8",
+            fg_color="#ffffff"
         )
         self._search_entry.pack(side="right")
         self._search_entry.bind("<KeyRelease>", self._on_search)
-    
+
     def _create_table(self):
         """Create data table for IP list."""
         # Table container
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a2e", corner_radius=12)
+        table_frame = ctk.CTkFrame(self, fg_color="#e8e8ed", corner_radius=12)
         table_frame.pack(fill="both", expand=True)
         
         # DataTable with IP columns - responsive with larger minsize
@@ -374,12 +375,8 @@ class WhitelistView(ctk.CTkFrame):
             if not record:
                 continue
             
-            # Combine IPs
-            ips = []
-            if record.ipv4:
-                ips.extend(record.ipv4)
-            if record.ipv6:
-                ips.extend(record.ipv6)
+            # Collect IPs
+            ips = list(record.ipv4) if record.ipv4 else []
             
             if not ips:
                 print(f"DEBUG: No IPs found for {domain}")

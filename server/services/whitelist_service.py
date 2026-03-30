@@ -475,10 +475,11 @@ class WhitelistService:
                 "timestamp": now_iso(),
             }
 
-    def get_agent_sync_data(self, since_datetime: Optional[object] = None, agent_id: str = None,
+    def get_agent_sync_data(self, since_datetime=None, agent_id: str = None,
                             global_version: Optional[int] = None, group_version: Optional[int] = None,
                             agent_policy_mode: str = "none") -> Dict:
-        """Get whitelist data for agent synchronization with group awareness"""
+        """Get whitelist data for agent synchronization with group awareness.
+        Note: since_datetime is kept for API compatibility but ignored (always full sync)."""
         try:
             if not agent_id:
                 raise ValueError("agent_id is required for sync")
@@ -521,19 +522,7 @@ class WhitelistService:
                     "group_id": str(group.get("_id")),
                     "up_to_date": True,
                 }
-            # If versions are out of date or versions are missing, perform a full sync to prevent agents from losing existing global entries when requesting incremental updates.
-            needs_full_global = (
-                since_datetime is None
-                or global_version != current_global_version
-                or group_version != current_group_version
-            )
-
-            if needs_full_global:
-                global_entries = self.model.get_entries_for_sync(scope="global")
-                response_type = "full"
-            else:
-                global_entries = self.model.get_entries_for_sync(since_datetime, scope="global")
-                response_type = "incremental"
+            global_entries = self.model.get_entries_for_sync(scope="global")
 
             # Check for active whitelist profile - overrides group base whitelist
             active_profile = None
@@ -581,7 +570,7 @@ class WhitelistService:
                 "domains": combined,
                 "timestamp": now_iso(),
                 "count": len(combined),
-                "type": response_type,
+                "type": "full",
                 "success": True,
                 "server_time": now_iso(),
                 "global_version": current_global_version,
