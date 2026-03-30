@@ -54,10 +54,8 @@ class WhitelistProfileService:
         if not profile:
             raise ValueError("Profile not found")
 
-        # Teacher can only update their own profiles (not Default profile)
+        # Teacher can only update their own profiles
         if user and user.get("role") == "teacher":
-            if profile.get("is_default"):
-                raise PermissionError("Teacher cannot edit Default profile")
             if str(profile.get("teacher_id")) != str(user.get("_id")):
                 raise PermissionError("Cannot update another teacher's profile")
 
@@ -69,19 +67,10 @@ class WhitelistProfileService:
         if not updated:
             raise ValueError("Failed to update profile")
 
-        # Bump group whitelist version when domains change and:
-        # - profile is currently active, OR
-        # - profile is the Default (fallback used when no teacher profile active)
-        if "domains" in payload and (updated.get("is_active") or updated.get("is_default")):
-            # Only bump if no other teacher profile is currently active (for Default)
-            should_bump = updated.get("is_active")
-            if updated.get("is_default") and not updated.get("is_active"):
-                active = self.model.get_active_profile(str(updated["group_id"]))
-                if not active:
-                    should_bump = True  # No active teacher profile → Default is in use
-            if should_bump:
-                self.group_model.bump_whitelist_version(str(updated["group_id"]))
-                self._notify_group_update(str(updated["group_id"]))
+        # Bump group whitelist version when domains change and profile is active
+        if "domains" in payload and updated.get("is_active"):
+            self.group_model.bump_whitelist_version(str(updated["group_id"]))
+            self._notify_group_update(str(updated["group_id"]))
 
         return self._serialize(updated)
 
@@ -149,34 +138,6 @@ class WhitelistProfileService:
         """Get the active profile for a group (used by agent sync)."""
         profile = self.model.get_active_profile(group_id)
         return self._serialize(profile) if profile else None
-
-    def get_default_profile(self, group_id: str) -> Optional[Dict]:
-        """Get the Default profile for a group (fallback for agent sync)."""
-        profile = self.model.get_default_profile(group_id)
-        return self._serialize(profile) if profile else None
-
-    def get_or_create_default_profile(self, group_id: str, domains: List = None) -> Dict:
-        """Get or create the Default profile for a group."""
-        profile = self.model.ensure_default_profile(group_id, domains=domains)
-        return self._serialize(profile)
-
-    def migrate_group_whitelist_to_default(self, group_id: str) -> bool:
-        """Migrate group.whitelist[] to a Default Profile. Skip if Default already exists."""
-        existing = self.model.get_default_profile(group_id)
-        if existing:
-            return False  # Already migrated
-
-        group = self.group_model.find_by_id(group_id)
-        if not group:
-            return False
-
-        whitelist = group.get("whitelist", [])
-        if not whitelist:
-            return False  # Nothing to migrate
-
-        self.model.ensure_default_profile(group_id, domains=whitelist)
-        self.logger.info(f"Migrated {len(whitelist)} entries from group {group_id} whitelist to Default Profile")
-        return True
 
     def get_teacher_profiles(self, teacher_id, group_ids: List[str]) -> List[Dict]:
         """Get all profiles owned by this teacher across specified groups.

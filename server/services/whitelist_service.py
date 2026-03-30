@@ -535,17 +535,8 @@ class WhitelistService:
                 profile_group["whitelist"] = active_profile.get("domains", [])
                 group_entries = self._normalize_group_entries(profile_group)
             else:
-                # Fallback: use Default Profile instead of group.whitelist
-                default_profile = None
-                if self.profile_service:
-                    default_profile = self.profile_service.get_default_profile(str(group.get("_id")))
-                if default_profile:
-                    profile_group = dict(group)
-                    profile_group["whitelist"] = default_profile.get("domains", [])
-                    group_entries = self._normalize_group_entries(profile_group)
-                else:
-                    # Legacy fallback: use group.whitelist (for unmigrated groups)
-                    group_entries = self._normalize_group_entries(group)
+                # Use group.whitelist as base
+                group_entries = self._normalize_group_entries(group)
 
             combined = self._merge_whitelists(global_entries, group_entries)
 

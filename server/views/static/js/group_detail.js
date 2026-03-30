@@ -1300,19 +1300,18 @@ async function applyPolicy(agentId, mode, reason = '', durationMinutes = null, c
 // INLINE WHITELIST EDITOR
 // ========================================
 
-// Default Profile state for whitelist editor
-let wlDefaultProfile = null;
+// Group whitelist data for whitelist editor
+let wlGroupData = null;
 
 /**
- * Load whitelist entries from Default Profile for this group
+ * Load whitelist entries from group.whitelist[]
  */
 async function wlLoadEntries() {
     const container = document.getElementById('wlDomainList');
     if (!container) return;
 
     try {
-        // Load Default Profile instead of group whitelist
-        const res = await fetch(`/api/groups/${groupId}/default-profile`);
+        const res = await fetch(`/api/groups/${groupId}`);
         const data = await res.json();
 
         if (!data.success) {
@@ -1320,17 +1319,17 @@ async function wlLoadEntries() {
             return;
         }
 
-        wlDefaultProfile = data.data;
-        const domains = wlDefaultProfile.domains || [];
+        wlGroupData = data.data;
+        const domains = wlGroupData.whitelist || [];
 
-        // Convert profile domains to entry format for rendering
+        // Convert group whitelist to entry format for rendering
         const groupEntries = domains.map((d, i) => {
             const val = typeof d === 'string' ? d : (d.value || '');
             const type = typeof d === 'string' ? 'domain' : (d.type || 'domain');
             const category = typeof d === 'string' ? 'general' : (d.category || 'general');
             const priority = typeof d === 'string' ? 'normal' : (d.priority || 'normal');
             return {
-                _id: `default|${i}`,
+                _id: `group|${i}`,
                 value: val,
                 type: type,
                 category: category,
@@ -1350,10 +1349,10 @@ async function wlLoadEntries() {
         const versionEl = document.getElementById('wlVersion');
         if (countEl) countEl.textContent = groupEntries.length;
         if (totalEl) totalEl.textContent = groupEntries.length;
-        if (versionEl) versionEl.textContent = wlDefaultProfile.version || 1;
+        if (versionEl) versionEl.textContent = wlGroupData.whitelist_version || 1;
 
         wlRenderList();
-        wpUpdateBanner(); // Update banner with latest default profile info
+        wpUpdateBanner();
     } catch (err) {
         console.error('wlLoadEntries error:', err);
         container.innerHTML = '<div class="wl-empty-state"><p>Connection error</p></div>';
@@ -1463,7 +1462,7 @@ async function wlAddEntry() {
     const input = document.getElementById('wlNewValue');
     const typeSelect = document.getElementById('wlNewType');
     const btn = document.getElementById('wlAddBtn');
-    if (!input || !wlDefaultProfile) return;
+    if (!input || !wlGroupData) return;
 
     const raw = input.value.trim();
     if (!raw) { input.focus(); return; }
@@ -1475,7 +1474,7 @@ async function wlAddEntry() {
     const type = typeSelect?.value || 'domain';
 
     // Build new domains array by appending to existing
-    const currentDomains = [...(wlDefaultProfile.domains || [])];
+    const currentDomains = [...(wlGroupData.whitelist || [])];
     let addedCount = 0;
     for (const val of values) {
         const exists = currentDomains.some(d => {
@@ -1497,10 +1496,10 @@ async function wlAddEntry() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${wlDefaultProfile._id}`, {
+        const res = await fetch(`/api/groups/${groupId}`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ domains: currentDomains })
+            body: JSON.stringify({ whitelist: currentDomains })
         });
         const data = await res.json();
 
@@ -1524,10 +1523,10 @@ async function wlAddEntry() {
  * Delete a whitelist entry
  */
 async function wlDeleteEntry(entryIndex) {
-    if (entryIndex === undefined || !wlDefaultProfile) return;
+    if (entryIndex === undefined || !wlGroupData) return;
     if (!confirm('Remove this domain from whitelist?')) return;
 
-    const currentDomains = [...(wlDefaultProfile.domains || [])];
+    const currentDomains = [...(wlGroupData.whitelist || [])];
     const idx = parseInt(entryIndex);
     if (idx < 0 || idx >= currentDomains.length) return;
 
@@ -1535,10 +1534,10 @@ async function wlDeleteEntry(entryIndex) {
     const removedVal = typeof removed[0] === 'string' ? removed[0] : removed[0]?.value;
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${wlDefaultProfile._id}`, {
+        const res = await fetch(`/api/groups/${groupId}`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ domains: currentDomains })
+            body: JSON.stringify({ whitelist: currentDomains })
         });
         const data = await res.json();
 
@@ -1599,7 +1598,7 @@ function wpUpdateBanner() {
     const descEl = document.getElementById('firewallBannerDesc');
     if (!titleEl || !descEl) return;
 
-    const activeProfile = wpProfiles.find(p => p.is_active && !p.is_default);
+    const activeProfile = wpProfiles.find(p => p.is_active);
 
     if (activeProfile) {
         // Teacher profile is active
@@ -1608,25 +1607,24 @@ function wpUpdateBanner() {
         titleEl.innerHTML = `<span class="text-warning">Teacher Profile Active</span>`;
         descEl.innerHTML = `<i class="fas fa-play-circle me-1 text-warning"></i><strong>${wlEscapeHtml(activeProfile.name)}</strong> - ${wlEscapeHtml(activeProfile.teacher_username || '')} <span class="text-muted">(${(activeProfile.domains || []).length} domains)</span>`;
     } else {
-        // Default Profile is in use
-        const defaultDomainCount = wlDefaultProfile ? (wlDefaultProfile.domains || []).length : '...';
+        // Group base whitelist is in use
+        const domainCount = wlGroupData ? (wlGroupData.whitelist || []).length : '...';
         iconEl.style.background = '#e8f5e9';
         iconEl.innerHTML = '<i class="fas fa-shield-alt text-success fa-lg"></i>';
-        titleEl.innerHTML = `<span class="text-success">Default Profile</span>`;
-        descEl.innerHTML = `<i class="fas fa-check-circle me-1 text-success"></i>Using Default Whitelist Profile <span class="text-muted">(${defaultDomainCount} domains)</span>`;
+        titleEl.innerHTML = `<span class="text-success">Group Whitelist</span>`;
+        descEl.innerHTML = `<i class="fas fa-check-circle me-1 text-success"></i>Using Group Base Whitelist <span class="text-muted">(${domainCount} domains)</span>`;
     }
 }
 
 /**
- * Render Teacher Profiles as a table (excludes Default profile)
+ * Render Teacher Profiles as a table
  */
 function wpRenderProfiles() {
     const container = document.getElementById('profilesList');
     const countEl = document.getElementById('profileCount');
     if (!container) return;
 
-    // Filter out the Default profile - it's shown in its own card
-    const teacherProfiles = wpProfiles.filter(p => !p.is_default);
+    const teacherProfiles = wpProfiles;
     if (countEl) countEl.textContent = teacherProfiles.length;
 
     if (teacherProfiles.length === 0) {

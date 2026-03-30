@@ -24,10 +24,6 @@ class WhitelistProfileController:
         bp.add_url_rule(
             '/my-profiles', 'my_profiles',
             require_login(self.my_profiles), methods=['GET'])
-        # Default profile for a group (admin editor on group detail page)
-        bp.add_url_rule(
-            '/groups/<group_id>/default-profile', 'default_profile',
-            require_login(self.default_profile), methods=['GET'])
         bp.add_url_rule(
             '/groups/<group_id>/profiles', 'list_profiles',
             require_login(self.list_profiles), methods=['GET'])
@@ -93,19 +89,6 @@ class WhitelistProfileController:
             return jsonify({"success": True, "data": profiles}), 200
         except Exception as exc:
             self.logger.error(f"Failed to get my profiles: {exc}")
-            return jsonify({"success": False, "error": str(exc)}), 500
-
-    def default_profile(self, group_id):
-        """GET /api/groups/<group_id>/default-profile - Return or create the Default profile."""
-        try:
-            group, err = self._check_group_access(group_id)
-            if err:
-                return err
-
-            profile = self.service.get_or_create_default_profile(group_id)
-            return jsonify({"success": True, "data": profile}), 200
-        except Exception as exc:
-            self.logger.error(f"Failed to get default profile: {exc}")
             return jsonify({"success": False, "error": str(exc)}), 500
 
     def list_profiles(self, group_id):

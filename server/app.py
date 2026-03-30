@@ -274,20 +274,13 @@ def register_controllers(app, socketio, db):
 
         logger.info(" Controllers initialized (including RBAC)")
 
-        # Auto-migrate existing group whitelists to Default Profiles
+        # Cleanup legacy Default Profiles (replaced by group.whitelist)
         try:
-            groups_with_wl = list(group_model.collection.find(
-                {"whitelist": {"$ne": [], "$exists": True}},
-                {"_id": 1}
-            ))
-            migrated = 0
-            for grp in groups_with_wl:
-                if whitelist_profile_service.migrate_group_whitelist_to_default(str(grp["_id"])):
-                    migrated += 1
-            if migrated:
-                logger.info(f" Migrated {migrated} group(s) whitelist to Default Profiles")
+            deleted = whitelist_profile_model.collection.delete_many({"is_default": True})
+            if deleted.deleted_count:
+                logger.info(f" Cleaned up {deleted.deleted_count} legacy Default Profile(s)")
         except Exception as e:
-            logger.warning(f" Migration warning: {e}")
+            logger.warning(f" Default Profile cleanup warning: {e}")
 
         #  Register blueprints with proper URL prefixes
         app.register_blueprint(whitelist_controller.blueprint, url_prefix='/api')

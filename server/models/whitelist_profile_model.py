@@ -28,15 +28,13 @@ class WhitelistProfileModel:
         try:
             self.collection.create_index([("group_id", ASCENDING), ("teacher_id", ASCENDING)])
             self.collection.create_index([("group_id", ASCENDING), ("is_active", ASCENDING)])
-            self.collection.create_index([("group_id", ASCENDING), ("is_default", ASCENDING)])
             self.collection.create_index([("teacher_id", ASCENDING)])
             self.collection.create_index([("created_at", DESCENDING)])
         except Exception as e:
             self.logger.warning(f"Error creating whitelist_profile indexes: {e}")
 
     def create_profile(self, group_id, teacher_id, teacher_username: str,
-                       name: str, domains: List[Dict] = None,
-                       is_default: bool = False) -> Dict:
+                       name: str, domains: List[Dict] = None) -> Dict:
         now = now_vietnam()
         profile = {
             "group_id": ObjectId(group_id) if isinstance(group_id, str) else group_id,
@@ -44,7 +42,6 @@ class WhitelistProfileModel:
             "teacher_username": teacher_username,
             "name": name,
             "domains": domains or [],
-            "is_default": is_default,
             "is_active": False,
             "activated_at": None,
             "version": 1,
@@ -123,23 +120,3 @@ class WhitelistProfileModel:
             "is_active": True,
         })
 
-    def get_default_profile(self, group_id: str) -> Optional[Dict]:
-        """Get the Default profile for a group (fallback when no teacher profile active)."""
-        return self.collection.find_one({
-            "group_id": ObjectId(group_id),
-            "is_default": True,
-        })
-
-    def ensure_default_profile(self, group_id: str, domains: List = None) -> Dict:
-        """Get or create the Default profile for a group."""
-        existing = self.get_default_profile(group_id)
-        if existing:
-            return existing
-        return self.create_profile(
-            group_id=group_id,
-            teacher_id=None,
-            teacher_username="admin",
-            name="Default",
-            domains=domains or [],
-            is_default=True,
-        )

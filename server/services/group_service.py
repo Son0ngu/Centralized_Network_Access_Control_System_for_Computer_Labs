@@ -62,6 +62,8 @@ class GroupService:
         updated["_id"] = str(updated.get("_id"))
         if updated.get("created_by"):
             updated["created_by"] = str(updated["created_by"])
+        if updated.get("teacher_ids"):
+            updated["teacher_ids"] = [str(tid) for tid in updated["teacher_ids"]]
         return updated
 
     def delete_group(self, group_id: str) -> bool:
