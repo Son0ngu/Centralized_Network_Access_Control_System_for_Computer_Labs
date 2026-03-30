@@ -11,8 +11,10 @@ from dotenv import load_dotenv
 #Time utilities - vietnam ONLY
 from time_utils import now_iso, VIETNAM_TZ
 
-# Load .env file
-load_dotenv()
+# Load .env file explicitly from the server directory
+_basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_env_path = os.path.join(_basedir, '.env')
+load_dotenv(_env_path, override=True)
 
 # Setup logging
 logger = logging.getLogger(__name__)
