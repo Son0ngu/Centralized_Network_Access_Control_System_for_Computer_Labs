@@ -38,8 +38,10 @@ class HeartbeatSender:
         self._consecutive_failures = 0
         self._last_successful_heartbeat: Optional[float] = None
 
-        # Callback when server requests force sync (agent policy changed)
+        # Callback when server requests force sync (policy or whitelist changed)
         self.on_force_sync = None  # Set by caller: fn() -> None
+        # Whitelist version getter - set by caller to report current versions in heartbeat
+        self.get_whitelist_versions = None  # Set by caller: fn() -> dict
     
     def _get_server_urls(self) -> list:
         urls = []
@@ -129,6 +131,15 @@ class HeartbeatSender:
             "os_info": f"{os_details['name']} {os_details['version']}",
             "agent_version": "1.0.0"
         }
+
+        # Include whitelist versions so server can detect changes
+        if self.get_whitelist_versions:
+            try:
+                versions = self.get_whitelist_versions()
+                if versions:
+                    heartbeat_data.update(versions)
+            except Exception:
+                pass
         
         for server_url in self.server_urls:
             try:

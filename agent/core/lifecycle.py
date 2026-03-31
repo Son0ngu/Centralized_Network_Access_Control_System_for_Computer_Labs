@@ -214,9 +214,15 @@ def initialize_components(config: Dict) -> bool:
             }
             agent.heartbeat = HeartbeatSender(heartbeat_config)
             agent.heartbeat.set_agent_credentials(agent_id, config.get("agent_token", ""))
-            # Wire force_sync callback: when server requests re-sync (policy changed)
+            # Wire force_sync callback: when server requests re-sync (policy/whitelist changed)
             if agent.whitelist and hasattr(agent.whitelist, 'sync_now'):
                 agent.heartbeat.on_force_sync = agent.whitelist.sync_now
+            # Wire whitelist version getter so heartbeat reports current versions
+            if agent.whitelist and hasattr(agent.whitelist, '_state'):
+                agent.heartbeat.get_whitelist_versions = lambda: {
+                    "global_version": agent.whitelist._state._version or None,
+                    "group_version": agent.whitelist._state._group_version or None,
+                }
             agent.heartbeat.start()
             logger.info("Heartbeat sender initialized and started")
         else:
