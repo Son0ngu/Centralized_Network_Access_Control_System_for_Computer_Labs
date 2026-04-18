@@ -202,29 +202,14 @@ class AnimatedStatusCard(StatusCard):
             self._trend_label.configure(text="→", text_color="#6a6a7a")
     
     def _animate_value_change(self, start: float, end: float, duration_ms: int = 300):
-        """Animate numeric value change."""
+        """Skip animation to improve performance, just set new value."""
         # Cancel any existing animation
         if self._animation_id:
             self.after_cancel(self._animation_id)
-        
-        steps = 10
-        step_duration = duration_ms // steps
-        diff = end - start
-        step_value = diff / steps
-        
-        def animate_step(current_step: int):
-            if current_step >= steps:
-                self._value = str(int(end) if end == int(end) else round(end, 1))
-                self._value_label.configure(text=self._value)
-                return
+            self._animation_id = None
             
-            current_value = start + (step_value * (current_step + 1))
-            display_value = str(int(current_value) if current_value == int(current_value) else round(current_value, 1))
-            self._value_label.configure(text=display_value)
-            
-            self._animation_id = self.after(step_duration, lambda: animate_step(current_step + 1))
-        
-        animate_step(0)
+        self._value = str(int(end) if end == int(end) else round(end, 1))
+        self._value_label.configure(text=self._value)
     
     def _is_numeric(self, value: str) -> bool:
         """Check if value is numeric."""

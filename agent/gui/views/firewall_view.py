@@ -126,7 +126,8 @@ class FirewallView(ctk.CTkFrame):
     
     def _start_refresh(self):
         """Start periodic refresh."""
-        self._refresh_rules()
+        if not hasattr(self, '_is_visible') or self._is_visible:
+            self._refresh_rules()
         self._refresh_job = self.after(self.REFRESH_INTERVAL, self._start_refresh)
     
     def _refresh_rules(self):
@@ -297,8 +298,16 @@ class FirewallView(ctk.CTkFrame):
         except Exception as e:
             self._status_label.configure(text=f"UI error: {e}", text_color="#ff4444")
     
+    def on_show(self):
+        self._is_visible = True
+        self._refresh_rules()
+
+    def on_hide(self):
+        self._is_visible = False
+
     def destroy(self):
         """Clean up when view is destroyed."""
+        self._is_visible = False
         if self._refresh_job:
             self.after_cancel(self._refresh_job)
         super().destroy()

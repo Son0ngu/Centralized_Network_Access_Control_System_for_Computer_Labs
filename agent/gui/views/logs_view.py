@@ -154,12 +154,11 @@ class LogsView(ctk.CTkFrame):
         """Setup logging handler to capture logs."""
         # Create handler that sends to console
         self._log_handler = GUILogHandler(self._log_console)
-        self._log_handler.setLevel(logging.DEBUG)
+        self._log_handler.setLevel(logging.INFO)
         
         # Add to root logger
         root_logger = logging.getLogger()
-        # Ensure we actually receive INFO/DEBUG messages from all modules
-        root_logger.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.INFO)
         root_logger.addHandler(self._log_handler)
         
         # Also add to specific loggers
@@ -175,7 +174,7 @@ class LogsView(ctk.CTkFrame):
         
         for logger_name in loggers_to_capture:
             logger = logging.getLogger(logger_name)
-            logger.setLevel(logging.DEBUG)
+            logger.setLevel(logging.INFO)
             if self._log_handler not in logger.handlers:
                 logger.addHandler(self._log_handler)
     

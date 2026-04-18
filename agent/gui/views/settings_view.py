@@ -395,6 +395,11 @@ class SettingsView(ctk.CTkFrame):
                     "firewallpolicy", policy_arg
                 ])
 
+            restored_actions = {action for action in policies.values() if action in {"allow", "block"}}
+            if restored_actions == {"block"}:
+                from firewall.policy import PolicyManager
+                PolicyManager().restore_default_policy()
+                
             # Clear SAINT rules
             rule_prefix = self._config.get('firewall', {}).get('rule_prefix', 'FirewallController')
             self._clear_saint_rules(rule_prefix)

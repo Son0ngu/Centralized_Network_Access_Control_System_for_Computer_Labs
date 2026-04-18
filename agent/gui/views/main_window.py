@@ -183,10 +183,16 @@ class MainWindow(ctk.CTkFrame):
 
         # Hide current view
         if self._current_view and self._current_view in self._views:
-            self._views[self._current_view].grid_forget()
+            old_view = self._views[self._current_view]
+            old_view.grid_forget()
+            if hasattr(old_view, 'on_hide'):
+                old_view.on_hide()
 
         # Show new view
         view.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        if hasattr(view, 'on_show'):
+            view.on_show()
+        
         self._current_view = view_name
         
         # Update menu button states

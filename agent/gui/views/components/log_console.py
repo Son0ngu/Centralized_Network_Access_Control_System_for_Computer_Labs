@@ -201,17 +201,21 @@ class LogConsole(ctk.CTkFrame):
         """Start background queue processor."""
         def process():
             try:
-                while True:
+                # Process in small batches rather than one at a time for performance
+                batch_size = 100
+                processed = 0
+                while processed < batch_size:
                     msg = self._log_queue.get_nowait()
                     if not self._paused:
                         self._append_log_internal(msg)
+                    processed += 1
             except queue.Empty:
                 pass
             
             # Schedule next check
-            self.after(50, process)
+            self.after(200, process) # Changed from 50 to 200ms
         
-        self.after(50, process)
+        self.after(200, process)
     
     def append_log(
         self,

@@ -79,9 +79,9 @@ class AgentSignals:
         except Exception as e:
             logger.error(f"Error processing events: {e}")
         
-        # Schedule next check (every 100ms)
+        # Schedule next check (every 500ms instead of 100ms for less UI lag)
         if root and root.winfo_exists():
-            root.after(100, lambda: self.process_events(root))
+            root.after(500, lambda: self.process_events(root))
     
     def _dispatch_event(self, event: AgentEvent):
         """Dispatch event to registered callbacks."""

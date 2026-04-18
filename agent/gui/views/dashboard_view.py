@@ -277,7 +277,10 @@ class DashboardView(ctk.CTkFrame):
     
     def _update_stats_display(self):
         """Fetch and display current stats from controller."""
-        if self._controller and self._is_visible:
+        if not self._is_visible:
+            return
+            
+        if self._controller:
             try:
                 # Get agent info
                 info = self._controller.get_agent_info()
@@ -727,8 +730,17 @@ class DashboardView(ctk.CTkFrame):
             minutes = (seconds % 3600) // 60
             return f"{hours}h {minutes}m"
     
+    def on_show(self):
+        """Called when view becomes visible."""
+        self._is_visible = True
+        self._start_periodic_updates()
+        
+    def on_hide(self):
+        """Called when view is hidden."""
+        self._is_visible = False
+        self._stop_periodic_updates()
+        
     def destroy(self):
         """Clean up when view is destroyed."""
-        self._stop_periodic_updates()
-        self._is_visible = False
+        self.on_hide()
         super().destroy()

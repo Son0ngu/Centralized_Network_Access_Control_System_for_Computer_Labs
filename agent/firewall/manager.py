@@ -643,6 +643,17 @@ class FirewallManager:
                 else:
                      logger.warning(f"Failed to restore {profile} profile: {result.stderr}")
 
+            # Safety net:
+            # If snapshot keeps all profiles in block mode, device can lose connectivity.
+            # In that case, force Windows default policy (allow outbound) for all profiles.
+            restored_actions = {action for action in policies.values() if action in {"allow", "block"}}
+            if restored_actions == {"block"}:
+                logger.warning(
+                    "Snapshot policy indicates all profiles are block outbound. "
+                    "Applying default allow-outbound policy to prevent network lockout."
+                )
+                self.policy_manager.restore_default_policy()
+
             # 2. Restore Whitelist if needed
             was_whitelist_mode = snapshot.get("whitelist_mode", False)
             if was_whitelist_mode:
