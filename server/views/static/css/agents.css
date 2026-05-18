@@ -3,43 +3,6 @@ html, body {
     overflow-x: hidden;
 }
 
-.hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 25px;
-    padding: 3rem 2rem;
-    color: white;
-    margin-bottom: 2.5rem;
-    position: relative;
-    overflow: hidden;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: float 20s infinite linear;
-}
-
-.hero-section .hero-content {
-    position: relative;
-    z-index: 1;
-}
-
-.hero-section.hero-agents .hero-content {
-    text-align: left;
-}
-
-.hero-section .btn {
-    backdrop-filter: blur(6px);
-}
-
 .pulse-dot {
     display: inline-block;
     width: 12px;
@@ -55,32 +18,7 @@ html, body {
     100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
 }
 
-.agents-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    padding: 3rem 2rem;
-    color: white;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-}
 
-.agents-hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-    background-size: 30px 30px;
-    animation: float 15s infinite linear;
-}
-
-.agents-hero-content {
-    position: relative;
-    z-index: 1;
-}
 
 .agent-card {
     background: white;
@@ -161,7 +99,7 @@ html, body {
 
 .agent-log-panel {
     background: #f8f9fc;
-    border: 1px dashed #d6d8e1;
+    border: 1px solid #d6d8e1;
     border-radius: 12px;
     padding: 12px 14px;
     margin-top: 12px;
@@ -253,10 +191,10 @@ html, body {
     margin-bottom: 1rem;
 }
 
-.stats-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-.stats-icon.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
-.stats-icon.danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); color: white; }
-.stats-icon.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+.stats-icon.primary { background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color: white; }
+.stats-icon.success { background: linear-gradient(135deg, #C7D2FE 0%, #6366F1 100%); color: white; }
+.stats-icon.danger { background: linear-gradient(135deg, #4F46E5 0%, #4F46E5 100%); color: white; }
+.stats-icon.warning { background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%); color: #312E81; }
 
 .stats-number {
     font-size: 2rem;
@@ -363,8 +301,8 @@ html, body {
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
 }
 
 @keyframes float {
@@ -416,7 +354,7 @@ html, body {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 0;
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(45deg, #4F46E5, #4338CA);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -441,7 +379,7 @@ html, body {
     
     /* Custom scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: #667eea #f1f1f1;
+    scrollbar-color: #4F46E5 #EEF2FF;
 }
 
 .group-board::-webkit-scrollbar {
@@ -454,12 +392,12 @@ html, body {
 }
 
 .group-board::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
     border-radius: 10px;
 }
 
 .group-board::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    background: linear-gradient(135deg, #4F46E5 0%, #4F46E5 100%);
 }
 
 /*  Group card fixed width for horizontal layout */
@@ -467,7 +405,7 @@ html, body {
     min-width: 280px;
     max-width: 320px;
     flex-shrink: 0;
-    border: 2px dashed #d6d8e1;
+    border: 2px solid #d6d8e1;
     border-radius: 12px;
     padding: 14px;
     background: #f8f9fc;
@@ -477,9 +415,9 @@ html, body {
 }
 
 .group-card:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    border-color: #4F46E5;
+    background: #E0E7FF;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .group-card .group-name {
@@ -523,15 +461,15 @@ html, body {
 }
 
 .group-agent-count:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
+    border-color: #4F46E5;
+    background: #E0E7FF;
 }
 
 .group-card.dropping {
-    border-color: #0d6efd;
+    border-color: #4F46E5;
     border-style: solid;
-    background: #e7f1ff;
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    background: #E0E7FF;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
 /*  Expand icon animation */
@@ -569,8 +507,8 @@ html, body {
 }
 
 .group-agent-item:hover {
-    background: #f8f9fc;
-    border-color: #667eea;
+    background: #EEF2FF;
+    border-color: #4F46E5;
 }
 
 .group-agent-item .agent-name {

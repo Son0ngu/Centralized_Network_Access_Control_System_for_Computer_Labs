@@ -1,0 +1,12 @@
+{% macro render_empty_state(title, message, icon='fas fa-folder-open', button_html=None) %}
+<div class="empty-state">
+    <div class="empty-state-icon mx-auto">
+        <i class="{{ icon }}"></i>
+    </div>
+    <h5>{{ title }}</h5>
+    <p class="mb-4 mx-auto">{{ message }}</p>
+    {% if button_html %}
+    {{ button_html | safe }}
+    {% endif %}
+</div>
+{% endmacro %}

@@ -14,14 +14,38 @@ from utils.error_handler import CriticalErrorHandler
 
 logger = logging.getLogger("core.registry")
 
+def _collect_server_urls(config: Dict) -> list:
+    """Return a deduplicated, non-empty list of server URLs to try."""
+    server_cfg = config.get('server') or {}
+    urls = list(server_cfg.get('urls') or [])
+    primary = server_cfg.get('url')
+    if primary and primary not in urls:
+        urls.insert(0, primary)
+    # Drop empty / whitespace-only entries
+    return [u.strip() for u in urls if u and str(u).strip()]
+
+
 @CriticalErrorHandler.critical_operation("Agent Registration")
 def register_agent(config: Dict) -> bool:
     try:
+        server_urls = _collect_server_urls(config)
+
+        # No server URL configured — do not contact anything. This is the
+        # first-run default (see DEFAULT_CONFIG in agent/config/defaults.py).
+        # Surfaced clearly to the user via the GUI status panel; the agent
+        # continues to start in offline mode.
+        if not server_urls:
+            logger.warning(
+                "Server URL not configured — open Settings to set one. "
+                "Skipping registration; agent will run offline until then."
+            )
+            return False
+
         # Collect agent information
         local_ip = get_local_ip()
         admin_status = check_admin_privileges()
         os_details = get_os_details()
-        
+
         agent_info = {
             "hostname": socket.gethostname(),
             "device_id": AGENT_DEVICE_ID,
@@ -39,16 +63,14 @@ def register_agent(config: Dict) -> bool:
             "registration_time": now_iso(),
             "registration_timestamp": now()
         }
-        
-        server_urls = config['server'].get('urls', [config['server']['url']])
-        
+
         for server_url in server_urls:
             if try_register_with_server(server_url, agent_info, config):
                 return True
-        
+
         logger.error("Failed to register with any server")
         return False
-        
+
     except Exception as e:
         logger.error(f"Error in agent registration: {e}")
         return False

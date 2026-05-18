@@ -6,18 +6,21 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="profile-hero">
-    <div class="profile-hero-content">
-        <div class="profile-avatar">
-            <i class="fas fa-user-circle"></i>
-        </div>
-        <h3 class="fw-bold mb-1" id="heroUsername">Loading...</h3>
-        <span class="profile-role-badge" id="heroRoleBadge">--</span>
-        <p class="mb-0 mt-2 opacity-75 small" id="heroLastLogin"></p>
-    </div>
-</div>
+{% set title_html %}
+<span id="heroUsername">Loading...</span>
+{% endset %}
+
+{% set badge_html %}
+<span class="profile-role-badge badge bg-primary" id="heroRoleBadge">--</span>
+<div class="mb-0 mt-2 text-muted small" id="heroLastLogin"></div>
+{% endset %}
+
+{% call render_hero(title_html=title_html, subtitle='Manage your account security and preferences', icon='fas fa-user-circle', badge_html=badge_html, compact=True) %}
+{% endcall %}
 
 <div class="row g-4">
     <!-- Section 1: Profile Info -->

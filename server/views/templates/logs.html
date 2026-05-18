@@ -8,73 +8,78 @@
  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+{% from 'components/stat_card.html' import render_stat_card %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="logs-hero">
-    <div class="logs-hero-content">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="display-5 fw-bold mb-3">System Logs</h1>
-                <p class="lead mb-0">Monitor and analyze firewall activity in real-time</p>
-            </div>
-            <div class="col-md-4 text-md-end">
-                <div class="auto-refresh-indicator">
-                    <i class="fas fa-circle text-success me-2"></i>
-                    Live Updates Active
-                </div>
-            </div>
-        </div>
+{% call render_hero('System Logs', 'Monitor and analyze firewall activity in real-time', icon='fas fa-list', badge_text='Live Updates Active') %}
+    <div class="hero-illustration" aria-hidden="true" style="position: absolute; top: -15%; right: 0; width: 550px; max-width: 55%; height: 130%; z-index: 0; pointer-events: none;">
+        <svg viewBox="0 0 500 300" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+            <!-- Faint Background Elements -->
+            <path d="M420,40 C460,40 480,70 480,110 C480,170 420,230 420,230 C420,230 360,170 360,110 C360,70 380,40 420,40 Z" fill="#EEF2FF" opacity="0.6"/>
+            <path d="M400,100 L415,115 L445,85" stroke="#C7D2FE" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+            
+            <circle cx="80" cy="220" r="40" fill="#EEF2FF" opacity="0.6"/>
+            <path d="M60,220 L70,220 L75,205 L85,235 L90,220 L100,220" stroke="#818CF8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/>
+            
+            <!-- Floating connection lines -->
+            <path d="M80,260 L80,280 L120,280" stroke="#C7D2FE" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.8"/>
+            <circle cx="120" cy="280" r="4" fill="#818CF8"/>
+
+            <g transform="translate(60, 40)">
+                <!-- Fake Terminal/Log Window -->
+                <rect width="360" height="200" rx="12" fill="#ffffff" stroke="#f1f5f9" stroke-width="2" style="box-shadow: 0 20px 40px rgba(0,0,0,0.08);"/>
+                
+                <!-- Window controls -->
+                <circle cx="24" cy="24" r="5" fill="#ef4444"/>
+                <circle cx="44" cy="24" r="5" fill="#eab308"/>
+                <circle cx="64" cy="24" r="5" fill="#22c55e"/>
+                
+                <rect x="0" y="48" width="360" height="2" fill="#f8fafc"/>
+                
+                <!-- Log lines - Structured & Clean -->
+                <!-- Row 1 -->
+                <rect x="24" y="70" width="80" height="8" rx="4" fill="#8b5cf6"/>
+                <rect x="130" y="70" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <rect x="210" y="70" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <circle cx="320" cy="74" r="5" fill="#22c55e"/>
+                
+                <!-- Row 2 -->
+                <rect x="24" y="100" width="70" height="8" rx="4" fill="#f59e0b"/>
+                <rect x="130" y="100" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <rect x="210" y="100" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <circle cx="320" cy="104" r="5" fill="#f59e0b"/>
+                
+                <!-- Row 3 -->
+                <rect x="24" y="130" width="90" height="8" rx="4" fill="#ef4444"/>
+                <rect x="130" y="130" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <rect x="210" y="130" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <circle cx="320" cy="134" r="5" fill="#ef4444"/>
+                
+                <!-- Row 4 -->
+                <rect x="24" y="160" width="80" height="8" rx="4" fill="#8b5cf6"/>
+                <rect x="130" y="160" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <rect x="210" y="160" width="60" height="8" rx="4" fill="#e2e8f0"/>
+                <circle cx="320" cy="164" r="5" fill="#22c55e"/>
+            </g>
+        </svg>
     </div>
-</div>
+{% endcall %}
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon primary mx-auto">
-                    <i class="fas fa-list"></i>
-                </div>
-                <div class="stats-number" id="totalLogsCount">0</div>
-                <div class="stats-label">Total Logs</div>
-            </div>
-        </div>
+        {{ render_stat_card('Total Logs', 'totalLogsCount', 'fas fa-list', 'primary') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon success mx-auto">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div class="stats-number" id="allowedLogsCount">0</div>
-                <div class="stats-label">Allowed</div>
-            </div>
-        </div>
+        {{ render_stat_card('Allowed', 'allowedLogsCount', 'fas fa-check', 'success') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon danger mx-auto">
-                    <i class="fas fa-ban"></i>
-                </div>
-                <div class="stats-number" id="blockedLogsCount">0</div>
-                <div class="stats-label">Blocked</div>
-            </div>
-        </div>
+        {{ render_stat_card('Blocked', 'blockedLogsCount', 'fas fa-ban', 'danger') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon warning mx-auto">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="stats-number" id="warningLogsCount">0</div>
-                <div class="stats-label">Warnings</div>
-            </div>
-        </div>
+        {{ render_stat_card('Warnings', 'warningLogsCount', 'fas fa-exclamation-triangle', 'warning') }}
     </div>
 </div>
 
@@ -241,9 +246,9 @@
 <div class="modal fade" id="logDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border-radius: 15px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0;">
-                <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Log Details
+            <div class="modal-header" style="background: #FFFFFF; color: #18181B; border-bottom: 1px solid #F4F4F5; border-radius: 14px 14px 0 0;">
+                <h5 class="modal-title" style="font-weight: 600;">
+                    <i class="fas fa-info-circle me-2" style="color: #6366F1;"></i>Log Details
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -264,7 +269,7 @@
 <div class="modal fade" id="clearConfirmModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius: 15px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; border-radius: 15px 15px 0 0;">
+            <div class="modal-header" style="background: #4338CA; color: #FFFFFF; border-radius: 14px 14px 0 0;">
                 <h5 class="modal-title">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <!--  ADD missing ID -->

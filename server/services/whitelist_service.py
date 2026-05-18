@@ -117,17 +117,24 @@ class WhitelistService:
         current_time = now_vietnam()
         logger.info(f"Adding entry with vietnam timestamp: {current_time}")
         
-        # Create processed entry
+        # Create processed entry.
+        # Frontend may send the categorical label as either `category` or
+        # `description` (legacy form field) — accept both.
+        category_value = (
+            entry_data.get("category")
+            or entry_data.get("description")
+            or "uncategorized"
+        )
         processed_entry = {
             "type": entry_type,
             "value": value,
-            "category": entry_data.get("category", "uncategorized"),
+            "category": category_value,
             "priority": entry_data.get("priority", "normal"),
             "added_by": client_ip,
             "added_date": current_time,
             "is_active": True
         }
-        
+
         # Add optional fields if specified
         if entry_data.get("notes"):
             processed_entry["notes"] = entry_data.get("notes")
@@ -360,7 +367,14 @@ class WhitelistService:
             self.logger.error(f"Error getting detailed changes: {e}")
             return {"added": [], "removed": [], "modified": [], "active_domains": []}
     
-    def _normalize_group_entries(self, group) -> List[Dict]:
+    def _normalize_group_entries(self, group, include_inactive: bool = True) -> List[Dict]:
+        """Normalize entries from group.whitelist into a list of dicts.
+
+        Args:
+            include_inactive: when False, entries with `is_active=False` are
+                skipped (used for agent sync). UI listings keep the default
+                True so admins can see & re-activate disabled items.
+        """
         entries = []
         group_id = str(group.get("_id")) if group else None
         group_name = group.get("name") if group else None
@@ -373,11 +387,16 @@ class WhitelistService:
                 entry_type = entry.get("type", "domain")
                 priority = entry.get("priority", "normal")
                 category = entry.get("category", "uncategorized")
+                is_active = entry.get("is_active", True)
             else:
                 value = entry
                 entry_type = "domain"
                 priority = "normal"
                 category = "uncategorized"
+                is_active = True
+
+            if not include_inactive and not is_active:
+                continue
 
             # Create a pseudo-ID for group items so they can be selected/manipulated on frontend
             # format: group::<group_id>::<type>::<value>
@@ -391,6 +410,7 @@ class WhitelistService:
                 "type": entry_type,
                 "priority": priority,
                 "category": category,
+                "is_active": is_active,
                 "scope": "group",
                 "group_id": group_id,
                 "group_name": group_name,
@@ -533,10 +553,10 @@ class WhitelistService:
                 # Use active profile's domains instead of group base whitelist
                 profile_group = dict(group)
                 profile_group["whitelist"] = active_profile.get("domains", [])
-                group_entries = self._normalize_group_entries(profile_group)
+                group_entries = self._normalize_group_entries(profile_group, include_inactive=False)
             else:
                 # Use group.whitelist as base
-                group_entries = self._normalize_group_entries(group)
+                group_entries = self._normalize_group_entries(group, include_inactive=False)
 
             combined = self._merge_whitelists(global_entries, group_entries)
 
@@ -864,7 +884,12 @@ class WhitelistService:
         return success
 
     def _update_group_entry(self, pseudo_id: str, update_data: Dict) -> bool:
-        """Update a group whitelist entry identified by pseudo-ID."""
+        """Update a group whitelist entry identified by pseudo-ID.
+
+        Supports toggling `is_active` (used to soft-disable entries without
+        removing them). Legacy string entries are upgraded to dict so the
+        toggle persists.
+        """
         sep = "::" if "::" in pseudo_id else "|"
         parts = pseudo_id.split(sep, 3)
         if len(parts) != 4:
@@ -877,15 +902,30 @@ class WhitelistService:
 
         whitelist = group.get("whitelist", [])
         updated = False
-        for entry in whitelist:
+        for i, entry in enumerate(whitelist):
             e_val = entry.get("value") if isinstance(entry, dict) else entry
             e_type = entry.get("type", "domain") if isinstance(entry, dict) else "domain"
             if e_val == gvalue and e_type == gtype:
-                if isinstance(entry, dict):
-                    for k, v in update_data.items():
-                        if k not in ("updated_at",):
-                            entry[k] = v
-                    updated = True
+                # Upgrade legacy string entry to dict so updates can persist.
+                if not isinstance(entry, dict):
+                    entry = {
+                        "value": e_val,
+                        "type": e_type,
+                        "category": "uncategorized",
+                        "priority": "normal",
+                        "is_active": True,
+                    }
+                    whitelist[i] = entry
+
+                for k, v in update_data.items():
+                    if k in ("updated_at",):
+                        continue
+                    # Coerce is_active to bool to avoid string "false" being truthy.
+                    if k == "is_active":
+                        entry[k] = bool(v)
+                    else:
+                        entry[k] = v
+                updated = True
                 break
 
         if updated:

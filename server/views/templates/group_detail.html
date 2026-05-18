@@ -25,122 +25,72 @@
 </style>
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+{% from 'components/stat_card.html' import render_stat_card %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="hero-section hero-group">
-    <div class="hero-content">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <nav aria-label="breadcrumb" class="mb-2">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="/agents" class="text-white-50">Agents</a></li>
-                        <li class="breadcrumb-item"><a href="/agents#groups" class="text-white-50">Groups</a></li>
-                        <li class="breadcrumb-item active text-white">{{ group.name }}</li>
-                    </ol>
-                </nav>
-                <h1 class="display-5 fw-bold mb-3">
-                    <i class="fas fa-layer-group me-3"></i>
-                    <span id="groupName">{{ group.name }}</span>
-                    {% if group.is_system %}
-                    <span class="badge bg-warning text-dark ms-2">System</span>
-                    {% endif %}
-                </h1>
-                <p class="lead mb-2" id="groupDescription">
-                    {{ group.description or 'No description' }}
-                </p>
-                {% if group.created_by_username %}
-                <div class="mb-2">
-                    <span class="badge bg-{{ 'danger' if group.created_by_role == 'admin' else 'success' }} bg-opacity-25 text-white">
-                        <i class="fas fa-user me-1"></i>Owner: {{ group.created_by_username }} ({{ group.created_by_role }})
-                    </span>
-                </div>
-                {% endif %}
-                <div class="d-flex align-items-center gap-3 mt-3">
-                    <span class="badge bg-light text-dark">
-                        <i class="fas fa-users me-1"></i>
-                        <span id="agentCount">0</span> Agents
-                    </span>
-                    <span class="badge bg-light text-dark">
-                        <i class="fas fa-shield-alt me-1"></i>
-                        <span id="whitelistCount">{{ group.whitelist|length }}</span> Whitelist Domains
-                    </span>
-                </div>
-            </div>
-            <div class="col-md-4 text-md-end">
-                <a href="/agents" class="btn btn-outline-light me-2">
-                    <i class="fas fa-arrow-left me-2"></i>Back
-                </a>
-                {% if not group.is_system %}
-                <button class="btn btn-light rbac-admin-only" onclick="openEditGroupModal()">
-                    <i class="fas fa-edit me-2"></i>Edit Group
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+{% set breadcrumb_html %}
+<nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/agents">Agents</a></li>
+        <li class="breadcrumb-item"><a href="/agents#groups">Groups</a></li>
+        <li class="breadcrumb-item active">{{ group.name }}</li>
+    </ol>
+</nav>
+{% endset %}
+
+{% set title_html %}
+<span id="groupName">{{ group.name }}</span>
+{% if group.is_system %}
+<span class="badge bg-warning text-dark ms-2">System</span>
+{% endif %}
+{% endset %}
+
+{% set badge_html %}
+{% if group.created_by_username %}
+<div class="mb-2">
+    <span class="badge bg-{{ 'danger' if group.created_by_role == 'admin' else 'success' }} bg-opacity-25 text-white">
+        <i class="fas fa-user me-1"></i>Owner: {{ group.created_by_username }} ({{ group.created_by_role }})
+    </span>
 </div>
+{% endif %}
+<div class="d-flex align-items-center gap-3 mt-2">
+    <span class="badge bg-light text-dark">
+        <i class="fas fa-users me-1"></i>
+        <span id="agentCount">0</span> Agents
+    </span>
+    <span class="badge bg-light text-dark">
+        <i class="fas fa-shield-alt me-1"></i>
+        <span id="whitelistCount">{{ group.whitelist|length }}</span> Whitelist Domains
+    </span>
+</div>
+{% endset %}
+
+{% call render_hero(title_html=title_html, subtitle=group.description or 'No description', icon='fas fa-layer-group', breadcrumb_html=breadcrumb_html, badge_html=badge_html, compact=True) %}
+<a href="/agents" class="btn btn-outline-secondary me-2">
+    <i class="fas fa-arrow-left me-2"></i>Back
+</a>
+{% if not group.is_system %}
+<button class="btn btn-primary rbac-admin-only" onclick="openEditGroupModal()">
+    <i class="fas fa-edit me-2"></i>Edit Group
+</button>
+{% endif %}
+{% endcall %}
 
 <!-- Statistics Cards -->
 <div class="row mb-4 g-2 g-md-3">
     <div class="col-6 col-lg-3">
-        <div class="card status-card border-start-primary h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-primary">Total Agents</div>
-                        <div class="stat-number" id="statTotal">0</div>
-                    </div>
-                    <div class="status-icon text-primary">
-                        <i class="fas fa-users"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Total Agents', 'statTotal', 'fas fa-users', 'primary') }}
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card status-card border-start-success h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-success">Active</div>
-                        <div class="stat-number" id="statActive">0</div>
-                    </div>
-                    <div class="status-icon text-success">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Active', 'statActive', 'fas fa-check-circle', 'success') }}
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card status-card border-start-warning h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-warning">Inactive</div>
-                        <div class="stat-number" id="statInactive">0</div>
-                    </div>
-                    <div class="status-icon text-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Inactive', 'statInactive', 'fas fa-exclamation-triangle', 'warning') }}
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card status-card border-start-danger h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-danger">Offline</div>
-                        <div class="stat-number" id="statOffline">0</div>
-                    </div>
-                    <div class="status-icon text-danger">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Offline', 'statOffline', 'fas fa-times-circle', 'danger') }}
     </div>
 </div>
 

@@ -46,16 +46,32 @@ class SettingsView(ctk.CTkFrame):
     def _save_config(self):
         """Save configuration to file."""
         try:
+            # --- Validate Server URL (required) -----------------------------
+            # The agent will not contact any server until this field is set.
+            # See agent/config/defaults.py for the empty default.
+            if 'server_url' in self._entries:
+                url_value = (self._entries['server_url'].get() or '').strip()
+                if not url_value:
+                    self._show_save_error(
+                        "Server URL is required. Enter the controller URL "
+                        "(e.g. http://localhost:5000) before saving."
+                    )
+                    return
+                if not (url_value.startswith('http://') or url_value.startswith('https://')):
+                    self._show_save_error(
+                        "Server URL must start with http:// or https://"
+                    )
+                    return
+
             # Update config from entries
             if 'api_key' in self._entries:
                 if 'auth' not in self._config:
                     self._config['auth'] = {}
                 self._config['auth']['api_key'] = self._entries['api_key'].get()
-            
+
             if 'server_url' in self._entries:
                 if 'server' not in self._config:
                     self._config['server'] = {}
-                url_value = self._entries['server_url'].get()
                 self._config['server']['url'] = url_value
                 # Keep urls list in sync so runtime respects the chosen endpoint
                 self._config['server']['urls'] = [url_value]
@@ -237,18 +253,25 @@ class SettingsView(ctk.CTkFrame):
         # Description
         ctk.CTkLabel(
             fw_frame,
-            text="Firewall state is automatically saved before SAINT applies changes.\n"
-                 "Use the Restore button to revert firewall to the pre-SAINT state.",
+            text="A snapshot of your firewall state is captured the first time "
+                 "SAINT runs.\nUse Restore to revert all SAINT-applied changes "
+                 "back to that pre-SAINT state.",
             font=ctk.CTkFont(size=12),
             text_color="#4a4a5a",
             justify="left",
             anchor="w"
         ).pack(anchor="w", padx=20, pady=(15, 10))
 
-        # Snapshot file path (readonly)
+        # Snapshot file path (readonly) — show the absolute resolved path so
+        # users know exactly where it lives, not the relative form.
         fw_config = self._config.get('firewall', {}).get('backup', {})
-        backup_path = fw_config.get('path', 'profiles/backup.wfw')
-        self._create_input_row(fw_frame, "Snapshot File:", backup_path, 0, readonly=True)
+        backup_path = fw_config.get('path', 'profiles/backup.saint-snapshot.json')
+        try:
+            from firewall.manager import _resolve_snapshot_path
+            resolved_path = str(_resolve_snapshot_path(backup_path))
+        except Exception:
+            resolved_path = backup_path
+        self._create_input_row(fw_frame, "Snapshot File:", resolved_path, 0, readonly=True)
 
         # Restore button
         restore_row = ctk.CTkFrame(fw_frame, fg_color="transparent")
@@ -353,12 +376,27 @@ class SettingsView(ctk.CTkFrame):
     def _manual_restore(self):
         """Restore firewall to pre-SAINT state from snapshot file."""
         try:
-            fw_config = self._config.get('firewall', {}).get('backup', {})
-            backup_path = fw_config.get('path', 'profiles/backup.wfw')
+            from firewall.manager import _resolve_snapshot_path
+            from firewall.utils import FirewallUtils
 
-            file_path = Path(backup_path)
+            fw_config = self._config.get('firewall', {}).get('backup', {})
+            backup_path = fw_config.get('path', 'profiles/backup.saint-snapshot.json')
+
+            file_path = _resolve_snapshot_path(backup_path)
             if not file_path.exists():
-                self._show_save_error(f"No snapshot found: {file_path}\nAgent must have run at least once.")
+                self._show_save_error(
+                    f"No snapshot found: {file_path}\n"
+                    "Agent must have run at least once to create one."
+                )
+                return
+
+            # Admin guard — without elevation netsh fails silently and the UI
+            # would otherwise show a misleading "Firewall restored" message.
+            if not FirewallUtils.has_admin_privileges():
+                self._show_save_error(
+                    "Restore requires administrator privileges. "
+                    "Please relaunch SAINT as administrator."
+                )
                 return
 
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -375,36 +413,58 @@ class SettingsView(ctk.CTkFrame):
             if not confirm:
                 return
 
-            # Try via agent if running
+            # Prefer the running agent's restore_snapshot — it knows about the
+            # state machine and clears its own rules in the same step.
             ctrl = AgentController()
             if ctrl.is_running and ctrl._agent and ctrl._agent.firewall:
                 if ctrl._agent.firewall.restore_snapshot(backup_path):
                     self._show_status("Firewall restored to pre-SAINT state", "#00cc6f")
-                    return
+                else:
+                    self._show_save_error(
+                        "Restore via running agent failed. See agent.log for details."
+                    )
+                return
 
-            # Standalone restore via netsh
-            from firewall.utils import FirewallUtils
-
+            # Standalone restore via netsh (agent not running).
             policies = snapshot.get('policies', {})
+            netsh_failures = 0
             for profile, action in policies.items():
                 if action not in ("allow", "block"):
                     continue
-                policy_arg = "blockinbound,blockoutbound" if action == "block" else "blockinbound,allowoutbound"
-                FirewallUtils.run_netsh_command([
+                policy_arg = (
+                    "blockinbound,blockoutbound"
+                    if action == "block"
+                    else "blockinbound,allowoutbound"
+                )
+                result = FirewallUtils.run_netsh_command([
                     "advfirewall", "set", f"{profile}profile",
                     "firewallpolicy", policy_arg
                 ])
+                if result.returncode != 0:
+                    netsh_failures += 1
 
-            restored_actions = {action for action in policies.values() if action in {"allow", "block"}}
+            # Safety net: avoid network lockout if snapshot is all-block.
+            restored_actions = {
+                a for a in policies.values() if a in {"allow", "block"}
+            }
             if restored_actions == {"block"}:
                 from firewall.policy import PolicyManager
                 PolicyManager().restore_default_policy()
-                
-            # Clear SAINT rules
-            rule_prefix = self._config.get('firewall', {}).get('rule_prefix', 'FirewallController')
+
+            # Always clear SAINT rules, regardless of snapshot.whitelist_mode,
+            # so restore truly reverts to pre-SAINT (matches manager.py).
+            rule_prefix = (
+                self._config.get('firewall', {}).get('rule_prefix', 'FirewallController')
+            )
             self._clear_saint_rules(rule_prefix)
 
-            self._show_status("Firewall restored to pre-SAINT state", "#00cc6f")
+            if netsh_failures:
+                self._show_save_error(
+                    f"Restore completed with {netsh_failures} netsh error(s). "
+                    "Verify firewall state in wf.msc."
+                )
+            else:
+                self._show_status("Firewall restored to pre-SAINT state", "#00cc6f")
 
         except Exception as e:
             self._show_save_error(f"Restore failed: {e}")

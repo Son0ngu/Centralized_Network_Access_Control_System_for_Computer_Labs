@@ -1,0 +1,18 @@
+{% macro render_stat_card(label, value_id, icon, color_class, value_class=None, default_value=None) %}
+{% set text_color = value_class if value_class else 'text-' ~ color_class %}
+<div class="card stats-card">
+    <div class="card-body text-center p-4">
+        <div class="stats-icon {{ color_class }} mx-auto">
+            <i class="{{ icon }}"></i>
+        </div>
+        <div class="stats-number {{ text_color }}" id="{{ value_id }}">
+            {% if default_value is not none %}
+                {{ default_value }}
+            {% else %}
+                <i class="fas fa-spinner fa-spin"></i>
+            {% endif %}
+        </div>
+        <div class="stats-label">{{ label }}</div>
+    </div>
+</div>
+{% endmacro %}

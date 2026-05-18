@@ -34,9 +34,19 @@ def initialize_components(config: Dict) -> bool:
         
         # 1. Register with server first
         logger.info("Step 1: Registering with server...")
-        from .registry import register_agent
-        
-        if not register_agent(config):
+        from .registry import register_agent, _collect_server_urls
+
+        configured_urls = _collect_server_urls(config)
+        if not configured_urls:
+            # First-run state: no server URL set yet. Do NOT attempt to call
+            # any default endpoint — this protects the user from leaking
+            # device info to an unconfigured server. The GUI should prompt
+            # the user to set a URL in Settings.
+            logger.warning(
+                "Server URL is empty — agent will start in OFFLINE mode. "
+                "Open Settings → enter a Server URL → Save to enable sync."
+            )
+        elif not register_agent(config):
             logger.error("Failed to register with server")
             # Continue anyway - can work offline with cached whitelist
             logger.warning("Continuing with offline mode...")
@@ -91,87 +101,98 @@ def initialize_components(config: Dict) -> bool:
             except Exception as e:
                 logger.warning(f"⚠️ Whitelist sync error: {e}")
         
-        # 3. Initialize FirewallManager (if enabled and has admin)
+        # 3. Initialize FirewallManager (only when enabled + admin).
+        # The agent supports a single firewall mode: `whitelist_only`. Any
+        # other value in config has already been coerced by the validator.
         admin_status = check_admin_privileges()
         firewall_config = config.get("firewall", {})
-        firewall_mode = firewall_config.get("mode", "monitor")
-        
-        # 3.1. Auto-install WinPcap if whitelist_only mode with admin
-        if firewall_config.get("enabled") and admin_status and firewall_mode == "whitelist_only":
+        firewall_enabled = bool(firewall_config.get("enabled"))
+
+        if firewall_enabled and admin_status:
+            # 3.1. Auto-install WinPcap so packet capture works
             logger.info("Step 3.1: Checking WinPcap for packet capture...")
             try:
-                from capture.winpcap_installer import ensure_winpcap_available, is_winpcap_installed
-                
+                from capture.winpcap_installer import (
+                    ensure_winpcap_available, is_winpcap_installed,
+                )
                 if not is_winpcap_installed():
                     logger.info("WinPcap not found - attempting auto-installation...")
                     success, message = ensure_winpcap_available()
                     if success:
-                        logger.info(f"{message}")
+                        logger.info(message)
                     else:
-                        logger.warning(f"⚠️ WinPcap auto-install: {message}")
+                        logger.warning("⚠️ WinPcap auto-install: %s", message)
                         logger.warning("Packet capture may not work without WinPcap/Npcap")
                 else:
                     logger.info("WinPcap/Npcap already installed")
             except Exception as e:
-                logger.warning(f"WinPcap check/install failed: {e}")
-        
-        if firewall_config.get("enabled") and admin_status:
+                logger.warning("WinPcap check/install failed: %s", e)
+
             logger.info("Step 3: Initializing firewall manager...")
             from firewall import FirewallManager
-            agent.firewall = FirewallManager(firewall_config.get("rule_prefix", "FirewallController"))
-            
-            # Always save pre-SAINT firewall state so Restore can revert to it
-            backup_cfg = firewall_config.get("backup", {})
-            backup_path = backup_cfg.get("path", "profiles/backup.wfw")
-            logger.info("Saving pre-SAINT firewall snapshot...")
-            agent.firewall.save_snapshot(backup_path)
+            agent.firewall = FirewallManager(
+                firewall_config.get("rule_prefix", "FirewallController")
+            )
+
+            # Save pre-SAINT firewall state once so Restore can revert to it.
+            # Skip-if-exists prevents clobbering the genuine baseline after a
+            # crashed run.
+            backup_cfg = firewall_config.get("backup", {}) or {}
+            if backup_cfg.get("enabled", True):
+                backup_path = backup_cfg.get(
+                    "path", "profiles/backup.saint-snapshot.json"
+                )
+                logger.info("Saving pre-SAINT firewall snapshot (if missing)...")
+                agent.firewall.save_snapshot(backup_path)
+            else:
+                logger.info("Firewall backup disabled by config; skipping snapshot.")
 
             # Link firewall to whitelist
             if agent.whitelist:
                 agent.whitelist.set_firewall_manager(agent.firewall)
                 logger.info("Firewall manager linked to whitelist")
-            
-            # Enable whitelist-only mode if configured
-            if firewall_mode == "whitelist_only":
-                logger.info("Firewall mode: whitelist_only - Enabling Default Deny policy...")
-                
-                # Collect server URLs for allow rules
-                server_config = config.get("server", {})
-                server_urls = []
-                if server_config.get("urls"):
-                    server_urls.extend(server_config["urls"])
-                if server_config.get("url"):
-                    server_urls.append(server_config["url"])
-                
-                # Collect ALL whitelist data from synced data
-                whitelist_ips = set()
-                whitelist_domains = set()
-                if agent.whitelist and hasattr(agent.whitelist, '_state'):
-                    # Get direct IPs
-                    whitelist_ips = agent.whitelist._state.get_all_ips()
-                    # Get domains to resolve
-                    whitelist_domains = agent.whitelist._state.get_all_domains()
-                    # Get patterns (wildcard domains)
-                    whitelist_domains.update(agent.whitelist._state.get_all_patterns())
-                    
-                logger.info(f"Whitelist data: {len(whitelist_ips)} IPs, {len(whitelist_domains)} domains/patterns")
-                
-                # Enable with server URLs, whitelist IPs AND domains
-                if agent.firewall.enable_whitelist_mode(
-                    server_urls=server_urls, 
-                    whitelist_ips=whitelist_ips,
-                    whitelist_domains=whitelist_domains
-                ):
-                    logger.info("Default Deny policy enabled - All non-whitelisted traffic will be blocked")
-                else:
-                    logger.error("Failed to enable Default Deny policy")
+
+            # Enable whitelist_only mode (the only supported mode).
+            logger.info("Enabling whitelist_only mode (Default Deny + allow whitelist)...")
+            server_config = config.get("server", {})
+            server_urls = []
+            if server_config.get("urls"):
+                server_urls.extend(server_config["urls"])
+            if server_config.get("url"):
+                server_urls.append(server_config["url"])
+
+            whitelist_ips: set = set()
+            whitelist_domains: set = set()
+            if agent.whitelist and hasattr(agent.whitelist, "_state"):
+                whitelist_ips = agent.whitelist._state.get_all_ips()
+                whitelist_domains = agent.whitelist._state.get_all_domains()
+                whitelist_domains.update(
+                    agent.whitelist._state.get_all_patterns()
+                )
+
+            logger.info(
+                "Whitelist data: %d IPs, %d domains/patterns",
+                len(whitelist_ips), len(whitelist_domains),
+            )
+
+            if agent.firewall.enable_whitelist_mode(
+                server_urls=server_urls,
+                whitelist_ips=whitelist_ips,
+                whitelist_domains=whitelist_domains,
+            ):
+                logger.info(
+                    "Default Deny enabled — non-whitelisted traffic will be blocked"
+                )
             else:
-                logger.info(f"Firewall mode: {firewall_mode} (not whitelist_only)")
+                logger.error("Failed to enable Default Deny policy")
         else:
-            if not firewall_config.get("enabled"):
+            if not firewall_enabled:
                 logger.info("Step 3: Firewall disabled in config")
             else:
-                logger.warning("Step 3: Firewall enabled but no admin privileges")
+                logger.warning(
+                    "Step 3: Firewall requires administrator privileges — "
+                    "running without enforcement. Relaunch as admin to apply rules."
+                )
         
         # 4. Start periodic whitelist sync (initial sync already done in Step 2.5)
         if config.get("whitelist", {}).get("auto_sync", True):
@@ -364,7 +385,7 @@ def build_lifecycle_log(config: Dict, event_type: str, action: str, message: str
         "hostname": AGENT_HOSTNAME,
         "ip_address": local_ip,
         "uptime": uptime_string(),
-        "firewall_mode": config.get("firewall", {}).get("mode", "monitor"),
+        "firewall_mode": config.get("firewall", {}).get("mode", "whitelist_only"),
         # Lifecycle events use agent as source/destination
         "source": "agent",
         "source_ip": local_ip,

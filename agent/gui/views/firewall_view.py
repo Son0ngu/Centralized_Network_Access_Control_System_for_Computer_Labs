@@ -169,11 +169,12 @@ class FirewallView(ctk.CTkFrame):
                     else:
                         policy_status = "Default Allow"
                 
-                # Get mode
+                # Whitelist-only is the only supported mode; show whether
+                # enforcement is currently active or idle (e.g. no admin).
                 if self._firewall_manager.whitelist_mode_active:
                     mode = "Whitelist Only"
                 else:
-                    mode = "Monitor"
+                    mode = "Whitelist Only (idle)"
             else:
                 # Try to get rules from netsh directly
                 rules = self._get_rules_from_netsh()

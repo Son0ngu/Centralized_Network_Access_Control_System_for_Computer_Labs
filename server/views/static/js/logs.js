@@ -1305,24 +1305,24 @@ function renderLifecycleEvent(log, logId) {
     let eventConfig = {
         'agent_startup': {
             icon: 'fa-rocket',
-            gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            gradient: 'linear-gradient(135deg, #C7D2FE 0%, #6366F1 100%)',
             title: 'Agent Started',
-            badge: 'bg-success',
-            borderColor: '#38ef7d'
+            badge: 'bg-info',
+            borderColor: '#6366F1'
         },
         'agent_shutdown': {
             icon: 'fa-power-off',
-            gradient: 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)',
+            gradient: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
             title: '🔴 Agent Shutdown',
-            badge: 'bg-danger',
-            borderColor: '#f45c43'
+            badge: 'bg-primary',
+            borderColor: '#4338CA'
         },
         'agent_stopped': {
             icon: 'fa-stop-circle',
-            gradient: 'linear-gradient(135deg, #536976 0%, #292e49 100%)',
+            gradient: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
             title: '⏹️ Agent Stopped',
             badge: 'bg-secondary',
-            borderColor: '#536976'
+            borderColor: '#94A3B8'
         }
     };
     
@@ -1350,14 +1350,14 @@ function renderLifecycleEvent(log, logId) {
     }
     
     if (log.firewall_mode) {
-        const modeColors = {
-            'monitor': 'text-warning',
-            'enforce': 'text-danger',
-            'whitelist_only': 'text-success'
-        };
+        // The agent only emits `whitelist_only` now; legacy values from
+        // older agents are shown with a neutral secondary tone.
+        const modeClass = log.firewall_mode === 'whitelist_only'
+            ? 'text-success'
+            : 'text-secondary';
         infoCards.push(`
             <div class="lifecycle-info-item">
-                <i class="fas fa-shield-alt ${modeColors[log.firewall_mode] || 'text-secondary'}"></i>
+                <i class="fas fa-shield-alt ${modeClass}"></i>
                 <span><strong>Firewall Mode:</strong> ${log.firewall_mode}</span>
             </div>
         `);

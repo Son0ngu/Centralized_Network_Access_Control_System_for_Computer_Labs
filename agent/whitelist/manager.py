@@ -247,6 +247,12 @@ class WhitelistManager:
                 
                 return True
             else:
+                # Skip noisy error stats + warning when the sync was
+                # short-circuited because the user hasn't configured a
+                # Server URL yet (first-run offline mode).
+                if result.get("offline"):
+                    logger.debug("Whitelist sync skipped: %s", result.get("error"))
+                    return False
                 with self._lock:
                     self._stats["errors"] += 1
                 error_msg = result.get('error', 'Unknown error')

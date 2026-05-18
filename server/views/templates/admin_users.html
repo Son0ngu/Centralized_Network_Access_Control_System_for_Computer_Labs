@@ -7,29 +7,15 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_users.css') }}">
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="hero-section hero-users">
-    <div class="hero-content">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="display-5 fw-bold mb-3">
-                    <i class="fas fa-users-cog me-3"></i>Account Management
-                </h1>
-                <p class="lead mb-2">Create and manage user accounts, assign system access permissions</p>
-                <div class="d-flex align-items-center mt-3">
-                    <span class="pulse-dot me-2"></span>
-                    <span class="fw-semibold">Role-based Access Control (RBAC)</span>
-                </div>
-            </div>
-            <div class="col-md-4 text-md-end mt-4 mt-md-0">
-                <button class="btn btn-light btn-lg shadow-sm w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                    <i class="fas fa-user-plus me-2 text-primary"></i>Create Account
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{% call render_hero('Account Management', 'Create and manage user accounts, assign system access permissions', icon='fas fa-users-cog', badge_text='Role-based Access Control (RBAC)') %}
+<button class="btn btn-primary btn-lg shadow-sm w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#createUserModal">
+    <i class="fas fa-user-plus me-2 text-white"></i>Create Account
+</button>
+{% endcall %}
 
 <!-- Stats Row -->
 <div class="row mb-4 g-3">

@@ -34,8 +34,8 @@
 }
 
 .custom-select-trigger:focus {
-    border-color: #11998e;
-    box-shadow: 0 0 0 0.2rem rgba(17, 153, 142, 0.25);
+    border-color: #6366F1;
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
     outline: none;
 }
 
@@ -79,14 +79,14 @@
 }
 
 .custom-option:hover {
-    background-color: #f0fdf4;
-    color: #11998e;
+    background-color: #EEF2FF;
+    color: #4338CA;
     padding-left: 1.25rem; /* Slide effect */
 }
 
 .custom-option.selected {
-    background-color: #e8f5e9;
-    color: #11998e;
+    background-color: #E0E7FF;
+    color: #4338CA;
     font-weight: 600;
 }
 

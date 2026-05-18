@@ -54,27 +54,34 @@ def _validate_server_config(
 
 
 def _validate_firewall_config(
-    config: Dict, 
-    errors: List[str], 
+    config: Dict,
+    errors: List[str],
     warnings: List[str]
 ) -> None:
-    """Validate firewall configuration."""
+    """Validate firewall configuration.
+
+    The agent only supports `whitelist_only` mode. Any other value is
+    coerced to `whitelist_only` with a warning, so legacy configs keep
+    loading without breaking.
+    """
     firewall_config = config.get("firewall", {})
-    valid_modes = ["monitor", "whitelist_only"]
-    current_mode = firewall_config.get("mode", "monitor")
-    
-    if current_mode not in valid_modes:
-        errors.append(f"Invalid firewall mode: {current_mode}. Valid: {valid_modes}")
-        config["firewall"]["mode"] = "monitor"
-    
+    current_mode = firewall_config.get("mode", "whitelist_only")
+
+    if current_mode != "whitelist_only":
+        warnings.append(
+            f"Unsupported firewall mode '{current_mode}'; coercing to "
+            "'whitelist_only' (the only supported mode)."
+        )
+        config.setdefault("firewall", {})["mode"] = "whitelist_only"
+        current_mode = "whitelist_only"
+
     # Admin privileges check
-    admin_required_modes = ["whitelist_only"]
-    if current_mode in admin_required_modes:
-        if not _has_admin_privileges():
-            warnings.append(
-                f"Mode '{current_mode}' requires admin privileges - "
-                "will auto-switch to 'monitor'"
-            )
+    if current_mode == "whitelist_only" and not _has_admin_privileges():
+        warnings.append(
+            "Firewall mode 'whitelist_only' requires administrator "
+            "privileges to apply rules. The agent will run with the "
+            "firewall component disabled until relaunched as admin."
+        )
 
 
 def _validate_logging_config(config: Dict, warnings: List[str]) -> None:

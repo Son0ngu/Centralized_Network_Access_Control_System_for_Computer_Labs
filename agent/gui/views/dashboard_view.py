@@ -404,36 +404,23 @@ class DashboardView(ctk.CTkFrame):
             self._status_indicator.configure(text="🟢 Running", text_color="#00ff88")
             self._update_button_state("running")
             
-            # Update mode card
+            # Update mode card. The agent only supports `whitelist_only`;
+            # the card now reflects whether enforcement is active or not.
             info = self._controller.get_agent_info()
-            mode = info.get('firewall_mode', 'monitor')
             enabled = info.get('firewall_enabled', False)
-            
-            # Format mode display - only monitor and whitelist_only
-            mode_display = {
-                'monitor': 'Monitor',
-                'whitelist_only': 'Whitelist'
-            }.get(mode, mode.title())
-            
-            # Mode-specific icons and colors
-            mode_config = {
-                'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
-                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed')
-            }.get(mode, ('👁️', '#888888', 'Unknown mode'))
-            
+
             if enabled:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon(mode_config[0])
-                self._cards['mode'].set_color(mode_config[1])
-                self._cards['mode'].set_subtitle(mode_config[2])
-                # Log the actual mode
-                self._append_log(f"[MODE] Firewall mode: {mode_display} ({mode_config[2]})")
+                self._cards['mode'].set_value('Whitelist')
+                self._cards['mode'].set_icon('🛡')
+                self._cards['mode'].set_color('#00ff88')
+                self._cards['mode'].set_subtitle('Only whitelist allowed')
+                self._append_log('[MODE] Firewall: Whitelist enforcement active')
             else:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon('👁️')
-                self._cards['mode'].set_color('#00d4ff')
-                self._cards['mode'].set_subtitle('Firewall disabled')
-                self._append_log(f"[MODE] Firewall mode: {mode_display} (Firewall disabled)")
+                self._cards['mode'].set_value('Disabled')
+                self._cards['mode'].set_icon('⚪')
+                self._cards['mode'].set_color('#888888')
+                self._cards['mode'].set_subtitle('Firewall disabled (no admin)')
+                self._append_log('[MODE] Firewall: Disabled (requires admin to apply rules)')
             
         elif status == 'stopped':
             self._cards['status'].set_value("Stopped")

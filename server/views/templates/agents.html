@@ -7,118 +7,33 @@
  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+{% from 'components/stat_card.html' import render_stat_card %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="hero-section hero-agents">
-    <div class="hero-content">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="display-5 fw-bold mb-3">
-                    <i class="fas fa-laptop-code me-3"></i>
-                    Agent Management
-                </h1>
-                <p class="lead mb-2">
-                    Monitor and manage SECURITY AGENTs across your network infrastructure
-                </p>
-                <div class="d-flex align-items-center mt-3">
-                    <span class="pulse-dot me-2"></span>
-                    <span class="fw-semibold">Real-time agent monitoring enabled</span>
-                </div>
-            </div>
-            <div class="col-md-4 text-md-end">
-                <button class="btn btn-light btn-lg shadow-sm" onclick="refreshAgents()">
-                    <i class="fas fa-sync-alt me-2"></i>Refresh
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{% call render_hero('Agent Management', 'Monitor and manage SECURITY AGENTs across your network infrastructure', icon='fas fa-laptop-code', badge_text='Real-time agent monitoring enabled') %}
+<button class="btn btn-primary btn-lg shadow-sm" onclick="refreshAgents()">
+    <i class="fas fa-sync-alt me-2 text-white"></i>Refresh
+</button>
+{% endcall %}
 
 <!-- Statistics Cards -->
 <div class="row mb-4 g-3">
-    <!-- Total Agents -->
     <div class="col-6 col-md-4 col-lg">
-        <div class="card status-card border-start-primary h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-primary">Total Agents</div>
-                        <div class="stat-number" id="totalAgentsCount">--</div>
-                    </div>
-                    <div class="status-icon text-primary">
-                        <i class="fas fa-server"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Total Agents', 'totalAgentsCount', 'fas fa-server', 'primary') }}
     </div>
-
-    <!-- Active Agents -->
     <div class="col-6 col-md-4 col-lg">
-        <div class="card status-card border-start-success h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-success">Active</div>
-                        <div class="stat-number" id="activeAgentsCount">--</div>
-                    </div>
-                    <div class="status-icon text-success">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Active', 'activeAgentsCount', 'fas fa-check-circle', 'success') }}
     </div>
-
-    <!-- Inactive Agents -->
     <div class="col-6 col-md-4 col-lg">
-        <div class="card status-card border-start-warning h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-warning">Inactive</div>
-                        <div class="stat-number" id="inactiveAgentsCount">--</div>
-                    </div>
-                    <div class="status-icon text-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Inactive', 'inactiveAgentsCount', 'fas fa-exclamation-triangle', 'warning') }}
     </div>
-
-    <!-- Offline Agents -->
     <div class="col-6 col-md-4 col-lg">
-        <div class="card status-card border-start-danger h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-danger">Offline</div>
-                        <div class="stat-number" id="offlineAgentsCount">--</div>
-                    </div>
-                    <div class="status-icon text-danger">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Offline', 'offlineAgentsCount', 'fas fa-times-circle', 'danger') }}
     </div>
-
-    <!-- Pending Agents -->
     <div class="col-6 col-md-4 col-lg">
-        <div class="card status-card border-start-info h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label text-info">Pending</div>
-                        <div class="stat-number" id="pendingAgentsCount">--</div>
-                    </div>
-                    <div class="status-icon text-info">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{ render_stat_card('Pending', 'pendingAgentsCount', 'fas fa-hourglass-half', 'info') }}
     </div>
 </div>
 

@@ -17,7 +17,7 @@ from time_utils import now_iso, parse_agent_timestamp
 
 # Import auth middleware for JWT validation
 from middleware.auth import require_jwt, require_jwt_or_api_key
-from middleware.rbac import inject_current_user
+from middleware.rbac import inject_current_user, require_login
 
 from config.rbac_config import check_permission
 
@@ -43,43 +43,44 @@ class WhitelistController:
                                    methods=['GET'],
                                    view_func=require_jwt(self.agent_sync))
 
-        # Web-facing endpoints - wrapped with inject_current_user
+        # Web-facing endpoints - require login first, then inject_current_user
+        # for teacher-scope filtering inside each handler.
         self.blueprint.add_url_rule('/whitelist',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.list_domains))
+                                   view_func=require_login(inject_current_user(self.list_domains)))
 
         self.blueprint.add_url_rule('/whitelist',
                                    methods=['POST'],
-                                   view_func=inject_current_user(self.add_domain))
+                                   view_func=require_login(inject_current_user(self.add_domain)))
 
         self.blueprint.add_url_rule('/whitelist/<domain_id>',
                                    methods=['DELETE'],
-                                   view_func=inject_current_user(self.delete_domain))
+                                   view_func=require_login(inject_current_user(self.delete_domain)))
 
         self.blueprint.add_url_rule('/whitelist/import',
                                    methods=['POST'],
-                                   view_func=inject_current_user(self.import_domains))
+                                   view_func=require_login(inject_current_user(self.import_domains)))
 
         self.blueprint.add_url_rule('/whitelist/export',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.export_domains))
+                                   view_func=require_login(inject_current_user(self.export_domains)))
 
         self.blueprint.add_url_rule('/whitelist/statistics',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.get_statistics))
+                                   view_func=require_login(inject_current_user(self.get_statistics)))
 
         # Bulk operations
         self.blueprint.add_url_rule('/whitelist/bulk',
                                    methods=['POST'],
-                                   view_func=inject_current_user(self.bulk_add_entries))
+                                   view_func=require_login(inject_current_user(self.bulk_add_entries)))
 
         self.blueprint.add_url_rule('/whitelist/bulk-update',
                                    methods=['POST'],
-                                   view_func=inject_current_user(self.bulk_update_entries))
+                                   view_func=require_login(inject_current_user(self.bulk_update_entries)))
 
         self.blueprint.add_url_rule('/whitelist/bulk-delete',
                                    methods=['POST'],
-                                   view_func=inject_current_user(self.bulk_delete_entries))
+                                   view_func=require_login(inject_current_user(self.bulk_delete_entries)))
 
     # ========================================================================
     # RBAC HELPERS
@@ -252,7 +253,8 @@ class WhitelistController:
             if self.socketio and result.get('success'):
                 self.socketio.emit('whitelist_updated', {
                     'action': 'added', 'type': entry_type, 'value': entry_value,
-                    'category': data.get('category', 'general'), 'timestamp': now_iso()
+                    'category': data.get('category') or data.get('description') or 'uncategorized',
+                    'timestamp': now_iso()
                 })
 
             return jsonify(response_body), 201

@@ -115,7 +115,6 @@ hiddenimports = [
 
 # Data files to include
 datas = [
-    ('agent', 'agent'),
     ('agent/miku.ico', '.'),
 ]
 
@@ -169,5 +168,5 @@ exe_gui = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='agent/miku.ico',
-    uac_admin=False,  # No admin required - can run in monitor mode
+    uac_admin=True,  # Require admin to run
 )

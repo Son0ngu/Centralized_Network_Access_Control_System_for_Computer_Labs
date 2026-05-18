@@ -7,80 +7,73 @@
  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_select.css') }}">
 {% endblock %}
 
+{% from 'components/hero.html' import render_hero %}
+{% from 'components/stat_card.html' import render_stat_card %}
+
 {% block content %}
 <!-- Hero Section -->
-<div class="whitelist-hero">
-    <div class="whitelist-hero-content">
-        <div class="row align-items-center">
-            <div class="col-12">
-                <h1 class="display-5 fw-bold mb-3">
-                    <i class="fas fa-list me-3"></i>
-                    Whitelist Management
-                </h1>
-                <p class="lead mb-0">
-                    Manage trusted domains, IPs, URLs, and other resources allowed to bypass firewall restrictions
-                </p>
-            </div>
-        </div>
+{% call render_hero('Whitelist Management', 'Manage trusted domains, IPs, URLs, and other resources allowed to bypass firewall restrictions', icon='fas fa-list') %}
+    <div class="hero-illustration" aria-hidden="true" style="position: absolute; top: -15%; right: 5%; width: 500px; max-width: 50%; height: 130%; z-index: 0; pointer-events: none;">
+        <svg viewBox="0 0 500 300" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+            <!-- Glow background -->
+            <circle cx="250" cy="150" r="100" fill="#DCFCE7" opacity="0.4" filter="blur(20px)"/>
+            
+            <!-- Central Large Shield -->
+            <g transform="translate(190, 70) scale(1.2)">
+                <path d="M50 0L0 20v45c0 40 20 70 50 85 30-15 50-45 50-85V20L50 0z" fill="#ffffff" stroke="#22C55E" stroke-width="4" stroke-linejoin="round"/>
+                <!-- Checkmark -->
+                <path d="M25 55l15 15 35-35" fill="none" stroke="#22C55E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+
+            <!-- Floating "Allowed" Elements -->
+            <!-- IP Address block -->
+            <g transform="translate(60, 80)">
+                <rect width="110" height="36" rx="18" fill="#ffffff" stroke="#E2E8F0" stroke-width="1.5" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05);"/>
+                <circle cx="18" cy="18" r="6" fill="#4ADE80"/>
+                <rect x="34" y="16" width="60" height="4" rx="2" fill="#94A3B8" opacity="0.4"/>
+            </g>
+
+            <!-- URL block -->
+            <g transform="translate(360, 60)">
+                <rect width="120" height="36" rx="18" fill="#ffffff" stroke="#E2E8F0" stroke-width="1.5" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05);"/>
+                <path d="M12 18h6m-3-3v6" stroke="#4ADE80" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="15" cy="18" r="8" fill="none" stroke="#4ADE80" stroke-width="2"/>
+                <rect x="32" y="16" width="70" height="4" rx="2" fill="#94A3B8" opacity="0.4"/>
+            </g>
+
+            <!-- Domain block -->
+            <g transform="translate(80, 200)">
+                <rect width="130" height="36" rx="18" fill="#ffffff" stroke="#E2E8F0" stroke-width="1.5" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05);"/>
+                <circle cx="18" cy="18" r="6" fill="#4ADE80"/>
+                <rect x="34" y="16" width="80" height="4" rx="2" fill="#94A3B8" opacity="0.4"/>
+            </g>
+
+            <!-- Another IP block -->
+            <g transform="translate(340, 210)">
+                <rect width="100" height="36" rx="18" fill="#ffffff" stroke="#E2E8F0" stroke-width="1.5" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05);"/>
+                <circle cx="18" cy="18" r="6" fill="#4ADE80"/>
+                <rect x="34" y="16" width="50" height="4" rx="2" fill="#94A3B8" opacity="0.4"/>
+            </g>
+            
+            <!-- Dashed Connection Lines (behind) -->
+            <path d="M170,98 L220,110 M360,78 L310,110 M210,218 L240,180 M340,228 L280,180" stroke="#BBF7D0" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.8"/>
+        </svg>
     </div>
-</div>
+{% endcall %}
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon success mx-auto">
-                    <i class="fas fa-list"></i>
-                </div>
-                <div class="stats-number text-success" id="totalItemsCount">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <div class="stats-label">Total Items</div>
-            </div>
-        </div>
+        {{ render_stat_card('Total Items', 'totalItemsCount', 'fas fa-list', 'success') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon info mx-auto">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stats-number text-success" id="activeItemsCount">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <div class="stats-label">Active Items</div>
-            </div>
-        </div>
+        {{ render_stat_card('Active Items', 'activeItemsCount', 'fas fa-check-circle', 'info', 'text-success') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon primary mx-auto">
-                    <i class="fas fa-globe"></i>
-                </div>
-                <div class="stats-number text-primary" id="domainsCount">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <div class="stats-label">Domains</div>
-            </div>
-        </div>
+        {{ render_stat_card('Domains', 'domainsCount', 'fas fa-globe', 'primary') }}
     </div>
-    
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card stats-card">
-            <div class="card-body text-center p-4">
-                <div class="stats-icon warning mx-auto">
-                    <i class="fas fa-network-wired"></i>
-                </div>
-                <div class="stats-number text-info" id="ipsCount">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <div class="stats-label">IP Addresses</div>
-            </div>
-        </div>
+        {{ render_stat_card('IP Addresses', 'ipsCount', 'fas fa-network-wired', 'warning', 'text-info') }}
     </div>
 </div>
 
@@ -278,7 +271,7 @@
 <div class="modal fade" id="addItemModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius: 15px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border-radius: 15px 15px 0 0;">
+            <div class="modal-header" style="background: #FFFFFF; color: #18181B; border-bottom: 1px solid #F4F4F5; border-radius: 14px 14px 0 0;">
                 <h5 class="modal-title" id="modalTitle">
                     <i class="fas fa-plus-circle me-2"></i>Add Item to Whitelist
                 </h5>
@@ -350,7 +343,7 @@
 <div class="modal fade" id="bulkImportModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border-radius: 15px; border: none;">
-            <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border-radius: 15px 15px 0 0;">
+            <div class="modal-header" style="background: #FFFFFF; color: #18181B; border-bottom: 1px solid #F4F4F5; border-radius: 14px 14px 0 0;">
                 <h5 class="modal-title">
                     <i class="fas fa-upload me-2"></i>Bulk Import Whitelist Items
                 </h5>

@@ -1,32 +1,34 @@
 /* Admin Audit Logs - Responsive CSS */
 
-/* Hero Section */
 .hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 25px;
-    padding: 3rem 2rem;
-    color: white;
+    background: #FFFFFF;
+    border: 1px solid #F4F4F5;
+    border-radius: 16px;
+    padding: 2.25rem 2.25rem;
+    color: #18181B;
     margin-bottom: 2rem;
     position: relative;
     overflow: hidden;
-    max-width: 100%;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.04);
 }
 
 .hero-section::before {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: float 20s infinite linear;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+    z-index: 3;
 }
 
-@keyframes float {
-    0% { transform: translate(0, 0) rotate(0deg); }
-    100% { transform: translate(-50px, -50px) rotate(360deg); }
+.hero-section h1 {
+    color: #18181B !important;
+}
+
+.hero-section p {
+    color: #52525B !important;
 }
 
 .hero-section .hero-content {
@@ -38,15 +40,15 @@
     display: inline-block;
     width: 10px;
     height: 10px;
-    background: #38ef7d;
+    background: #4F46E5;
     border-radius: 50%;
     animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(56, 239, 125, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
 }
 
 
@@ -65,7 +67,7 @@
 }
 
 .audit-row:hover {
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(99, 102, 241, 0.08);
 }
 
 .action-badge {
@@ -75,12 +77,12 @@
     white-space: nowrap;
 }
 
-.action-auth { background: #e3f2fd; color: #1565c0; }
-.action-user { background: #f3e5f5; color: #7b1fa2; }
-.action-group { background: #e8f5e9; color: #2e7d32; }
-.action-whitelist { background: #fff3e0; color: #e65100; }
-.action-profile { background: #e0f7fa; color: #00695c; }
-.action-other { background: #f5f5f5; color: #616161; }
+.action-auth { background: #E0E7FF; color: #312E81; }
+.action-user { background: #EEF2FF; color: #4338CA; }
+.action-group { background: #E0E7FF; color: #312E81; }
+.action-whitelist { background: #EEF2FF; color: #4338CA; }
+.action-profile { background: #E0E7FF; color: #312E81; }
+.action-other { background: #EEF2FF; color: #475569; }
 
 .search-box {
     border-radius: 10px;
@@ -88,8 +90,8 @@
 }
 
 .search-box:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.2);
 }
 
 /* ========================================

@@ -485,10 +485,10 @@ def register_socketio_events(socketio):
     
     @socketio.on('ping')
     def handle_ping(data):
-        """Handle ping from client - vietnam ONLY"""
+        """Handle ping from client """
         logger.debug(f"Ping received from {request.sid}")
         socketio.emit('pong', {
-            'timestamp': now_iso(),  # vietnam ISO
+            'timestamp': now_iso(),  
             'client_data': data
         }, room=request.sid)
 
@@ -504,7 +504,7 @@ if __name__ == "__main__":
         logger.info(f" Server: {config.HOST}:{config.PORT}")
         logger.info(f" Architecture: Model-View-Controller")
         logger.info(f" Database: {config.MONGO_DBNAME}")
-        logger.info(f" Timezone: vietnam (Clean & Simple)")
+        logger.info(f" Timezone: vietnam")
         
         #  FIX: Disable reloader to avoid double initialization
         socketio.run(

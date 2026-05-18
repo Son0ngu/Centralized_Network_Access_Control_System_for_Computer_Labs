@@ -171,8 +171,8 @@
             if (!confirm(`Are you sure you want to ${action} this account?`)) return;
 
             try {
-                const resp = await fetch(`${API_BASE}/${userId}/toggle-active`, {
-                    method: 'PUT',
+                const resp = await fetch(`${API_BASE}/${userId}`, {
+                    method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ is_active: newState }),

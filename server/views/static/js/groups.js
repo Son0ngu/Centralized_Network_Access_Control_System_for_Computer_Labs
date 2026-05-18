@@ -32,15 +32,6 @@ function setupEventListeners() {
     document.getElementById('viewGrid')?.addEventListener('click', () => setView('grid'));
     document.getElementById('viewList')?.addEventListener('click', () => setView('list'));
     
-    // Color picker
-    document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', () => {
-            document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-            option.classList.add('selected');
-            selectedColor = option.dataset.color;
-        });
-    });
-    
     // Quick domain input - Enter key
     document.getElementById('quickDomainInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -292,21 +283,19 @@ function sortGroups() {
 // ========================================
 
 function openCreateGroupModal() {
-    document.getElementById('groupModalTitle').innerHTML = '<i class="fas fa-plus-circle me-2"></i>Create Group';
+    document.getElementById('groupModalTitle').textContent = 'Create Group';
+    const subtitle = document.getElementById('groupModalSubtitle');
+    if (subtitle) subtitle.textContent = 'Organize agents under one policy';
     document.getElementById('editGroupId').value = '';
     document.getElementById('groupName').value = '';
     document.getElementById('groupDescription').value = '';
-    
-    // Reset color picker
-    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-    document.querySelector('.color-option[data-color="primary"]').classList.add('selected');
     selectedColor = 'primary';
-    
+
     // Clear quick domains
     quickDomains = [];
     quickDomainEntries = [];
     renderQuickDomains();
-    
+
     const modal = new bootstrap.Modal(document.getElementById('groupModal'));
     modal.show();
 }
@@ -314,17 +303,14 @@ function openCreateGroupModal() {
 function openEditGroupModal(groupId) {
     const group = groupsData.find(g => g._id === groupId);
     if (!group) return;
-    
-    document.getElementById('groupModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Edit Group';
+
+    document.getElementById('groupModalTitle').textContent = 'Edit Group';
+    const subtitle = document.getElementById('groupModalSubtitle');
+    if (subtitle) subtitle.textContent = `Update "${group.name || ''}" settings`;
     document.getElementById('editGroupId').value = groupId;
     document.getElementById('groupName').value = group.name || '';
     document.getElementById('groupDescription').value = group.description || '';
-    
-    // Set color picker
-    const color = group.color || 'primary';
-    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-    document.querySelector(`.color-option[data-color="${color}"]`)?.classList.add('selected');
-    selectedColor = color;
+    selectedColor = group.color || 'primary';
     
     // FIX: Preserve full entry objects so we don't lose type/category/priority
     quickDomainEntries = (group.whitelist || []).map(item => {
@@ -481,17 +467,23 @@ function removeQuickDomain(domain) {
 
 function renderQuickDomains() {
     const container = document.getElementById('quickDomainsList');
-    
+    const emptyHint = document.querySelector('.quick-whitelist-empty');
+
     if (quickDomains.length === 0) {
-        container.innerHTML = '<span class="text-muted small">No domains added yet</span>';
+        container.innerHTML = '';
+        if (emptyHint) emptyHint.style.display = '';
         return;
     }
-    
+
+    if (emptyHint) emptyHint.style.display = 'none';
+
     container.innerHTML = quickDomains.map(domain => `
         <span class="quick-domain-tag">
             <i class="fas fa-globe"></i>
-            ${escapeHtml(domain)}
-            <i class="fas fa-times remove" onclick="removeQuickDomain('${domain}')"></i>
+            <span>${escapeHtml(domain)}</span>
+            <button type="button" class="quick-domain-remove" onclick="removeQuickDomain('${domain}')" aria-label="Remove">
+                <i class="fas fa-times"></i>
+            </button>
         </span>
     `).join('');
 }

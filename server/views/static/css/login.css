@@ -1,14 +1,15 @@
-/* Login page styles - standalone, consistent with base.css dark theme */
+/* Login page styles - light sky theme */
 
 body.login-page {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(135deg, #1a1c2e 0%, #2d3250 100%);
+    background: linear-gradient(135deg, #FAFAFA 0%, #E0E7FF 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0;
     padding: 1rem;
+    color: #0F172A;
 }
 
 .login-container {
@@ -17,12 +18,12 @@ body.login-page {
 }
 
 .login-card {
-    background: rgba(255, 255, 255, 0.05);
+    background: #ffffff;
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid #C7D2FE;
     border-radius: 16px;
     padding: 2.5rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
 }
 
 .login-logo {
@@ -32,14 +33,14 @@ body.login-page {
 
 .login-logo i {
     font-size: 3rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 .login-logo h1 {
-    color: #fff;
+    color: #312E81;
     font-size: 1.5rem;
     font-weight: 700;
     margin-top: 0.75rem;
@@ -47,22 +48,22 @@ body.login-page {
 }
 
 .login-logo p {
-    color: rgba(255, 255, 255, 0.5);
+    color: #64748B;
     font-size: 0.875rem;
     margin: 0;
 }
 
 .login-form .form-label {
-    color: rgba(255, 255, 255, 0.7);
+    color: #334155;
     font-size: 0.875rem;
     font-weight: 500;
     margin-bottom: 0.5rem;
 }
 
 .login-form .form-control {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: #FAFAFA;
+    border: 1px solid #C7D2FE;
+    color: #0F172A;
     padding: 0.75rem 1rem;
     border-radius: 10px;
     font-size: 0.95rem;
@@ -70,20 +71,20 @@ body.login-page {
 }
 
 .login-form .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: #94A3B8;
 }
 
 .login-form .form-control:focus {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
-    color: #fff;
+    background: #ffffff;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    color: #0F172A;
 }
 
 .login-form .input-group-text {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.5);
+    background: #FAFAFA;
+    border: 1px solid #C7D2FE;
+    color: #4338CA;
     border-radius: 10px 0 0 10px;
 }
 
@@ -92,9 +93,9 @@ body.login-page {
 }
 
 .btn-login {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
     border: none;
-    color: #fff;
+    color: #ffffff;
     padding: 0.75rem;
     border-radius: 10px;
     font-weight: 600;
@@ -106,8 +107,9 @@ body.login-page {
 
 .btn-login:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    color: #fff;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    color: #ffffff;
+    background: linear-gradient(135deg, #4F46E5 0%, #4F46E5 100%);
 }
 
 .btn-login:disabled {
@@ -117,9 +119,9 @@ body.login-page {
 }
 
 .login-error {
-    background: rgba(255, 65, 108, 0.15);
-    border: 1px solid rgba(255, 65, 108, 0.3);
-    color: #ff6b8a;
+    background: #E0E7FF;
+    border: 1px solid #C7D2FE;
+    color: #312E81;
     border-radius: 10px;
     padding: 0.75rem 1rem;
     font-size: 0.875rem;

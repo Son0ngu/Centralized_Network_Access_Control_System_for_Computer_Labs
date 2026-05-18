@@ -6,14 +6,14 @@
 }
 .error-illustration {
     font-size: 8rem;
-    color: #6c757d;
-    opacity: 0.5;
+    color: #6366F1;
+    opacity: 0.6;
 }
 .error-code {
     font-size: 6rem;
     font-weight: bold;
-    color: #dc3545;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    color: #4F46E5;
+    text-shadow: 2px 2px 4px rgba(99, 102, 241, 0.15);
 }
 .btn-home {
     transition: all 0.3s ease;
