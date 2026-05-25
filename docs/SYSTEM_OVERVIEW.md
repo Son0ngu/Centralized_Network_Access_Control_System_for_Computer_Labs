@@ -126,28 +126,50 @@ SAINT cung cấp hệ thống Client-Server với:
 8. HeartbeatSender gửi heartbeat mỗi 20 giây
 9. LogSender gửi batch logs mỗi 2 giây
 
-### 4.2 Luồng kiểm tra truy cập mạng
+### 4.2 Luồng kiểm tra truy cập mạng (Preventive + Detective)
 
 ```
-┌──────────┐     ┌───────────┐     ┌──────────────┐     ┌──────────┐
-│ Máy tính │     │ Packet    │     │ Domain       │     │ Whitelist│
-│ truy cập │────▶│ Sniffer   │────▶│ Extractor    │────▶│ Check    │
-│ website  │     │ bắt packet│     │ lấy domain   │     │ allowed? │
-└──────────┘     └───────────┘     └──────────────┘     └────┬─────┘
-                                                              │
-                                                    ┌─────────┼─────────┐
-                                                    ▼         ▼         ▼
-                                              ┌─────────┐ ┌────────┐
-                                              │ ALLOWED │ │BLOCKED │
-                                              │ (log)   │ │(log)   │
-                                              └─────────┘ └────────┘
-                                                    │         │
-                                                    ▼         ▼
-                                              ┌──────────────────┐
-                                              │ LogSender → API  │
-                                              │ → Server lưu DB  │
-                                              └──────────────────┘
+┌──────────┐     ┌───────────────────────────────┐
+│ Máy tính │     │ Layer 3: Windows Firewall     │
+│ truy cập │────▶│ Default Deny + allow IPs      │
+│ website  │     │ Self-allow program=SAINT.exe  │
+└──────────┘     └───────────┬───────────────────┘
+                             │
+                ┌────────────┼───────────────┐
+                ▼ pass (IP   ▼ drop          ▼ agent's own
+                  in WL)      (no rule)         outbound
+            ┌─────────┐  ┌─────────┐      ┌──────────────┐
+            │ NIC out │  │ DROPPED │      │ Server, DNS  │
+            └────┬────┘  │ silent  │      └──────────────┘
+                 │        └─────────┘
+                 ▼
+┌────────────────────────────────────────────────────────┐
+│ Layer 7: Scapy Sniffer (passive copy at NIC)           │
+│   DomainExtractor: DNS query / HTTP Host / TLS SNI     │
+│   Whitelist check by domain + IP                       │
+└─────────────────────────┬──────────────────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+   ┌──────────┐  ┌──────────────────┐  ┌──────────┐
+   │ ALLOWED  │  │ ALLOWED_BY_IP    │  │ BLOCKED  │
+   │ INFO     │  │ WARNING          │  │ (record) │
+   │          │  │ (CDN bleed-thru) │  │          │
+   └─────┬────┘  └────────┬─────────┘  └─────┬────┘
+         └────────────────┼──────────────────┘
+                          ▼
+              ┌──────────────────────┐
+              │ LogSender batch 100  │
+              │ → POST /api/logs     │
+              │ → MongoDB logs[]     │
+              └──────────────────────┘
 ```
+
+**Key insight về `ALLOWED_BY_IP`**: khi user vào `phimlau.com` mà domain này
+host trên cùng Cloudflare IP với `portal.edu.vn` (đã whitelist), Layer 3
+cho qua vì IP match. Layer 7 thấy SNI = `phimlau.com` không nằm trong
+whitelist → log WARNING. Admin xem dashboard sẽ thấy event này và có thể
+quyết định: tighten policy, gọi học sinh, hoặc whitelist thêm domain hợp pháp.
 
 ### 4.3 Luồng đồng bộ Whitelist
 
@@ -197,6 +219,45 @@ SAINT cung cấp hệ thống Client-Server với:
 | **Audit Trail** | Ghi log tất cả hành động của Admin/Teacher |
 | **Config Encryption** | Mã hóa file cấu hình Agent chứa thông tin nhạy cảm |
 | **Session Management** | Quản lý phiên đăng nhập, hết hạn tự động |
+
+---
+
+## 5b. Mô hình Defense in Depth (Preventive + Detective)
+
+Hệ thống áp dụng 2 lớp control bổ trợ nhau, mỗi lớp giải quyết một class of attacks:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Layer 3 — PREVENTIVE CONTROL (Windows Firewall)                 │
+│  - Default Deny outbound trên cả 3 profile domain/private/public │
+│  - Allow rules theo IP cho whitelist đã resolve                  │
+│  - Self-allow rule theo program path (SAINT.exe) cho 443/53      │
+│  → Chặn ≥99% non-whitelisted traffic ngay ở kernel               │
+└──────────────────────────────────────────────────────────────────┘
+                              ↓
+                (Traffic vào IP whitelisted lọt qua)
+                              ↓
+┌──────────────────────────────────────────────────────────────────┐
+│  Layer 7 — DETECTIVE CONTROL (Scapy Passive Sniffer)             │
+│  - Bắt TCP 80/443, UDP 53 (passive, không inject)                │
+│  - Trích xuất domain qua DNS query / HTTP Host / TLS SNI         │
+│  - Phân loại event thành 4 cấp compliance:                       │
+│      ALLOWED        — domain match explicit whitelist            │
+│      ALLOWED_BY_IP  — IP whitelisted, domain KHÔNG có (WARNING)  │
+│      BLOCKED        — không match cả domain lẫn IP               │
+│      OBSERVED       — passive mode (không có admin để enforce)   │
+│  → Admin review WARNING để phát hiện CDN bleed-through           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Vì sao không active blocking ở Layer 7:**
+
+Các kỹ thuật active enforcement ở Layer 7 (TCP RST injection, DNS hijack với
+local sinkhole, browser policy modification qua registry) đều bị Defender,
+CrowdStrike, SentinelOne flag là malicious behavior. SAINT thiết kế để
+**không có hành vi malware-like**, phù hợp deploy chung với EDR ở môi trường
+enterprise/giáo dục có IT policy strict. Trade-off: chấp nhận giới hạn fine-grained
+ở Layer 7, bù lại bằng detective control để admin có visibility và iterate policy.
 
 ---
 

@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 from typing import Callable, Dict, List, Optional, Set
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
-from agent.cache.lru_cache import LRUCache
-from agent.network import OptimizedDNSResolver
+from cache.lru_cache import LRUCache
+from network import OptimizedDNSResolver
 
 from .state import WhitelistState
 from .sync import WhitelistSyncer  

@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 
-from agent.shared.time_utils import now_iso
+from shared.time_utils import now_iso
 from .policy import PolicyManager
 from .rules import RulesManager
 from .utils import FirewallUtils
@@ -101,9 +101,13 @@ class FirewallManager:
             essential_ips_valid = {ip for ip in essential_ips if FirewallUtils.is_valid_ip(ip)}
             
             all_allowed_ips = whitelisted_ips_valid.union(essential_ips_valid)
-            
+
             logger.info(f"Total IPs to allow: {len(all_allowed_ips)}")
-            
+
+            # Step 0: Whitelist the agent's own exe (see enable_whitelist_mode
+            # for rationale — survives server IP rotation).
+            self.rules_manager.create_self_allow_rules(sys.executable)
+
             # Step 1: Enable Default Deny policy
             if not self.policy_manager.enable_default_deny():
                 logger.error("Failed to enable Default Deny policy")
@@ -493,7 +497,7 @@ class FirewallManager:
             except ImportError:
                 for domain in cleaned_domains:
                     try:
-                        results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                        results = socket.getaddrinfo(domain, None, socket.AF_INET)
                         for result in results:
                             ip = result[4][0]
                             if FirewallUtils.is_valid_ip(ip):
@@ -532,10 +536,16 @@ class FirewallManager:
                 return True
             
             logger.info("Enabling whitelist-only mode...")
-            
+
+            # Step 0: Whitelist the agent's own exe by program path. This is
+            # immune to server-side IP rotation (Render.com load balancer)
+            # whereas remoteip-based rules break the moment DNS resolves to a
+            # different IP than what was whitelisted at startup.
+            self.rules_manager.create_self_allow_rules(sys.executable)
+
             # Step 1: Collect all IPs to allow BEFORE enabling Default Deny
             all_allowed_ips = set()
-            
+
             # 1a. Add essential IPs (DNS, localhost, gateway)
             essential_ips = FirewallUtils.get_essential_ips()
             all_allowed_ips.update(essential_ips)

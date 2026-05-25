@@ -8,6 +8,7 @@ import logging
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# pyrefly: ignore [missing-import]
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_socketio import SocketIO
 from flask_cors import CORS

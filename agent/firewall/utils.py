@@ -4,7 +4,7 @@ import socket
 import subprocess
 from typing import Set
 
-from agent.utils.ip_detector import check_admin_privileges, get_local_ip
+from utils.ip_detector import check_admin_privileges, get_local_ip
 
 logger = logging.getLogger("firewall.utils")
 
@@ -21,26 +21,29 @@ class FirewallUtils:
 
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
-        try:
-            ipaddress.ip_address(ip)
-            return True
-        except (ValueError, TypeError):
-            return False
-    
+        # IPv4-only: SAINT firewall enforcement is IPv4 (netsh advfirewall with
+        # IPv6 has quirks like empty stderr on failure, and our DNS resolver
+        # only queries A records).
+        return FirewallUtils.is_valid_ipv4(ip)
+
     @staticmethod
     def get_essential_ips() -> Set[str]:
         essential: Set[str] = set()
-        
-        # Localhost
-        essential.update(["127.0.0.1", "::1"])
-        
-        # Auto-detect system DNS servers
+
+        # Localhost (IPv4 only)
+        essential.add("127.0.0.1")
+
+        # Auto-detect system DNS servers (IPv4 only)
         try:
             import dns.resolver
             sys_resolver = dns.resolver.Resolver()
             if sys_resolver.nameservers:
-                essential.update(sys_resolver.nameservers)
-                logger.debug(f"Detected system DNS servers: {sys_resolver.nameservers}")
+                ipv4_dns = [
+                    ns for ns in sys_resolver.nameservers
+                    if FirewallUtils.is_valid_ipv4(ns)
+                ]
+                essential.update(ipv4_dns)
+                logger.debug(f"Detected IPv4 system DNS servers: {ipv4_dns}")
         except Exception as e:
             logger.debug(f"Could not detect system DNS configuration, falling back to minimal defaults: {e}")
             # Fallback for connectivity safety

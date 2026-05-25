@@ -154,13 +154,34 @@ Logs hoạt động mạng từ Agent gửi về.
 |-------|------|--------|
 | `_id` | ObjectId | ID tự động |
 | `agent_id` | string | Agent gửi log |
-| `action` | string | ALLOWED / BLOCKED / MONITORED |
-| `domain` | string | Domain được truy cập |
-| `timestamp` | datetime | Thời điểm |
-| `protocol` | string | TCP/UDP |
-| `port` | int | Port (80, 443, 53...) |
-| `source_ip` | string | IP nguồn |
-| `destination` | string | IP đích |
+| `action` | string | `ALLOWED` / `ALLOWED_BY_IP` / `BLOCKED` / `OBSERVED` |
+| `level` | string | `INFO` / `WARNING` / `BLOCKED` / `ERROR` |
+| `domain` | string | Domain được truy cập (từ DNS/HTTP Host/TLS SNI) |
+| `destination` | string | Domain hoặc dest_ip nếu không có domain |
+| `domain_allowed` | bool | Cờ: domain có trong whitelist? |
+| `ip_allowed` | bool | Cờ: dest_ip có trong whitelist? |
+| `timestamp` | datetime | Thời điểm (Asia/Ho_Chi_Minh) |
+| `protocol` | string | HTTPS/HTTP/DNS/TCP |
+| `port` | string | Port (80, 443, 53...) |
+| `source_ip` | string | IP nguồn (local IP của máy) |
+| `dest_ip` | string | IP đích (đã pass Layer 3 firewall) |
+| `firewall_mode` | string | `whitelist_only` |
+| `firewall_enabled` | bool | Firewall đang enforce? |
+| `admin_privileges` | bool | Agent có quyền admin? |
+| `agent_host` | string | Hostname của máy chạy agent |
+| `server_received_at` | datetime | Thời điểm server nhận log |
+
+**Compliance levels — Preventive + Detective model:**
+
+`action` value được agent gán trong [agent/core/handlers.py](../agent/core/handlers.py)
+dựa trên kết quả của 2 lớp kiểm tra song song:
+
+| `action` | `level` | Khi nào xảy ra |
+|----------|---------|----------------|
+| `ALLOWED` | `INFO` | Domain match explicit whitelist — compliant access |
+| `ALLOWED_BY_IP` | `WARNING` | IP whitelisted nhưng SNI/Host header chỉ tới domain **không** có trong whitelist → CDN shared IP bleed-through. **Detective signal** để admin review |
+| `BLOCKED` | `BLOCKED` | Cả domain và IP đều không match — Windows Firewall đã chặn ở Layer 3 |
+| `OBSERVED` | `INFO`/`WARNING` | Agent passive mode (không có admin để enforce) |
 
 ### 3.5 Collection `users`
 Tài khoản Admin và Teacher.
@@ -412,10 +433,36 @@ Token đã thu hồi (TTL auto-delete).
 |--------|-------|------|--------|
 | `GET` | `/api/logs` | Login | Danh sách logs (RBAC filter) |
 | `POST` | `/api/logs` | JWT | Agent gửi logs |
-| `GET` | `/api/logs/stats` | Login | Thống kê (allowed/blocked) |
+| `GET` | `/api/logs/stats` | Login | Thống kê (allowed/allowed_by_ip/blocked/warnings) |
 | `DELETE` | `/api/logs` | Admin | Xóa logs theo filter |
 | `DELETE` | `/api/logs/clear` | Admin | Xóa tất cả logs |
 | `GET` | `/api/logs/export` | Admin | Export CSV |
+
+**`/api/logs/stats` response schema:**
+
+```json
+{
+  "total": 12345,
+  "allowed": 10200,
+  "allowed_by_ip": 87,          // NEW: CDN bleed-through (compliance WARNING)
+  "blocked": 1953,
+  "warnings": 105,
+  // When client applies filters, the same metrics with `filtered_` prefix
+  "filtered_total": 200,
+  "filtered_allowed": 150,
+  "filtered_allowed_by_ip": 12,
+  "filtered_blocked": 38,
+  "filtered_warnings": 15,
+  "has_filters": true,
+  "success": true,
+  "server_time": "2026-05-18T..."
+}
+```
+
+`allowed_by_ip` là metric **detective** quan trọng: số event mà Layer 3
+firewall đã cho qua bằng IP match nhưng Layer 7 sniffer thấy domain
+(SNI/Host) không có trong whitelist — dấu hiệu CDN shared IP. Admin theo
+dõi metric này để tinh chỉnh policy hoặc handle violations.
 
 ### 4.8 Authentication (Admin/Teacher)
 

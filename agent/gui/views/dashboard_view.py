@@ -524,13 +524,18 @@ class DashboardView(ctk.CTkFrame):
                 proto_info += f":{port}"
             proto_info += ")"
         
-        # Log the event with better formatting
-        if action.lower() == 'blocked':
-            self._append_log(f"🚫 BLOCKED: {target}{proto_info}")
-        elif action.lower() == 'allowed':
+        # Log the event with better formatting.
+        # ALLOWED_BY_IP marks CDN bleed-through: IP whitelisted, domain not.
+        # Surfaced as ⚠ so admins notice without confusing it with a clean ALLOW.
+        action_lc = action.lower()
+        if action_lc == 'blocked':
+            self._append_log(f"BLOCKED: {target}{proto_info}")
+        elif action_lc == 'allowed_by_ip':
+            self._append_log(f"ALLOWED_BY_IP: {target}{proto_info}  (CDN/IP-only match)")
+        elif action_lc == 'allowed':
             self._append_log(f"ALLOWED: {target}{proto_info}")
         else:
-            self._append_log(f"📡 {target}{proto_info}")
+            self._append_log(f"{target}{proto_info}")
     
     def _on_whitelist_synced(self, data: Dict):
         """Handle whitelist sync event."""

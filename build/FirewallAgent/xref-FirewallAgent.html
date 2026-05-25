@@ -232,7 +232,6 @@ imports:
  &#8226;   <a href="#scapy.layers.inet">scapy.layers.inet</a>
  &#8226;   <a href="#services">services</a>
  &#8226;   <a href="#services.heartbeat">services.heartbeat</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
  &#8226;   <a href="#shared">shared</a>
  &#8226;   <a href="#shared.os_info">shared.os_info</a>
  &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
@@ -418,41 +417,6 @@ imported by:
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
     <a href="#urllib3.contrib.pyopenssl">urllib3.contrib.pyopenssl</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="'agent.network'"></a>
-  <a target="code" href="" type="text/plain"><tt>'agent.network'</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
-imported by:
-    <a href="#firewall.manager">firewall.manager</a>
- &#8226;   <a href="#whitelist.manager">whitelist.manager</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="'agent.shared'"></a>
-  <a target="code" href="" type="text/plain"><tt>'agent.shared'</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
-imported by:
-    <a href="#firewall.manager">firewall.manager</a>
- &#8226;   <a href="#firewall.rules">firewall.rules</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="'agent.utils'"></a>
-  <a target="code" href="" type="text/plain"><tt>'agent.utils'</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
-imported by:
-    <a href="#firewall.utils">firewall.utils</a>
 
   </div>
 
@@ -3001,10 +2965,58 @@ imported by:
 
 <div class="node">
   <a name="agent"></a>
-  <a target="code" href="" type="text/plain"><tt>agent</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="-" type="text/plain"><tt>agent</tt></a>
+<span class="moduletype">NamespacePackage</span>  <div class="import">
 imported by:
-    <a href="#whitelist.manager">whitelist.manager</a>
+    <a href="#agent.network">agent.network</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="agent.network"></a>
+  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/network/__init__.py" type="text/plain"><tt>agent.network</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#agent">agent</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#firewall.manager">firewall.manager</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="agent.network.dns_resolver"></a>
+  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/network/dns_resolver.py" type="text/plain"><tt>agent.network.dns_resolver</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#agent.network">agent.network</a>
+ &#8226;   <a href="#aiodns">aiodns</a>
+ &#8226;   <a href="#asyncio">asyncio</a>
+ &#8226;   <a href="#atexit">atexit</a>
+ &#8226;   <a href="#cache.lru_cache">cache.lru_cache</a>
+ &#8226;   <a href="#concurrent.futures">concurrent.futures</a>
+ &#8226;   <a href="#dns.resolver">dns.resolver</a>
+ &#8226;   <a href="#ipaddress">ipaddress</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
+ &#8226;   <a href="#socket">socket</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#time">time</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#agent.network">agent.network</a>
 
   </div>
 
@@ -3035,7 +3047,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#aiodns">aiodns</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#aiodns.compat">aiodns.compat</a>
  &#8226;   <a href="#aiodns.error">aiodns.error</a>
  &#8226;   <a href="#network.dns_resolver">network.dns_resolver</a>
@@ -3264,7 +3277,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#aiodns">aiodns</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#asyncio">asyncio</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_futures">asyncio.base_futures</a>
@@ -4200,7 +4214,8 @@ imported by:
   <a name="atexit"></a>
   <tt>atexit</tt> <span class="moduletype"><i>(builtin module)</i></span>  <div class="import">
 imported by:
-    <a href="#capture.winpcap_installer">capture.winpcap_installer</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#capture.winpcap_installer">capture.winpcap_installer</a>
  &#8226;   <a href="#certifi.core">certifi.core</a>
  &#8226;   <a href="#colorama.initialise">colorama.initialise</a>
  &#8226;   <a href="#logging">logging</a>
@@ -4545,9 +4560,11 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent_gui.py">agent_gui.py</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#cache">cache</a>
  &#8226;   <a href="#network.dns_resolver">network.dns_resolver</a>
+ &#8226;   <a href="#whitelist.manager">whitelist.manager</a>
 
   </div>
 
@@ -5598,7 +5615,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#asyncio.base_events">asyncio.base_events</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.futures">asyncio.futures</a>
  &#8226;   <a href="#asyncio.tasks">asyncio.tasks</a>
  &#8226;   <a href="#concurrent.futures">concurrent.futures</a>
@@ -12984,7 +13002,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent_gui.py">agent_gui.py</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#dns.asyncresolver">dns.asyncresolver</a>
  &#8226;   <a href="#dns.query">dns.query</a>
  &#8226;   <a href="#firewall.utils">firewall.utils</a>
@@ -16611,8 +16630,7 @@ imported by:
   <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/firewall/manager.py" type="text/plain"><tt>firewall.manager</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#'agent.network'">'agent.network'</a>
- &#8226;   <a href="#'agent.shared'">'agent.shared'</a>
+    <a href="#agent.network">agent.network</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#firewall">firewall</a>
  &#8226;   <a href="#firewall.policy">firewall.policy</a>
@@ -16622,6 +16640,7 @@ imports:
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
  &#8226;   <a href="#socket">socket</a>
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#tempfile">tempfile</a>
@@ -16667,10 +16686,10 @@ imported by:
   <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/firewall/rules.py" type="text/plain"><tt>firewall.rules</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#'agent.shared'">'agent.shared'</a>
- &#8226;   <a href="#firewall">firewall</a>
+    <a href="#firewall">firewall</a>
  &#8226;   <a href="#firewall.utils">firewall.utils</a>
  &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#typing">typing</a>
 
@@ -16690,14 +16709,14 @@ imported by:
   <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/firewall/utils.py" type="text/plain"><tt>firewall.utils</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#'agent.utils'">'agent.utils'</a>
- &#8226;   <a href="#dns.resolver">dns.resolver</a>
+    <a href="#dns.resolver">dns.resolver</a>
  &#8226;   <a href="#firewall">firewall</a>
  &#8226;   <a href="#ipaddress">ipaddress</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#socket">socket</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#utils.ip_detector">utils.ip_detector</a>
 
   </div>
   <div class="import">
@@ -16985,7 +17004,6 @@ imported by:
  &#8226;   <a href="#quopri">quopri</a>
  &#8226;   <a href="#scapy.main">scapy.main</a>
  &#8226;   <a href="#setuptools._distutils.fancy_getopt">setuptools._distutils.fancy_getopt</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
 
   </div>
 
@@ -18245,7 +18263,6 @@ imported by:
  &#8226;   <a href="#setuptools._vendor.packaging.tags">setuptools._vendor.packaging.tags</a>
  &#8226;   <a href="#setuptools.config.expand">setuptools.config.expand</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
 
   </div>
 
@@ -18859,7 +18876,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#cryptography.x509.extensions">cryptography.x509.extensions</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#cryptography.x509.extensions">cryptography.x509.extensions</a>
  &#8226;   <a href="#cryptography.x509.general_name">cryptography.x509.general_name</a>
  &#8226;   <a href="#dns.rdata">dns.rdata</a>
  &#8226;   <a href="#firewall.utils">firewall.utils</a>
@@ -19197,7 +19215,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#aiodns">aiodns</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#asyncio.futures">asyncio.futures</a>
  &#8226;   <a href="#asyncio.log">asyncio.log</a>
  &#8226;   <a href="#cache.lru_cache">cache.lru_cache</a>
@@ -19241,7 +19260,6 @@ imported by:
  &#8226;   <a href="#scapy.layers.tls">scapy.layers.tls</a>
  &#8226;   <a href="#scapy.main">scapy.main</a>
  &#8226;   <a href="#services.heartbeat">services.heartbeat</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
  &#8226;   <a href="#setuptools._distutils._log">setuptools._distutils._log</a>
  &#8226;   <a href="#setuptools._distutils.cmd">setuptools._distutils.cmd</a>
  &#8226;   <a href="#setuptools._distutils.dist">setuptools._distutils.dist</a>
@@ -20340,6 +20358,7 @@ imports:
 imported by:
     <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#network.dns_resolver">network.dns_resolver</a>
+ &#8226;   <a href="#whitelist.manager">whitelist.manager</a>
 
   </div>
 
@@ -20538,6 +20557,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#_sitebuiltins">_sitebuiltins</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
  &#8226;   <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
@@ -20754,7 +20774,6 @@ imported by:
  &#8226;   <a href="#utils.ip_detector">utils.ip_detector</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
  &#8226;   <a href="#zipfile">zipfile</a>
@@ -21265,16 +21284,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="perfmon"></a>
-  <tt>perfmon</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\perfmon.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="pickle"></a>
   <a target="code" href="///C:/Users/sonbx/AppData/Local/Programs/Python/Python314/Lib/pickle.py" type="text/plain"><tt>pickle</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
@@ -21299,7 +21308,6 @@ imported by:
  &#8226;   <a href="#multiprocessing.reduction">multiprocessing.reduction</a>
  &#8226;   <a href="#scapy.data">scapy.data</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
  &#8226;   <a href="#zoneinfo._zoneinfo">zoneinfo._zoneinfo</a>
 
   </div>
@@ -21960,7 +21968,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#pythoncom">pythoncom</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
 
   </div>
 
@@ -29655,23 +29662,11 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="servicemanager"></a>
-  <tt>servicemanager</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\servicemanager.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#services.windows_service">services.windows_service</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="services"></a>
   <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/services/__init__.py" type="text/plain"><tt>services</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#services.heartbeat">services.heartbeat</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
 
   </div>
   <div class="import">
@@ -29679,7 +29674,6 @@ imported by:
     <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#core.lifecycle">core.lifecycle</a>
  &#8226;   <a href="#services.heartbeat">services.heartbeat</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
 
   </div>
 
@@ -29700,30 +29694,6 @@ imports:
  &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#typing">typing</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#agent_gui.py">agent_gui.py</a>
- &#8226;   <a href="#services">services</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="services.windows_service"></a>
-  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/services/windows_service.py" type="text/plain"><tt>services.windows_service</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#logging">logging</a>
- &#8226;   <a href="#servicemanager">servicemanager</a>
- &#8226;   <a href="#services">services</a>
- &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#win32event">win32event</a>
- &#8226;   <a href="#win32service">win32service</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
 
   </div>
   <div class="import">
@@ -33571,20 +33541,22 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent_gui.py">agent_gui.py</a>
+    <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
+ &#8226;   <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#cache.lru_cache">cache.lru_cache</a>
  &#8226;   <a href="#capture.sniffer">capture.sniffer</a>
  &#8226;   <a href="#config.loader">config.loader</a>
  &#8226;   <a href="#core.handlers">core.handlers</a>
  &#8226;   <a href="#core.lifecycle">core.lifecycle</a>
  &#8226;   <a href="#core.registry">core.registry</a>
+ &#8226;   <a href="#firewall.manager">firewall.manager</a>
+ &#8226;   <a href="#firewall.rules">firewall.rules</a>
  &#8226;   <a href="#gui.controllers.agent_controller">gui.controllers.agent_controller</a>
  &#8226;   <a href="#gui.views.components.log_console">gui.views.components.log_console</a>
  &#8226;   <a href="#gui.views.dashboard_view">gui.views.dashboard_view</a>
  &#8226;   <a href="#logging_module.sender">logging_module.sender</a>
  &#8226;   <a href="#network.dns_resolver">network.dns_resolver</a>
  &#8226;   <a href="#services.heartbeat">services.heartbeat</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
  &#8226;   <a href="#shared">shared</a>
  &#8226;   <a href="#utils.error_handler">utils.error_handler</a>
  &#8226;   <a href="#utils.ip_detector">utils.ip_detector</a>
@@ -33793,6 +33765,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_ssl">_ssl</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
  &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
@@ -34432,6 +34405,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.trace">_pyrepl.trace</a>
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#_sitebuiltins">_sitebuiltins</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
  &#8226;   <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#annotationlib">annotationlib</a>
@@ -34596,7 +34570,6 @@ imported by:
  &#8226;   <a href="#scapy.themes">scapy.themes</a>
  &#8226;   <a href="#scapy.utils">scapy.utils</a>
  &#8226;   <a href="#selectors">selectors</a>
- &#8226;   <a href="#services.windows_service">services.windows_service</a>
  &#8226;   <a href="#setuptools">setuptools</a>
  &#8226;   <a href="#setuptools._distutils">setuptools._distutils</a>
  &#8226;   <a href="#setuptools._distutils.cmd">setuptools._distutils.cmd</a>
@@ -34685,7 +34658,6 @@ imported by:
  &#8226;   <a href="#warnings">warnings</a>
  &#8226;   <a href="#weakref">weakref</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
  &#8226;   <a href="#xml.parsers.expat">xml.parsers.expat</a>
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
@@ -34977,6 +34949,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.commands">_pyrepl.commands</a>
  &#8226;   <a href="#_pyrepl.unix_console">_pyrepl.unix_console</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#capture.winpcap_installer">capture.winpcap_installer</a>
@@ -35694,6 +35667,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.unix_console">_pyrepl.unix_console</a>
  &#8226;   <a href="#_pyrepl.utils">_pyrepl.utils</a>
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
+ &#8226;   <a href="#agent.network.dns_resolver">agent.network.dns_resolver</a>
  &#8226;   <a href="#aiodns">aiodns</a>
  &#8226;   <a href="#aiodns.compat">aiodns.compat</a>
  &#8226;   <a href="#annotationlib">annotationlib</a>
@@ -38166,6 +38140,7 @@ imported by:
     <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#core.handlers">core.handlers</a>
  &#8226;   <a href="#core.registry">core.registry</a>
+ &#8226;   <a href="#firewall.utils">firewall.utils</a>
  &#8226;   <a href="#utils">utils</a>
  &#8226;   <a href="#utils.validators">utils.validators</a>
 
@@ -38412,8 +38387,6 @@ imported by:
  &#8226;   <a href="#urllib3.poolmanager">urllib3.poolmanager</a>
  &#8226;   <a href="#urllib3.response">urllib3.response</a>
  &#8226;   <a href="#urllib3.util.ssl_">urllib3.util.ssl_</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
- &#8226;   <a href="#winerror">winerror</a>
  &#8226;   <a href="#zipfile">zipfile</a>
  &#8226;   <a href="#zipimport">zipimport</a>
  &#8226;   <a href="#zoneinfo._tzpath">zoneinfo._tzpath</a>
@@ -38542,9 +38515,9 @@ imported by:
   <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/agent/whitelist/manager.py" type="text/plain"><tt>whitelist.manager</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#'agent.network'">'agent.network'</a>
- &#8226;   <a href="#agent">agent</a>
+    <a href="#cache.lru_cache">cache.lru_cache</a>
  &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#network">network</a>
  &#8226;   <a href="#shared.time_utils">shared.time_utils</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#typing">typing</a>
@@ -38627,125 +38600,6 @@ imported by:
     <a href="#agent_gui.py">agent_gui.py</a>
  &#8226;   <a href="#whitelist">whitelist</a>
  &#8226;   <a href="#whitelist.manager">whitelist.manager</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32api"></a>
-  <tt>win32api</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\win32api.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#win32evtlogutil">win32evtlogutil</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32con"></a>
-  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/.venv/Lib/site-packages/win32/lib/win32con.py" type="text/plain"><tt>win32con</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imported by:
-    <a href="#win32evtlogutil">win32evtlogutil</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32event"></a>
-  <tt>win32event</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\win32event.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#services.windows_service">services.windows_service</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32evtlog"></a>
-  <tt>win32evtlog</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\win32evtlog.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#win32evtlogutil">win32evtlogutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32evtlogutil"></a>
-  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/.venv/Lib/site-packages/win32/lib/win32evtlogutil.py" type="text/plain"><tt>win32evtlogutil</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#win32api">win32api</a>
- &#8226;   <a href="#win32con">win32con</a>
- &#8226;   <a href="#win32evtlog">win32evtlog</a>
- &#8226;   <a href="#winerror">winerror</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32service"></a>
-  <tt>win32service</tt> <span class="moduletype"><tt>C:\Users\sonbx\Centralized_Network_Access_Control_System_for_Computer_Labs\.venv\Lib\site-packages\win32\win32service.pyd</tt></span>  <div class="import">
-imported by:
-    <a href="#services.windows_service">services.windows_service</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="win32serviceutil"></a>
-  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/.venv/Lib/site-packages/win32/lib/win32serviceutil.py" type="text/plain"><tt>win32serviceutil</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#getopt">getopt</a>
- &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#perfmon">perfmon</a>
- &#8226;   <a href="#pickle">pickle</a>
- &#8226;   <a href="#pywintypes">pywintypes</a>
- &#8226;   <a href="#servicemanager">servicemanager</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#warnings">warnings</a>
- &#8226;   <a href="#win32api">win32api</a>
- &#8226;   <a href="#win32con">win32con</a>
- &#8226;   <a href="#win32evtlogutil">win32evtlogutil</a>
- &#8226;   <a href="#win32service">win32service</a>
- &#8226;   <a href="#winerror">winerror</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#services.windows_service">services.windows_service</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="winerror"></a>
-  <a target="code" href="///C:/Users/sonbx/Centralized_Network_Access_Control_System_for_Computer_Labs/.venv/Lib/site-packages/win32/lib/winerror.py" type="text/plain"><tt>winerror</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#win32evtlogutil">win32evtlogutil</a>
- &#8226;   <a href="#win32serviceutil">win32serviceutil</a>
 
   </div>
 

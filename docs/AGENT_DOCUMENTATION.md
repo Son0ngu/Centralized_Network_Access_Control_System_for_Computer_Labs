@@ -80,8 +80,7 @@ agent/
 │   └── crypto.py             # Mã hóa config nhạy cảm
 │
 ├── services/                 # Dịch vụ nền
-│   ├── heartbeat.py          # HeartbeatSender (20s interval)
-│   └── windows_service.py    # Chạy như Windows Service
+│   └── heartbeat.py          # HeartbeatSender (20s interval)
 │
 ├── logging_module/           # Gửi log về Server
 │   └── sender.py             # LogSender (batch 100, 2s interval)
@@ -163,18 +162,34 @@ Agent sử dụng pattern **MVP (Model-View-Presenter)** với hệ thống **Si
 ### 4.1 Khởi động (`core/lifecycle.py`)
 
 ```
-1. register_agent(config)        → Đăng ký với Server, nhận credentials
-2. init TokenManager             → Auto-refresh JWT tokens
-3. init WhitelistManager         → Khởi tạo whitelist manager
-4. sync_whitelist()              → Đồng bộ whitelist TỪ SERVER TRƯỚC
-5. install_winpcap() (nếu cần)  → Cài WinPcap cho packet capture
-6. init FirewallManager          → Khởi tạo firewall
-7. setup_firewall_rules()       → Tạo rules cho whitelisted IPs
-8. start PacketSniffer           → Bắt đầu bắt gói tin
-9. start LogSender               → Bắt đầu gửi logs
-10. start HeartbeatSender        → Bắt đầu gửi heartbeat
-11. main_loop()                  → Vòng lặp chính (update stats mỗi 5s)
+1.  register_agent(config)         → Đăng ký với Server, nhận credentials
+2.  init TokenManager              → Auto-refresh JWT tokens
+3.  init WhitelistManager          → Khởi tạo whitelist manager
+4.  sync_whitelist()               → Đồng bộ whitelist TỪ SERVER TRƯỚC
+5.  install_winpcap() (nếu cần)    → Cài WinPcap cho packet capture
+6.  init FirewallManager           → Khởi tạo firewall
+7.  save_snapshot() (skip-if-exists) → Lưu pre-SAINT firewall state
+8.  create_self_allow_rules()      → Tạo allow rule cho SAINT.exe
+                                     (TCP 443, UDP/TCP 53) — BƯỚC QUAN TRỌNG
+9.  enable_default_deny()          → Bật chính sách Default Deny outbound
+10. create_allow_rules_batch(ips)  → Tạo rules cho whitelisted IPs
+11. start PacketSniffer            → Bắt đầu bắt gói tin
+12. start LogSender                → Bắt đầu gửi logs
+13. start HeartbeatSender          → Bắt đầu gửi heartbeat
+14. main_loop()                    → Vòng lặp chính (update stats mỗi 5s)
 ```
+
+**Vì sao Step 8 (self-allow rule) phải chạy TRƯỚC Step 9 (Default Deny):**
+
+Nếu enable Default Deny trước khi tạo allow rule cho exe của agent, các
+kết nối tiếp theo của agent (heartbeat, log sender, whitelist sync) sẽ bị
+chính firewall do agent vừa cấu hình chặn lại. Self-allow rule dùng
+`program=<path-to-SAINT.exe>` thay vì `remoteip=<IP>`, nên:
+
+- **Bền vững với DNS rotation**: Server host trên Render/Cloudflare có IP
+  xoay tua mỗi vài phút — rule theo program path không quan tâm IP đích.
+- **Phạm vi hẹp**: Chỉ cho phép TCP 443 (HTTPS) và UDP/TCP 53 (DNS) từ
+  SAINT.exe, không phải allow toàn bộ outbound.
 
 ### 4.2 Dọn dẹp (Shutdown)
 
@@ -320,34 +335,60 @@ netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound
 
 ### 6.3 RulesManager (`firewall/rules.py`)
 
-Tạo/xóa firewall rules cho từng IP:
+Tạo/xóa firewall rules. Hai loại rule khác nhau:
 
 | Method | Mô tả |
 |--------|--------|
-| `create_allow_rule(ip)` | Tạo rule cho phép outbound đến IP |
-| `remove_allow_rule(ip)` | Xóa rule |
-| `create_allow_rules_batch(ips)` | Tạo hàng loạt rules |
-| `cleanup_all_rules()` | Xóa tất cả SAINT rules |
+| `create_self_allow_rules(program_path)` | Tạo 3 rule cho SAINT.exe (TCP 443, UDP 53, TCP 53) — idempotent (delete-then-add) |
+| `create_allow_rule(ip)` | Tạo rule cho phép outbound đến IP (theo remoteip) |
+| `remove_allow_rule(ip)` | Xóa rule theo IP |
+| `create_allow_rules_batch(ips)` | Tạo hàng loạt allow rules |
+| `clear_all_rules()` | Xóa tất cả SAINT rules (cả self-allow lẫn IP-based) |
 
 **Lệnh netsh sử dụng:**
-```bash
-# Tạo rule cho phép
-netsh advfirewall firewall add rule name="SAINT_ALLOW_8.8.8.8" ^
-  dir=out action=allow remoteip=8.8.8.8 enable=yes
 
-# Xóa rule
-netsh advfirewall firewall delete rule name="SAINT_ALLOW_8.8.8.8"
+```bash
+# 1. Self-allow rule cho exe agent (TCP 443)
+netsh advfirewall firewall add rule ^
+  name="FirewallController_SelfAllow_HTTPS" ^
+  dir=out action=allow program="C:\Path\To\SAINT.exe" ^
+  protocol=tcp remoteport=443 enable=yes profile=any
+
+# 2. Self-allow DNS (UDP 53 + TCP 53)
+netsh advfirewall firewall add rule ^
+  name="FirewallController_SelfAllow_DNS_UDP" ^
+  dir=out action=allow program="C:\Path\To\SAINT.exe" ^
+  protocol=udp remoteport=53 enable=yes profile=any
+
+# 3. IP-based allow rule cho whitelist domain đã resolve
+netsh advfirewall firewall add rule ^
+  name="FirewallController_Allow_8_8_8_8_<timestamp>" ^
+  dir=out action=allow remoteip=8.8.8.8 protocol=any ^
+  enable=yes profile=any
+
+# 4. Xóa toàn bộ SAINT rules (matches prefix)
+# (implementation: list rules, filter by prefix, delete each)
 ```
+
+**IPv4-only enforcement:** Toàn bộ firewall rule chỉ áp dụng cho IPv4 vì
+`netsh advfirewall` có hành vi không ổn định với IPv6 (returncode != 0 nhưng
+stderr trống), và DNS resolver của agent (`dns.resolver`/`aiodns`) chỉ query
+A records. Localhost IPv6 `::1` đã được loại khỏi `essential_ips`.
 
 ### 6.4 Chế độ hoạt động
 
-| Mode | Mô tả | Yêu cầu Admin |
-|------|--------|----------------|
-| `monitor` | Chỉ giám sát, không chặn | Không |
-| `whitelist_only` | Chặn tất cả trừ whitelist | Có |
+Agent chỉ hỗ trợ **1 mode duy nhất**: `whitelist_only` (Default Deny outbound
++ allow rules theo whitelist). Các mode `monitor`/`blacklist` ở phiên bản
+trước đã loại bỏ vì không hữu ích thực tế cho lab management.
 
-- Auto-detect: Nếu không có quyền Admin → tự động chuyển về `monitor`
-- Khi `whitelist_only`: Default Deny + rules ALLOW cho mỗi IP trong whitelist
+**Auto-degrade khi thiếu admin:**
+
+- Khi user không có quyền Administrator, firewall component bị disable
+  (rule không apply được qua netsh).
+- Packet capture và log vẫn chạy bình thường, nhưng `action` trong log
+  trở thành `OBSERVED` (passive mode) thay vì `ALLOWED`/`BLOCKED`.
+- Admin xem dashboard sẽ thấy agent ở chế độ passive — biết phải re-launch
+  với UAC admin để enforce.
 
 ---
 
@@ -387,8 +428,36 @@ Phân giải domain → IP hiệu suất cao:
 - ThreadPoolExecutor: 5-10 workers
 - Chunking: 20 domains/chunk
 - Dual-stack: dnspython (sync) + aiodns (async)
-- Fallback: socket.getaddrinfo()
+- Fallback: socket.getaddrinfo() với `AF_INET` (IPv4-only)
 - Trả về `DNSRecord(ipv4_tuple, cname, ttl, timestamp)`
+- Cả 2 stack đều dùng **system DNS** (đọc từ Windows registry/network adapter),
+  không hardcode 8.8.8.8 — tôn trọng cấu hình mạng của trường.
+
+### 7.4 Compliance Detection (4-level classification)
+
+Khi sniffer bắt được packet và trích xuất được domain, `handle_domain_detection`
+trong `core/handlers.py` phân loại event vào 4 cấp compliance dựa trên 2 cờ
+`domain_allowed` (domain match whitelist) và `ip_allowed` (IP match whitelist):
+
+| Action | Level | Điều kiện | Ý nghĩa |
+|--------|-------|-----------|---------|
+| `ALLOWED` | `INFO` | `domain_allowed=True` | Truy cập đúng site cho phép — compliant |
+| `ALLOWED_BY_IP` | `WARNING` | `ip_allowed=True` AND `domain_allowed=False` AND domain != None | **Detective signal**: Layer 3 cho qua bằng IP, nhưng SNI/Host header chỉ tới domain **không** có trong whitelist. Dấu hiệu CDN shared IP bleed-through (vd: `phimlau.com` cùng IP Cloudflare với `portal.edu.vn`). Admin review để siết policy. |
+| `ALLOWED` | `INFO` | `ip_allowed=True`, không có domain | Traffic không HTTP/HTTPS (vd: raw TCP) đến IP whitelisted — coi như compliant |
+| `BLOCKED` | `BLOCKED` | Cả `domain_allowed` lẫn `ip_allowed` = False | Layer 3 firewall đã chặn ở kernel |
+| `OBSERVED` | `INFO`/`WARNING` | `firewall_enabled=False` (passive mode) | Agent chạy không quyền admin, chỉ giám sát |
+
+**Vì sao tách `ALLOWED` và `ALLOWED_BY_IP`:**
+
+Layer 3 firewall (Windows Firewall) chỉ phân biệt traffic theo địa chỉ IP,
+không thấy được domain. Khi 1 domain được whitelist (vd `portal.edu.vn`),
+SAINT resolve ra IP của Cloudflare và tạo allow rule cho IP đó. Nhưng cùng
+IP Cloudflare đó cũng phục vụ **nhiều domain khác** (CDN shared IP) —
+học sinh có thể vào những domain đó mà firewall không chặn được.
+
+Layer 7 sniffer (passive, không inject RST/DNS hijack — không tương tự
+hành vi malware) đọc SNI/HTTP Host và phát hiện các trường hợp này, gán
+`level=WARNING` để admin có visibility mà không cần TLS interception.
 
 ---
 
