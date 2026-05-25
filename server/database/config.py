@@ -5,14 +5,16 @@ from typing import Any, Optional
 from pymongo import MongoClient
 from bson.codec_options import CodecOptions
 
-# Import dotenv để load .env file
+# Import dotenv to load .env file
 from dotenv import load_dotenv
 
 #Time utilities - vietnam ONLY
 from time_utils import now_iso, VIETNAM_TZ
 
-# Load .env file
-load_dotenv()
+# Load .env file explicitly from the server directory
+_basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_env_path = os.path.join(_basedir, '.env')
+load_dotenv(_env_path, override=True)
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ class Config:
     DEBUG = get_env('DEBUG', True)
     TESTING = get_env('TESTING', False)
     
-    # MongoDB Settings - Sẽ đọc từ .env file
+    # MongoDB Settings - Reads from .env file
     MONGO_URI = get_env('MONGO_URI', 'mongodb://localhost:27017/')
     MONGO_DBNAME = get_env('MONGO_DBNAME', 'Monitoring')
     
@@ -61,7 +63,7 @@ class Config:
     
     # Socket.IO settings
     SOCKETIO_CORS_ALLOWED_ORIGINS = ["*"]
-    SOCKETIO_ASYNC_MODE = get_env('SOCKETIO_ASYNC_MODE', 'eventlet')
+    SOCKETIO_ASYNC_MODE = get_env('SOCKETIO_ASYNC_MODE', 'gevent')
     
     # Agent settings
     AGENT_WHITELIST_UPDATE_INTERVAL = int(get_env('AGENT_WHITELIST_UPDATE_INTERVAL', 300))
@@ -78,7 +80,7 @@ def get_mongo_client(config):
         try:
             logger.info(f"[{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
             
-            # FIX: Optimized connection settings để reduce Win32 exceptions
+            # FIX: Optimized connection settings to reduce Win32 exceptions
             _mongo_client = MongoClient(
                 config.MONGO_URI,
                 serverSelectionTimeoutMS=5000,
@@ -113,7 +115,7 @@ def close_mongo_client():
     if _mongo_client:
         _mongo_client.close()
         _mongo_client = None
-        logger.info(f"🔌 [{now_iso()}] MongoDB client closed")
+        logger.info(f" [{now_iso()}] MongoDB client closed")
 
 def get_config() -> Config:
     """Get configuration instance."""
@@ -176,7 +178,7 @@ def validate_config(config: Config = None) -> bool:
             logger.error(f" [{now_iso()}] Missing required configuration: {setting}")
             return False
     
-    # Log current MongoDB URI (cẩn thận với credentials)
+    # Log current MongoDB URI (careful with credentials)
     mongo_uri = config.MONGO_URI
     if 'mongodb+srv://' in mongo_uri:
         # Mask credentials in log

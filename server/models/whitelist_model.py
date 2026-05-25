@@ -212,7 +212,7 @@ class WhitelistModel:
         # FIX: Add active filter by default
         if "is_active" not in query:
             query["is_active"] = True
-        query.setdefault("scope", "global")
+        # Don't force scope - let callers query across scopes if needed
 
         # Clean up expired entries first
         self.cleanup_expired_entries()
@@ -269,13 +269,13 @@ class WhitelistModel:
                     
         return entry
     
-    def find_entry_by_value(self, value: str) -> Optional[Dict]:
+    def find_entry_by_value(self, value: str, active_only: bool = False) -> Optional[Dict]:
         """Find entry by value (case-insensitive)"""
         try:
-            entry = self.collection.find_one({
-                "value": value.lower().strip(),
-                "is_active": True
-            })
+            query = {"value": value.lower().strip()}
+            if active_only:
+                query["is_active"] = True
+            entry = self.collection.find_one(query)
             
             if entry:
                 entry["_id"] = str(entry["_id"])
@@ -300,6 +300,8 @@ class WhitelistModel:
                 self.logger.info(f"Found {expired_count} expired entries to clean up")
                 result = self.collection.delete_many(expired_query)
                 self.logger.info(f"Cleaned up {result.deleted_count} expired entries")
+                if result.deleted_count > 0:
+                    self.bump_global_version()
                 return result.deleted_count
             else:
                 self.logger.debug("No expired entries found")
@@ -428,17 +430,20 @@ class WhitelistModel:
             self.logger.error(f"Error getting statistics: {e}")
             return {"total": 0, "active": 0, "inactive": 0, "by_type": {}}
     
-    def find_entry_by_id(self, entry_id: str) -> Optional[Dict]:
-        """Find entry by ID"""
+    def find_entry_by_id(self, entry_id: str, active_only: bool = False) -> Optional[Dict]:
+        """Find entry by ID. Set active_only=True to skip inactive entries."""
         try:
-            entry = self.collection.find_one({"_id": ObjectId(entry_id)})
-            
+            query = {"_id": ObjectId(entry_id)}
+            if active_only:
+                query["is_active"] = True
+            entry = self.collection.find_one(query)
+
             if entry:
                 entry["_id"] = str(entry["_id"])
                 entry = self._convert_entry_timezones(entry)
-                
+
             return entry
-            
+
         except Exception as e:
             self.logger.error(f"Error finding entry by ID: {e}")
             return None

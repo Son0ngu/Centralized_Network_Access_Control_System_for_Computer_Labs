@@ -55,7 +55,7 @@ class IconSet:
     network: str = "🌐"
     server: str = "🖥️"
     connection: str = "🔗"
-    disconnected: str = "🔌"
+    disconnected: str = ""
     ip_address: str = "🖥️"
     dns: str = "🌍"
     packet: str = "📦"

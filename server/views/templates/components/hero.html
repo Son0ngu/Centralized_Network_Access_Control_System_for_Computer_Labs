@@ -1,0 +1,34 @@
+{% macro render_hero(title=None, subtitle=None, icon=None, badge_text=None, badge_icon=None, badge_html=None, breadcrumb_html=None, compact=False, title_html=None) %}
+<div class="hero-section {{ 'hero-compact' if compact else '' }}">
+    <div class="hero-content">
+        <div class="row align-items-center position-relative">
+            <div class="col-md-8 position-relative" style="z-index: 2;">
+                {% if breadcrumb_html %}
+                    {{ breadcrumb_html | safe }}
+                {% endif %}
+                <h1 class="display-5 fw-bold mb-3">
+                    {% if icon %}<i class="{{ icon }} me-3 text-primary"></i>{% endif %}
+                    {% if title_html %}{{ title_html | safe }}{% else %}{{ title }}{% endif %}
+                </h1>
+                {% if subtitle %}
+                <p class="lead mb-2">{{ subtitle }}</p>
+                {% endif %}
+                {% if badge_html %}
+                <div class="mt-3">
+                    {{ badge_html | safe }}
+                </div>
+                {% elif badge_text %}
+                <div class="d-flex align-items-center mt-3">
+                    <span class="pulse-dot me-2"></span>
+                    <span class="fw-semibold">{{ badge_text }}</span>
+                    {% if badge_icon %}<i class="{{ badge_icon }} ms-2 text-muted"></i>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                {{ caller() if caller else '' }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

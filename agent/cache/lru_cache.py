@@ -1,4 +1,4 @@
-# """High-performance LRU Cache implementation. Phần này đang cải tiến"""
+# """High-performance LRU Cache implementation. This section is being improved"""
 import logging
 import threading
 from collections import OrderedDict
@@ -12,7 +12,6 @@ logger = logging.getLogger("cache.lru_cache")
 @dataclass
 class DNSRecord:
     ipv4: Tuple[str, ...]
-    ipv6: Tuple[str, ...]
     cname: Optional[str]
     ttl: int
     resolved_at: float

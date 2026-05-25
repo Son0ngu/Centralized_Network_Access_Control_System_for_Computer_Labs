@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="dashboard-socketio" name="Flow 27: Dashboard &amp; Real-time SocketIO">
+    <mxGraphModel dx="1600" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 27: Dashboard &amp;amp; Real-time SocketIO Events&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trang tổng quan và cập nhật thời gian thực qua SocketIO&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== LEFT: Dashboard Page Load ==================== -->
+        <mxCell id="sec1" value="&lt;b&gt;A. DASHBOARD PAGE LOAD (/)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tải trang tổng quan&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d1" value="&lt;b&gt;Dashboard Page Loaded&lt;/b&gt;&lt;br&gt;&lt;i&gt;Route: / (home)&lt;br&gt;auth.js verify session&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d2" value="&lt;b&gt;Fetch Statistics&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/logs/stats&lt;br&gt;GET /api/agents/statistics&lt;br&gt;(parallel requests)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="230" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ed1d2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="d1" target="d2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="d3" value="&lt;b&gt;Render Status Cards&lt;/b&gt;&lt;br&gt;&lt;i&gt;4 cards: Total Logs, Allowed (🟢),&lt;br&gt;Blocked (🔴), Active Agents (🔵)&lt;br&gt;Number animation (1000ms)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="330" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ed2d3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="d2" target="d3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="d4" value="&lt;b&gt;Render Feature Cards&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quick Actions, System Info,&lt;br&gt;Security Status, Performance&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="430" width="280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ed3d4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="d3" target="d4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="d5" value="&lt;b&gt;Start Polling Timer&lt;/b&gt;&lt;br&gt;&lt;i&gt;setInterval(fetchStats, 10s)&lt;br&gt;Auto-refresh page every 30s&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="520" width="280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ed4d5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="d4" target="d5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="d6" value="&lt;b&gt;Connect SocketIO&lt;/b&gt;&lt;br&gt;&lt;i&gt;io.connect() → listen events&lt;br&gt;Status dot: 🟢 connected / 🔴 disconnected&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="610" width="280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ed5d6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="d5" target="d6"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Dashboard UI mockup -->
+        <mxCell id="ui_mock" value="&lt;b&gt;📊 Dashboard UI Layout&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:10px;font-family:Consolas;'&gt;┌────────────────────────────────┐&lt;br&gt;│ 🟢 SAINT Dashboard&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;│&lt;br&gt;├────────┬───────┬───────┬──────┤&lt;br&gt;│Total   │Allowed│Blocked│Agents│&lt;br&gt;│ 1,234  │  890  │  344  │  12  │&lt;br&gt;├────────┴───────┴───────┴──────┤&lt;br&gt;│ Quick Actions │ System Info   │&lt;br&gt;│ Security     │ Performance   │&lt;br&gt;└────────────────────────────────┘&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="710" width="320" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== RIGHT: SocketIO Events ==================== -->
+        <mxCell id="sec2" value="&lt;b&gt;B. SOCKETIO REAL-TIME EVENTS&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tất cả sự kiện SocketIO trên Frontend&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- SocketIO Events Table -->
+        <mxCell id="sio_table" value="&lt;b&gt;SocketIO Event Map (Server → Frontend)&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="130" width="700" height="390" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#e1d5e7;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="30" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh1a" value="Event Name" style="shape=partialRectangle;connectable=0;fillColor=#e1d5e7;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="sh1">
+          <mxGeometry width="160" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh1b" value="Trigger / Khi nào" style="shape=partialRectangle;connectable=0;fillColor=#e1d5e7;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="sh1">
+          <mxGeometry x="160" width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh1c" value="Frontend Handler" style="shape=partialRectangle;connectable=0;fillColor=#e1d5e7;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="sh1">
+          <mxGeometry x="360" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh1d" value="Pages" style="shape=partialRectangle;connectable=0;fillColor=#e1d5e7;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="sh1">
+          <mxGeometry x="540" width="160" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Event rows -->
+        <mxCell id="sr1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="58" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr1a" value="stats_update" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr1">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr1b" value="Log submitted / Agent status change" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr1">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr1c" value="Update stat cards with animation" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr1">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr1d" value="Dashboard" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr1">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="92" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr2a" value="agent_heartbeat" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr2">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr2b" value="Agent sends heartbeat (20s)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr2">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr2c" value="Update agent status badge" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr2">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr2d" value="Agents, Group Detail" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr2">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="126" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr3a" value="agent_update" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr3">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr3b" value="Agent data modified" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr3">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr3c" value="Refresh agent list/card" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr3">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr3d" value="Agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr3">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="160" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr4a" value="agent_group_updated" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr4">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr4b" value="Agent assigned to group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr4">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr4c" value="Move agent in group board" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr4">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr4d" value="Agents, Group Detail" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr4">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="194" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr5a" value="agent_registered" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr5">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr5b" value="New agent registered" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr5">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr5c" value="Add new agent card + toast" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr5">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr5d" value="Agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr5">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="228" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr6a" value="agent_deleted" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr6">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr6b" value="Agent removed by admin" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr6">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr6c" value="Remove agent card from UI" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr6">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr6d" value="Agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr6">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="262" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr7a" value="agent_policy_changed" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr7">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr7b" value="Admin sets policy override" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr7">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr7c" value="Update policy badge on agent" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr7">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr7d" value="Group Detail" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr7">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="296" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr8a" value="new_log" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr8">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr8b" value="Agent submits log batch" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr8">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr8c" value="Prepend new log row to table" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr8">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr8d" value="Logs, Agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr8">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="330" width="700" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr9a" value="logs_cleared" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr9">
+          <mxGeometry width="160" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr9b" value="Admin clears all logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr9">
+          <mxGeometry x="160" width="200" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr9c" value="Clear log table, reset stats" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr9">
+          <mxGeometry x="360" width="180" height="34" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr9d" value="Logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr9">
+          <mxGeometry x="540" width="160" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sr10" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="sio_table">
+          <mxGeometry y="364" width="700" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr10a" value="connect / disconnect" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;fontStyle=1;" vertex="1" parent="sr10">
+          <mxGeometry width="160" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr10b" value="WebSocket state change" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr10">
+          <mxGeometry x="160" width="200" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr10c" value="Toggle status indicator dot" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr10">
+          <mxGeometry x="360" width="180" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="sr10d" value="All pages" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="sr10">
+          <mxGeometry x="540" width="160" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== BOTTOM: Data Flow Diagram ==================== -->
+        <mxCell id="sec3" value="&lt;b&gt;C. DATA UPDATE FLOW&lt;/b&gt;&lt;br&gt;&lt;i&gt;Luồng cập nhật dữ liệu real-time&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="460" y="550" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Data flow: Agent → Server → SocketIO → Frontend -->
+        <mxCell id="df1" value="&lt;b&gt;Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;Heartbeat / Log&lt;br&gt;POST /api/...&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="610" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="df2" value="&lt;b&gt;Server&lt;/b&gt;&lt;br&gt;&lt;i&gt;Process &amp;amp; Save&lt;br&gt;to MongoDB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="610" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="edf1df2" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=10;" edge="1" parent="1" source="df1" target="df2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="df3" value="&lt;b&gt;SocketIO emit()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Broadcast event&lt;br&gt;to all clients&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="860" y="610" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="edf2df3" value="emit()" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=10;" edge="1" parent="1" source="df2" target="df3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="df4" value="&lt;b&gt;Frontend&lt;/b&gt;&lt;br&gt;&lt;i&gt;Update UI&lt;br&gt;(no page reload)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="610" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="edf3df4" value="WebSocket" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=10;" edge="1" parent="1" source="df3" target="df4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Shared UI Components -->
+        <mxCell id="ui_comp" value="&lt;b&gt;🎨 Shared UI Components (base.js)&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:11px;'&gt;• &lt;b&gt;showNotification(type, msg, 5000ms)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Types: success, danger, warning, info&lt;br&gt;&amp;nbsp;&amp;nbsp;Toast popup (bottom-right)&lt;br&gt;&lt;br&gt;• &lt;b&gt;showLoading(btn) / hideLoading(btn)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Button spinner during API calls&lt;br&gt;&lt;br&gt;• &lt;b&gt;initCustomSelect(selectId)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Native → custom styled dropdown&lt;br&gt;&lt;br&gt;• &lt;b&gt;Fade-in Animation&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Page load opacity transition&lt;br&gt;&lt;br&gt;• &lt;b&gt;Vietnam Timezone&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;parseTimestampCorrectly()&lt;br&gt;&amp;nbsp;&amp;nbsp;formatTimestamp()&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="720" width="350" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Tech Stack -->
+        <mxCell id="tech" value="&lt;b&gt;🛠 Frontend Tech Stack&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:11px;'&gt;• &lt;b&gt;HTML&lt;/b&gt;: Jinja2 templates (base.html)&lt;br&gt;• &lt;b&gt;CSS&lt;/b&gt;: Bootstrap 5.3.0&lt;br&gt;• &lt;b&gt;Icons&lt;/b&gt;: Font Awesome 6.4.0&lt;br&gt;• &lt;b&gt;JS&lt;/b&gt;: Vanilla JavaScript (ES6+)&lt;br&gt;• &lt;b&gt;Real-time&lt;/b&gt;: Socket.IO client&lt;br&gt;• &lt;b&gt;HTTP&lt;/b&gt;: fetch() API with interceptor&lt;br&gt;• &lt;b&gt;State&lt;/b&gt;: sessionStorage cache&lt;br&gt;• &lt;b&gt;Auth&lt;/b&gt;: httpOnly cookies (JWT)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="860" y="720" width="300" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;align=left;fontSize=12;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="940" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="965" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1t" value="Process" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="885" y="965" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="980" y="965" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2t" value="Success" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="965" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="965" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3t" value="SocketIO" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="965" width="80" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

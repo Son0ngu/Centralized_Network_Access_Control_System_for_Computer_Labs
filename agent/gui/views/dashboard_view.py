@@ -72,7 +72,7 @@ class DashboardView(ctk.CTkFrame):
             header_frame,
             text="📊 Dashboard",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#00d4ff"
+            text_color="#0077cc"
         )
         title.pack(side="left")
         
@@ -223,21 +223,21 @@ class DashboardView(ctk.CTkFrame):
     
     def _setup_activity_log(self):
         """Setup activity log section."""
-        log_frame = ctk.CTkFrame(self, corner_radius=12, fg_color="#1a1a2e")
+        log_frame = ctk.CTkFrame(self, corner_radius=12, fg_color="#e8e8ed")
         log_frame.pack(fill="both", expand=True, pady=(10, 0))
-        
+
         # Log header
         log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
         log_header.pack(fill="x", padx=15, pady=(15, 10))
-        
+
         log_title = ctk.CTkLabel(
             log_header,
             text="Activity Log",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#ffffff"
+            text_color="#1a1a2e"
         )
         log_title.pack(side="left")
-        
+
         # Log controls
         clear_btn = ctk.CTkButton(
             log_header,
@@ -245,18 +245,19 @@ class DashboardView(ctk.CTkFrame):
             width=70,
             height=28,
             font=ctk.CTkFont(size=12),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._clear_log
         )
         clear_btn.pack(side="right")
-        
+
         # Log textbox
         self._log_textbox = ctk.CTkTextbox(
             log_frame,
             font=ctk.CTkFont(family="Consolas", size=11),
-            fg_color="#0f0f1a",
-            text_color="#00ff88",
+            fg_color="#ffffff",
+            text_color="#1a1a2e",
             corner_radius=8,
             height=180
         )
@@ -276,7 +277,10 @@ class DashboardView(ctk.CTkFrame):
     
     def _update_stats_display(self):
         """Fetch and display current stats from controller."""
-        if self._controller and self._is_visible:
+        if not self._is_visible:
+            return
+            
+        if self._controller:
             try:
                 # Get agent info
                 info = self._controller.get_agent_info()
@@ -400,36 +404,23 @@ class DashboardView(ctk.CTkFrame):
             self._status_indicator.configure(text="🟢 Running", text_color="#00ff88")
             self._update_button_state("running")
             
-            # Update mode card
+            # Update mode card. The agent only supports `whitelist_only`;
+            # the card now reflects whether enforcement is active or not.
             info = self._controller.get_agent_info()
-            mode = info.get('firewall_mode', 'monitor')
             enabled = info.get('firewall_enabled', False)
-            
-            # Format mode display - only monitor and whitelist_only
-            mode_display = {
-                'monitor': 'Monitor',
-                'whitelist_only': 'Whitelist'
-            }.get(mode, mode.title())
-            
-            # Mode-specific icons and colors
-            mode_config = {
-                'monitor': ('👁️', '#00d4ff', 'Observing traffic'),
-                'whitelist_only': ('🛡', '#00ff88', 'Only whitelist allowed')
-            }.get(mode, ('👁️', '#888888', 'Unknown mode'))
-            
+
             if enabled:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon(mode_config[0])
-                self._cards['mode'].set_color(mode_config[1])
-                self._cards['mode'].set_subtitle(mode_config[2])
-                # Log the actual mode
-                self._append_log(f"[MODE] Firewall mode: {mode_display} ({mode_config[2]})")
+                self._cards['mode'].set_value('Whitelist')
+                self._cards['mode'].set_icon('🛡')
+                self._cards['mode'].set_color('#00ff88')
+                self._cards['mode'].set_subtitle('Only whitelist allowed')
+                self._append_log('[MODE] Firewall: Whitelist enforcement active')
             else:
-                self._cards['mode'].set_value(mode_display)
-                self._cards['mode'].set_icon('👁️')
-                self._cards['mode'].set_color('#00d4ff')
-                self._cards['mode'].set_subtitle('Firewall disabled')
-                self._append_log(f"[MODE] Firewall mode: {mode_display} (Firewall disabled)")
+                self._cards['mode'].set_value('Disabled')
+                self._cards['mode'].set_icon('⚪')
+                self._cards['mode'].set_color('#888888')
+                self._cards['mode'].set_subtitle('Firewall disabled (no admin)')
+                self._append_log('[MODE] Firewall: Disabled (requires admin to apply rules)')
             
         elif status == 'stopped':
             self._cards['status'].set_value("Stopped")
@@ -533,13 +524,18 @@ class DashboardView(ctk.CTkFrame):
                 proto_info += f":{port}"
             proto_info += ")"
         
-        # Log the event with better formatting
-        if action.lower() == 'blocked':
-            self._append_log(f"🚫 BLOCKED: {target}{proto_info}")
-        elif action.lower() == 'allowed':
+        # Log the event with better formatting.
+        # ALLOWED_BY_IP marks CDN bleed-through: IP whitelisted, domain not.
+        # Surfaced as ⚠ so admins notice without confusing it with a clean ALLOW.
+        action_lc = action.lower()
+        if action_lc == 'blocked':
+            self._append_log(f"BLOCKED: {target}{proto_info}")
+        elif action_lc == 'allowed_by_ip':
+            self._append_log(f"ALLOWED_BY_IP: {target}{proto_info}  (CDN/IP-only match)")
+        elif action_lc == 'allowed':
             self._append_log(f"ALLOWED: {target}{proto_info}")
         else:
-            self._append_log(f"📡 {target}{proto_info}")
+            self._append_log(f"{target}{proto_info}")
     
     def _on_whitelist_synced(self, data: Dict):
         """Handle whitelist sync event."""
@@ -726,8 +722,17 @@ class DashboardView(ctk.CTkFrame):
             minutes = (seconds % 3600) // 60
             return f"{hours}h {minutes}m"
     
+    def on_show(self):
+        """Called when view becomes visible."""
+        self._is_visible = True
+        self._start_periodic_updates()
+        
+    def on_hide(self):
+        """Called when view is hidden."""
+        self._is_visible = False
+        self._stop_periodic_updates()
+        
     def destroy(self):
         """Clean up when view is destroyed."""
-        self._stop_periodic_updates()
-        self._is_visible = False
+        self.on_hide()
         super().destroy()

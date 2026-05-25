@@ -1,6 +1,7 @@
 let groupsData = [];
 let agentsData = [];
 let quickDomains = [];
+let quickDomainEntries = [];  // Full entry objects for edit mode
 let selectedColor = 'primary';
 let currentView = 'grid';
 
@@ -30,15 +31,6 @@ function setupEventListeners() {
     // View toggle
     document.getElementById('viewGrid')?.addEventListener('click', () => setView('grid'));
     document.getElementById('viewList')?.addEventListener('click', () => setView('list'));
-    
-    // Color picker
-    document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', () => {
-            document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-            option.classList.add('selected');
-            selectedColor = option.dataset.color;
-        });
-    });
     
     // Quick domain input - Enter key
     document.getElementById('quickDomainInput')?.addEventListener('keypress', (e) => {
@@ -188,7 +180,7 @@ function renderGroupCard(group) {
                         <button class="btn btn-sm btn-outline-info" onclick="viewGroupDetail('${group._id}')" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
-                        ${!isSystem ? `
+                        ${!isSystem && window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                             <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal('${group._id}')" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -202,7 +194,9 @@ function renderGroupCard(group) {
                 <p class="group-card-description">
                     ${escapeHtml(group.description) || 'No description'}
                 </p>
-                
+
+                ${group.created_by_username ? `<div class="mb-2"><span class="badge bg-${group.created_by_role === 'admin' ? 'danger' : 'success'} bg-opacity-10 text-${group.created_by_role === 'admin' ? 'danger' : 'success'}" style="font-size:0.7rem;"><i class="fas fa-user me-1"></i>Owner: ${escapeHtml(group.created_by_username)}</span></div>` : ''}
+
                 <div class="group-card-stats">
                     <div class="stat-item">
                         <i class="fas fa-laptop-code text-primary"></i>
@@ -289,20 +283,19 @@ function sortGroups() {
 // ========================================
 
 function openCreateGroupModal() {
-    document.getElementById('groupModalTitle').innerHTML = '<i class="fas fa-plus-circle me-2"></i>Create Group';
+    document.getElementById('groupModalTitle').textContent = 'Create Group';
+    const subtitle = document.getElementById('groupModalSubtitle');
+    if (subtitle) subtitle.textContent = 'Organize agents under one policy';
     document.getElementById('editGroupId').value = '';
     document.getElementById('groupName').value = '';
     document.getElementById('groupDescription').value = '';
-    
-    // Reset color picker
-    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-    document.querySelector('.color-option[data-color="primary"]').classList.add('selected');
     selectedColor = 'primary';
-    
+
     // Clear quick domains
     quickDomains = [];
+    quickDomainEntries = [];
     renderQuickDomains();
-    
+
     const modal = new bootstrap.Modal(document.getElementById('groupModal'));
     modal.show();
 }
@@ -310,23 +303,21 @@ function openCreateGroupModal() {
 function openEditGroupModal(groupId) {
     const group = groupsData.find(g => g._id === groupId);
     if (!group) return;
-    
-    document.getElementById('groupModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Edit Group';
+
+    document.getElementById('groupModalTitle').textContent = 'Edit Group';
+    const subtitle = document.getElementById('groupModalSubtitle');
+    if (subtitle) subtitle.textContent = `Update "${group.name || ''}" settings`;
     document.getElementById('editGroupId').value = groupId;
     document.getElementById('groupName').value = group.name || '';
     document.getElementById('groupDescription').value = group.description || '';
+    selectedColor = group.color || 'primary';
     
-    // Set color picker
-    const color = group.color || 'primary';
-    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-    document.querySelector(`.color-option[data-color="${color}"]`)?.classList.add('selected');
-    selectedColor = color;
-    
-    // FIX: Load existing whitelist - handle both 'value' and 'domain' keys
-    quickDomains = (group.whitelist || []).map(item => {
-        if (typeof item === 'string') return item;
-        return item.value || item.domain || '';  // Check 'value' first, then 'domain'
-    }).filter(Boolean);
+    // FIX: Preserve full entry objects so we don't lose type/category/priority
+    quickDomainEntries = (group.whitelist || []).map(item => {
+        if (typeof item === 'string') return { value: item, type: 'domain', category: 'general' };
+        return { ...item };
+    }).filter(e => e.value);
+    quickDomains = quickDomainEntries.map(e => e.value || e.domain || '').filter(Boolean);
     renderQuickDomains();
     
     const modal = new bootstrap.Modal(document.getElementById('groupModal'));
@@ -354,13 +345,28 @@ async function saveGroup() {
     
     if (isEdit || quickDomains.length > 0) {
         const now = new Date().toISOString();
-        payload.whitelist = quickDomains.map(domain => ({
-            value: domain,
-            type: 'domain',
-            category: 'general',
-            added_at: now,
-            added_date: now  // FIX: Add added_date for display in whitelist page
-        }));
+        // Build whitelist preserving existing entry fields
+        const existingMap = {};
+        quickDomainEntries.forEach(e => {
+            const key = (e.value || e.domain || '').toLowerCase();
+            if (key) existingMap[key] = e;
+        });
+
+        payload.whitelist = quickDomains.map(domain => {
+            const existing = existingMap[domain.toLowerCase()];
+            if (existing) {
+                // Preserve original fields
+                return { ...existing, value: domain };
+            }
+            // New domain added in this session
+            return {
+                value: domain,
+                type: 'domain',
+                category: 'general',
+                added_at: now,
+                added_date: now
+            };
+        });
     }
     
     const url = isEdit ? `/api/groups/${groupId}` : '/api/groups';
@@ -461,17 +467,23 @@ function removeQuickDomain(domain) {
 
 function renderQuickDomains() {
     const container = document.getElementById('quickDomainsList');
-    
+    const emptyHint = document.querySelector('.quick-whitelist-empty');
+
     if (quickDomains.length === 0) {
-        container.innerHTML = '<span class="text-muted small">No domains added yet</span>';
+        container.innerHTML = '';
+        if (emptyHint) emptyHint.style.display = '';
         return;
     }
-    
+
+    if (emptyHint) emptyHint.style.display = 'none';
+
     container.innerHTML = quickDomains.map(domain => `
         <span class="quick-domain-tag">
             <i class="fas fa-globe"></i>
-            ${escapeHtml(domain)}
-            <i class="fas fa-times remove" onclick="removeQuickDomain('${domain}')"></i>
+            <span>${escapeHtml(domain)}</span>
+            <button type="button" class="quick-domain-remove" onclick="removeQuickDomain('${domain}')" aria-label="Remove">
+                <i class="fas fa-times"></i>
+            </button>
         </span>
     `).join('');
 }

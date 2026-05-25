@@ -49,7 +49,7 @@ class LogConsole(ctk.CTkFrame):
         show_toolbar: bool = True,
         **kwargs
     ):
-        super().__init__(parent, fg_color="#0a0a12", corner_radius=12, **kwargs)
+        super().__init__(parent, fg_color="#e8e8ed", corner_radius=12, **kwargs)
         
         self._max_lines = max_lines
         self._font_family = font_family
@@ -75,8 +75,8 @@ class LogConsole(ctk.CTkFrame):
         self._console = ctk.CTkTextbox(
             self,
             font=ctk.CTkFont(family=self._font_family, size=self._font_size),
-            fg_color="#0a0a12",
-            text_color="#00ff88",
+            fg_color="#ffffff",
+            text_color="#1a1a2e",
             corner_radius=8,
             wrap="none"
         )
@@ -98,7 +98,7 @@ class LogConsole(ctk.CTkFrame):
             toolbar,
             text="📟 Console",
             font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#00ff88"
+            text_color="#1a1a2e"
         )
         title.pack(side="left")
         
@@ -107,7 +107,7 @@ class LogConsole(ctk.CTkFrame):
             toolbar,
             text="0 lines",
             font=ctk.CTkFont(size=11),
-            text_color="#666666"
+            text_color="#6a6a7a"
         )
         self._line_count_label.pack(side="left", padx=(15, 0))
         
@@ -118,8 +118,9 @@ class LogConsole(ctk.CTkFrame):
             width=70,
             height=28,
             font=ctk.CTkFont(size=11),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._toggle_pause
         )
         self._pause_btn.pack(side="right", padx=(0, 5))
@@ -133,9 +134,10 @@ class LogConsole(ctk.CTkFrame):
             width=90,
             height=28,
             font=ctk.CTkFont(size=11),
-            fg_color="#2d2d44",
-            button_color="#3d3d54",
-            button_hover_color="#4d4d64",
+            fg_color="#d0d0d8",
+            button_color="#c0c0c8",
+            button_hover_color="#b0b0b8",
+            text_color="#1a1a2e",
             command=self._on_level_change
         )
         level_menu.pack(side="right", padx=(0, 5))
@@ -144,9 +146,9 @@ class LogConsole(ctk.CTkFrame):
         """Toggle pause state."""
         self._paused = not self._paused
         if self._paused:
-            self._pause_btn.configure(text="▶️ Resume", fg_color="#ffa500")
+            self._pause_btn.configure(text="▶️ Resume", fg_color="#ffa500", text_color="#1a1a2e")
         else:
-            self._pause_btn.configure(text="⏸️ Pause", fg_color="#2d2d44")
+            self._pause_btn.configure(text="⏸️ Pause", fg_color="#d0d0d8", text_color="#1a1a2e")
     
     def _on_level_change(self, value: str):
         """Handle level filter change."""
@@ -199,17 +201,21 @@ class LogConsole(ctk.CTkFrame):
         """Start background queue processor."""
         def process():
             try:
-                while True:
+                # Process in small batches rather than one at a time for performance
+                batch_size = 100
+                processed = 0
+                while processed < batch_size:
                     msg = self._log_queue.get_nowait()
                     if not self._paused:
                         self._append_log_internal(msg)
+                    processed += 1
             except queue.Empty:
                 pass
             
             # Schedule next check
-            self.after(50, process)
+            self.after(200, process) # Changed from 50 to 200ms
         
-        self.after(50, process)
+        self.after(200, process)
     
     def append_log(
         self,

@@ -1,0 +1,115 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="audit" name="Audit Logging Flow">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 19: Audit Logging System&lt;/b&gt;&lt;br&gt;/api/admin/audit - Admin Only&lt;br&gt;&lt;i&gt;Hệ thống ghi nhật ký hành động&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="440" y="10" width="340" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== WRITE SIDE: How audit logs are created ===== -->
+        <mxCell id="write_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f8ff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="520" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="write_title" value="&lt;b&gt;WRITE: How Audit Logs Are Created&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cách tạo audit log - gọi từ các service khác&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="88" width="420" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Sources -->
+        <mxCell id="src1" value="&lt;b&gt;AdminAuthService&lt;/b&gt;&lt;br&gt;login / logout&lt;br&gt;change_password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="140" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="src2" value="&lt;b&gt;UserService&lt;/b&gt;&lt;br&gt;create / update&lt;br&gt;delete / reset_pw" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="210" y="140" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="src3" value="&lt;b&gt;WhitelistController&lt;/b&gt;&lt;br&gt;add / delete&lt;br&gt;bulk operations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="370" y="140" width="140" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Audit service call -->
+        <mxCell id="audit_call" value="&lt;b&gt;AuditService.log_action()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Ghi nhật ký hành động&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="160" y="215" width="230" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="se1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="src1" target="audit_call" parent="1" />
+        <mxCell id="se2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="src2" target="audit_call" parent="1" />
+        <mxCell id="se3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="src3" target="audit_call" parent="1" />
+
+        <!-- Parameters -->
+        <mxCell id="params" value="&lt;b&gt;Parameters:&lt;/b&gt;&lt;br&gt;• &lt;b&gt;user&lt;/b&gt;: g.current_user (from Flask context)&lt;br&gt;• &lt;b&gt;action&lt;/b&gt;: &quot;user.create&quot;, &quot;auth.login&quot;, etc.&lt;br&gt;• &lt;b&gt;resource_type&lt;/b&gt;: &quot;users&quot;, &quot;whitelist&quot;, &quot;groups&quot;&lt;br&gt;• &lt;b&gt;resource_id&lt;/b&gt;: ID of affected resource&lt;br&gt;• &lt;b&gt;details&lt;/b&gt;: {changes, old_value, new_value}&lt;br&gt;• &lt;b&gt;ip_address&lt;/b&gt;: request.remote_addr" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=9;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="270" width="340" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="pe1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="audit_call" target="params" parent="1" />
+
+        <!-- Build document -->
+        <mxCell id="build" value="&lt;b&gt;Build audit document&lt;/b&gt;&lt;br&gt;{user_id, username, role, action,&lt;br&gt;resource_type, resource_id, details,&lt;br&gt;ip_address, timestamp: now_vietnam()}&lt;br&gt;&lt;i&gt;Tạo document audit&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="100" y="395" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="be1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="params" target="build" parent="1" />
+
+        <!-- Insert -->
+        <mxCell id="insert" value="&lt;b&gt;audit_model.log(audit_data)&lt;/b&gt;&lt;br&gt;Insert into audit_logs collection&lt;br&gt;&lt;i&gt;Lưu vào collection audit_logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="120" y="480" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ine1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="build" target="insert" parent="1" />
+
+        <!-- Note: fire-and-forget -->
+        <mxCell id="note" value="&lt;b&gt;Note:&lt;/b&gt; Audit logging is &lt;b&gt;fire-and-forget&lt;/b&gt;&lt;br&gt;- failure does NOT block the main operation.&lt;br&gt;Wrapped in try/except, errors are silently logged.&lt;br&gt;&lt;i&gt;Ghi log không chặn thao tác chính&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="545" width="340" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ne1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="insert" target="note" parent="1" />
+
+        <!-- ===== READ SIDE: Querying audit logs ===== -->
+        <mxCell id="read_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fff0;strokeColor=#82b366;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="450" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="read_title" value="&lt;b&gt;READ: Query Audit Logs&lt;/b&gt;&lt;br&gt;GET /api/admin/audit&lt;br&gt;&lt;i&gt;Truy vấn nhật ký - Admin only&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="88" width="350" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_mw" value="@require_login + @require_permission(&quot;audit:read&quot;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="640" y="140" width="310" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_params" value="&lt;b&gt;Query Params:&lt;/b&gt;&lt;br&gt;?action=user.create - Filter by action&lt;br&gt;?resource_type=users - Filter by resource&lt;br&gt;?username=john - Regex search on username&lt;br&gt;?limit=100 (max 500) - Pagination&lt;br&gt;?skip=0 - Offset&lt;br&gt;&lt;i&gt;Tham số lọc&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="180" width="310" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="re1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="r_mw" target="r_params" parent="1" />
+
+        <mxCell id="r_query" value="&lt;b&gt;Build MongoDB query&lt;/b&gt;&lt;br&gt;• action: exact match&lt;br&gt;• resource_type: exact match&lt;br&gt;• username: $regex (case-insensitive)&lt;br&gt;Sort by timestamp DESC&lt;br&gt;&lt;i&gt;Xây dựng query MongoDB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="660" y="285" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="re2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="r_params" target="r_query" parent="1" />
+
+        <mxCell id="r_resp" value="&lt;b&gt;200 OK&lt;/b&gt;&lt;br&gt;{success: true, data: {logs: [...], total, limit, skip}}&lt;br&gt;&lt;i&gt;Trả danh sách audit log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="640" y="380" width="320" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="re3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="r_query" target="r_resp" parent="1" />
+
+        <!-- User Activity endpoint -->
+        <mxCell id="ua_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8f0;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="510" width="450" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ua_title" value="&lt;b&gt;USER ACTIVITY&lt;/b&gt; - GET /api/admin/audit/user/:user_id&lt;br&gt;&lt;i&gt;Hoạt động của user cụ thể&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="518" width="390" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ua" value="Query: {user_id: ObjectId(user_id)} → Sort timestamp DESC → limit (default 50)&lt;br&gt;&lt;b&gt;200 OK&lt;/b&gt; {logs: [...], total}&lt;br&gt;&lt;i&gt;Trả log hoạt động của 1 user&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="555" width="390" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Actions table -->
+        <mxCell id="actions_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="660" width="1000" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="actions_title" value="&lt;b&gt;All Audit Actions / Tất cả hành động được ghi log&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="665" width="400" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="actions" value="&lt;table style='font-size:9px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#6c8ebf;color:white'&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Module&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Action&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;resource_type&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Mô tả&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc' rowspan='3'&gt;Auth&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;auth.login&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;auth&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Đăng nhập thành công&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;auth.logout&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;auth&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Đăng xuất&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;profile.change_password&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;auth&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Đổi mật khẩu&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc' rowspan='5'&gt;User&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;user.create&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;users&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Tạo tài khoản&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;user.update&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;users&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Cập nhật tài khoản&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;user.activate / user.deactivate&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;users&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Bật/tắt tài khoản&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;user.reset_password&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;users&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Reset mật khẩu&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;user.delete&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;users&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Xoá tài khoản&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc' rowspan='2'&gt;Group&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;group.update&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;groups&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Cập nhật nhóm&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;group.delete&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;groups&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Xoá nhóm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc' rowspan='2'&gt;Whitelist&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;whitelist.add&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;whitelist&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Thêm whitelist entry&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;whitelist.delete&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;whitelist&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Xoá whitelist entry&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="45" y="690" width="970" height="160" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

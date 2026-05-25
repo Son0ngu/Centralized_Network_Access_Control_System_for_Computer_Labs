@@ -392,9 +392,13 @@ function renderAgents(agents) {
         agentElement.dataset.status = agent.status || 'unknown';
         agentElement.dataset.groupId = agent.group_id || '';
         agentElement.dataset.id = agentId || '';
-        agentElement.draggable = true;
-        agentElement.addEventListener('dragstart', handleAgentDragStart);
-        agentElement.addEventListener('dragend', handleAgentDragEnd);
+        // Only admin can drag-drop agents between groups
+        const isAdmin = window.SAINT_AUTH && window.SAINT_AUTH.isAdmin;
+        agentElement.draggable = !!isAdmin;
+        if (isAdmin) {
+            agentElement.addEventListener('dragstart', handleAgentDragStart);
+            agentElement.addEventListener('dragend', handleAgentDragEnd);
+        }
         
         agentElement.innerHTML = `
             <div class="row align-items-center">
@@ -549,9 +553,12 @@ function renderGroups() {
         const card = document.createElement('div');
         card.className = 'group-card';
         card.dataset.groupId = group._id;
-        card.addEventListener('dragover', handleGroupDragOver);
-        card.addEventListener('dragleave', handleGroupDragLeave);
-        card.addEventListener('drop', handleGroupDrop);
+        // Only admin can drop agents into groups
+        if (window.SAINT_AUTH && window.SAINT_AUTH.isAdmin) {
+            card.addEventListener('dragover', handleGroupDragOver);
+            card.addEventListener('dragleave', handleGroupDragLeave);
+            card.addEventListener('drop', handleGroupDrop);
+        }
 
         const agentsListHtml = agentsInGroup.map(agent => {
             const statusInfo = getStatusInfo(agent.status);
@@ -590,16 +597,19 @@ function renderGroups() {
                         <i class="fas fa-eye"></i>
                     </button>
                     ${group.is_system ? '' : `
+                        ${window.SAINT_AUTH && window.SAINT_AUTH.isAdmin ? `
                         <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${group._id}">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${group._id}">
                             <i class="fas fa-trash"></i>
                         </button>
+                        ` : ''}
                     `}
                 </div>
             </div>
             <div class="group-meta">${group.description || 'No description'}</div>
+            ${group.created_by_username ? `<div class="group-owner"><span class="badge bg-${group.created_by_role === 'admin' ? 'danger' : 'success'} bg-opacity-10 text-${group.created_by_role === 'admin' ? 'danger' : 'success'}" style="font-size:0.7rem;"><i class="fas fa-user me-1"></i>${group.created_by_username}</span></div>` : ''}
             <div class="group-stats">
                 <span class="badge bg-light text-dark border">
                     <i class="fas fa-shield-alt me-1"></i>Whitelist: ${whitelistCount}
@@ -1035,16 +1045,20 @@ async function removeAgent(agentId) {
  * Show notification
  */
 function showNotification(type, message) {
+    const needsDarkText = (type === 'warning' || type === 'success');
+    const textClass = needsDarkText ? 'text-dark' : 'text-white';
+    const closeBtnClass = needsDarkText ? 'btn-close me-2 m-auto' : 'btn-close btn-close-white me-2 m-auto';
+
     const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.className = `toast align-items-center ${textClass} bg-${type} border-0`;
     toast.setAttribute('role', 'alert');
     toast.setAttribute('aria-live', 'assertive');
     toast.setAttribute('aria-atomic', 'true');
-    
+
     toast.innerHTML = `
         <div class="d-flex">
             <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="${closeBtnClass}" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     `;
     

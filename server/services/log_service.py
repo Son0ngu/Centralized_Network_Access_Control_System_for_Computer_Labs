@@ -497,22 +497,29 @@ class LogService:
             has_filters = bool(filters and any(filters.values()))
             
             # Get total counts (no filters)
+            # `allowed_by_ip` is the detective-control signal: Layer 3 firewall
+            # passed traffic on IP match, but Layer 7 sniffer saw a domain that
+            # is NOT in the whitelist (CDN co-tenant bleed-through). Surfacing
+            # this as a distinct metric lets admins tighten policy without
+            # disrupting legitimate users.
             total_stats = {
                 "total": self.model.count_logs({}),
                 "allowed": self.model.count_logs({"action": "ALLOWED"}),
+                "allowed_by_ip": self.model.count_logs({"action": "ALLOWED_BY_IP"}),
                 "blocked": self.model.count_logs({"action": "BLOCKED"}),
                 "warnings": self.model.count_logs({"level": "WARNING"})
             }
-            
+
             # Get filtered counts if filters exist
             filtered_stats = {}
             if has_filters:
                 query = self._build_query_from_filters(filters)
                 self.logger.info(f"Filter query: {query}")
-                
+
                 filtered_stats = {
                     "filtered_total": self.model.count_logs(query),
                     "filtered_allowed": self.model.count_logs({**query, "action": "ALLOWED"}),
+                    "filtered_allowed_by_ip": self.model.count_logs({**query, "action": "ALLOWED_BY_IP"}),
                     "filtered_blocked": self.model.count_logs({**query, "action": "BLOCKED"}),
                     "filtered_warnings": self.model.count_logs({**query, "level": "WARNING"})
                 }
@@ -536,6 +543,7 @@ class LogService:
                 "error": str(e),
                 "total": 0,
                 "allowed": 0,
+                "allowed_by_ip": 0,
                 "blocked": 0,
                 "warnings": 0,
                 "server_time": now_iso()

@@ -1,0 +1,584 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0" type="device">
+  <diagram id="auth" name="1. Auth &amp; Authorization">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="100" value="&lt;font style=&quot;font-size:18px;&quot;&gt;&lt;b&gt;1. Authentication &amp;amp; Authorization (7 Flows)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="380" y="10" width="440" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="101" value="&lt;b&gt;Browser&lt;/b&gt;&lt;br&gt;(Admin/Teacher)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="160" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="102" value="&lt;b&gt;Agent&lt;/b&gt;&lt;br&gt;(Windows Client)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="160" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="103" value="&lt;b&gt;Admin Auth&lt;br&gt;Controller&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="100" width="180" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="104" value="&lt;b&gt;Auth&lt;br&gt;Controller&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="430" width="180" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="105" value="&lt;b&gt;User Model&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="90" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="106" value="&lt;b&gt;JWT Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="180" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="107" value="&lt;b&gt;Token Blacklist&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="270" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="108" value="&lt;b&gt;API Key Model&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="400" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="109" value="&lt;b&gt;Agent Model&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="490" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="110" value="&lt;b&gt;MongoDB&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="240" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="111" value="&lt;b&gt;RBAC Middleware&lt;/b&gt;&lt;br&gt;@require_role / @require_admin / @require_permission / @inject_current_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="740" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="E100" value="&lt;font color=&quot;#0000CC&quot;&gt;①②③④&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=11;fontStyle=1;strokeColor=#0000CC;" edge="1" parent="1" source="101" target="103">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E101" value="verify / update" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="103" target="105">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E102" value="sign tokens" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="103" target="106">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E103" value="blacklist" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="103" target="107">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E107" value="&lt;font color=&quot;#009900&quot;&gt;⑤⑥&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=11;fontStyle=1;strokeColor=#009900;" edge="1" parent="1" source="102" target="104">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E108" value="validate key" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="104" target="108">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E109" value="upsert agent" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="104" target="109">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E110" value="sign tokens" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="106">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="370"/>
+              <mxPoint x="700" y="370"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E104" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="105" target="110">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E105" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="107" target="110">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E111" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="108" target="110">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E112" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="109" target="110">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="120" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Flow Legend:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;① POST /api/admin/auth/login&lt;/b&gt;&lt;/font&gt; - Admin/Teacher login → verify password → sign JWT → set httpOnly cookie&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;② POST /api/admin/auth/logout&lt;/b&gt;&lt;/font&gt; - Logout → add token to blacklist&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;③ PUT /api/admin/auth/change-password&lt;/b&gt;&lt;/font&gt; - Verify old password → update new password&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;④ GET /me + PUT /profile&lt;/b&gt;&lt;/font&gt; - View/update admin profile (email, display name)&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑤ POST /api/agents/register&lt;/b&gt;&lt;/font&gt; - Agent sends API Key → validate → upsert agent → sign JWT tokens (access + refresh)&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑥ POST /api/auth/refresh&lt;/b&gt;&lt;/font&gt; - Validate refresh token → issue new access token&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;⑦ RBAC Middleware&lt;/b&gt;&lt;/font&gt; - Applied on ALL endpoints: require_role, require_admin, require_permission, inject_current_user&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;Teachers: filtered data (only their groups/agents). Admins: full access.&lt;br&gt;&lt;br&gt;&lt;b&gt;Additional endpoints:&lt;/b&gt; POST /api/auth/verify, GET /api/auth/token-info, POST /api/auth/logout (agent), POST /api/admin/auth/refresh&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="1000" height="280" as="geometry"/>
+        </mxCell>
+        <mxCell id="130" value="&lt;font style=&quot;font-size:10px;&quot;&gt;&lt;b&gt;Legend:&lt;/b&gt; &lt;font color=&quot;#6c8ebf&quot;&gt;■&lt;/font&gt; Client &amp;nbsp; &lt;font color=&quot;#82b366&quot;&gt;■&lt;/font&gt; Controller &amp;nbsp; &lt;font color=&quot;#d6b656&quot;&gt;■&lt;/font&gt; Service &amp;nbsp; &lt;font color=&quot;#d79b00&quot;&gt;■&lt;/font&gt; Model &amp;nbsp; &lt;font color=&quot;#9673a6&quot;&gt;■&lt;/font&gt; Database &amp;nbsp; &lt;font color=&quot;#b85450&quot;&gt;■&lt;/font&gt; Middleware&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="700" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="agent-server" name="2. Agent-Server Operations">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="200" value="&lt;font style=&quot;font-size:18px;&quot;&gt;&lt;b&gt;2. Agent-Server Operations (6 Flows)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="400" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="201" value="&lt;b&gt;Agent&lt;/b&gt;&lt;br&gt;(Windows Client)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="150" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="202" value="&lt;b&gt;Admin/Teacher&lt;/b&gt;&lt;br&gt;(Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="150" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="203" value="&lt;b&gt;Agent&lt;br&gt;Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;13 endpoints&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="110" width="180" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="204" value="&lt;b&gt;Log&lt;br&gt;Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;6 endpoints&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="240" width="180" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="205" value="&lt;b&gt;Whitelist&lt;br&gt;Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;10 endpoints&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="370" width="180" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="206" value="&lt;b&gt;Agent Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="100" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="207" value="&lt;b&gt;Log Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="200" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="208" value="&lt;b&gt;Whitelist Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="300" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="209" value="&lt;b&gt;RBAC Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="400" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="210" value="&lt;b&gt;MongoDB&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="220" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="211" value="&lt;b&gt;SocketIO&lt;/b&gt;&lt;br&gt;Real-time Push" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="100" width="140" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="E200" value="&lt;b&gt;①&lt;/b&gt; POST /heartbeat" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#0000CC;" edge="1" parent="1" source="201" target="203">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E201" value="&lt;b&gt;②&lt;/b&gt; POST /logs" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#0000CC;" edge="1" parent="1" source="201" target="204">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="240" y="167"/>
+              <mxPoint x="240" y="272"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E202" value="&lt;b&gt;③&lt;/b&gt; GET /agent-sync" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#0000CC;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="201" target="205">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="340"/>
+              <mxPoint x="260" y="340"/>
+              <mxPoint x="260" y="402"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E203" value="&lt;b&gt;④&lt;/b&gt; CRUD /agents/*" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="202" target="203">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="250" y="427"/>
+              <mxPoint x="250" y="142"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E204" value="&lt;b&gt;⑤&lt;/b&gt; PATCH /policy" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="202" target="203">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="427"/>
+              <mxPoint x="230" y="155"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E205" value="&lt;b&gt;⑥&lt;/b&gt; GET /logs" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="202" target="204">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E206" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="203" target="206">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E207" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="204" target="207">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E208" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="205" target="208">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E209" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="206" target="210">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E210" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="207" target="210">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E211" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;fontSize=10;strokeColor=#999999;" edge="1" parent="1" source="208" target="210">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E212" value="broadcast events" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#CC0000;dashed=1;" edge="1" parent="1" source="203" target="211">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E213" value="RBAC filter" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;strokeColor=#CC0000;" edge="1" parent="1" source="205" target="209">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="220" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Flow Legend:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;① POST /api/agents/heartbeat&lt;/b&gt;&lt;/font&gt; - Agent sends CPU/RAM/disk metrics every 20s → update status → SocketIO broadcast (agent_heartbeat)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;Server response may include force_sync flag → trigger whitelist re-sync&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;② POST /api/logs&lt;/b&gt;&lt;/font&gt; - Agent sends batch of logs (domain access, firewall events) → bulk insert to MongoDB&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;③ GET /api/whitelist/agent-sync&lt;/b&gt;&lt;/font&gt; - Agent requests whitelist (domains, patterns, IPs) with version check → incremental/full sync&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;④ CRUD /api/agents/*&lt;/b&gt;&lt;/font&gt; - Admin: list, view, delete, update display-name, update position, assign group (13 endpoints)&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑤ PATCH /api/agents/&amp;lt;id&amp;gt;/policy&lt;/b&gt;&lt;/font&gt; - Set agent policy: whitelist_only, monitor, custom rules → SocketIO broadcast (agent_policy_changed)&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑥ GET /api/logs + /stats&lt;/b&gt;&lt;/font&gt; - View logs with filters (level, agent_id, time_range) + statistics + export + clear&lt;br&gt;&lt;br&gt;&lt;b&gt;SocketIO events:&lt;/b&gt; agent_registered, agent_heartbeat, agent_deleted, agent_group_updated, agent_policy_changed, new_log, logs_cleared&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="1000" height="280" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="admin-crud" name="3. Admin CRUD &amp; Whitelist">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="300" value="&lt;font style=&quot;font-size:18px;&quot;&gt;&lt;b&gt;3. Admin CRUD &amp;amp; Whitelist Management (7 Flows)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="500" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="301" value="&lt;b&gt;Admin&lt;/b&gt;&lt;br&gt;(Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="140" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="302" value="&lt;b&gt;Teacher&lt;/b&gt;&lt;br&gt;(Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="140" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="310" value="&lt;b&gt;User Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;7 endpoints&lt;br&gt;Admin only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="311" value="&lt;b&gt;API Key Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;8 endpoints&lt;br&gt;Admin only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="160" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="312" value="&lt;b&gt;Audit Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;2 endpoints&lt;br&gt;Admin only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="240" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="313" value="&lt;b&gt;Group Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;6 endpoints&lt;br&gt;Admin + Teacher&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="340" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="314" value="&lt;b&gt;Whitelist Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;10 endpoints&lt;br&gt;Admin + Teacher&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="420" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="315" value="&lt;b&gt;Profile Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;8 endpoints&lt;br&gt;Per-group profiles&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="500" width="170" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="320" value="&lt;b&gt;User Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="85" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="321" value="&lt;b&gt;API Key Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="170" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="322" value="&lt;b&gt;Audit Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="250" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="323" value="&lt;b&gt;Group Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="350" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="324" value="&lt;b&gt;Whitelist Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="430" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="325" value="&lt;b&gt;Profile Service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="510" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="330" value="&lt;b&gt;MongoDB&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="810" y="270" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="331" value="&lt;b&gt;SocketIO&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="810" y="130" width="130" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="E300" value="① CRUD" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#CC0000;" edge="1" parent="1" source="301" target="310">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E301" value="② CRUD" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#CC0000;" edge="1" parent="1" source="301" target="311">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E302" value="③ READ" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#CC0000;" edge="1" parent="1" source="301" target="312">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E303" value="④⑤" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#0000CC;" edge="1" parent="1" source="301" target="313">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="155"/>
+              <mxPoint x="220" y="370"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E304" value="④⑤" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="302" target="313">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E305" value="⑥" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="302" target="314">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E306" value="⑦" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="302" target="315">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E310" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="310" target="320">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E311" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="311" target="321">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E312" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="312" target="322">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E313" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="313" target="323">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E314" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="314" target="324">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E315" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;dashed=1;" edge="1" parent="1" source="315" target="325">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E320" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="320" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E321" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="321" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E322" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="322" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E323" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="323" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E324" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="324" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E325" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" source="325" target="330">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E330" value="events" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;strokeColor=#CC0000;dashed=1;" edge="1" parent="1" source="324" target="331">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="450"/>
+              <mxPoint x="750" y="152"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="340" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Flow Legend:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;① User Management (Admin only)&lt;/b&gt;&lt;/font&gt; - CRUD /api/admin/users + reset-password + statistics (7 endpoints)&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;② API Key Management (Admin only)&lt;/b&gt;&lt;/font&gt; - CRUD /api/api-keys + revoke + stats + validate (8 endpoints)&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;③ Audit Log Viewing (Admin only)&lt;/b&gt;&lt;/font&gt; - GET /api/admin/audit + /user/&amp;lt;id&amp;gt; (2 endpoints)&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;④ Group Management (Admin + Teacher)&lt;/b&gt;&lt;/font&gt; - CRUD /api/groups + POST set_teachers (6 endpoints)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;Teachers: only see/edit their assigned groups. Admins: all groups.&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑤ Whitelist CRUD (Admin + Teacher)&lt;/b&gt;&lt;/font&gt; - GET/POST/DELETE /api/whitelist + bulk-add/update/delete + import/export + statistics (10 endpoints)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;Teachers: scoped to their groups. Broadcasts: whitelist_updated, whitelist_added, whitelist_deleted&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;⑥ Whitelist Profiles (per-group)&lt;/b&gt;&lt;/font&gt; - CRUD /api/groups/&amp;lt;id&amp;gt;/profiles + activate/deactivate (8 endpoints)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;Each group can have multiple whitelist profiles, only one active at a time&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="600" width="940" height="280" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="agent-threads" name="4. Agent Internal Architecture">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="400" value="&lt;font style=&quot;font-size:18px;&quot;&gt;&lt;b&gt;4. Agent Internal Architecture (8+ Threads)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="370" y="10" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="401" value="&lt;b&gt;GUI Main Thread&lt;/b&gt;&lt;br&gt;CustomTkinter (1200x800)&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Dashboard | Firewall | Logs | Whitelist | Settings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="380" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="402" value="&lt;b&gt;Agent Controller&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Singleton orchestrator&lt;br&gt;States: STOPPED → STARTING → RUNNING → STOPPING&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="70" width="280" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="403" value="&lt;b&gt;Server&lt;/b&gt;&lt;br&gt;(Flask API)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="300" width="140" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="410" value="&lt;b&gt;① Token Manager Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Check every 60s&lt;br&gt;Refresh 5min before expiry&lt;br&gt;3 failures → re-register&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="411" value="&lt;b&gt;② Heartbeat Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Every 20s → POST /heartbeat&lt;br&gt;CPU, RAM, disk, uptime&lt;br&gt;3 failures → callback&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="280" y="200" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="412" value="&lt;b&gt;③ Whitelist Sync Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Every 60s → GET /agent-sync&lt;br&gt;Incremental merge + version check&lt;br&gt;3 retries with exp backoff&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="520" y="200" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="413" value="&lt;b&gt;④ DNS Refresh Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Resolve domains → IPs&lt;br&gt;Respect DNS TTL&lt;br&gt;Update firewall rules&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="780" y="200" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="420" value="&lt;b&gt;⑤ Packet Sniffer Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Scapy + WinPcap/Npcap&lt;br&gt;Filter: TCP 80,443 + UDP 53&lt;br&gt;Extract: DNS query, HTTP Host, TLS SNI&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="230" height="85" as="geometry"/>
+        </mxCell>
+        <mxCell id="421" value="&lt;b&gt;⑥ Domain Detection Handler&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Match domain/IP vs whitelist&lt;br&gt;Action: ALLOWED / BLOCKED / MONITORED&lt;br&gt;Create enhanced log record&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="350" width="240" height="85" as="geometry"/>
+        </mxCell>
+        <mxCell id="422" value="&lt;b&gt;⑦ Firewall Manager&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Windows Firewall netsh commands&lt;br&gt;Default Deny + Allow rules per IP&lt;br&gt;Backup/restore policy&lt;br&gt;Sync whitelist changes dynamically&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="610" y="340" width="230" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="423" value="&lt;b&gt;⑧ Log Sender Thread&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Queue (max 1000) → batch POST /logs&lt;br&gt;Send interval: 2s, batch size: 100&lt;br&gt;Flush on shutdown&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="230" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="424" value="&lt;b&gt;Whitelist State&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Thread-safe (RLock)&lt;br&gt;Sets: domains, patterns, IPs&lt;br&gt;is_allowed() / is_ip_allowed()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="610" y="490" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="425" value="&lt;b&gt;Config Loader&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;agent_config.json&lt;br&gt;Defaults → File → Env vars&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="490" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="E400" value="spawns worker" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="401" target="402">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E401" value="init all" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=2;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="402" target="411">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="165"/>
+              <mxPoint x="380" y="165"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E402" value="POST /auth/refresh" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#0000CC;dashed=1;" edge="1" parent="1" source="410" target="403">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="160"/>
+              <mxPoint x="1050" y="160"/>
+              <mxPoint x="1050" y="310"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E403" value="POST /heartbeat" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#0000CC;dashed=1;" edge="1" parent="1" source="411" target="403">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="240"/>
+              <mxPoint x="1020" y="327"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E404" value="GET /agent-sync" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#0000CC;dashed=1;" edge="1" parent="1" source="412" target="403">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E405" value="callback" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#CC0000;" edge="1" parent="1" source="420" target="421">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E406" value="check whitelist" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;dashed=1;" edge="1" parent="1" source="421" target="424">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="460"/>
+              <mxPoint x="600" y="460"/>
+              <mxPoint x="600" y="530"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E407" value="queue log" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#009900;" edge="1" parent="1" source="421" target="423">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="460"/>
+              <mxPoint x="290" y="540"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E408" value="POST /logs (batch)" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#0000CC;dashed=1;" edge="1" parent="1" source="423" target="403">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="155" y="610"/>
+              <mxPoint x="1170" y="610"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E409" value="update rules" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="412" target="422">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="310"/>
+              <mxPoint x="725" y="310"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E410" value="resolve → IPs" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="413" target="422">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E411" value="signals (100ms)" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeWidth=1.5;fontSize=10;strokeColor=#6c8ebf;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="402" target="401">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="440" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Thread Legend:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;① Token Manager&lt;/b&gt; - Background daemon, checks every 60s, refreshes JWT 5 min before expiry, triggers re-registration on 3 failures&lt;br&gt;&lt;b&gt;② Heartbeat&lt;/b&gt; - Daemon thread every 20s, sends system metrics (CPU/RAM/disk/uptime) to server&lt;br&gt;&lt;b&gt;③ Whitelist Sync&lt;/b&gt; - Periodic sync every 60s with version check, incremental merge, 3 retries with exponential backoff&lt;br&gt;&lt;b&gt;④ DNS Refresh&lt;/b&gt; - Resolves whitelist domains to IPs using dnspython, respects TTL, updates firewall rules dynamically&lt;br&gt;&lt;b&gt;⑤ Packet Sniffer&lt;/b&gt; - Scapy capture on TCP 80/443 + UDP 53, extracts HTTP Host / TLS SNI / DNS queries&lt;br&gt;&lt;b&gt;⑥ Domain Detection&lt;/b&gt; - Callback from sniffer, matches against WhitelistState, determines ALLOW/BLOCK/MONITOR action&lt;br&gt;&lt;b&gt;⑦ Firewall Manager&lt;/b&gt; - Windows Firewall via netsh: default-deny policy + per-IP allow rules, backup/restore&lt;br&gt;&lt;b&gt;⑧ Log Sender&lt;/b&gt; - Queue-based batching (max 1000 entries), sends every 2s or when batch_size=100 reached, flushes on shutdown&lt;br&gt;&lt;br&gt;&lt;b&gt;Startup sequence:&lt;/b&gt; Config → Register → Token Manager → Whitelist Sync → Firewall → Log Sender → Heartbeat → Sniffer&lt;br&gt;&lt;b&gt;Shutdown:&lt;/b&gt; Stop token → Stop sniffer → Stop whitelist → Stop heartbeat → Send shutdown log → Stop log sender → Restore firewall&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="1060" height="290" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="frontend" name="5. Frontend Pages &amp; SocketIO">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="500" value="&lt;font style=&quot;font-size:18px;&quot;&gt;&lt;b&gt;5. Frontend Pages (11) &amp;amp; SocketIO Events&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="500" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="501" value="&lt;b&gt;/login&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Public access&lt;br&gt;Inline JS&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="502" value="&lt;b&gt;/ (Dashboard)&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;dashboard.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="170" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="503" value="&lt;b&gt;/agents&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;agents.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="504" value="&lt;b&gt;/groups&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;groups.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="505" value="&lt;b&gt;/groups/&amp;lt;id&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;group_detail.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="506" value="&lt;b&gt;/whitelist&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;whitelist.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="507" value="&lt;b&gt;/logs&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;logs.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="508" value="&lt;b&gt;/api-keys&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="710" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="509" value="&lt;b&gt;/admin/users&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin only&lt;br&gt;admin_users.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="510" value="&lt;b&gt;/admin/audit&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="890" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="511" value="&lt;b&gt;/profile&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;Admin + Teacher&lt;br&gt;profile.css&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="980" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="520" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;POST /api/admin/auth/login&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="90" width="200" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="521" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET /logs/stats, /agents/statistics&lt;br&gt;GET /admin/auth/me&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="170" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="522" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET/DELETE /agents, /agents/statistics&lt;br&gt;GET /groups, PATCH /agents/*/group&lt;br&gt;PATCH /agents/*/display-name&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="255" width="230" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="523" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;CRUD /groups, GET /agents&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="360" width="200" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="524" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET /agents, /groups, /admin/users&lt;br&gt;CRUD /groups/*/profiles&lt;br&gt;PATCH /agents/*/policy,group,position&lt;br&gt;POST /groups/*/teachers&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="430" width="240" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="525" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET/POST/DELETE /whitelist&lt;br&gt;POST /whitelist/bulk, bulk-delete&lt;br&gt;GET /groups, /my-profiles&lt;br&gt;PATCH /groups/*/profiles/*&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="525" width="230" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="526" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET /logs, /logs/stats&lt;br&gt;GET /agents, DELETE /logs/clear&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="625" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="527" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;CRUD /api-keys&lt;br&gt;POST /revoke, GET /stats, POST /validate&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="715" width="220" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="528" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;CRUD /admin/users&lt;br&gt;POST /reset-password, GET /statistics&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="805" width="220" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="529" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET /admin/audit&lt;br&gt;GET /admin/audit/user/&amp;lt;id&amp;gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="895" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="530" value="&lt;div style=&quot;text-align:left;font-size:10px;&quot;&gt;GET /admin/auth/me&lt;br&gt;PATCH /admin/auth/profile&lt;br&gt;POST /admin/auth/change-password&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="978" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="E500" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="501" target="520">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E501" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="502" target="521">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E502" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="503" target="522">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E503" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="504" target="523">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E504" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="505" target="524">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E505" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="506" target="525">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E506" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="507" target="526">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E507" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="508" target="527">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E508" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="509" target="528">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E509" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="510" target="529">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="E510" value="" style="edgeStyle=entityRelationEdgeStyle;html=1;rounded=0;strokeWidth=1.5;fontSize=10;" edge="1" parent="1" source="511" target="530">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="540" value="&lt;b&gt;SocketIO Events (Real-time)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="620" y="70" width="260" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="541" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Server → Client Events:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;agent_heartbeat&lt;/b&gt;&lt;/font&gt; - Real-time agent status update (CPU/RAM/disk)&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;agent_registered&lt;/b&gt;&lt;/font&gt; - New agent connected&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;agent_deleted&lt;/b&gt;&lt;/font&gt; - Agent removed&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;agent_group_updated&lt;/b&gt;&lt;/font&gt; - Agent moved to different group&lt;br&gt;&lt;font color=&quot;#0000CC&quot;&gt;&lt;b&gt;agent_policy_changed&lt;/b&gt;&lt;/font&gt; - Agent firewall policy updated&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;whitelist_updated&lt;/b&gt;&lt;/font&gt; - Whitelist entry added/deleted/imported&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;whitelist_added&lt;/b&gt;&lt;/font&gt; - Single entry added&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;whitelist_deleted&lt;/b&gt;&lt;/font&gt; - Entry removed&lt;br&gt;&lt;font color=&quot;#009900&quot;&gt;&lt;b&gt;whitelist_bulk_added&lt;/b&gt;&lt;/font&gt; - Bulk import completed&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;new_log&lt;/b&gt;&lt;/font&gt; - New log entry from agent&lt;br&gt;&lt;font color=&quot;#CC0000&quot;&gt;&lt;b&gt;logs_cleared&lt;/b&gt;&lt;/font&gt; - Logs cleared by admin&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;token_refreshed&lt;/b&gt;&lt;/font&gt; - Agent token refreshed&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;agent_logout&lt;/b&gt;&lt;/font&gt; - Agent logged out&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;user_created&lt;/b&gt;&lt;/font&gt; - New admin/teacher user created&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;api_key_created&lt;/b&gt;&lt;/font&gt; - New API key created&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;api_key_revoked&lt;/b&gt;&lt;/font&gt; - API key revoked&lt;br&gt;&lt;font color=&quot;#996600&quot;&gt;&lt;b&gt;admin_login&lt;/b&gt;&lt;/font&gt; - Admin/teacher logged in&lt;br&gt;&lt;br&gt;&lt;b&gt;Client → Server:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;&lt;b&gt;connect&lt;/b&gt;&lt;/font&gt; - Initial WebSocket connection&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;&lt;b&gt;ping&lt;/b&gt;&lt;/font&gt; → &lt;font color=&quot;#666666&quot;&gt;&lt;b&gt;pong&lt;/b&gt;&lt;/font&gt; - Keep-alive&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;&lt;b&gt;disconnect&lt;/b&gt;&lt;/font&gt; - Connection closed&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="100" width="460" height="530" as="geometry"/>
+        </mxCell>
+        <mxCell id="550" value="&lt;div style=&quot;text-align:left;&quot;&gt;&lt;b&gt;Shared JS (loaded on all pages via base.html):&lt;/b&gt;&lt;br&gt;&lt;b&gt;base.js&lt;/b&gt; - Notifications, custom select, user session&lt;br&gt;&lt;b&gt;auth.js&lt;/b&gt; - RBAC, token refresh, auto-logout on 401, fetch interceptor&lt;br&gt;&lt;br&gt;&lt;b&gt;Color Legend:&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6c8ebf&quot;&gt;■&lt;/font&gt; Admin + Teacher access&lt;br&gt;&lt;font color=&quot;#b85450&quot;&gt;■&lt;/font&gt; Admin only access&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;■&lt;/font&gt; Public access (Login)&lt;br&gt;&lt;font color=&quot;#82b366&quot;&gt;■&lt;/font&gt; API endpoints called by page&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=1;points=[];autosize=0;strokeColor=#666666;fillColor=#f5f5f5;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="660" width="440" height="180" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

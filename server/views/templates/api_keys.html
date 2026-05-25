@@ -8,10 +8,10 @@
     .key-card {
         transition: all 0.3s ease;
         border: 1px solid #dee2e6;
-    }
     .key-card:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         transform: translateY(-2px);
+    }
     }
     .key-card.revoked {
         opacity: 0.6;
@@ -79,27 +79,128 @@
     #newKeyModal .custom-options {
         border-radius: 0.5rem !important;
     }
+
+    /* ========================================
+       RESPONSIVE - API Keys Page
+       ======================================== */
+
+    /* Tablet portrait (max-width: 768px) */
+    @media (max-width: 768px) {
+        .container-fluid.px-4 {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 h2 {
+            font-size: 1.5rem;
+        }
+
+        .stats-icon {
+            width: 40px;
+            height: 40px;
+        }
+
+        .stats-icon i {
+            font-size: 1rem !important;
+        }
+
+        .stats-card .card-body h4 {
+            font-size: 1.25rem;
+        }
+
+        /* Key card actions always visible on touch */
+        .key-actions {
+            opacity: 1;
+        }
+
+        .api-key-display {
+            font-size: 0.8rem;
+            padding: 10px 12px;
+        }
+    }
+
+    /* Mobile (max-width: 576px) */
+    @media (max-width: 576px) {
+        .container-fluid.px-4 {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 h2 {
+            font-size: 1.25rem;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 p {
+            font-size: 0.85rem;
+        }
+
+        /* Stats cards - compact */
+        .stats-card .card-body {
+            padding: 0.75rem;
+        }
+
+        .stats-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+        }
+
+        .stats-card .card-body h4 {
+            font-size: 1.1rem;
+        }
+
+        .stats-card .card-body small {
+            font-size: 0.7rem;
+        }
+
+        /* Key cards */
+        .key-card .card-body {
+            padding: 0.75rem;
+        }
+
+        .key-card .card-title {
+            font-size: 0.9rem;
+        }
+
+        .badge-permission {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+        }
+
+        /* Filter card compact */
+        .card .card-body .row.g-3 > div {
+            margin-bottom: 0.25rem;
+        }
+
+        .api-key-display {
+            font-size: 0.7rem;
+            padding: 8px 10px;
+        }
+    }
 </style>
 {% endblock %}
+{% from 'components/hero.html' import render_hero %}
 
 {% block content %}
 <div class="container-fluid px-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1">
-                <i class="fas fa-key text-warning me-2"></i>API Keys Management
-            </h2>
-            <p class="text-muted mb-0">Manage API keys for agent registration and authentication</p>
+    <!-- Hero Section -->
+    {% call render_hero('API Keys Management', 'Manage API keys for agent registration and authentication', icon='fas fa-key text-warning') %}
+        <div class="d-flex flex-column align-items-end">
+            <button class="btn btn-primary btn-lg shadow-sm mb-3 position-relative" style="z-index: 2;" data-bs-toggle="modal" data-bs-target="#newKeyModal">
+                <i class="fas fa-plus me-2"></i>Create New Key
+            </button>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newKeyModal">
-            <i class="fas fa-plus me-2"></i>Create New Key
-        </button>
-    </div>
+    {% endcall %}
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
+    <div class="row mb-4 g-2 g-md-3">
+        <div class="col-6 col-md-3">
             <div class="card stats-card h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="stats-icon bg-primary bg-opacity-10 text-primary me-3">
@@ -112,7 +213,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card stats-card h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="stats-icon bg-success bg-opacity-10 text-success me-3">
@@ -125,7 +226,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card stats-card h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="stats-icon bg-danger bg-opacity-10 text-danger me-3">
@@ -138,7 +239,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card stats-card h-100">
                 <div class="card-body d-flex align-items-center">
                     <div class="stats-icon bg-warning bg-opacity-10 text-warning me-3">
@@ -156,14 +257,14 @@
     <!-- Filter & Search -->
     <div class="card mb-4">
         <div class="card-body">
-            <div class="row g-3 align-items-center">
-                <div class="col-md-4">
+            <div class="row g-2 g-md-3 align-items-center">
+                <div class="col-12 col-md-4">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                         <input type="text" class="form-control" id="searchKeys" placeholder="Search by name...">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-5 col-md-3">
                     <select class="form-select" id="filterStatus">
                         <option value="all">All Status</option>
                         <option value="active">Active</option>
@@ -171,7 +272,7 @@
                         <option value="expired">Expired</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-5 col-md-3">
                     <select class="form-select" id="filterPermission">
                         <option value="all">All Permissions</option>
                         <option value="agent_register">Agent Register</option>
@@ -181,9 +282,9 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="col-md-2 text-end">
-                    <button class="btn btn-outline-secondary" onclick="loadApiKeys()">
-                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                <div class="col-2 col-md-2 text-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="loadApiKeys()">
+                        <i class="fas fa-sync-alt"></i><span class="d-none d-md-inline ms-1">Refresh</span>
                     </button>
                 </div>
             </div>
@@ -471,7 +572,7 @@ function renderKeyCard(key) {
         : 0;
     
     return `
-        <div class="col-md-6 col-lg-4">
+        <div class="col-12 col-sm-6 col-lg-4">
             <div class="card key-card h-100 ${statusClass}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">

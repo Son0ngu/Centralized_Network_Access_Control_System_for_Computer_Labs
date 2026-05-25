@@ -1,15 +1,52 @@
 import logging
 import json
+import os
+import sys
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 
-from agent.shared.time_utils import now_iso
+from shared.time_utils import now_iso
 from .policy import PolicyManager
 from .rules import RulesManager
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.manager")
+
+
+# Default snapshot filename. Path resolved by `_resolve_snapshot_path` to an
+# absolute location so save/restore stay consistent across cwd changes (service
+# vs GUI process).
+DEFAULT_SNAPSHOT_FILENAME = "profiles/backup.saint-snapshot.json"
+
+
+def _resolve_snapshot_path(path: str) -> Path:
+    """Resolve a snapshot file path to an absolute, cwd-independent location.
+
+    Rules:
+      - Absolute path → use as-is.
+      - Relative path → resolve relative to the agent install dir (the parent
+        of the `agent/` package), NOT the current working directory. This
+        keeps the snapshot stable whether the agent is launched by the GUI,
+        a service, or Task Scheduler.
+    """
+    p = Path(path)
+    if p.is_absolute():
+        return p
+
+    # Anchor: parent of the `agent` package. `__file__` is
+    # `<install>/agent/firewall/manager.py`, so parents[2] is `<install>`.
+    try:
+        install_root = Path(__file__).resolve().parents[2]
+    except Exception:
+        install_root = Path.cwd()
+
+    # If running as a frozen executable (PyInstaller), prefer the exe's dir.
+    if getattr(sys, "frozen", False):
+        install_root = Path(sys.executable).resolve().parent
+
+    return install_root / p
 
 
 class FirewallManager:
@@ -59,14 +96,18 @@ class FirewallManager:
             if essential_ips is None:
                 essential_ips = FirewallUtils.get_essential_ips()
             
-            # Allow both IPv4 and IPv6
+            # Validate IPs
             whitelisted_ips_valid = {ip for ip in whitelisted_ips if FirewallUtils.is_valid_ip(ip)}
             essential_ips_valid = {ip for ip in essential_ips if FirewallUtils.is_valid_ip(ip)}
             
             all_allowed_ips = whitelisted_ips_valid.union(essential_ips_valid)
-            
+
             logger.info(f"Total IPs to allow: {len(all_allowed_ips)}")
-            
+
+            # Step 0: Whitelist the agent's own exe (see enable_whitelist_mode
+            # for rationale — survives server IP rotation).
+            self.rules_manager.create_self_allow_rules(sys.executable)
+
             # Step 1: Enable Default Deny policy
             if not self.policy_manager.enable_default_deny():
                 logger.error("Failed to enable Default Deny policy")
@@ -385,7 +426,7 @@ class FirewallManager:
                 if FirewallUtils.is_valid_ip(ip):
                     new_ips.add(ip)
             
-            # Resolve domains to IPs (IPv4/IPv6)
+            # Resolve domains to IPs
             resolved_ips = self._resolve_domains_to_ips(domains)
             new_ips.update(resolved_ips)
             
@@ -450,16 +491,13 @@ class FirewallManager:
                     for ip in (record.ipv4 or []):
                         if FirewallUtils.is_valid_ip(ip):
                             resolved_ips.add(ip)
-                    for ip in (getattr(record, "ipv6", []) or []):
-                        if FirewallUtils.is_valid_ip(ip):
-                            resolved_ips.add(ip)
 
                 logger.info(f"Resolved {len(cleaned_domains)} domains -> {len(resolved_ips)} IPs (optimized)")
 
             except ImportError:
                 for domain in cleaned_domains:
                     try:
-                        results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                        results = socket.getaddrinfo(domain, None, socket.AF_INET)
                         for result in results:
                             ip = result[4][0]
                             if FirewallUtils.is_valid_ip(ip):
@@ -498,10 +536,16 @@ class FirewallManager:
                 return True
             
             logger.info("Enabling whitelist-only mode...")
-            
+
+            # Step 0: Whitelist the agent's own exe by program path. This is
+            # immune to server-side IP rotation (Render.com load balancer)
+            # whereas remoteip-based rules break the moment DNS resolves to a
+            # different IP than what was whitelisted at startup.
+            self.rules_manager.create_self_allow_rules(sys.executable)
+
             # Step 1: Collect all IPs to allow BEFORE enabling Default Deny
             all_allowed_ips = set()
-            
+
             # 1a. Add essential IPs (DNS, localhost, gateway)
             essential_ips = FirewallUtils.get_essential_ips()
             all_allowed_ips.update(essential_ips)
@@ -581,86 +625,172 @@ class FirewallManager:
         
         return ips
 
-    # BACKUP RESTORE HELPERS
-    def save_snapshot(self, path: str = "profiles/backup.wfw") -> bool:
-        """Save firewall policy snapshot to file."""
+    # BACKUP / RESTORE HELPERS
+    def save_snapshot(
+        self,
+        path: str = DEFAULT_SNAPSHOT_FILENAME,
+        *,
+        force: bool = False,
+    ) -> bool:
+        """Save current firewall state to a snapshot file.
+
+        Args:
+            path: snapshot file path. Relative paths are resolved against the
+                agent install dir (cwd-independent).
+            force: when False (default) and a snapshot file already exists,
+                refuse to overwrite. This prevents losing the pre-SAINT
+                baseline if the agent restarts after a crash where current
+                policies have already been mutated by a previous run.
+
+        Returns:
+            True on success or when an existing snapshot was deliberately
+            preserved; False on actual failure.
+        """
         try:
-            file_path = Path(path)
+            file_path = _resolve_snapshot_path(path)
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Get current policies
+
+            if file_path.exists() and not force:
+                logger.info(
+                    "Pre-SAINT snapshot already exists at %s — preserving "
+                    "original baseline (use force=True to overwrite).",
+                    file_path,
+                )
+                return True
+
+            # Capture current state
             current_policies = self.policy_manager.get_current_policy()
-            
-            # Get current allowed IPs
-            allowed_ips = list(self.rules_manager.allowed_ips) if hasattr(self.rules_manager, 'allowed_ips') else []
-            
+            allowed_ips = (
+                list(self.rules_manager.allowed_ips)
+                if hasattr(self.rules_manager, "allowed_ips")
+                else []
+            )
+
             snapshot = {
+                "version": 1,
                 "timestamp": datetime.now().isoformat(),
                 "policies": current_policies,
                 "whitelist_mode": self.whitelist_mode_active,
                 "essential_ips": list(self.essential_ips),
-                "allowed_ips": allowed_ips
+                "allowed_ips": allowed_ips,
             }
-            
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(snapshot, f, indent=4)
-                
-            logger.info(f"Firewall snapshot saved to {file_path}")
+
+            # Atomic write: write to temp file in same dir, then os.replace().
+            # Avoids corrupted snapshot if the process crashes mid-write.
+            fd, tmp_name = tempfile.mkstemp(
+                prefix=".saint-snapshot-",
+                suffix=".tmp",
+                dir=str(file_path.parent),
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(snapshot, f, indent=4)
+                    f.flush()
+                    try:
+                        os.fsync(f.fileno())
+                    except OSError:
+                        pass  # fsync not supported on some FS
+                os.replace(tmp_name, file_path)
+            except Exception:
+                # Clean up temp file on failure
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+
+            logger.info("Firewall snapshot saved to %s", file_path)
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save firewall snapshot: {e}")
             return False
 
-    def restore_snapshot(self, path: str = "profiles/backup.wfw") -> bool:
-        """Restore firewall policy from snapshot file."""
+    def restore_snapshot(self, path: str = DEFAULT_SNAPSHOT_FILENAME) -> bool:
+        """Restore firewall to the state captured in the snapshot file.
+
+        Intent: revert the machine to its **pre-SAINT** state. We restore the
+        recorded profile policies and clear SAINT-managed rules. If the
+        snapshot itself was captured while another SAINT run was already in
+        whitelist mode, we do NOT re-enable Default Deny (that would be the
+        opposite of "restore" from the user's point of view).
+        """
         try:
-            file_path = Path(path)
+            file_path = _resolve_snapshot_path(path)
             if not file_path.exists():
                 logger.error(f"Snapshot file not found: {file_path}")
                 return False
-                
+
+            # Admin guard — without elevation, netsh calls silently fail and we
+            # would otherwise report a false-positive success.
+            if not FirewallUtils.has_admin_privileges():
+                logger.error(
+                    "Restore requires administrator privileges. "
+                    "Relaunch the agent as administrator."
+                )
+                return False
+
             with open(file_path, "r", encoding="utf-8") as f:
                 snapshot = json.load(f)
-            
-            logger.info(f"Restoring firewall snapshot from {snapshot.get('timestamp')}")
-            
-            # 1. Restore Windows Firewall Policies
+
+            logger.info(
+                "Restoring firewall snapshot from %s", snapshot.get("timestamp")
+            )
+
+            # 1. Restore Windows Firewall profile policies.
             policies = snapshot.get("policies", {})
             for profile, action in policies.items():
-                if action not in ["allow", "block"]:
+                if action not in ("allow", "block"):
                     continue
-                
-                # Convert action to firewall command arg
-                # block -> block outbound (and inbound)
-                # allow -> allow outbound (and block inbound usually)
-                policy_arg = "blockinbound,blockoutbound" if action == "block" else "blockinbound,allowoutbound"
-                
+                policy_arg = (
+                    "blockinbound,blockoutbound"
+                    if action == "block"
+                    else "blockinbound,allowoutbound"
+                )
                 result = FirewallUtils.run_netsh_command([
                     "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", policy_arg
+                    "firewallpolicy", policy_arg,
                 ])
-                
                 if result.returncode == 0:
-                     logger.debug(f"Restored {profile} profile to {action}")
+                    logger.debug("Restored %s profile to %s", profile, action)
                 else:
-                     logger.warning(f"Failed to restore {profile} profile: {result.stderr}")
+                    logger.warning(
+                        "Failed to restore %s profile: %s",
+                        profile, result.stderr,
+                    )
 
-            # 2. Restore Whitelist if needed
+            # Safety net: if every profile is block, force the Windows default
+            # allow-outbound policy so the device doesn't lose connectivity.
+            restored_actions = {
+                a for a in policies.values() if a in {"allow", "block"}
+            }
+            if restored_actions == {"block"}:
+                logger.warning(
+                    "Snapshot keeps every profile in block-outbound. "
+                    "Forcing default allow-outbound policy to avoid lockout."
+                )
+                self.policy_manager.restore_default_policy()
+
+            # 2. Always clear SAINT-managed rules so restore truly reverts to
+            #    pre-SAINT. Re-enabling Default Deny (the previous behaviour
+            #    when snapshot.whitelist_mode was True) contradicts the user's
+            #    intent — they clicked "Restore" precisely to step out of
+            #    SAINT control.
+            try:
+                self.rules_manager.clear_all_rules()
+            except Exception as clear_exc:
+                logger.warning("clear_all_rules failed: %s", clear_exc)
+            self.whitelist_mode_active = False
+
             was_whitelist_mode = snapshot.get("whitelist_mode", False)
             if was_whitelist_mode:
-                allowed_ips = set(snapshot.get("allowed_ips", []))
-                essential_ips = set(snapshot.get("essential_ips", []))
-                
-                logger.info("Restoring whitelist rules...")
-                self.setup_whitelist_firewall(allowed_ips, essential_ips)
-            else:
-                 logger.info("Snapshot indicates whitelist mode was OFF. Clearing rules...")
-                 self.rules_manager.clear_all_rules()
-                 self.whitelist_mode_active = False
+                logger.info(
+                    "Snapshot recorded whitelist mode; not re-enabling it on "
+                    "restore (intent: revert pre-SAINT state)."
+                )
 
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to restore firewall snapshot: {e}")
             return False

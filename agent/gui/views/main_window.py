@@ -104,24 +104,6 @@ class MainWindow(ctk.CTkFrame):
         spacer = ctk.CTkFrame(self._sidebar, fg_color="transparent")
         spacer.pack(fill="both", expand=True)
         
-        # Bottom section with theme toggle
-        bottom_frame = ctk.CTkFrame(self._sidebar, fg_color="transparent")
-        bottom_frame.pack(fill="x", padx=15, pady=(0, 15))
-        
-        # Theme toggle (placeholder)
-        theme_btn = ctk.CTkButton(
-            bottom_frame,
-            text=f"  {ICONS.moon}  Dark Mode",
-            font=self._theme.font("sm"),
-            height=35,
-            corner_radius=self._theme.borders.radius_md,
-            fg_color="transparent",
-            text_color=self._theme.colors.text_muted,
-            hover_color=self._theme.colors.sidebar_item_hover,
-            anchor="w",
-        )
-        theme_btn.pack(fill="x")
-        
         # Version info
         version_label = ctk.CTkLabel(
             self._sidebar,
@@ -142,25 +124,35 @@ class MainWindow(ctk.CTkFrame):
         self._content_area.grid_rowconfigure(0, weight=1)
     
     def _create_views(self):
-        """Create all content views."""
-        # Import views here to avoid circular imports
+        """Register view classes for lazy loading — views are created on first access."""
         from .dashboard_view import DashboardView
         from .firewall_view import FirewallView
         from .whitelist_view import WhitelistView
         from .logs_view import LogsView
         from .settings_view import SettingsView
-        
-        self._views["dashboard"] = DashboardView(self._content_area)
-        self._views["firewall"] = FirewallView(self._content_area)
-        self._views["whitelist"] = WhitelistView(self._content_area)
-        self._views["logs"] = LogsView(self._content_area)
-        self._views["settings"] = SettingsView(self._content_area)
-        
+
+        self._view_classes = {
+            "dashboard": DashboardView,
+            "firewall": FirewallView,
+            "whitelist": WhitelistView,
+            "logs": LogsView,
+            "settings": SettingsView,
+        }
+
         # Connect agent_ready signal to update views
         from ..controllers.agent_controller import AgentController
         agent_ctrl = AgentController()
         agent_ctrl.signals.connect('whitelist_synced', self._on_agent_ready)
         agent_ctrl.signals.connect('status_changed', self._on_status_changed)
+
+    def _get_view(self, view_name: str) -> Optional[ctk.CTkFrame]:
+        """Get or lazily create a view by name."""
+        if view_name not in self._views:
+            cls = self._view_classes.get(view_name)
+            if cls is None:
+                return None
+            self._views[view_name] = cls(self._content_area)
+        return self._views[view_name]
     
     def _on_status_changed(self, data: Dict):
         """Handle agent status change - connect firewall manager."""
@@ -184,16 +176,23 @@ class MainWindow(ctk.CTkFrame):
                 whitelist_view.set_agent_ready(True)
     
     def _show_view(self, view_name: str):
-        """Switch to specified view."""
-        if view_name not in self._views:
+        """Switch to specified view (lazy-created on first access)."""
+        view = self._get_view(view_name)
+        if view is None:
             return
-        
+
         # Hide current view
         if self._current_view and self._current_view in self._views:
-            self._views[self._current_view].grid_forget()
-        
+            old_view = self._views[self._current_view]
+            old_view.grid_forget()
+            if hasattr(old_view, 'on_hide'):
+                old_view.on_hide()
+
         # Show new view
-        self._views[view_name].grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        view.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        if hasattr(view, 'on_show'):
+            view.on_show()
+        
         self._current_view = view_name
         
         # Update menu button states

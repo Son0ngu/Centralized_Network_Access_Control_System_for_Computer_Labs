@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="frontend-login-auth" name="Flow 26: Frontend Login &amp; Auth Module">
+    <mxGraphModel dx="1600" dy="1800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 26: Frontend Login &amp;amp; Authentication Module&lt;/b&gt;&lt;br&gt;&lt;i&gt;Luồng đăng nhập và quản lý phiên làm việc trên Frontend (auth.js)&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="1100" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== SECTION 1: LOGIN FLOW ==================== -->
+        <mxCell id="sec1" value="&lt;b&gt;A. LOGIN FLOW (/login)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Luồng đăng nhập từ trang login&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- L1: Login Page -->
+        <mxCell id="l1" value="&lt;b&gt;Login Page Loaded&lt;/b&gt;&lt;br&gt;&lt;i&gt;/login - Username + Password form&lt;br&gt;Auto-focus on username field&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- L2: Submit -->
+        <mxCell id="l2" value="&lt;b&gt;Submit Credentials&lt;/b&gt;&lt;br&gt;&lt;i&gt;POST /api/admin/auth/login&lt;br&gt;{username, password}&lt;br&gt;Button → loading spinner&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="230" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="el1l2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="l1" target="l2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- L3: Check response -->
+        <mxCell id="l3" value="&lt;b&gt;Response?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="120" y="330" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="el2l3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="l2" target="l3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- L3 Error -->
+        <mxCell id="l3err" value="&lt;b&gt;Show Error Message&lt;/b&gt;&lt;br&gt;&lt;i&gt;401: Sai mật khẩu&lt;br&gt;423: Tài khoản bị khóa&lt;br&gt;Hide loading spinner&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="330" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="el3err" value="Error" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="l3" target="l3err"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- L4: Success -->
+        <mxCell id="l4" value="&lt;b&gt;Login Success&lt;/b&gt;&lt;br&gt;&lt;i&gt;Server set httpOnly cookies:&lt;br&gt;access_token + refresh_token&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="440" width="280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="el3l4" value="200 OK" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="l3" target="l4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- L5: Redirect -->
+        <mxCell id="l5" value="&lt;b&gt;Redirect to Dashboard&lt;/b&gt;&lt;br&gt;&lt;i&gt;window.location.href = &quot;/&quot;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="530" width="280" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="el4l5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="l4" target="l5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== SECTION 2: AUTH MODULE (auth.js) ==================== -->
+        <mxCell id="sec2" value="&lt;b&gt;B. AUTH MODULE (auth.js) - Page Load Flow&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xác thực phiên khi tải mỗi trang&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="640" y="80" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- A1: Page Load -->
+        <mxCell id="a1" value="&lt;b&gt;Any Page Loaded&lt;/b&gt;&lt;br&gt;&lt;i&gt;base.html loads auth.js&lt;br&gt;on DOMContentLoaded&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="140" width="260" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- A2: Check sessionStorage -->
+        <mxCell id="a2" value="&lt;b&gt;sessionStorage cache?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kiểm tra user data đã lưu&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="230" width="180" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea1a2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A2 Yes: Quick UI -->
+        <mxCell id="a2y" value="&lt;b&gt;Quick UI Update&lt;/b&gt;&lt;br&gt;&lt;i&gt;Hiển thị username/role&lt;br&gt;từ cache (nhanh)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="980" y="240" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea2y" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="a2" target="a2y"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A3: Verify with server -->
+        <mxCell id="a3" value="&lt;b&gt;GET /api/admin/auth/me&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xác thực phiên với server&lt;br&gt;(cookie tự gửi kèm)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="360" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea2a3" value="No / Always" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A4: Check auth response -->
+        <mxCell id="a4" value="&lt;b&gt;Authenticated?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="760" y="450" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea3a4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A4 No: Redirect login -->
+        <mxCell id="a4n" value="&lt;b&gt;Redirect to /login&lt;/b&gt;&lt;br&gt;&lt;i&gt;Clear sessionStorage&lt;br&gt;window.location = &quot;/login&quot;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="980" y="455" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea4n" value="401" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="a4" target="a4n"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A5: Set SAINT_AUTH -->
+        <mxCell id="a5" value="&lt;b&gt;Set window.SAINT_AUTH&lt;/b&gt;&lt;br&gt;&lt;i&gt;{user, isAdmin, isTeacher, isLoggedIn}&lt;br&gt;Cache to sessionStorage&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="560" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea4a5" value="200 OK" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="a4" target="a5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A6: RBAC UI -->
+        <mxCell id="a6" value="&lt;b&gt;Apply RBAC to UI&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin: show .rbac-admin-only&lt;br&gt;Teacher: show .rbac-teacher-only&lt;br&gt;Teacher: hide .rbac-teacher-hide&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="650" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea5a6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a5" target="a6"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- A7: Start token refresh timer -->
+        <mxCell id="a7" value="&lt;b&gt;Start Token Refresh Timer&lt;/b&gt;&lt;br&gt;&lt;i&gt;setInterval(refreshToken, 20 min)&lt;br&gt;POST /api/admin/auth/refresh&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="750" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ea6a7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a6" target="a7"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== SECTION 3: FETCH INTERCEPTOR ==================== -->
+        <mxCell id="sec3" value="&lt;b&gt;C. FETCH INTERCEPTOR - Auto 401 Handling&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tự động xử lý token hết hạn khi gọi API&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- F1: Any API call -->
+        <mxCell id="f1" value="&lt;b&gt;Any fetch() API Call&lt;/b&gt;&lt;br&gt;&lt;i&gt;Bất kỳ request nào từ frontend&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="680" width="260" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- F2: Response 401? -->
+        <mxCell id="f2" value="&lt;b&gt;Response 401?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="760" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef1f2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f1" target="f2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F2 No: Return response -->
+        <mxCell id="f2n" value="&lt;b&gt;Return Response&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trả kết quả bình thường&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="770" width="180" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef2n" value="No" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f2" target="f2n"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F3: Try refresh -->
+        <mxCell id="f3" value="&lt;b&gt;POST /api/admin/auth/refresh&lt;/b&gt;&lt;br&gt;&lt;i&gt;Thử refresh token tự động&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="880" width="260" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef2f3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f2" target="f3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F4: Refresh OK? -->
+        <mxCell id="f4" value="&lt;b&gt;Refresh OK?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="960" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef3f4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f3" target="f4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F4 Yes: Retry original -->
+        <mxCell id="f4y" value="&lt;b&gt;Retry Original Request&lt;/b&gt;&lt;br&gt;&lt;i&gt;Gọi lại API ban đầu&lt;br&gt;với token mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="965" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef4y" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f4" target="f4y"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F4 No: Force logout -->
+        <mxCell id="f4n" value="&lt;b&gt;Force Logout&lt;/b&gt;&lt;br&gt;&lt;i&gt;sessionStorage.clear()&lt;br&gt;Redirect → /login&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1080" width="260" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef4n" value="No" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f4" target="f4n"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== SECTION 4: LOGOUT FLOW ==================== -->
+        <mxCell id="sec4" value="&lt;b&gt;D. LOGOUT FLOW&lt;/b&gt;&lt;br&gt;&lt;i&gt;Luồng đăng xuất&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="640" y="860" width="300" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lo1" value="&lt;b&gt;User clicks Logout&lt;/b&gt;&lt;br&gt;&lt;i&gt;Navbar dropdown → Logout button&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="910" width="260" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lo2" value="&lt;b&gt;POST /api/admin/auth/logout&lt;/b&gt;&lt;br&gt;&lt;i&gt;Server revoke tokens&lt;br&gt;Clear httpOnly cookies&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="990" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="elo1lo2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="lo1" target="lo2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="lo3" value="&lt;b&gt;Clear &amp;amp; Redirect&lt;/b&gt;&lt;br&gt;&lt;i&gt;sessionStorage.clear()&lt;br&gt;window.location = &quot;/login&quot;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="1080" width="260" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="elo2lo3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="lo2" target="lo3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== BOTTOM: RBAC Permissions Table ==================== -->
+        <mxCell id="rbac_table" value="&lt;b&gt;🔒 RBAC: Frontend Navigation Visibility&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1180" width="700" height="380" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="30" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt1a" value="Page / Route" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt1">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt1b" value="Admin" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt1">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt1c" value="Teacher" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt1">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt1d" value="CSS Class" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt1">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Rows for each page -->
+        <mxCell id="rt2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="58" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt2a" value="/ (Dashboard)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt2">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt2b" value="✅ Full stats" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt2">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt2c" value="✅ Filtered" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt2">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt2d" value="(always visible)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt2">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="86" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt3a" value="/agents" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt3">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt3b" value="✅ Full CRUD" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt3">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt3c" value="✅ Scoped" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt3">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt3d" value="Delete btn: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt3">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="114" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt4a" value="/groups" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt4">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt4b" value="✅ Full CRUD" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt4">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt4c" value="✅ Read only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt4">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt4d" value="Create btn: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt4">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="142" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt5a" value="/groups/:id (Detail)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt5">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt5b" value="✅ Full" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt5">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt5c" value="✅ Scoped" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt5">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt5d" value="Delete/Policy: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt5">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="170" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt6a" value="/whitelist" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt6">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt6b" value="✅ Full CRUD" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt6">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt6c" value="✅ Via profiles" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt6">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt6d" value="Profile selector: .rbac-teacher-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt6">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="198" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt7a" value="/logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt7">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt7b" value="✅ All logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt7">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt7c" value="✅ Group logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt7">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt7d" value="Clear btn: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt7">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="226" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt8a" value="/api-keys" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt8">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt8b" value="✅" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt8">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt8c" value="❌ Hidden" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;fontColor=#cc0000;" vertex="1" parent="rt8">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt8d" value="Nav link: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt8">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="254" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt9a" value="/admin/users" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt9">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt9b" value="✅" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt9">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt9c" value="❌ Hidden" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;fontColor=#cc0000;" vertex="1" parent="rt9">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt9d" value="Nav link: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt9">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt10" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="282" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt10a" value="/admin/audit" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt10">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt10b" value="✅" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt10">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt10c" value="❌ Hidden" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;fontColor=#cc0000;" vertex="1" parent="rt10">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt10d" value="Nav link: .rbac-admin-only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt10">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt11" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="310" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt11a" value="/profile" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt11">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt11b" value="✅" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt11">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt11c" value="✅" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt11">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt11d" value="(always visible)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt11">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rt12" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_table">
+          <mxGeometry y="338" width="700" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt12a" value="/login" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rt12">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt12b" value="Public" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt12">
+          <mxGeometry x="200" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt12c" value="Public" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rt12">
+          <mxGeometry x="300" width="100" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt12d" value="No auth required" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rt12">
+          <mxGeometry x="400" width="300" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Token Lifecycle -->
+        <mxCell id="token_info" value="&lt;b&gt;🔑 Token Lifecycle&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:11px;'&gt;• &lt;b&gt;Access Token&lt;/b&gt;: httpOnly cookie, 24h TTL&lt;br&gt;• &lt;b&gt;Refresh Token&lt;/b&gt;: httpOnly cookie, 7d TTL&lt;br&gt;• &lt;b&gt;Auto Refresh&lt;/b&gt;: mỗi 20 phút (setInterval)&lt;br&gt;• &lt;b&gt;Session Cache&lt;/b&gt;: sessionStorage (fast UI)&lt;br&gt;• &lt;b&gt;Fetch Interceptor&lt;/b&gt;: Auto retry on 401&lt;br&gt;• &lt;b&gt;Force Logout&lt;/b&gt;: khi refresh thất bại&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;align=center;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1200" width="350" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend / Chú thích&lt;/b&gt;" style="text;html=1;align=left;fontSize=12;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1390" width="200" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1415" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg1t" value="Process / Xử lý" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="825" y="1415" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2" value="" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="960" y="1415" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2t" value="Decision / Điều kiện" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1415" width="140" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1440" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3t" value="Success" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="825" y="1440" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg4" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="960" y="1440" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg4t" value="Error / Redirect" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1440" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg5" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1465" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg5t" value="RBAC / Permission" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="825" y="1465" width="140" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

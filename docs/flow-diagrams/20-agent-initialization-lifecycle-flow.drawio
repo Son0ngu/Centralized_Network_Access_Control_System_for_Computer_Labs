@@ -1,0 +1,112 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="agent-init" name="Agent Initialization &amp; Lifecycle">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 20: Agent Initialization &amp; Lifecycle&lt;/b&gt;&lt;br&gt;lifecycle.py → initialize_components()&lt;br&gt;&lt;i&gt;Luồng khởi tạo Agent - thứ tự chính xác&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="450" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Start -->
+        <mxCell id="start" value="&lt;b&gt;agent_gui.py → main()&lt;/b&gt;&lt;br&gt;User double-clicks SAINT.exe&lt;br&gt;&lt;i&gt;Khởi chạy Agent&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="520" y="80" width="210" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: Registration -->
+        <mxCell id="s1" value="&lt;b&gt;Step 1: register_agent(config)&lt;/b&gt;&lt;br&gt;POST /api/agents/register&lt;br&gt;Send: hostname, device_id, ip, os_info,&lt;br&gt;capabilities, X-API-Key header&lt;br&gt;Receive: agent_id, JWT tokens&lt;br&gt;&lt;i&gt;Đăng ký Agent với Server&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="465" y="170" width="320" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="s1" parent="1" />
+
+        <mxCell id="d1" value="&lt;b&gt;Registered?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="575" y="280" width="100" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s1" target="d1" parent="1" />
+
+        <mxCell id="err1" value="&lt;b&gt;FATAL ERROR&lt;/b&gt;&lt;br&gt;Cannot connect to server&lt;br&gt;Show error in GUI&lt;br&gt;&lt;i&gt;Không kết nối được Server&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="280" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;" edge="1" source="d1" target="err1" parent="1" />
+
+        <!-- Step 1.5: Token Manager -->
+        <mxCell id="s15" value="&lt;b&gt;Step 1.5: init_token_manager()&lt;/b&gt;&lt;br&gt;Start JWT auto-refresh thread&lt;br&gt;Refresh 5 min before expiry&lt;br&gt;Re-register after 3 failures&lt;br&gt;&lt;i&gt;Khởi tạo quản lý token tự động&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="475" y="365" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;" edge="1" source="d1" target="s15" parent="1" />
+
+        <!-- Step 2: Whitelist Manager -->
+        <mxCell id="s2" value="&lt;b&gt;Step 2: WhitelistManager()&lt;/b&gt;&lt;br&gt;Initialize state, DNS cache, resolver&lt;br&gt;&lt;i&gt;Khởi tạo quản lý whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="465" width="270" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s15" target="s2" parent="1" />
+
+        <!-- Step 2.5: CRITICAL initial sync -->
+        <mxCell id="s25" value="&lt;b&gt;Step 2.5: ⚠️ IMMEDIATE WHITELIST SYNC&lt;/b&gt;&lt;br&gt;sync_now() BEFORE firewall setup&lt;br&gt;Critical: ensure whitelist loaded before blocking&lt;br&gt;&lt;i&gt;⚠️ Đồng bộ whitelist TRƯỚC khi bật firewall&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="450" y="540" width="350" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s2" target="s25" parent="1" />
+
+        <!-- Step 3: WinPcap check -->
+        <mxCell id="s31" value="&lt;b&gt;Step 3.1: Check WinPcap/Npcap&lt;/b&gt;&lt;br&gt;Auto-install if missing&lt;br&gt;&lt;i&gt;Kiểm tra driver bắt gói tin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="500" y="630" width="250" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s25" target="s31" parent="1" />
+
+        <!-- Step 3: Firewall Manager -->
+        <mxCell id="s3" value="&lt;b&gt;Step 3: FirewallManager()&lt;/b&gt;&lt;br&gt;Check admin privileges&lt;br&gt;Setup Default Deny policy&lt;br&gt;Create ALLOW rules from whitelist&lt;br&gt;&lt;i&gt;Khởi tạo Windows Firewall&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="705" width="290" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s31" target="s3" parent="1" />
+
+        <!-- Step 4: Periodic sync -->
+        <mxCell id="s4" value="&lt;b&gt;Step 4: start_sync()&lt;/b&gt;&lt;br&gt;Launch WhitelistSync thread (60s)&lt;br&gt;Launch DNSRefresh thread (10s)&lt;br&gt;&lt;i&gt;Bắt đầu đồng bộ định kỳ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="800" width="270" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s3" target="s4" parent="1" />
+
+        <!-- Step 5: LogSender -->
+        <mxCell id="s5" value="&lt;b&gt;Step 5: LogSender.start()&lt;/b&gt;&lt;br&gt;Batch logs every 2s, max 100/batch&lt;br&gt;POST /api/logs&lt;br&gt;&lt;i&gt;Khởi chạy gửi log hàng loạt&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="885" width="270" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s4" target="s5" parent="1" />
+
+        <!-- Step 6: Heartbeat -->
+        <mxCell id="s6" value="&lt;b&gt;Step 6: HeartbeatSender.start()&lt;/b&gt;&lt;br&gt;Send heartbeat every 20s&lt;br&gt;POST /api/agents/heartbeat&lt;br&gt;&lt;i&gt;Khởi chạy heartbeat&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="970" width="270" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s5" target="s6" parent="1" />
+
+        <!-- Step 7: Packet Sniffer -->
+        <mxCell id="s7" value="&lt;b&gt;Step 7: PacketSniffer.start()&lt;/b&gt;&lt;br&gt;Capture HTTP/HTTPS/DNS packets&lt;br&gt;Filter: tcp port 80,443 | udp port 53&lt;br&gt;Callback → domain_handler → log_sender&lt;br&gt;&lt;i&gt;Bắt đầu bắt gói tin mạng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1055" width="310" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s6" target="s7" parent="1" />
+
+        <!-- GUI Ready -->
+        <mxCell id="gui_ready" value="&lt;b&gt;✅ ALL THREADS RUNNING&lt;/b&gt;&lt;br&gt;GUI mainloop active (1200×800)&lt;br&gt;5 tabs: Dashboard, Firewall, Whitelist, Logs, Settings&lt;br&gt;&lt;i&gt;Tất cả luồng đang chạy - GUI sẵn sàng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="460" y="1155" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s7" target="gui_ready" parent="1" />
+
+        <!-- Thread summary (right side) -->
+        <mxCell id="threads_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="380" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="threads_title" value="&lt;b&gt;All Daemon Threads / Tất cả luồng nền&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="85" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="threads" value="&lt;table style='font-size:10px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#6c8ebf;color:white'&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Thread Name&lt;/th&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Interval&lt;/th&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Daemon&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;TokenManager&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;-5min before expiry&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;WhitelistSync&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;60s&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;DNSRefresh&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;10s check&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;LogSender&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;2s batch&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;HeartbeatSender&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;20s&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;PacketSniffer&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;2s timeout&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;WhitelistMonitor&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;60s&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="45" y="110" width="350" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Shutdown note -->
+        <mxCell id="shutdown" value="&lt;b&gt;Shutdown / Tắt Agent:&lt;/b&gt;&lt;br&gt;GUI close → WM_DELETE_WINDOW&lt;br&gt;→ All threads: _running = False&lt;br&gt;→ Interruptible sleep wakes up&lt;br&gt;→ Daemon threads auto-exit&lt;br&gt;→ Firewall rules cleaned up" style="text;html=1;align=left;fontSize=10;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="330" width="250" height="85" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -165,7 +165,7 @@ class TokenManager:
         except:
             return False
     
-    def _do_refresh(self, with_rotation: bool = False) -> bool:
+    def _do_refresh(self, with_rotation: bool = True) -> bool:
         """
         Perform token refresh.
         

@@ -79,9 +79,9 @@ class AgentSignals:
         except Exception as e:
             logger.error(f"Error processing events: {e}")
         
-        # Schedule next check (every 100ms)
+        # Schedule next check (every 500ms instead of 100ms for less UI lag)
         if root and root.winfo_exists():
-            root.after(100, lambda: self.process_events(root))
+            root.after(500, lambda: self.process_events(root))
     
     def _dispatch_event(self, event: AgentEvent):
         """Dispatch event to registered callbacks."""
@@ -229,27 +229,20 @@ class AgentController:
             from core import AGENT_DEVICE_ID
             self._config["device_id"] = AGENT_DEVICE_ID
             
-            # Auto-adjust firewall configuration based on admin privileges
+            # The agent supports a single mode (whitelist_only). Force it and
+            # toggle `enabled` based on admin privileges so users running
+            # without elevation don't fail when applying firewall rules.
             admin_status = check_admin_privileges()
-            firewall_config = self._config.get("firewall", {})
-            current_mode = firewall_config.get("mode", "monitor")
-            
+            self._config.setdefault("firewall", {})
+            self._config["firewall"]["mode"] = "whitelist_only"
+            self._config["firewall"]["enabled"] = bool(admin_status)
             if admin_status:
-                # Has admin privileges - enable firewall enforcement
-                if current_mode == "monitor":
-                    logger.info("Admin privileges detected - switching to 'whitelist_only' mode")
-                    self._config["firewall"]["enabled"] = True
-                    self._config["firewall"]["mode"] = "whitelist_only"
-                else:
-                    # Already in enforce mode, just ensure enabled
-                    self._config["firewall"]["enabled"] = True
-                    logger.info(f"Admin privileges confirmed - firewall mode: {current_mode}")
+                logger.info("Admin privileges detected — firewall enforcement enabled")
             else:
-                # No admin privileges - force monitor mode
-                if current_mode in ["whitelist_only", "enforce"]:
-                    logger.warning(f"No admin privileges - switching from '{current_mode}' to 'monitor' mode")
-                    self._config["firewall"]["enabled"] = False
-                    self._config["firewall"]["mode"] = "monitor"
+                logger.warning(
+                    "No admin privileges — firewall enforcement disabled. "
+                    "Relaunch SAINT as administrator to apply rules."
+                )
             
             # Initialize components
             logger.info("Initializing components...")

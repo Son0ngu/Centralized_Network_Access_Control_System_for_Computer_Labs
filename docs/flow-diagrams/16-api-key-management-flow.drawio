@@ -1,0 +1,156 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="api-key" name="API Key Management">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 16: API Key Management&lt;/b&gt;&lt;br&gt;/api/api-keys - Admin Only&lt;br&gt;&lt;i&gt;Quản lý API Key cho Agent đăng ký&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="480" y="10" width="370" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CREATE API KEY (Main flow) ===== -->
+        <mxCell id="create_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f8ff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="500" height="600" as="geometry" />
+        </mxCell>
+        <mxCell id="create_title" value="&lt;b&gt;CREATE API KEY&lt;/b&gt; - POST /api/api-keys&lt;br&gt;&lt;i&gt;Tạo API Key mới (chỉ hiện 1 lần!)&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="88" width="420" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_s1" value="&lt;b&gt;Request&lt;/b&gt;&lt;br&gt;{name, description, expires_in_days, permissions}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="135" width="300" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_mw" value="@require_login + @require_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="150" y="185" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ce1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_s1" target="c_mw" parent="1" />
+
+        <mxCell id="c_v1" value="&lt;b&gt;Validate name&lt;/b&gt; (min 3 chars)&lt;br&gt;&lt;b&gt;Validate permissions&lt;/b&gt; ∈ valid set&lt;br&gt;&lt;b&gt;Validate expires_in_days&lt;/b&gt; (0=never)&lt;br&gt;&lt;i&gt;Kiểm tra dữ liệu đầu vào&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="100" y="230" width="250" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ce2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_mw" target="c_v1" parent="1" />
+
+        <mxCell id="c_gen" value="&lt;b&gt;secrets.token_hex(16)&lt;/b&gt;&lt;br&gt;Format: fc_&lt;32 random hex chars&gt;&lt;br&gt;Example: fc_a1b2c3d4e5f6...&lt;br&gt;&lt;i&gt;Tạo key ngẫu nhiên 32 ký tự&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="100" y="310" width="250" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ce3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_v1" target="c_gen" parent="1" />
+
+        <mxCell id="c_hash" value="&lt;b&gt;HMAC-SHA256 hash&lt;/b&gt;&lt;br&gt;hmac.new(API_KEY_HMAC_SECRET,&lt;br&gt;&amp;nbsp;&amp;nbsp;plaintext_key, sha256).hexdigest()&lt;br&gt;Store HASH only, never plaintext&lt;br&gt;&lt;i&gt;Mã hoá HMAC - chỉ lưu hash&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="390" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ce4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_gen" target="c_hash" parent="1" />
+
+        <mxCell id="c_db" value="&lt;b&gt;Insert to MongoDB&lt;/b&gt;&lt;br&gt;{key_hash, key_prefix: key[:12],&lt;br&gt;name, permissions, is_active: true,&lt;br&gt;expires_at, created_at, usage_count: 0}&lt;br&gt;&lt;i&gt;Lưu vào DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="90" y="475" width="260" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="ce5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_hash" target="c_db" parent="1" />
+
+        <mxCell id="c_resp" value="&lt;b&gt;201 Created&lt;/b&gt;&lt;br&gt;{api_key: &quot;fc_...&quot; (⚠️ ONLY SHOWN ONCE!),&lt;br&gt;key_id, key_prefix, name, permissions}&lt;br&gt;&lt;i&gt;Trả key plaintext - CHỈ HIỆN 1 LẦN&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="75" y="565" width="290" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ce6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c_db" target="c_resp" parent="1" />
+
+        <!-- Warning -->
+        <mxCell id="warn" value="⚠️ &lt;b&gt;IMPORTANT&lt;/b&gt;&lt;br&gt;Plaintext key is returned ONCE.&lt;br&gt;After this, only hash exists in DB.&lt;br&gt;Lost key = create new one." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="395" y="565" width="125" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ===== VALIDATE API KEY (Right) ===== -->
+        <mxCell id="val_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8f0;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="80" width="480" height="600" as="geometry" />
+        </mxCell>
+        <mxCell id="val_title" value="&lt;b&gt;VALIDATE API KEY&lt;/b&gt; - POST /api/api-keys/validate&lt;br&gt;&lt;i&gt;Xác thực API Key khi Agent đăng ký&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="88" width="420" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="v_s1" value="&lt;b&gt;Request&lt;/b&gt; {api_key: &quot;fc_...&quot;, permission: &quot;register&quot;}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="135" width="300" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="v_d1" value="&lt;b&gt;Starts with&lt;br&gt;&quot;fc_&quot;?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="745" y="185" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ve1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="v_s1" target="v_d1" parent="1" />
+
+        <mxCell id="v_err1" value="&lt;b&gt;Invalid format&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="900" y="193" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ve2" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="v_d1" target="v_err1" parent="1" />
+
+        <mxCell id="v_hash" value="&lt;b&gt;1. Try HMAC-SHA256 hash&lt;/b&gt;&lt;br&gt;lookup by hmac hash&lt;br&gt;&lt;b&gt;2. Fallback: SHA-256 (legacy)&lt;/b&gt;&lt;br&gt;if legacy found → auto-migrate to HMAC&lt;br&gt;&lt;i&gt;Tìm bằng HMAC, fallback SHA-256&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="640" y="260" width="260" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="ve3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="v_d1" target="v_hash" parent="1" />
+
+        <mxCell id="v_d2" value="&lt;b&gt;Key found&lt;br&gt;in DB?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="735" y="350" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ve4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="v_hash" target="v_d2" parent="1" />
+
+        <mxCell id="v_err2" value="&lt;b&gt;Invalid key&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="910" y="358" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ve5" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="v_d2" target="v_err2" parent="1" />
+
+        <mxCell id="v_d3" value="&lt;b&gt;is_active?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Còn hoạt động?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="745" y="420" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ve6" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="v_d2" target="v_d3" parent="1" />
+
+        <mxCell id="v_err3" value="&lt;b&gt;Key revoked&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="910" y="428" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ve7" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="v_d3" target="v_err3" parent="1" />
+
+        <mxCell id="v_d4" value="&lt;b&gt;Expired?&lt;/b&gt;&lt;br&gt;expires_at &lt; now?&lt;br&gt;&lt;i&gt;Hết hạn?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="740" y="490" width="100" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ve8" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="v_d3" target="v_d4" parent="1" />
+
+        <mxCell id="v_err4" value="&lt;b&gt;Key expired&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="910" y="500" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ve9" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="v_d4" target="v_err4" parent="1" />
+
+        <mxCell id="v_d5" value="&lt;b&gt;Has&lt;br&gt;permission?&lt;/b&gt;&lt;br&gt;&lt;i&gt;(with aliases)&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="735" y="565" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ve10" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="v_d4" target="v_d5" parent="1" />
+
+        <mxCell id="v_err5" value="&lt;b&gt;No permission&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="910" y="575" width="90" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ve11" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=9;" edge="1" source="v_d5" target="v_err5" parent="1" />
+
+        <mxCell id="v_ok" value="&lt;b&gt;✅ VALID&lt;/b&gt;&lt;br&gt;Update usage_count++&lt;br&gt;Update last_used_at&lt;br&gt;&lt;i&gt;Key hợp lệ - tăng bộ đếm&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="650" y="645" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="ve12" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="v_d5" target="v_ok" parent="1" />
+
+        <!-- Permission aliases -->
+        <mxCell id="perm_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="710" width="450" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="perm_title" value="&lt;b&gt;Permission Aliases / Bí danh quyền&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="130" y="715" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="perm" value="&lt;table style='font-size:9px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#6c8ebf;color:white'&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Old Name&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;New Name&lt;/th&gt;&lt;th style='padding:3px;border:1px solid #999'&gt;Mô tả&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;register&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;agent_register&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Đăng ký Agent&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;sync&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;whitelist_sync&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Đồng bộ whitelist&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;logs&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;logs_write&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Gửi log&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;heartbeat&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;heartbeat&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Gửi heartbeat&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;admin&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;admin&lt;/td&gt;&lt;td style='padding:2px;border:1px solid #ccc'&gt;Full access&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="45" y="740" width="420" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- REVOKE flow -->
+        <mxCell id="rev_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="720" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="rev_title" value="&lt;b&gt;REVOKE API KEY&lt;/b&gt; - POST /api/api-keys/:id/revoke&lt;br&gt;&lt;i&gt;Thu hồi API Key&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="728" width="380" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="rev_flow" value="&lt;b&gt;Set:&lt;/b&gt; is_active = false | revoked_at = now() | revoked_by = &quot;admin&quot;&lt;br&gt;Key cannot be reactivated - must create new one&lt;br&gt;&lt;i&gt;Vô hiệu hoá vĩnh viễn - phải tạo key mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="770" width="420" height="50" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -37,10 +37,10 @@ class FirewallView(ctk.CTkFrame):
             header,
             text="🔥 Firewall Rules",
             font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#00d4ff"
+            text_color="#0077cc"
         )
         title.pack(side="left", anchor="w")
-        
+
         # Refresh button
         refresh_btn = ctk.CTkButton(
             header,
@@ -48,49 +48,50 @@ class FirewallView(ctk.CTkFrame):
             width=100,
             height=36,
             font=ctk.CTkFont(size=13),
-            fg_color="#2d2d44",
-            hover_color="#3d3d54",
+            fg_color="#d0d0d8",
+            hover_color="#c0c0c8",
+            text_color="#1a1a2e",
             command=self._refresh_rules
         )
         refresh_btn.pack(side="right")
-        
+
         # Stats section
-        stats_frame = ctk.CTkFrame(self, fg_color="#1a1a2e", corner_radius=12, height=80)
+        stats_frame = ctk.CTkFrame(self, fg_color="#e8e8ed", corner_radius=12, height=80)
         stats_frame.pack(fill="x", pady=(0, 15))
         stats_frame.pack_propagate(False)
-        
+
         stats_inner = ctk.CTkFrame(stats_frame, fg_color="transparent")
         stats_inner.pack(fill="both", expand=True, padx=20, pady=15)
-        
+
         # Policy status
         self._policy_label = ctk.CTkLabel(
             stats_inner,
             text="🛡 Policy: Loading...",
             font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#ffffff"
+            text_color="#1a1a2e"
         )
         self._policy_label.pack(side="left")
-        
+
         # Rule count
         self._rule_count_label = ctk.CTkLabel(
             stats_inner,
             text="Rules: --",
             font=ctk.CTkFont(size=14),
-            text_color="#aaaaaa"
+            text_color="#4a4a5a"
         )
         self._rule_count_label.pack(side="left", padx=(30, 0))
-        
+
         # Mode
         self._mode_label = ctk.CTkLabel(
             stats_inner,
             text="⚙️ Mode: --",
             font=ctk.CTkFont(size=14),
-            text_color="#aaaaaa"
+            text_color="#4a4a5a"
         )
         self._mode_label.pack(side="left", padx=(30, 0))
-        
+
         # Table section
-        table_frame = ctk.CTkFrame(self, fg_color="#1a1a2e", corner_radius=12)
+        table_frame = ctk.CTkFrame(self, fg_color="#e8e8ed", corner_radius=12)
         table_frame.pack(fill="both", expand=True)
         
         # DataTable for rules
@@ -125,7 +126,8 @@ class FirewallView(ctk.CTkFrame):
     
     def _start_refresh(self):
         """Start periodic refresh."""
-        self._refresh_rules()
+        if not hasattr(self, '_is_visible') or self._is_visible:
+            self._refresh_rules()
         self._refresh_job = self.after(self.REFRESH_INTERVAL, self._start_refresh)
     
     def _refresh_rules(self):
@@ -167,11 +169,12 @@ class FirewallView(ctk.CTkFrame):
                     else:
                         policy_status = "Default Allow"
                 
-                # Get mode
+                # Whitelist-only is the only supported mode; show whether
+                # enforcement is currently active or idle (e.g. no admin).
                 if self._firewall_manager.whitelist_mode_active:
                     mode = "Whitelist Only"
                 else:
-                    mode = "Monitor"
+                    mode = "Whitelist Only (idle)"
             else:
                 # Try to get rules from netsh directly
                 rules = self._get_rules_from_netsh()
@@ -296,8 +299,16 @@ class FirewallView(ctk.CTkFrame):
         except Exception as e:
             self._status_label.configure(text=f"UI error: {e}", text_color="#ff4444")
     
+    def on_show(self):
+        self._is_visible = True
+        self._refresh_rules()
+
+    def on_hide(self):
+        self._is_visible = False
+
     def destroy(self):
         """Clean up when view is destroyed."""
+        self._is_visible = False
         if self._refresh_job:
             self.after_cancel(self._refresh_job)
         super().destroy()

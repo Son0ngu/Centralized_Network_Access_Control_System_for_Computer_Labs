@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import os
+from tkinter import messagebox
 from .views.main_window import MainWindow
 from .controllers import AgentController
 
@@ -24,7 +25,7 @@ class FirewallControllerApp:
         self._controller = None
         
         # Configure customtkinter appearance
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
     
     def run(self):
@@ -81,12 +82,21 @@ class FirewallControllerApp:
         self._root.geometry(f"{width}x{height}+{x}+{y}")
     
     def _on_close(self):
-        """Handle window close - stop agent if running."""
+        """Handle window close - confirm if agent is running."""
         if self._controller and self._controller.is_running:
-            print("Stopping agent before exit...")
+            confirm = messagebox.askyesno(
+                "SAINT - Confirm Exit",
+                "Agent is currently running.\n\n"
+                "Exiting will stop the agent and restore firewall to its original state.\n\n"
+                "Are you sure you want to exit?",
+                icon="warning"
+            )
+            if not confirm:
+                return
+
             self._controller.stop_agent()
-            # Give agent time to cleanup
-            self._root.after(1000, self._do_quit)
+            # Give agent time to cleanup firewall
+            self._root.after(1500, self._do_quit)
         else:
             self._do_quit()
     

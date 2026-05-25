@@ -71,30 +71,41 @@ def handle_domain_detection(
             )
         
         firewall_config = config.get("firewall", {})
-        firewall_mode = firewall_config.get("mode", "monitor")
+        firewall_mode = firewall_config.get("mode", "whitelist_only")
         firewall_enabled = firewall_config.get("enabled", False)
 
         is_whitelisted = domain_allowed or ip_allowed
-        
-        if not firewall_enabled:
-            # Firewall disabled - just monitor everything
-            action = "MONITORED"
-            level = "INFO" if is_whitelisted else "WARNING"
-        elif firewall_mode == "whitelist_only":
-            # WHITELIST_ONLY: Only allow whitelisted traffic, block everything else
-            action = "ALLOWED" if is_whitelisted else "BLOCKED"
-            level = "INFO" if action == "ALLOWED" else "BLOCKED"
-        elif firewall_mode == "block":
-            # BLOCK: Same as whitelist_only but with different naming semantics
-            action = "ALLOWED" if is_whitelisted else "BLOCKED" 
-            level = "INFO" if action == "ALLOWED" else "BLOCKED"
-        elif firewall_mode == "warn":
-            # WARN: Log warnings for non-whitelisted but don't block
-            action = "ALLOWED" if is_whitelisted else "WARNING"
-            level = "INFO" if is_whitelisted else "WARNING"
+
+        # The agent supports a single enforcement mode: whitelist_only.
+        # When the firewall component is disabled (e.g. no admin), we still
+        # observe and log traffic but never claim it was blocked.
+        #
+        # Compliance levels (Preventive Layer 3 + Detective Layer 7):
+        #   ALLOWED        — domain explicitly in whitelist (compliant).
+        #   ALLOWED_BY_IP  — destination IP is whitelisted but domain (SNI/Host)
+        #                    is NOT in whitelist. This indicates CDN/shared-IP
+        #                    bleed-through (e.g. phimlau.com served from the same
+        #                    Cloudflare IP as an allowed school site). Layer 3
+        #                    cannot distinguish; this WARNING surfaces it so
+        #                    admins can investigate and tighten policy.
+        #   BLOCKED        — neither domain nor IP whitelisted; firewall dropped.
+        #   OBSERVED       — passive mode (no admin / firewall disabled).
+        if firewall_enabled:
+            if domain_allowed:
+                action, level = "ALLOWED", "INFO"
+            elif ip_allowed and domain and not domain_allowed:
+                # IP let through, but SNI/Host points to a non-whitelisted
+                # domain — likely CDN co-tenant. Detective signal for admin.
+                action, level = "ALLOWED_BY_IP", "WARNING"
+            elif is_whitelisted:
+                # ip_allowed without identifiable domain (e.g. raw IP traffic
+                # to a whitelisted host) — legitimate non-DNS connection.
+                action, level = "ALLOWED", "INFO"
+            else:
+                action, level = "BLOCKED", "BLOCKED"
         else:
-            # MONITOR (default): Just observe and log
-            action = "MONITORED"
+            # Passive observe mode: agent has no enforcement power, only logs.
+            action = "OBSERVED"
             level = "INFO" if is_whitelisted else "WARNING"
         
         # Create enhanced log record with UTC timestamps

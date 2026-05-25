@@ -4,7 +4,7 @@ import socket
 import subprocess
 from typing import Set
 
-from agent.utils.ip_detector import check_admin_privileges, get_local_ip
+from utils.ip_detector import check_admin_privileges, get_local_ip
 
 logger = logging.getLogger("firewall.utils")
 
@@ -21,26 +21,29 @@ class FirewallUtils:
 
     @staticmethod
     def is_valid_ip(ip: str) -> bool:
-        try:
-            ipaddress.ip_address(ip)
-            return True
-        except (ValueError, TypeError):
-            return False
-    
+        # IPv4-only: SAINT firewall enforcement is IPv4 (netsh advfirewall with
+        # IPv6 has quirks like empty stderr on failure, and our DNS resolver
+        # only queries A records).
+        return FirewallUtils.is_valid_ipv4(ip)
+
     @staticmethod
     def get_essential_ips() -> Set[str]:
         essential: Set[str] = set()
-        
-        # Localhost
-        essential.update(["127.0.0.1", "::1"])
-        
-        # Auto-detect system DNS servers
+
+        # Localhost (IPv4 only)
+        essential.add("127.0.0.1")
+
+        # Auto-detect system DNS servers (IPv4 only)
         try:
             import dns.resolver
             sys_resolver = dns.resolver.Resolver()
             if sys_resolver.nameservers:
-                essential.update(sys_resolver.nameservers)
-                logger.debug(f"Detected system DNS servers: {sys_resolver.nameservers}")
+                ipv4_dns = [
+                    ns for ns in sys_resolver.nameservers
+                    if FirewallUtils.is_valid_ipv4(ns)
+                ]
+                essential.update(ipv4_dns)
+                logger.debug(f"Detected IPv4 system DNS servers: {ipv4_dns}")
         except Exception as e:
             logger.debug(f"Could not detect system DNS configuration, falling back to minimal defaults: {e}")
             # Fallback for connectivity safety
@@ -57,16 +60,6 @@ class FirewallUtils:
                     logger.debug(f"Detected local IPv4 network: {local_ip}, gateway: {gateway_ip}")
         except Exception as e:
             logger.debug(f"Could not detect local IPv4 network: {e}")
-        
-        # Try to detect local IPv6 address
-        try:
-            with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s6:
-                s6.connect(("2001:4860:4860::8888", 80))
-                local_ip6 = s6.getsockname()[0]
-                essential.add(local_ip6)
-                logger.debug(f"Detected local IPv6 address: {local_ip6}")
-        except Exception as e:
-            logger.debug(f"Could not detect local IPv6 network: {e}")
         
         return essential
     
@@ -97,21 +90,17 @@ class FirewallUtils:
             ports = [80, 443, 53]
         
         try:
-            addr = ipaddress.ip_address(ip)
-            family = socket.AF_INET6 if isinstance(addr, ipaddress.IPv6Address) else socket.AF_INET
+            ipaddress.ip_address(ip)
         except ValueError:
             logger.debug(f"Connectivity test skipped - invalid IP: {ip}")
             return False
-        
+
         try:
             for port in ports:
                 try:
-                    with socket.socket(family, socket.SOCK_STREAM) as sock:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                         sock.settimeout(timeout)
-                        if family == socket.AF_INET6:
-                            result = sock.connect_ex((ip, port, 0, 0))
-                        else:
-                            result = sock.connect_ex((ip, port))
+                        result = sock.connect_ex((ip, port))
                         if result == 0:
                             return True
                 except Exception:

@@ -1,0 +1,381 @@
+@startuml SAINT_Agent_Class_Diagram
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FEFECE
+  BorderColor #A80036
+  ArrowColor #A80036
+}
+skinparam package {
+  BackgroundColor #F0F0F0
+  BorderColor #888888
+}
+
+title Class Diagram - SAINT Agent
+
+package "Core" {
+  class Agent << (S,#FF7700) Singleton >> {
+    - _instance: Agent
+    - config: dict
+    - state: dict
+    --
+    + get_agent_id(): str
+    + get_agent_token(): str
+    + is_registered(): bool
+    + is_running(): bool
+    + stop()
+    + update_state(key, value)
+  }
+
+  class AgentLifecycle {
+    + initialize_components(agent): bool
+    + start_components(agent): bool
+    + stop_components(agent)
+    + cleanup(agent)
+  }
+
+  class AgentRegistry {
+    + register_with_server(config): dict
+    + check_registration(agent_id): bool
+  }
+
+  class TokenManager {
+    - _token: str
+    - _expires_at: datetime
+    --
+    + get_token(): str
+    + refresh_token(): str
+    + is_token_valid(): bool
+    + set_token(token, expires)
+  }
+
+  enum AgentStatus {
+    STOPPED
+    STARTING
+    RUNNING
+    STOPPING
+    ERROR
+  }
+}
+
+package "GUI" {
+  class FirewallControllerApp << (S,#FF7700) Singleton >> {
+    - root: CTk
+    - main_window: MainWindow
+    --
+    + run()
+    + quit()
+  }
+
+  class MainWindow {
+    - sidebar: CTkFrame
+    - content: CTkFrame
+    - views: dict
+    --
+    + show_view(view_name)
+    + update_status(status)
+  }
+
+  class DashboardView {
+    - status_cards: list
+    - activity_log: LogConsole
+    --
+    + update_stats(stats)
+    + add_log_entry(entry)
+  }
+
+  class FirewallView {
+    - rules_table: DataTable
+    - mode_selector: CTkSegmentedButton
+    --
+    + update_rules(rules)
+    + set_mode(mode)
+  }
+
+  class WhitelistView {
+    - domain_table: DataTable
+    --
+    + update_domains(domains)
+  }
+
+  class LogsView {
+    - log_console: LogConsole
+    --
+    + add_log(entry)
+    + clear_logs()
+  }
+
+  class SettingsView {
+    - server_url: CTkEntry
+    - api_key: CTkEntry
+    --
+    + save_settings()
+    + load_settings()
+  }
+
+  class AgentGUIController {
+    - agent: Agent
+    - signals: AgentSignals
+    --
+    + start_agent()
+    + stop_agent()
+    + on_status_changed(status)
+    + on_packet_captured(packet)
+    + on_log_received(log)
+    + on_error(error)
+  }
+
+  class AgentSignals {
+    - _callbacks: dict
+    - _event_queue: Queue
+    - _lock: Lock
+    --
+    + connect(signal, callback)
+    + disconnect(signal, callback)
+    + emit(signal, data)
+    + process_events()
+  }
+
+  class AgentEvent {
+    + event_type: str
+    + data: dict
+    + timestamp: datetime
+  }
+}
+
+package "Firewall" {
+  class FirewallManager {
+    - policy_manager: PolicyManager
+    - rules_manager: RulesManager
+    - essential_ips: set
+    - whitelist_mode_active: bool
+    - rule_prefix: str
+    --
+    + setup_whitelist_firewall(domains, ips)
+    + disable_whitelist_firewall()
+    + add_whitelisted_ip(ip)
+    + remove_whitelisted_ip(ip)
+    + get_status(): dict
+  }
+
+  class PolicyManager {
+    - _original_policies: dict
+    - default_deny_enabled: bool
+    --
+    + get_current_policy(): dict
+    + backup_current_policy()
+    + enable_default_deny()
+    + disable_default_deny()
+    + restore_policy()
+    + verify_default_deny(): bool
+  }
+
+  class RulesManager {
+    - allowed_ips: set
+    - rule_prefix: str
+    - _rule_lock: Lock
+    --
+    + create_allow_rule(name, ip, protocol)
+    + remove_allow_rule(name)
+    + create_allow_rules_batch(rules: list)
+    + load_existing_rules(): list
+  }
+}
+
+package "Whitelist" {
+  class WhitelistManager {
+    - config: dict
+    - _state: WhitelistState
+    - _sync: WhitelistSyncer
+    - _firewall_manager: FirewallManager
+    - dns_cache: LRUCache
+    - resolver: OptimizedDNSResolver
+    - _sync_thread: Thread
+    - _running: bool
+    --
+    + start()
+    + stop()
+    + sync_whitelist_from_server()
+    + apply_whitelist()
+    + is_domain_allowed(domain): bool
+    + check_ip(ip): bool
+    + on_sync_complete(data)
+    + get_statistics(): dict
+  }
+
+  class WhitelistState {
+    - _domains: set
+    - _patterns: list
+    - _ips: set
+    - _version: int
+    - _group_version: int
+    - _policy_mode: str
+    - _checksum: str
+    - _lock: Lock
+    --
+    + load_from_dict(data)
+    + get_domains(): set
+    + get_ips(): set
+    + get_patterns(): list
+    + calculate_checksum(): str
+    + get_metadata(): dict
+  }
+
+  class WhitelistSyncer {
+    - server_urls: list
+    - agent_id: str
+    - config: dict
+    - connect_timeout: int
+    - read_timeout: int
+    --
+    + sync_with_server(): dict
+    - _build_sync_url(): str
+    - _get_headers(): dict
+  }
+
+  class WhitelistMonitor {
+    + check_domain(domain): bool
+    + check_ip(ip): bool
+    + log_access(domain, allowed)
+  }
+}
+
+package "Capture" {
+  class PacketSniffer {
+    - callback: callable
+    - running: bool
+    - _capture_thread: Thread
+    - _stop_event: Event
+    - _extractor: DomainExtractor
+    - packet_count: int
+    - domain_count: int
+    --
+    + start()
+    + stop()
+    - _capture_loop()
+    + get_stats(): dict
+    + reset_stats()
+  }
+
+  class DomainExtractor {
+    + extract_from_packet(packet): list
+    + extract_domains(packet): list
+    - _extract_dns(packet): str
+    - _extract_http_host(packet): str
+    - _extract_tls_sni(packet): str
+  }
+}
+
+package "Network" {
+  class OptimizedDNSResolver {
+    - _cache: LRUCache
+    - _resolvers: list
+    --
+    + resolve(domain): list[str]
+    + resolve_batch(domains): dict
+    + clear_cache()
+  }
+
+  class LRUCache {
+    - _cache: OrderedDict
+    - _max_size: int
+    - _ttl: int
+    --
+    + get(key): any
+    + put(key, value)
+    + clear()
+    + size(): int
+  }
+}
+
+package "Services" {
+  class HeartbeatSender {
+    - agent_id: str
+    - config: dict
+    - _interval: int
+    - _running: bool
+    - _thread: Thread
+    --
+    + start()
+    + stop()
+    - _send_heartbeat()
+    - _heartbeat_loop()
+  }
+
+  class LogSender {
+    - agent_id: str
+    - config: dict
+    - _batch_size: int
+    - _send_interval: float
+    - _queue: Queue
+    - _running: bool
+    --
+    + start()
+    + stop()
+    + add_log(entry)
+    - _send_batch()
+    - _sender_loop()
+  }
+}
+
+package "Config" {
+  class ConfigLoader {
+    - _config: dict
+    --
+    + load(): dict
+    + get(key, default): any
+    + set(key, value)
+    + save()
+  }
+}
+
+' === Relationships ===
+
+' Core composition
+Agent *-- FirewallManager
+Agent *-- WhitelistManager
+Agent *-- PacketSniffer
+Agent *-- HeartbeatSender
+Agent *-- LogSender
+Agent *-- TokenManager
+Agent *-- ConfigLoader
+Agent -- AgentStatus
+
+' Lifecycle
+AgentLifecycle ..> Agent
+AgentRegistry ..> Agent
+
+' GUI composition
+FirewallControllerApp *-- MainWindow
+MainWindow *-- DashboardView
+MainWindow *-- FirewallView
+MainWindow *-- WhitelistView
+MainWindow *-- LogsView
+MainWindow *-- SettingsView
+FirewallControllerApp *-- AgentGUIController
+AgentGUIController *-- AgentSignals
+AgentSignals -- AgentEvent
+AgentGUIController ..> Agent : controls
+
+' Firewall composition
+FirewallManager *-- PolicyManager
+FirewallManager *-- RulesManager
+
+' Whitelist composition
+WhitelistManager *-- WhitelistState
+WhitelistManager *-- WhitelistSyncer
+WhitelistManager *-- WhitelistMonitor
+WhitelistManager o-- FirewallManager : uses
+WhitelistManager *-- OptimizedDNSResolver
+
+' Network
+OptimizedDNSResolver *-- LRUCache
+
+' Capture
+PacketSniffer *-- DomainExtractor
+
+' Cross-package dependencies
+PacketSniffer ..> WhitelistManager : checks domain
+LogSender ..> PacketSniffer : receives logs
+HeartbeatSender ..> WhitelistManager : triggers sync
+
+@enduml

@@ -49,8 +49,7 @@ hiddenimports = [
     # Services
     'services',
     'services.heartbeat',
-    'services.windows_service',
-    
+
     # Logging
     'logging_module',
     'logging_module.sender',
@@ -115,7 +114,6 @@ hiddenimports = [
 
 # Data files to include
 datas = [
-    ('agent', 'agent'),
     ('agent/miku.ico', '.'),
 ]
 
@@ -152,16 +150,13 @@ pyz_gui = PYZ(a_gui.pure)
 exe_gui = EXE(
     pyz_gui,
     a_gui.scripts,
-    a_gui.binaries,
-    a_gui.datas,
     [],
+    exclude_binaries=True,
     name='SAINT',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,  # Windowed mode - no console
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -169,5 +164,16 @@ exe_gui = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='agent/miku.ico',
-    uac_admin=False,  # No admin required - can run in monitor mode
+    uac_admin=True,  # Require admin to run
+)
+
+coll = COLLECT(
+    exe_gui,
+    a_gui.binaries,
+    a_gui.zipfiles,
+    a_gui.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='SAINT',
 )

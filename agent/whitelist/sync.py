@@ -47,8 +47,18 @@ class WhitelistSyncer:
     def sync_with_server(self, params: Dict) -> Dict:
         """Sync with server, trying fallback servers if needed."""
         last_error = None
+
+        # No server configured — agent is in first-run offline mode.
+        # Skip silently so we don't spam logs every sync interval.
+        if not self.server_urls:
+            return {
+                "success": False,
+                "error": "Server URL not configured (offline mode)",
+                "offline": True,
+            }
+
         headers = self._get_headers()
-        
+
         # Whitelist sync endpoint is JWT-protected; fail fast if no auth is available
         if not any(k in headers for k in ("Authorization", "X-Agent-Token")):
             error_msg = (

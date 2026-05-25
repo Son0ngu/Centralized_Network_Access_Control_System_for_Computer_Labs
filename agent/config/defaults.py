@@ -1,13 +1,13 @@
 from typing import Any, Dict
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    # Server connection configuration
+    # Server connection configuration.
+    # By default the URL is empty — the agent will NOT try to contact any
+    # server until the user explicitly sets one in Settings. This avoids
+    # leaking hostname/IP/MAC/OS to an unconfigured endpoint on first run.
     "server": {
-        "urls": [
-            "https://firewall-controller.onrender.com",
-            "http://localhost:5000"
-        ],
-        "url": "https://firewall-controller.onrender.com",
+        "urls": [],
+        "url": "",
         "connect_timeout": 15,
         "read_timeout": 45,
         "retry_interval": 60,
@@ -35,18 +35,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "ip_refresh_interval": 300,
     },
     
-    # Firewall configuration
-    "firewall": {
-        "enabled": False,
-        "mode": "monitor",  # monitor, blacklist, whitelist_only
-        "default_policy": "allow",
-        "backup": {
-            "enabled": True,
-            "path": "profiles/backup.wfw",
-            "restore_on_startup": False
-        }
-    },
-    
     # Packet Capture configuration
     "capture": {
         "engine": "scapy",
@@ -56,7 +44,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "interfaces": [],
         "snaplen": 1500,
     },
-    
+
     # Logging configuration
     "logging": {
         "level": "INFO",
@@ -65,7 +53,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "backup_count": 5,
         "log_to_console": True,
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        
+
         "sender": {
             "enabled": True,
             "batch_size": 100,
@@ -74,11 +62,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "failures_before_warn": 3,
         }
     },
-    
-    # Firewall configuration
+
+    # Firewall configuration (single source of truth).
+    # Only "whitelist_only" is supported. The legacy `monitor` / `blacklist`
+    # modes were never wired through end-to-end and were removed.
     "firewall": {
         "enabled": True,
         "mode": "whitelist_only",
+        "default_policy": "allow",
         "rule_prefix": "FirewallController",
         "cleanup_on_exit": True,
         "create_allow_rules": True,
@@ -86,6 +77,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "allow_essential_ips": True,
         "allow_private_networks": False,
         "rule_priority_offset": 100,
+        "backup": {
+            "enabled": True,
+            "path": "profiles/backup.saint-snapshot.json",
+            "restore_on_startup": False
+        },
     },
     
     # Heartbeat configuration

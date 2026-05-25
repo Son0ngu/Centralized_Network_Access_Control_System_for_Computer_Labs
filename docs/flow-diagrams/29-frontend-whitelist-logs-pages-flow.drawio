@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="whitelist-logs-pages" name="Flow 29: Whitelist &amp; Logs Pages">
+    <mxGraphModel dx="1600" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 29: Whitelist &amp;amp; Logs Management Pages&lt;/b&gt;&lt;br&gt;&lt;i&gt;Trang quản lý Whitelist (/whitelist) và Logs (/logs)&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== LEFT: WHITELIST PAGE ==================== -->
+        <mxCell id="sec1" value="&lt;b&gt;A. WHITELIST PAGE (/whitelist)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quản lý danh sách trắng - Domain, IP, URL&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="w1" value="&lt;b&gt;Page Load&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/groups (filter options)&lt;br&gt;GET /api/whitelist (entries)&lt;br&gt;GET /api/whitelist-profiles&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="w2" value="&lt;b&gt;Stats Cards (4)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Total Items | Active | Domains | IPs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="230" width="300" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="ew1w2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="w1" target="w2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="w3" value="&lt;b&gt;RBAC Check&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin → full CRUD&lt;br&gt;Teacher → profile-based edit only&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="ew2w3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="w2" target="w3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Whitelist Features -->
+        <mxCell id="w_feat" value="&lt;b&gt;Whitelist Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="410" width="480" height="340" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf1" value="&lt;b&gt;Add Entry&lt;/b&gt;&lt;br&gt;&lt;i&gt;Modal: type (domain/ip/url)&lt;br&gt;+ value + group selection&lt;br&gt;POST /api/whitelist&lt;br&gt;Type-specific validation&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="w_feat">
+          <mxGeometry x="10" y="40" width="220" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf2" value="&lt;b&gt;Delete Entry&lt;/b&gt;&lt;br&gt;&lt;i&gt;DELETE /api/whitelist/:id&lt;br&gt;Bulk selection supported&lt;br&gt;Confirm modal&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="w_feat">
+          <mxGeometry x="250" y="40" width="220" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf3" value="&lt;b&gt;Filters &amp;amp; Search&lt;/b&gt;&lt;br&gt;&lt;i&gt;Group filter dropdown&lt;br&gt;Type filter (Domain/IP/URL)&lt;br&gt;Free-text search box&lt;br&gt;Client-side real-time filtering&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="w_feat">
+          <mxGeometry x="10" y="150" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf4" value="&lt;b&gt;Teacher Profile Selector&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Teacher only (rbac-teacher-only)&lt;br&gt;Select assigned profile&lt;br&gt;Edit domains within profile&lt;br&gt;Domain counter display&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="w_feat">
+          <mxGeometry x="250" y="150" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf5" value="&lt;b&gt;Entry Types&lt;/b&gt;: Domain (*.example.com wildcards) | IP (CIDR ranges: 192.168.1.0/24) | URL (path patterns)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="w_feat">
+          <mxGeometry x="10" y="250" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Profile API table -->
+        <mxCell id="prof_api" value="&lt;b&gt;📋 Profile API (Teacher Whitelist)&lt;/b&gt;&lt;hr&gt;&lt;div style='text-align:left;font-size:10px;'&gt;GET&amp;nbsp;&amp;nbsp;&amp;nbsp;/api/whitelist-profiles&lt;br&gt;POST&amp;nbsp;&amp;nbsp;/api/whitelist-profiles&lt;br&gt;PATCH&amp;nbsp;/api/whitelist-profiles/:id&lt;br&gt;DELETE /api/whitelist-profiles/:id&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="780" width="300" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== RIGHT: LOGS PAGE ==================== -->
+        <mxCell id="sec2" value="&lt;b&gt;B. LOGS PAGE (/logs)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giám sát hoạt động - Real-time log streaming&lt;/i&gt;" style="text;html=1;align=left;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l1" value="&lt;b&gt;Page Load&lt;/b&gt;&lt;br&gt;&lt;i&gt;GET /api/logs/stats&lt;br&gt;GET /api/logs?limit=50&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="140" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l2" value="&lt;b&gt;Stats Cards (4)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Total | Allowed 🟢 | Blocked 🔴 | Warnings 🟡&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="220" width="360" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="el1l2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="l1" target="l2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="l3" value="&lt;b&gt;Render Log Table&lt;/b&gt;&lt;br&gt;&lt;i&gt;Columns: Timestamp | Agent | Level | Domain | Action | Details&lt;br&gt;Color-coded rows by level&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="620" y="280" width="360" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="el2l3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="l2" target="l3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Logs Features -->
+        <mxCell id="l_feat" value="&lt;b&gt;Logs Features&lt;/b&gt;" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="370" width="500" height="320" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lf1" value="&lt;b&gt;Filters&lt;/b&gt;&lt;br&gt;&lt;i&gt;Level: ALLOWED/BLOCKED/&lt;br&gt;WARNING/ERROR/INFO&lt;br&gt;Agent dropdown&lt;br&gt;Free-text search&lt;br&gt;Limit: 50/100/200&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="l_feat">
+          <mxGeometry x="10" y="40" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lf2" value="&lt;b&gt;Real-time Streaming&lt;/b&gt;&lt;br&gt;&lt;i&gt;SocketIO: new_log event&lt;br&gt;Prepend new row to table&lt;br&gt;Auto-update stats cards&lt;br&gt;🟢 Real-time indicator&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="l_feat">
+          <mxGeometry x="260" y="40" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lf3" value="&lt;b&gt;Log Level Colors&lt;/b&gt;&lt;br&gt;&lt;i&gt;🟢 ALLOWED - green badge&lt;br&gt;🔴 BLOCKED - red badge&lt;br&gt;🟡 WARNING - yellow badge&lt;br&gt;⚪ ERROR - gray badge&lt;br&gt;🔵 INFO - blue badge&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="l_feat">
+          <mxGeometry x="10" y="160" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="lf4" value="&lt;b&gt;Admin Actions&lt;/b&gt;&lt;br&gt;&lt;i&gt;🔒 Clear All Logs&lt;br&gt;POST /api/logs/clear&lt;br&gt;Confirm modal&lt;br&gt;SocketIO: logs_cleared&lt;br&gt;&lt;br&gt;Delete single log&lt;br&gt;DELETE /api/logs/:id&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="l_feat">
+          <mxGeometry x="260" y="160" width="230" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Logs data flow -->
+        <mxCell id="log_flow" value="&lt;b&gt;📊 Log Data Flow&lt;/b&gt;" style="text;html=1;align=left;fontSize=13;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="720" width="200" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ldf1" value="&lt;b&gt;Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;PacketSniffer&lt;br&gt;detect domain&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="580" y="760" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldf2" value="&lt;b&gt;LogSender&lt;/b&gt;&lt;br&gt;&lt;i&gt;Queue → batch&lt;br&gt;POST /api/logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="760" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eldf1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ldf1" target="ldf2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="ldf3" value="&lt;b&gt;Server&lt;/b&gt;&lt;br&gt;&lt;i&gt;Normalize&lt;br&gt;Save MongoDB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="860" y="760" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eldf2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ldf2" target="ldf3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="ldf4" value="&lt;b&gt;SocketIO&lt;/b&gt;&lt;br&gt;&lt;i&gt;emit new_log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="990" y="760" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eldf3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ldf3" target="ldf4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="ldf5" value="&lt;b&gt;Logs Page&lt;/b&gt;&lt;br&gt;&lt;i&gt;Prepend row&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="760" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eldf4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ldf4" target="ldf5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- RBAC comparison -->
+        <mxCell id="rbac_comp" value="&lt;b&gt;🔒 RBAC Comparison: Whitelist vs Logs&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="850" width="560" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="rh1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="30" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rh1a" value="Feature" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rh1">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rh1b" value="Admin" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rh1">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rh1c" value="Teacher" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;align=center;" vertex="1" parent="rh1">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="58" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1a" value="Whitelist: View entries" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr1">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1b" value="✅ All groups" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr1">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1c" value="✅ Assigned profiles only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr1">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="86" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr2a" value="Whitelist: Add/Delete" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr2">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr2b" value="✅ Any group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr2">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr2c" value="✅ Via profile only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr2">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="114" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr3a" value="Logs: View logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr3">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr3b" value="✅ All logs" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr3">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr3c" value="✅ Group logs only" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr3">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="142" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr4a" value="Logs: Clear all" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr4">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr4b" value="✅ Full access" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr4">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr4c" value="❌ Hidden (rbac-admin-only)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;fontColor=#cc0000;" vertex="1" parent="rr4">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=10;fontFamily=Segoe UI;html=1;" vertex="1" parent="rbac_comp">
+          <mxGeometry y="170" width="560" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr5a" value="Logs: Real-time streaming" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr5">
+          <mxGeometry width="200" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr5b" value="✅ All events" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr5">
+          <mxGeometry x="200" width="180" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr5c" value="✅ Filtered by group" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;align=center;" vertex="1" parent="rr5">
+          <mxGeometry x="380" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;: 🔵 Process &amp;nbsp; 🟡 Decision &amp;nbsp; 🟢 Success &amp;nbsp; 🔴 Error/Delete &amp;nbsp; 🟣 SocketIO/RBAC" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="910" width="500" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

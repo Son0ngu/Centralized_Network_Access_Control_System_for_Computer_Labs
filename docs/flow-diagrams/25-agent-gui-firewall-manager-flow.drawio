@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-24" agent="Claude" version="24.0" type="device">
+  <diagram id="gui-firewall-manager" name="Flow 25: Agent GUI &amp; Firewall Manager">
+    <mxGraphModel dx="1600" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Flow 25: Agent GUI &amp;amp; Firewall Manager&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giao diện Agent và Quản lý Firewall Windows&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="900" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== LEFT SIDE: GUI Application ==================== -->
+        <mxCell id="gui_header" value="&lt;b&gt;GUI: FirewallControllerApp (CustomTkinter)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giao diện người dùng Agent&lt;/i&gt;" style="text;html=1;align=center;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="440" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- G1: Singleton -->
+        <mxCell id="g1" value="&lt;b&gt;Singleton Pattern&lt;/b&gt;&lt;br&gt;&lt;i&gt;FirewallControllerApp.__new__()&lt;br&gt;Chỉ cho phép 1 instance duy nhất&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="140" width="320" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- G2: Init CTk -->
+        <mxCell id="g2" value="&lt;b&gt;Initialize CTk Root&lt;/b&gt;&lt;br&gt;&lt;i&gt;ctk.CTk() - 1200×800 (min 900×600)&lt;br&gt;Title: &quot;SAINT - Security Agent...&quot;&lt;br&gt;Theme: dark mode, blue color&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="220" width="320" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg1g2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g1" target="g2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- G3: Create AgentController -->
+        <mxCell id="g3" value="&lt;b&gt;Create AgentController&lt;/b&gt;&lt;br&gt;&lt;i&gt;Khởi tạo backend controller&lt;br&gt;(quản lý tất cả thread)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="320" width="320" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg2g3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g2" target="g3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- G4: Create MainWindow -->
+        <mxCell id="g4" value="&lt;b&gt;Create MainWindow&lt;/b&gt;&lt;br&gt;&lt;i&gt;Sidebar + Content Area layout&lt;br&gt;Grid: col0=sidebar, col1=content&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="320" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg3g4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g3" target="g4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- G5: Create 5 Views -->
+        <mxCell id="g5" value="&lt;b&gt;Create 5 Tab Views&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tạo 5 tab chính của ứng dụng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="480" width="320" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg4g5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g4" target="g5"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- 5 Tabs visual -->
+        <mxCell id="tab1" value="&lt;b&gt;🎯 Dashboard&lt;/b&gt;&lt;br&gt;&lt;i&gt;Tổng quan trạng thái&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="30" y="560" width="130" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tab2" value="&lt;b&gt;🔥 Firewall&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quản lý tường lửa&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="170" y="560" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tab3" value="&lt;b&gt;✓ Whitelist&lt;/b&gt;&lt;br&gt;&lt;i&gt;Danh sách trắng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="300" y="560" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tab4" value="&lt;b&gt;📋 Logs&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nhật ký hoạt động&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="30" y="620" width="130" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tab5" value="&lt;b&gt;⚙ Settings&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cài đặt Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="170" y="620" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg5t1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g5" target="tab1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eg5t2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g5" target="tab2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eg5t3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g5" target="tab3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- G6: Signal connections -->
+        <mxCell id="g6" value="&lt;b&gt;Signal Connections&lt;/b&gt;&lt;br&gt;&lt;i&gt;whitelist_synced → _on_agent_ready&lt;br&gt;status_changed → _on_status_changed&lt;br&gt;(Kết nối sự kiện từ AgentController)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="700" width="320" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- G7: Default view -->
+        <mxCell id="g7" value="&lt;b&gt;Show Dashboard (default)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Hiển thị tab Dashboard khi khởi động&lt;br&gt;_center_window() → mainloop()&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="790" width="320" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg6g7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g6" target="g7"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- G8: On Close -->
+        <mxCell id="g8" value="&lt;b&gt;_on_close() - Graceful Shutdown&lt;/b&gt;&lt;br&gt;&lt;i&gt;1. agent_controller.stop_agent()&lt;br&gt;2. Cleanup firewall rules&lt;br&gt;3. root.quit() + root.destroy()&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="870" width="320" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="eg7g8" value="Window Close (WM_DELETE_WINDOW)" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=10;dashed=1;" edge="1" parent="1" source="g7" target="g8"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ==================== RIGHT SIDE: Firewall Manager ==================== -->
+        <mxCell id="fw_header" value="&lt;b&gt;FIREWALL MANAGER: FirewallManager&lt;/b&gt;&lt;br&gt;&lt;i&gt;Quản lý Windows Firewall qua netsh&lt;/i&gt;" style="text;html=1;align=center;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="560" y="80" width="480" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- F1: Init -->
+        <mxCell id="f1" value="&lt;b&gt;__init__(rule_prefix)&lt;/b&gt;&lt;br&gt;&lt;i&gt;prefix = &quot;FirewallController&quot;&lt;br&gt;PolicyManager + RulesManager&lt;br&gt;essential_ips = Set()&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="140" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- F2: Check existing policy -->
+        <mxCell id="f2" value="&lt;b&gt;Default Deny active?&lt;/b&gt;&lt;br&gt;&lt;i&gt;policy_manager.verify_default_deny()&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="240" width="220" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef1f2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f1" target="f2"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F2 Yes -->
+        <mxCell id="f2y" value="&lt;b&gt;Resume Whitelist Mode&lt;/b&gt;&lt;br&gt;&lt;i&gt;whitelist_mode_active = True&lt;br&gt;Tiếp tục chế độ đã có&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="900" y="255" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef2y" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f2" target="f2y"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F3: Enable Default Deny -->
+        <mxCell id="f3" value="&lt;b&gt;enable_default_deny()&lt;/b&gt;&lt;br&gt;&lt;i&gt;netsh advfirewall set allprofiles&lt;br&gt;firewallpolicy blockinbound,blockoutbound&lt;br&gt;(Chặn tất cả kết nối mặc định)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="380" width="300" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef2f3" value="No (Enable)" style="edgeStyle=orthogonalEdgeStyle;fontFamily=Segoe UI;fontSize=11;fontStyle=1;" edge="1" parent="1" source="f2" target="f3"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F4: Add essential IPs -->
+        <mxCell id="f4" value="&lt;b&gt;Add Essential IPs&lt;/b&gt;&lt;br&gt;&lt;i&gt;Server URLs → resolve → whitelist&lt;br&gt;DNS servers (8.8.8.8, etc.)&lt;br&gt;Localhost (127.0.0.1)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="490" width="300" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef3f4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f3" target="f4"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F5: Whitelist Operations box -->
+        <mxCell id="f5_box" value="&lt;b&gt;Whitelist IP Operations&lt;/b&gt;&lt;br&gt;&lt;i&gt;Các thao tác quản lý IP trong whitelist&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="600" width="520" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- Add IP -->
+        <mxCell id="f5a" value="&lt;b&gt;add_ip_to_whitelist(ip)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1. Validate IP format&lt;br&gt;2. rules_manager.create_allow_rule(ip)&lt;br&gt;3. netsh advfirewall firewall add rule&lt;br&gt;&amp;nbsp;&amp;nbsp;name=&quot;FirewallController_IP&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;dir=out action=allow remoteip=IP&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="f5_box">
+          <mxGeometry x="20" y="50" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Remove IP -->
+        <mxCell id="f5b" value="&lt;b&gt;remove_ip_from_whitelist(ip)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1. Check IP in allowed_ips&lt;br&gt;2. rules_manager.remove_allow_rule(ip)&lt;br&gt;3. netsh advfirewall firewall delete&lt;br&gt;&amp;nbsp;&amp;nbsp;rule name=&quot;FirewallController_IP&quot;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="f5_box">
+          <mxGeometry x="270" y="50" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Domain Resolution -->
+        <mxCell id="f5c" value="&lt;b&gt;_resolve_domains_to_ips(domains)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1. Normalize domain (strip protocol/path/port)&lt;br&gt;2. OptimizedDNSResolver or socket.getaddrinfo()&lt;br&gt;3. Return Set[str] of resolved IPs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="f5_box">
+          <mxGeometry x="20" y="170" width="480" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ef4f5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f4" target="f5_box"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- F6: Cleanup & Restore -->
+        <mxCell id="f6_box" value="&lt;b&gt;Cleanup &amp;amp; Restore&lt;/b&gt;&lt;br&gt;&lt;i&gt;Dọn dẹp và khôi phục firewall&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="920" width="520" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- Cleanup -->
+        <mxCell id="f6a" value="&lt;b&gt;cleanup_whitelist_firewall()&lt;/b&gt;&lt;br&gt;&lt;i&gt;1. rules_manager.clear_all_rules()&lt;br&gt;2. policy_manager.restore_original_policy()&lt;br&gt;3. essential_ips.clear()&lt;br&gt;4. whitelist_mode_active = False&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="f6_box">
+          <mxGeometry x="20" y="50" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Snapshot -->
+        <mxCell id="f6b" value="&lt;b&gt;save/restore_snapshot()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Save: JSON file with policies,&lt;br&gt;&amp;nbsp;&amp;nbsp;whitelist_mode, IPs, timestamp&lt;br&gt;Restore: Load JSON, restore via&lt;br&gt;&amp;nbsp;&amp;nbsp;netsh commands&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=Segoe UI;fontSize=11;align=left;" vertex="1" parent="f6_box">
+          <mxGeometry x="270" y="50" width="230" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Connection from GUI close to Firewall cleanup -->
+        <mxCell id="eg8f6" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="g8" target="f6_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="905"/>
+              <mxPoint x="480" y="1020"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eg8f6_label" value="&lt;i&gt;Shutdown triggers cleanup&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="430" y="940" width="160" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== BOTTOM: Architecture Table ==================== -->
+        <mxCell id="arch_table" value="&lt;b&gt;🏗 GUI Architecture Overview&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1160" width="520" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="30" width="520" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1a" value="Component" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar1">
+          <mxGeometry width="160" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1b" value="Class" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar1">
+          <mxGeometry x="160" width="160" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar1c" value="Description" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar1">
+          <mxGeometry x="320" width="200" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: App -->
+        <mxCell id="ar2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="58" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2a" value="Application" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar2">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2b" value="FirewallControllerApp" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar2c" value="Singleton, CTk root, 1200×800" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: MainWindow -->
+        <mxCell id="ar3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="94" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3a" value="Main Window" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar3">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3b" value="MainWindow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar3">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar3c" value="Sidebar + Content, view switching" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar3">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: Dashboard -->
+        <mxCell id="ar4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="130" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4a" value="Dashboard Tab" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar4">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4b" value="DashboardView" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar4">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4c" value="Agent status, metrics overview" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar4">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: Firewall -->
+        <mxCell id="ar5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="166" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5a" value="Firewall Tab" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar5">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5b" value="FirewallView" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar5">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5c" value="Enable/disable, rule list, status" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar5">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: Whitelist -->
+        <mxCell id="ar6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="202" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6a" value="Whitelist Tab" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar6">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6b" value="WhitelistView" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar6">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar6c" value="Synced domains, IPs, status" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar6">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: Logs -->
+        <mxCell id="ar7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="238" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7a" value="Logs Tab" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar7">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7b" value="LogsView" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar7">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar7c" value="Real-time log display, filters" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar7">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Row: Settings -->
+        <mxCell id="ar8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="arch_table">
+          <mxGeometry y="274" width="520" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8a" value="Settings Tab" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar8">
+          <mxGeometry width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8b" value="SettingsView" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar8">
+          <mxGeometry x="160" width="160" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar8c" value="Server URL, intervals, config" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar8">
+          <mxGeometry x="320" width="200" height="36" as="geometry"/>
+        </mxCell>
+
+        <!-- Firewall Rule Table -->
+        <mxCell id="rule_table" value="&lt;b&gt;🔥 Firewall Rule Structure&lt;/b&gt;" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Segoe UI;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1160" width="500" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#dae8fc;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontStyle=1;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="30" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1a" value="Property" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr1">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr1b" value="Value" style="shape=partialRectangle;connectable=0;fillColor=#dae8fc;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr1">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="58" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr2a" value="Rule prefix" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr2">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr2b" value="&quot;FirewallController&quot;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr2">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="86" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr3a" value="Rule name" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr3">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr3b" value="&quot;FirewallController_1.2.3.4&quot; (prefix + IP)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr3">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="114" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr4a" value="Default policy" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr4">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr4b" value="Block Inbound + Block Outbound (Default Deny)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr4">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="142" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr5a" value="Rule action" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr5">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr5b" value="ALLOW outbound to specific remoteip" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr5">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="170" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr6a" value="Snapshot file" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr6">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr6b" value="profiles/backup.wfw (JSON: policies, IPs, timestamp)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr6">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rr7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=11;fontFamily=Segoe UI;html=1;" vertex="1" parent="rule_table">
+          <mxGeometry y="198" width="500" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr7a" value="CLI tool" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="rr7">
+          <mxGeometry width="150" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rr7b" value="netsh advfirewall (Windows built-in)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="rr7">
+          <mxGeometry x="150" width="350" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend2" value="&lt;b&gt;Legend / Chú thích&lt;/b&gt;" style="text;html=1;align=left;fontSize=12;fontFamily=Segoe UI;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1500" width="200" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_1" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1525" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_1t" value="Process" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="65" y="1525" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_2" value="" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="160" y="1525" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_2t" value="Decision" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="185" y="1525" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_3" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="280" y="1525" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_3t" value="Success" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="305" y="1525" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_4" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1525" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_4t" value="Error/Cleanup" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1525" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_5" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1525" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2_5t" value="Signal/Backup" style="text;html=1;align=left;fontSize=11;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="565" y="1525" width="100" height="20" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

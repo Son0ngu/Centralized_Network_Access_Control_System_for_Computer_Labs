@@ -1,0 +1,144 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="sniffer" name="Packet Sniffer + Domain Detection">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 23: Packet Sniffer + Domain Detection&lt;/b&gt;&lt;br&gt;PacketSniffer → DomainExtractor → handler → LogSender&lt;br&gt;&lt;i&gt;Bắt gói tin → phát hiện domain → xử lý → gửi log&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="370" y="10" width="500" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Network packets -->
+        <mxCell id="net" value="&lt;b&gt;Network Traffic&lt;/b&gt;&lt;br&gt;All outbound packets&lt;br&gt;&lt;i&gt;Lưu lượng mạng đi ra&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="170" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- BPF Filter -->
+        <mxCell id="filter" value="&lt;b&gt;BPF Filter (scapy sniff)&lt;/b&gt;&lt;br&gt;&lt;code&gt;tcp and (dst port 80 or dst port 443&lt;br&gt;or dst port 53) or udp and dst port 53&lt;/code&gt;&lt;br&gt;&lt;i&gt;Chỉ bắt HTTP/HTTPS/DNS&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="40" y="175" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="net" target="filter" parent="1" />
+
+        <!-- Process packet -->
+        <mxCell id="proc" value="&lt;b&gt;_process_packet(packet)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Xử lý từng gói tin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="265" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="filter" target="proc" parent="1" />
+
+        <!-- Protocol decision -->
+        <mxCell id="d1" value="&lt;b&gt;Protocol?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="85" y="325" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="proc" target="d1" parent="1" />
+
+        <!-- HTTP port 80 -->
+        <mxCell id="http" value="&lt;b&gt;TCP:80 (HTTP)&lt;/b&gt;&lt;br&gt;extract_http_host()&lt;br&gt;Parse Host header&lt;br&gt;&lt;i&gt;Lấy domain từ Host&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="260" y="270" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="port 80" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="d1" target="http" parent="1" />
+
+        <!-- HTTPS port 443 -->
+        <mxCell id="https" value="&lt;b&gt;TCP:443 (HTTPS)&lt;/b&gt;&lt;br&gt;extract_https_sni()&lt;br&gt;Parse TLS ClientHello SNI&lt;br&gt;&lt;i&gt;Lấy domain từ SNI&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="260" y="340" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="port 443" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="d1" target="https" parent="1" />
+
+        <!-- DNS port 53 -->
+        <mxCell id="dns" value="&lt;b&gt;UDP:53 (DNS)&lt;/b&gt;&lt;br&gt;extract_dns_query()&lt;br&gt;Parse DNS QNAME&lt;br&gt;&lt;i&gt;Lấy domain từ DNS query&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="260" y="410" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="port 53" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="d1" target="dns" parent="1" />
+
+        <!-- Build record -->
+        <mxCell id="record" value="&lt;b&gt;Build packet record&lt;/b&gt;&lt;br&gt;{timestamp, domain, src_ip, dest_ip,&lt;br&gt;port, protocol}&lt;br&gt;&lt;i&gt;Tạo record gói tin&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="480" y="335" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="http" target="record" parent="1" />
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="https" target="record" parent="1" />
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="dns" target="record" parent="1" />
+
+        <!-- Arrow to handler -->
+        <mxCell id="arrow1" value="&lt;b&gt;callback(record)&lt;/b&gt;" style="text;html=1;align=center;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="400" width="120" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- ===== DOMAIN DETECTION HANDLER ===== -->
+        <mxCell id="handler_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8f0;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="430" width="560" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="handler_title" value="&lt;b&gt;Domain Detection Handler&lt;/b&gt; - core/handlers.py&lt;br&gt;&lt;i&gt;Bộ xử lý phát hiện domain&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="438" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_start" value="&lt;b&gt;handle_domain_detection(record)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="555" y="485" width="250" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="he1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="record" target="h_start" parent="1" />
+
+        <!-- Whitelist check -->
+        <mxCell id="h_wl1" value="&lt;b&gt;whitelist.is_allowed(domain)&lt;/b&gt;&lt;br&gt;Direct match → Pattern match → Subdomain match&lt;br&gt;&lt;i&gt;Kiểm tra domain trong whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="535" width="310" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="he2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_start" target="h_wl1" parent="1" />
+
+        <mxCell id="h_wl2" value="&lt;b&gt;whitelist.is_ip_allowed(dest_ip)&lt;/b&gt;&lt;br&gt;Check IP in whitelisted IPs set&lt;br&gt;&lt;i&gt;Kiểm tra IP đích&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="600" width="310" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="he3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_wl1" target="h_wl2" parent="1" />
+
+        <!-- Firewall mode decision -->
+        <mxCell id="h_d1" value="&lt;b&gt;Firewall mode?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chế độ firewall?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="620" y="665" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="he4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_wl2" target="h_d1" parent="1" />
+
+        <!-- Mode: monitor -->
+        <mxCell id="h_monitor" value="&lt;b&gt;monitor&lt;/b&gt;&lt;br&gt;action = &quot;MONITORED&quot;&lt;br&gt;level = INFO/WARNING&lt;br&gt;&lt;i&gt;Chỉ ghi log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="460" y="735" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="he5" value="monitor" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="h_d1" target="h_monitor" parent="1" />
+
+        <!-- Mode: whitelist_only -->
+        <mxCell id="h_wlonly" value="&lt;b&gt;whitelist_only&lt;/b&gt;&lt;br&gt;Whitelisted → &quot;ALLOWED&quot;&lt;br&gt;Not whitelisted → &quot;BLOCKED&quot;&lt;br&gt;&lt;i&gt;Chặn nếu không nằm trong WL&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="600" y="735" width="150" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="he6" value="whitelist_only" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="h_d1" target="h_wlonly" parent="1" />
+
+        <!-- Mode: warn -->
+        <mxCell id="h_warn" value="&lt;b&gt;warn&lt;/b&gt;&lt;br&gt;Not whitelisted → &quot;WARNING&quot;&lt;br&gt;Still allowed through&lt;br&gt;&lt;i&gt;Cảnh báo nhưng cho phép&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="770" y="735" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="he7" value="warn" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="h_d1" target="h_warn" parent="1" />
+
+        <!-- Queue log -->
+        <mxCell id="h_log" value="&lt;b&gt;log_sender.queue_log(enhanced_record)&lt;/b&gt;&lt;br&gt;{timestamp, agent_id, level, action, domain,&lt;br&gt;destination, source_ip, dest_ip, protocol, port,&lt;br&gt;firewall_mode, firewall_enabled}&lt;br&gt;&lt;i&gt;Đẩy log vào hàng đợi → LogSender thread&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="500" y="815" width="350" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="he8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_monitor" target="h_log" parent="1" />
+        <mxCell id="he9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_wlonly" target="h_log" parent="1" />
+        <mxCell id="he10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="h_warn" target="h_log" parent="1" />
+
+        <!-- Whitelist match detail -->
+        <mxCell id="match_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="480" width="370" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="match_title" value="&lt;b&gt;Whitelist Match Logic / Logic kiểm tra WL&lt;/b&gt;" style="text;html=1;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="90" y="485" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="match" value="&lt;pre style='font-size:9px;margin:2px'&gt;is_domain_allowed(&quot;mail.google.com&quot;):&lt;br&gt;&lt;br&gt;1. Direct: &quot;mail.google.com&quot; in _domains? → ✅/❌&lt;br&gt;2. Pattern: fnmatch(&quot;mail.google.com&quot;, &quot;*.google.com&quot;) → ✅/❌&lt;br&gt;3. Subdomain:&lt;br&gt;   - &quot;mail.google.com&quot; in _domains? ❌&lt;br&gt;   - &quot;google.com&quot; in _domains? → ✅ (parent match)&lt;br&gt;   - &quot;com&quot; in _domains? ❌&lt;br&gt;&lt;br&gt;is_ip_allowed(&quot;142.250.185.5&quot;):&lt;br&gt;   &quot;142.250.185.5&quot; in _ips? → ✅/❌&lt;/pre&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="350" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Packet pipeline summary -->
+        <mxCell id="pipe_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="660" width="370" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pipe" value="&lt;b&gt;Pipeline:&lt;/b&gt; Network → scapy sniff → _process_packet → DomainExtractor&lt;br&gt;→ callback(record) → handle_domain_detection → whitelist check&lt;br&gt;→ determine action → log_sender.queue_log → batch POST /api/logs" style="text;html=1;align=left;fontSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="665" width="350" height="50" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

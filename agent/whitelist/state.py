@@ -18,78 +18,105 @@ class WhitelistState:
         self._ips: Set[str] = set()
         self._last_updated: Optional[float] = None
         self._version: str = ""
+        self._group_version: str = ""
+        self._group_id: str = ""
+        self._policy_mode: str = "none"
         self._checksum: str = ""
         self._metadata: Dict[str, Any] = {}
     
+    def _parse_entries(self, data: Dict):
+        """Parse domains/ips from server response into sets."""
+        new_domains = set()
+        new_patterns = set()
+        new_ips = set()
+
+        for item in data.get("domains", []):
+            if isinstance(item, str):
+                value = item.lower().strip()
+                entry_type = "domain"
+            elif isinstance(item, dict):
+                value = item.get("value", "").lower().strip()
+                if not value:
+                    value = item.get("domain", "").lower().strip()
+                entry_type = item.get("type", "domain").lower()
+            else:
+                continue
+
+            if not value:
+                continue
+
+            if entry_type == "ip":
+                new_ips.add(value)
+            elif entry_type == "pattern" or "*" in value or "?" in value:
+                new_patterns.add(value)
+            else:
+                new_domains.add(value)
+
+        for ip in data.get("ips", []):
+            if isinstance(ip, str):
+                new_ips.add(ip.strip())
+            elif isinstance(ip, dict):
+                ip_value = ip.get("value", ip.get("ip", "")).strip()
+                if ip_value:
+                    new_ips.add(ip_value)
+
+        return new_domains, new_patterns, new_ips
+
     def update(self, data: Dict) -> bool:
 
         with self._lock:
             try:
-                new_domains = set()
-                new_patterns = set()
-                new_ips = set()
-                
-                for item in data.get("domains", []):
-                    if isinstance(item, str):
-                        # Simple string format
-                        value = item.lower().strip()
-                        entry_type = "domain"
-                    elif isinstance(item, dict):
-                        # Object format from server: {"value": "...", "type": "..."}
-                        value = item.get("value", "").lower().strip()
-                        if not value:
-                            # Fallback to "domain" key for backward compatibility
-                            value = item.get("domain", "").lower().strip()
-                        entry_type = item.get("type", "domain").lower()
-                    else:
-                        continue
-                    
-                    if not value:
-                        continue
-                    
-                    # Categorize based on type
-                    if entry_type == "ip":
-                        new_ips.add(value)
-                    elif entry_type == "pattern" or "*" in value or "?" in value:
-                        new_patterns.add(value)
-                    else:
-                        new_domains.add(value)
-                
-                # Also check for separate "ips" array (backward compatibility)
-                for ip in data.get("ips", []):
-                    if isinstance(ip, str):
-                        new_ips.add(ip.strip())
-                    elif isinstance(ip, dict):
-                        ip_value = ip.get("value", ip.get("ip", "")).strip()
-                        if ip_value:
-                            new_ips.add(ip_value)
-                
-                # Log what we parsed
+                up_to_date = data.get("up_to_date", False)
+
+                # Detect group change — if agent moved to a different group,
+                # force full sync even if server says up_to_date
+                new_group_id = str(data.get("group_id", ""))
+                group_changed = (self._group_id and new_group_id
+                                 and new_group_id != self._group_id)
+                if group_changed:
+                    logger.info(f"Group changed: {self._group_id} -> {new_group_id}, forcing full sync")
+
+                # Server says we're already up to date - no changes needed
+                if up_to_date and not group_changed:
+                    logger.debug("Server says up_to_date, no changes")
+                    return False
+
+                new_domains, new_patterns, new_ips = self._parse_entries(data)
+
                 logger.debug(f"Parsed from server: {len(new_domains)} domains, "
                            f"{len(new_patterns)} patterns, {len(new_ips)} IPs")
-                
-                # Check if changed
-                if (new_domains == self._domains and 
-                    new_patterns == self._patterns and 
-                    new_ips == self._ips):
+
+                # Full sync: REPLACE entire state
+                if (not group_changed
+                    and new_domains == self._domains
+                    and new_patterns == self._patterns
+                    and new_ips == self._ips):
                     logger.debug("No changes in whitelist data")
+                    self._version = str(data.get("global_version", data.get("version", self._version)))
+                    self._group_version = str(data.get("group_version", self._group_version))
+                    self._group_id = new_group_id
                     return False
-                
-                # Update state
+
                 self._domains = new_domains
                 self._patterns = new_patterns
                 self._ips = new_ips
+
+                # Update metadata
                 self._last_updated = now()
                 self._version = str(data.get("global_version", data.get("version", "")))
+                self._group_version = str(data.get("group_version", ""))
+                self._group_id = new_group_id
+                self._policy_mode = data.get("policy_mode", "none")
                 self._checksum = self._calculate_checksum()
                 self._metadata = data.get("metadata", {})
-                
+
                 logger.info(
                     f"Whitelist updated: {len(self._domains)} domains, "
-                    f"{len(self._patterns)} patterns, {len(self._ips)} IPs"
+                    f"{len(self._patterns)} patterns, {len(self._ips)} IPs "
+                    f"[v{self._version}/g{self._group_version}]"
                 )
                 return True
-                
+
             except Exception as e:
                 logger.error(f"Failed to update whitelist state: {e}", exc_info=True)
                 return False

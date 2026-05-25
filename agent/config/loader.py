@@ -125,25 +125,40 @@ def reload_config() -> Dict[str, Any]:
 
 
 def _load_from_file() -> Optional[Dict[str, Any]]:
-    """Load configuration from file."""
+    """Load configuration from file (encrypted preferred, plaintext fallback)."""
+    from .crypto import decrypt_config, migrate_plaintext_to_encrypted, ENCRYPTED_EXT
+
     # Check environment variable first
     env_path = os.environ.get("FIREWALL_CONTROLLER_CONFIG")
     if env_path:
         config_paths = [Path(env_path)]
     else:
         config_paths = CONFIG_PATHS
-    
+
     for path in config_paths:
         try:
+            enc_path = path.with_suffix(path.suffix + ENCRYPTED_EXT)
+
+            # Try encrypted file first
+            if enc_path.exists():
+                logger.info(f"Loading encrypted config from {enc_path}")
+                config = decrypt_config(path)
+                if config is not None:
+                    return config
+                logger.warning(f"Failed to decrypt {enc_path}, trying plaintext")
+
+            # Fallback to plaintext and auto-migrate
             if path.exists():
-                logger.info(f"Loading configuration from {path}")
-                
+                logger.info(f"Loading plaintext config from {path}")
                 with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-                    
+                    config = json.load(f)
+                # Auto-migrate to encrypted
+                migrate_plaintext_to_encrypted(path)
+                return config
+
         except Exception as e:
             logger.warning(f"Error reading config file {path}: {e}")
-    
+
     logger.info("No configuration file found, using defaults")
     return None
 

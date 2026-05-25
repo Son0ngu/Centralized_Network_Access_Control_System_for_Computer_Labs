@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAINT - Admin & Teacher RBAC System Design</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.7;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1a1a2e 100%);
+            padding: 50px 40px;
+            text-align: center;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .header h1 {
+            font-size: 2.4rem;
+            color: #60a5fa;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .header .subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+        .header .meta {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        .toc {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 30px 40px;
+            border: 1px solid #334155;
+        }
+        .toc h2 {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+        .toc ol {
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #93c5fd;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .toc a:hover {
+            color: #bfdbfe;
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 40px 60px;
+        }
+        .diagram-section {
+            margin: 50px 0;
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .section-header {
+            background: linear-gradient(90deg, #1e3a5f, #1e293b);
+            padding: 20px 30px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section-number {
+            background: #3b82f6;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .section-header h2 {
+            color: #e2e8f0;
+            font-size: 1.4rem;
+        }
+        .section-body {
+            padding: 30px;
+        }
+        .diagram-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .diagram-box .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        .explanation {
+            margin: 25px 0;
+            padding: 20px 25px;
+            background: #0f172a;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 8px 8px 0;
+        }
+        .explanation h3 {
+            color: #60a5fa;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+        .explanation p, .explanation li {
+            color: #cbd5e1;
+            margin: 6px 0;
+        }
+        .explanation ul, .explanation ol {
+            padding-left: 20px;
+        }
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .role-card {
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 18px;
+            border: 1px solid #334155;
+            transition: border-color 0.3s;
+        }
+        .role-card:hover {
+            border-color: #3b82f6;
+        }
+        .role-card .role-name {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        .role-card .role-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .role-admin .role-name { color: #ef4444; }
+        .role-teacher .role-name { color: #22c55e; }
+        .role-agent .role-name { color: #a855f7; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+        th {
+            background: #0f172a;
+            color: #60a5fa;
+            padding: 12px 15px;
+            text-align: left;
+            border: 1px solid #334155;
+        }
+        td {
+            padding: 10px 15px;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+        }
+        tr:nth-child(even) td {
+            background: #0f172a;
+        }
+        .check { color: #22c55e; }
+        .cross { color: #ef4444; }
+        .partial { color: #f59e0b; }
+        code {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #93c5fd;
+        }
+        .code-block {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #c9d1d9;
+            border: 1px solid #334155;
+            line-height: 1.5;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cmt { color: #8b949e; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .cls { color: #79c0ff; }
+        .note-box {
+            background: #1a1a2e;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            color: #fcd34d;
+            font-size: 0.9rem;
+        }
+        .note-box strong {
+            color: #f59e0b;
+        }
+        .info-box {
+            background: #1a1a2e;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            color: #93c5fd;
+            font-size: 0.9rem;
+        }
+        .info-box strong {
+            color: #60a5fa;
+        }
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: #475569;
+            font-size: 0.85rem;
+            border-top: 1px solid #1e293b;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .comparison-card {
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .comparison-card h4 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .comparison-card.old h4 { color: #ef4444; }
+        .comparison-card.new h4 { color: #22c55e; }
+        .comparison-card ul {
+            padding-left: 18px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        .comparison-card li { margin: 4px 0; }
+        .file-tree {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #c9d1d9;
+            border: 1px solid #334155;
+            line-height: 1.6;
+        }
+        .file-tree .new { color: #3fb950; }
+        .file-tree .existing { color: #8b949e; }
+        .file-tree .modified { color: #d29922; }
+        @media (max-width: 768px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6rem; }
+            .container { padding: 10px 15px 40px; }
+            .section-body { padding: 15px; }
+        }
+        @media print {
+            body { background: white; color: #1e293b; }
+            .diagram-section { box-shadow: none; border: 1px solid #ccc; }
+            .section-header { background: #f1f5f9; }
+            .explanation { background: #f8fafc; }
+            .header { background: #f1f5f9; }
+            .header h1 { color: #1e3a5f; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>SAINT - Admin & Teacher RBAC System Design</h1>
+    <div class="subtitle">Security Agent Integrated Network Tool - Classroom-based Role Access Control</div>
+    <div class="meta">Sinh vien: Bui Xuan Son - MSSV: 20225586 - HUST/SOICT<br>Tai lieu thiet ke he thong phan quyen Admin/Teacher - Phien ban 2.0</div>
+</div>
+
+<div class="toc">
+    <h2>Muc luc Diagrams</h2>
+    <ol>
+        <li><a href="#d1">Use Case Diagram - Chuc nang theo vai tro Admin & Teacher</a></li>
+        <li><a href="#d2">ER Diagram - Thiet ke co so du lieu MongoDB (RBAC)</a></li>
+        <li><a href="#d3">Class Diagram - Kien truc Backend RBAC</a></li>
+        <li><a href="#d4">Sequence Diagram - Luong dang nhap Admin/Teacher</a></li>
+        <li><a href="#d5">Sequence Diagram - Luong kiem tra quyen (Authorization)</a></li>
+        <li><a href="#d6">Activity Diagram - Quy trinh xac thuc & phan quyen tong quat</a></li>
+        <li><a href="#d7">State Diagram - Vong doi phien dang nhap</a></li>
+        <li><a href="#d8">Component Diagram - Tich hop RBAC vao kien truc SAINT</a></li>
+        <li><a href="#d9">Deployment Diagram - Trien khai he thong</a></li>
+        <li><a href="#d10">Permission Matrix - Ma tran quyen chi tiet</a></li>
+        <li><a href="#d11">Cau truc thu muc - Files moi & thay doi</a></li>
+    </ol>
+</div>
+
+<div class="container">
+
+    <!-- ========== DIAGRAM 1: USE CASE ========== -->
+    <div class="diagram-section" id="d1">
+        <div class="section-header">
+            <div class="section-number">1</div>
+            <h2>Use Case Diagram - Chuc nang theo vai tro Admin & Teacher</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+graph TB
+    subgraph Actors
+        AD["Admin"]
+        TC["Teacher"]
+        AG["Agent - Device"]
+    end
+
+    subgraph UC_Auth["Xac thuc"]
+        UC_LOGIN["Dang nhap"]
+        UC_LOGOUT["Dang xuat"]
+        UC_CHANGEPW["Doi mat khau ca nhan"]
+    end
+
+    subgraph UC_UserMgmt["Quan ly tai khoan"]
+        UC_CREATE_TC["Tao tai khoan Teacher"]
+        UC_LIST_USERS["Xem danh sach tai khoan"]
+        UC_EDIT_USER["Sua/Khoa tai khoan"]
+        UC_DELETE_USER["Xoa tai khoan"]
+        UC_RESET_PW["Reset mat khau Teacher"]
+    end
+
+    subgraph UC_GroupMgmt["Quan ly Group - Lop hoc"]
+        UC_CREATE_GRP["Tao Group"]
+        UC_LIST_GRP["Xem danh sach Groups"]
+        UC_EDIT_GRP["Sua Group"]
+        UC_DELETE_GRP["Xoa Group"]
+        UC_VIEW_GRP["Xem chi tiet Group"]
+        UC_ASSIGN_AGENT["Them/Xoa Agent trong Group"]
+    end
+
+    subgraph UC_Whitelist["Quan ly Whitelist"]
+        UC_VIEW_WL["Xem Whitelist rules"]
+        UC_ADD_WL["Them Whitelist rule"]
+        UC_EDIT_WL["Sua Whitelist rule"]
+        UC_DEL_WL["Xoa Whitelist rule"]
+        UC_SYNC_WL["Dong bo rules toi Agents"]
+    end
+
+    subgraph UC_AgentMgmt["Quan ly Agent"]
+        UC_LIST_AGENT["Xem danh sach Agents"]
+        UC_VIEW_AGENT["Xem chi tiet Agent"]
+        UC_DEL_AGENT["Xoa Agent"]
+        UC_CMD_AGENT["Gui lenh toi Agent"]
+    end
+
+    subgraph UC_Monitoring["Giam sat"]
+        UC_DASH["Xem Dashboard"]
+        UC_LOGS["Xem Log he thong"]
+        UC_EXPORT["Xuat bao cao"]
+    end
+
+    subgraph UC_System["He thong"]
+        UC_APIKEYS["Quan ly API Keys"]
+        UC_AUDIT["Xem Audit Log"]
+        UC_CONFIG["Cau hinh he thong"]
+    end
+
+    subgraph UC_AgentOps["Agent Operations"]
+        UC_AG_REG["Dang ky voi Server"]
+        UC_AG_HB["Gui Heartbeat"]
+        UC_AG_LOG["Gui Log packets"]
+        UC_AG_WL["Nhan & ap dung Whitelist"]
+    end
+
+    %% Admin - TOAN QUYEN
+    AD --> UC_LOGIN & UC_LOGOUT & UC_CHANGEPW
+    AD --> UC_CREATE_TC & UC_LIST_USERS & UC_EDIT_USER & UC_DELETE_USER & UC_RESET_PW
+    AD --> UC_CREATE_GRP & UC_LIST_GRP & UC_EDIT_GRP & UC_DELETE_GRP & UC_VIEW_GRP & UC_ASSIGN_AGENT
+    AD --> UC_VIEW_WL & UC_ADD_WL & UC_EDIT_WL & UC_DEL_WL & UC_SYNC_WL
+    AD --> UC_LIST_AGENT & UC_VIEW_AGENT & UC_DEL_AGENT & UC_CMD_AGENT
+    AD --> UC_DASH & UC_LOGS & UC_EXPORT
+    AD --> UC_APIKEYS & UC_AUDIT & UC_CONFIG
+
+    %% Teacher - CHI QUAN LY GROUP CUA MINH
+    TC --> UC_LOGIN & UC_LOGOUT & UC_CHANGEPW
+    TC --> UC_CREATE_GRP & UC_VIEW_GRP & UC_EDIT_GRP & UC_DELETE_GRP & UC_ASSIGN_AGENT
+    TC --> UC_VIEW_WL & UC_ADD_WL & UC_EDIT_WL & UC_DEL_WL & UC_SYNC_WL
+    TC --> UC_LIST_AGENT & UC_VIEW_AGENT
+    TC --> UC_DASH & UC_LOGS
+
+    %% Agent
+    AG --> UC_AG_REG & UC_AG_HB & UC_AG_LOG & UC_AG_WL
+
+    style AD fill:#7f1d1d,stroke:#ef4444,color:#fecaca
+    style TC fill:#14532d,stroke:#22c55e,color:#dcfce7
+    style AG fill:#3b0764,stroke:#a855f7,color:#f3e8ff
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Use Case Diagram</h3>
+                <p>He thong SAINT su dung mo hinh <strong>RBAC 2 vai tro</strong> giong mo hinh quan ly phong hoc (Admin = Quan tri vien, Teacher = Giao vien). Moi actor co pham vi quyen rieng biet:</p>
+            </div>
+
+            <div class="role-grid">
+                <div class="role-card role-admin">
+                    <div class="role-name">Admin (Quan tri vien)</div>
+                    <div class="role-desc">
+                        <strong>Toan quyen he thong.</strong> Tao/xoa tai khoan Teacher, quan ly tat ca Groups, Agents, Whitelist, API Keys, xem Audit Log, cau hinh he thong. Chi co 1 tai khoan Admin, tao san khi deploy. Admin co the thao tac tren <strong>tat ca Groups</strong> cua moi Teacher.
+                    </div>
+                </div>
+                <div class="role-card role-teacher">
+                    <div class="role-name">Teacher (Giao vien)</div>
+                    <div class="role-desc">
+                        <strong>Quan ly Group cua chinh minh.</strong> Teacher co the tao Group (lop hoc), them/xoa Agents, quan ly Whitelist rules trong Group do. Teacher <strong>chi thay va thao tac</strong> tren cac Group ma minh tao ra. Co the doi mat khau ca nhan, xem Dashboard va Logs cua Group minh.
+                    </div>
+                </div>
+                <div class="role-card role-agent">
+                    <div class="role-name">Agent (Thiet bi)</div>
+                    <div class="role-desc">
+                        Chuong trinh chay tren may client (Windows). Dang ky voi Server, gui heartbeat, gui log, nhan whitelist. Xac thuc bang API Key + JWT. <strong>Khong thay doi</strong> so voi he thong hien tai.
+                    </div>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <strong>Nguyen tac thiet ke quan trong:</strong> Teacher chi co quyen CRUD tren cac Group (lop hoc) ma <strong>chinh minh tao ra</strong> (truong <code>created_by</code>). Teacher khong the thay hoac thao tac tren Group cua Teacher khac. Admin co the thay va quan ly tat ca Groups. Dieu nay dam bao <strong>data isolation</strong> giua cac Teacher.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 2: ER DIAGRAM ========== -->
+    <div class="diagram-section" id="d2">
+        <div class="section-header">
+            <div class="section-number">2</div>
+            <h2>ER Diagram - Thiet ke co so du lieu MongoDB (RBAC)</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+erDiagram
+    USERS {
+        ObjectId _id PK
+        string username UK "unique, lowercase"
+        string email UK "unique"
+        string password_hash "bcrypt"
+        string role "enum: admin, teacher"
+        boolean is_active "default: true"
+        datetime created_at
+        datetime updated_at
+        datetime last_login
+        string created_by "ObjectId ref USERS - null for admin"
+        int failed_login_attempts "default: 0"
+        datetime locked_until "nullable"
+    }
+
+    SESSIONS {
+        ObjectId _id PK
+        ObjectId user_id FK
+        string access_token_jti "unique JWT ID"
+        string refresh_token_jti "unique JWT ID"
+        string ip_address
+        string user_agent
+        datetime created_at
+        datetime expires_at
+        boolean is_revoked "default: false"
+    }
+
+    AUDIT_LOGS {
+        ObjectId _id PK
+        ObjectId user_id FK
+        string username
+        string role "admin or teacher"
+        string action "e.g. user.create, whitelist.update"
+        string resource_type "users, groups, whitelist, agents"
+        string resource_id
+        object details "change diff JSON"
+        string ip_address
+        datetime timestamp
+    }
+
+    AGENTS {
+        ObjectId _id PK
+        string agent_id UK
+        string device_id UK
+        string hostname
+        string ip_address
+        string os_info
+        string status "active, inactive, offline"
+        ObjectId group_id FK "nullable"
+        datetime registered_at
+        datetime last_heartbeat
+    }
+
+    GROUPS {
+        ObjectId _id PK
+        string name UK
+        string description
+        ObjectId created_by FK "ref USERS - owner"
+        boolean is_system "default false"
+        datetime created_at
+        datetime updated_at
+    }
+
+    WHITELIST_RULES {
+        ObjectId _id PK
+        string value "domain, ip, port, process"
+        string type "domain, ip, port, process"
+        string description
+        string scope "global or group"
+        ObjectId group_id FK "nullable"
+        ObjectId created_by FK "ref USERS"
+        boolean is_active "default: true"
+        datetime created_at
+        datetime updated_at
+    }
+
+    API_KEYS {
+        ObjectId _id PK
+        string key_hash UK
+        string key_prefix
+        string name
+        array permissions
+        ObjectId created_by FK "ref USERS"
+        boolean is_active "default: true"
+        datetime created_at
+        datetime expires_at
+    }
+
+    REVOKED_TOKENS {
+        ObjectId _id PK
+        string jti UK
+        string token_type "access or refresh"
+        string user_id "agent_id or user_id"
+        datetime revoked_at
+        datetime expires_at "TTL index"
+    }
+
+    USERS ||--o{ SESSIONS : "has sessions"
+    USERS ||--o{ AUDIT_LOGS : "generates"
+    USERS ||--o{ GROUPS : "creates/owns"
+    USERS ||--o{ API_KEYS : "creates"
+    USERS ||--o{ WHITELIST_RULES : "creates"
+    GROUPS ||--o{ AGENTS : "contains"
+    GROUPS ||--o{ WHITELIST_RULES : "applies_to"
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich ER Diagram</h3>
+                <p>He thong su dung <strong>MongoDB</strong> (document-based). Cac collection duoc thiet ke voi quan he ro rang:</p>
+                <ul>
+                    <li><strong>USERS (MOI)</strong> - Collection trung tam cho RBAC. Luu tai khoan Admin va Teacher. Truong <code>role</code> la enum string (<code>admin</code> hoac <code>teacher</code>). Co che chong brute-force qua <code>failed_login_attempts</code> + <code>locked_until</code>. Truong <code>created_by</code> lien ket toi User da tao (Admin tao Teacher).</li>
+                    <li><strong>SESSIONS (MOI)</strong> - Moi lan dang nhap Admin/Teacher tao session. Luu JTI cua access_token va refresh_token de ho tro thu hoi (revoke). TTL index tu xoa session het han.</li>
+                    <li><strong>AUDIT_LOGS (MOI)</strong> - Ghi lai moi hanh dong thay doi du lieu. Truong <code>details</code> luu JSON diff (before/after). Ghi nhan ca <code>role</code> cua nguoi thuc hien de audit.</li>
+                    <li><strong>GROUPS (SUA)</strong> - Them truong <code>created_by</code> de xac dinh Teacher nao so huu Group. Day la truong <strong>quan trong nhat</strong> cho viec phan quyen - Teacher chi thay Groups co <code>created_by</code> = <code>user_id</code> cua minh.</li>
+                    <li><strong>WHITELIST_RULES (GIU NGUYEN)</strong> - Them <code>created_by</code> de tracking. Teacher chi quan ly rules trong Group cua minh.</li>
+                    <li><strong>AGENTS, API_KEYS, REVOKED_TOKENS (GIU NGUYEN)</strong> - Khong thay doi logic hien tai. Chi them <code>created_by</code> cho API_KEYS.</li>
+                </ul>
+            </div>
+
+            <div class="note-box">
+                <strong>MongoDB Optimization:</strong> Index compound tren <code>{username: 1}</code>, <code>{email: 1}</code>, <code>{role: 1, is_active: 1}</code> cho USERS. Index <code>{created_by: 1}</code> tren GROUPS de query nhanh "tat ca Groups cua Teacher X". TTL index tren SESSIONS <code>{expires_at: 1}</code> va REVOKED_TOKENS <code>{expires_at: 1}</code>.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 3: CLASS DIAGRAM ========== -->
+    <div class="diagram-section" id="d3">
+        <div class="section-header">
+            <div class="section-number">3</div>
+            <h2>Class Diagram - Kien truc Backend RBAC</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+classDiagram
+    class UserModel {
+        -ObjectId _id
+        -String username
+        -String email
+        -String password_hash
+        -String role
+        -Boolean is_active
+        -DateTime last_login
+        -Int failed_login_attempts
+        +create(data) UserDocument
+        +find_by_username(username) UserDocument
+        +find_by_email(email) UserDocument
+        +find_by_id(user_id) UserDocument
+        +get_all_users(filters) List
+        +update(user_id, data) Boolean
+        +delete(user_id) Boolean
+        +update_last_login(user_id)
+        +increment_failed_attempts(user_id)
+        +reset_failed_attempts(user_id)
+        +lock_account(user_id, duration)
+        +is_locked(user) Boolean
+    }
+
+    class AdminAuthService {
+        -UserModel user_model
+        -JWTService jwt_service
+        -SessionModel session_model
+        -AuditService audit_service
+        +login(username, password, ip) TokenPair
+        +logout(access_token_jti)
+        +refresh_token(refresh_token) TokenPair
+        +change_password(user_id, old_pw, new_pw)
+        -_hash_password(password) String
+        -_verify_password(password, hash) Boolean
+        -_check_account_locked(user) Boolean
+        -_create_session(user, tokens, ip) Session
+    }
+
+    class RBACService {
+        -Dict role_permissions
+        -Dict role_hierarchy
+        +check_permission(user_role, permission) Boolean
+        +get_permissions(role) List~String~
+        +is_admin(role) Boolean
+        +is_owner(user_id, resource) Boolean
+        +can_access_group(user, group) Boolean
+        +filter_groups_for_user(user, groups) List
+    }
+
+    class RBACMiddleware {
+        -RBACService rbac_service
+        -JWTService jwt_service
+        +require_login() Decorator
+        +require_admin() Decorator
+        +require_permission(permission) Decorator
+        +inject_current_user() Decorator
+        -_extract_token_from_cookie(request) String
+        -_get_user_from_token(token) UserPayload
+    }
+
+    class AdminAuthController {
+        -AdminAuthService auth_service
+        +POST /admin/auth/login(credentials) TokenPair
+        +POST /admin/auth/logout()
+        +POST /admin/auth/refresh() TokenPair
+        +GET /admin/auth/me() UserProfile
+        +PUT /admin/auth/change-password()
+    }
+
+    class UserManagementController {
+        -UserModel user_model
+        -AdminAuthService auth_service
+        -AuditService audit_service
+        +GET /admin/users() List~User~
+        +POST /admin/users(data) User
+        +PUT /admin/users/:id(data) User
+        +DELETE /admin/users/:id()
+        +PUT /admin/users/:id/toggle-active()
+        +PUT /admin/users/:id/reset-password()
+    }
+
+    class AuditService {
+        -AuditLogModel audit_model
+        +log_action(user, action, resource, details, ip)
+        +get_logs(filters, page, limit) PaginatedLogs
+        +get_user_activity(user_id) List~AuditLog~
+    }
+
+    class SessionModel {
+        -ObjectId _id
+        -ObjectId user_id
+        -String access_token_jti
+        -String refresh_token_jti
+        -DateTime expires_at
+        -Boolean is_revoked
+        +create(data) Session
+        +find_by_jti(jti) Session
+        +revoke(jti)
+        +revoke_all_user(user_id)
+        +cleanup_expired()
+    }
+
+    class JWTService {
+        -String access_secret
+        -String refresh_secret
+        +generate_tokens(payload) TokenPair
+        +validate_access_token(token) Payload
+        +refresh_access_token(refresh_token) TokenPair
+        +revoke_token(jti)
+    }
+
+    class DashboardController {
+        -RBACMiddleware rbac
+        +GET /login() HTML login_page
+        +GET /() HTML dashboard
+        +GET /agents() HTML agents_page
+        +GET /groups() HTML groups_page
+        +GET /whitelist() HTML whitelist_page
+        +GET /logs() HTML logs_page
+        +GET /api-keys() HTML api_keys_page
+        +GET /admin/users() HTML users_page
+        +GET /admin/audit() HTML audit_page
+    }
+
+    AdminAuthService --> JWTService : uses
+    AdminAuthService --> UserModel : queries
+    AdminAuthService --> SessionModel : manages
+    AdminAuthService --> AuditService : logs actions
+    RBACMiddleware --> RBACService : checks permissions
+    RBACMiddleware --> JWTService : decodes tokens
+    AdminAuthController --> AdminAuthService : authenticates
+    AdminAuthController --> RBACMiddleware : protects routes
+    UserManagementController --> RBACMiddleware : admin only
+    UserManagementController --> AuditService : logs changes
+    DashboardController --> RBACMiddleware : protects pages
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Class Diagram</h3>
+                <p>Thiet ke theo kien truc <strong>MVC + Service Layer</strong>, tuong thich hoan toan voi cau truc Flask hien tai cua SAINT:</p>
+                <ul>
+                    <li><strong>UserModel (MOI)</strong> - MongoDB operations cho collection <code>users</code>. Tuong tu cac model hien co (AgentModel, GroupModel...). Cac method: CRUD, lock account, failed attempts tracking.</li>
+                    <li><strong>AdminAuthService (MOI)</strong> - Xu ly toan bo logic dang nhap Admin/Teacher. <strong>Tach biet hoan toan</strong> voi auth Agent hien tai (<code>auth_controller.py</code>). Password hash bang bcrypt, brute-force protection, session management.</li>
+                    <li><strong>RBACService (MOI)</strong> - Logic phan quyen thuan tuy. Method quan trong nhat: <code>can_access_group(user, group)</code> - kiem tra Teacher co phai owner cua Group khong. Admin luon tra ve <code>true</code>.</li>
+                    <li><strong>RBACMiddleware (MOI)</strong> - Tich hop voi Flask decorator pattern. <code>@require_login()</code> kiem tra cookie JWT. <code>@require_admin()</code> chi cho Admin. Hoat dong <strong>song song</strong> voi middleware <code>auth.py</code> hien tai (cho Agent API).</li>
+                    <li><strong>AdminAuthController (MOI)</strong> - Blueprint moi, prefix <code>/admin/auth/*</code>. Khong xung dot voi routes hien tai (<code>/api/auth/*</code> cho agents).</li>
+                    <li><strong>UserManagementController (MOI)</strong> - Chi Admin truy cap. CRUD tai khoan Teacher.</li>
+                    <li><strong>DashboardController (SUA)</strong> - Them <code>@require_login()</code> vao cac route dashboard hien tai + tao route <code>/login</code> moi. Teacher thay Dashboard gioi han theo Groups cua minh.</li>
+                    <li><strong>JWTService (TAI SU DUNG)</strong> - Service JWT hien tai duoc dung chung. Them payload fields <code>user_id</code>, <code>role</code>, <code>username</code> cho admin tokens.</li>
+                    <li><strong>AuditService (MOI)</strong> - Ghi log moi hanh dong thay doi. Format: <code>user.create</code>, <code>group.update</code>, <code>whitelist.delete</code>...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 4: SEQUENCE - LOGIN ========== -->
+    <div class="diagram-section" id="d4">
+        <div class="section-header">
+            <div class="section-number">4</div>
+            <h2>Sequence Diagram - Luong dang nhap Admin/Teacher</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+sequenceDiagram
+    actor User as Admin/Teacher
+    participant LP as Login Page
+    participant AC as AdminAuthController
+    participant AS as AdminAuthService
+    participant UM as UserModel
+    participant JWT as JWTService
+    participant SM as SessionModel
+    participant AL as AuditService
+    participant DB as MongoDB
+
+    User->>LP: Truy cap /login
+    LP-->>User: Hien thi form dang nhap
+
+    User->>LP: Nhap username + password
+    LP->>AC: POST /admin/auth/login
+
+    AC->>AS: login(username, password, ip)
+
+    AS->>UM: find_by_username(username)
+    UM->>DB: db.users.findOne({username})
+    DB-->>UM: user document
+    UM-->>AS: user object
+
+    alt User khong ton tai
+        AS-->>AC: AuthError - Invalid credentials
+        AC-->>LP: 401 Invalid credentials
+        LP-->>User: Sai thong tin dang nhap
+    end
+
+    AS->>AS: check_account_locked(user)
+    alt Tai khoan bi khoa
+        AS-->>AC: AuthError - Account locked
+        AC-->>LP: 423 Account locked
+        LP-->>User: Tai khoan bi khoa tam thoi
+    end
+
+    AS->>AS: verify_password(password, hash)
+    alt Sai mat khau
+        AS->>UM: increment_failed_attempts(user_id)
+        UM->>DB: updateOne failed_login_attempts +1
+        Note over AS,DB: Neu attempts >= 5 thi lock 15 phut
+        AS->>AL: log_action - auth.failed
+        AS-->>AC: AuthError - Invalid credentials
+        AC-->>LP: 401 Invalid credentials
+        LP-->>User: Sai thong tin dang nhap
+    end
+
+    Note over AS: Xac thuc thanh cong
+    AS->>UM: reset_failed_attempts(user_id)
+    AS->>UM: update_last_login(user_id)
+
+    AS->>JWT: generate_tokens({user_id, role, username})
+    JWT-->>AS: access_token 24h + refresh_token 7d
+
+    AS->>SM: create_session(user_id, tokens, ip)
+    SM->>DB: db.admin_sessions.insertOne(...)
+
+    AS->>AL: log_action - auth.login
+    AL->>DB: db.audit_logs.insertOne(...)
+
+    AS-->>AC: {access_token, refresh_token, user}
+    AC-->>LP: 200 Set-Cookie httpOnly
+
+    LP->>LP: Luu token vao httpOnly cookie
+    LP-->>User: Redirect toi Dashboard
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Luong Dang Nhap</h3>
+                <ul>
+                    <li><strong>Buoc 1-2:</strong> User (Admin hoac Teacher) truy cap <code>/login</code>, server render trang login bang Jinja2.</li>
+                    <li><strong>Buoc 3-5:</strong> Form submit POST toi <code>/admin/auth/login</code>. AdminAuthService tim user trong MongoDB.</li>
+                    <li><strong>Buoc 6:</strong> Kiem tra account lock - neu da sai mat khau 5 lan lien tiep, tai khoan bi khoa 15 phut (chong brute-force).</li>
+                    <li><strong>Buoc 7:</strong> So sanh password bang <strong>bcrypt</strong> (constant-time comparison, chong timing attack).</li>
+                    <li><strong>Buoc 8-9:</strong> Tao cap JWT tokens. Access token chua <code>{user_id, role, username}</code> dung cho authorization. Refresh token chi chua <code>{user_id}</code>.</li>
+                    <li><strong>Buoc 10:</strong> Tao session record trong DB de ho tro: xem sessions dang active, revoke tu xa, audit trail.</li>
+                    <li><strong>Buoc 11:</strong> Ghi audit log. Moi lan dang nhap thanh cong/that bai deu duoc ghi lai.</li>
+                    <li><strong>Buoc 12:</strong> Token duoc luu trong <strong>httpOnly cookie</strong> (khong phai localStorage) - chong XSS attack. Sau do redirect toi Dashboard.</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <strong>Luu y:</strong> Luong dang nhap nay <strong>hoan toan tach biet</strong> voi luong auth cua Agent (<code>/api/auth/*</code>). Agent van su dung API Key + JWT nhu hien tai. Admin/Teacher dung cookie-based JWT moi.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 5: SEQUENCE - AUTHORIZATION ========== -->
+    <div class="diagram-section" id="d5">
+        <div class="section-header">
+            <div class="section-number">5</div>
+            <h2>Sequence Diagram - Luong kiem tra quyen (Authorization)</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+sequenceDiagram
+    actor User as Teacher
+    participant Browser as Browser
+    participant Flask as Flask Route
+    participant MW as RBACMiddleware
+    participant JWT as JWTService
+    participant RBAC as RBACService
+    participant Ctrl as Controller Logic
+    participant DB as MongoDB
+
+    User->>Browser: Click Them Whitelist Rule cho Group A
+    Browser->>Flask: POST /api/whitelist {rule_data, group_id}
+    Note over Browser,Flask: Cookie: access_token=eyJhbG...
+
+    Flask->>MW: @require_login + @require_permission whitelist:create
+
+    MW->>MW: Extract token from httpOnly cookie
+    alt Khong co token
+        MW-->>Browser: 401 Redirect toi /login
+    end
+
+    MW->>JWT: decode_token(access_token)
+    alt Token het han
+        MW-->>Browser: 401 Token expired
+        Browser->>Flask: POST /admin/auth/refresh
+        Flask->>JWT: refresh toi new access_token
+        JWT-->>Flask: new_access_token
+        Flask-->>Browser: Set-Cookie new access_token
+        Browser->>Flask: Retry original request
+    end
+    JWT-->>MW: payload = {user_id, role: teacher, username}
+
+    MW->>RBAC: check_permission(teacher, whitelist:create)
+    RBAC-->>MW: true - Teacher co quyen tao whitelist
+
+    MW->>MW: Inject g.current_user = payload
+    MW->>Ctrl: Proceed to controller logic
+
+    Ctrl->>DB: db.groups.findOne({_id: group_id})
+    DB-->>Ctrl: group document
+
+    Ctrl->>RBAC: can_access_group(user, group)
+    Note over RBAC: Kiem tra group.created_by == user.user_id
+
+    alt Teacher KHONG so huu Group nay
+        RBAC-->>Ctrl: false
+        Ctrl-->>Browser: 403 Khong co quyen tren Group nay
+        Browser-->>User: Khong co quyen thuc hien
+    end
+
+    RBAC-->>Ctrl: true - Teacher so huu Group nay
+
+    Ctrl->>DB: db.whitelist.insertOne({...rule, created_by: user_id, group_id})
+    DB-->>Ctrl: Created
+    Ctrl-->>Browser: 201 Rule da duoc them
+    Browser-->>User: Rule da duoc them thanh cong
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Luong Authorization</h3>
+                <p>Moi request toi protected route deu di qua <strong>3 lop kiem tra</strong>:</p>
+                <ol>
+                    <li><strong>Authentication (Lop 1)</strong> - Co token hop le khong? Token co bi revoke khong? Neu het han, tu dong refresh.</li>
+                    <li><strong>Permission Check (Lop 2)</strong> - User co quyen <code>whitelist:create</code> khong? RBACService kiem tra role &rarr; permissions mapping.</li>
+                    <li><strong>Ownership Check (Lop 3 - DAC BIET CHO TEACHER)</strong> - Teacher co phai owner cua Group nay khong? Kiem tra <code>group.created_by == user.user_id</code>. Admin bo qua buoc nay (toan quyen).</li>
+                </ol>
+                <p><strong>Day la diem khac biet quan trong nhat:</strong> Teacher co quyen <code>whitelist:create</code> (tao rule), nhung chi duoc tao rule trong Group cua chinh minh. Admin co the tao rule trong bat ky Group nao.</p>
+            </div>
+
+            <div class="note-box">
+                <strong>3 lop bao ve:</strong> Authentication &rarr; Permission &rarr; Ownership. Request phai pass ca 3 lop moi duoc xu ly. Day la co che <strong>RBAC + Resource Ownership</strong>, dam bao Teacher chi thao tac tren du lieu cua minh.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 6: ACTIVITY DIAGRAM ========== -->
+    <div class="diagram-section" id="d6">
+        <div class="section-header">
+            <div class="section-number">6</div>
+            <h2>Activity Diagram - Quy trinh xac thuc & phan quyen tong quat</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+flowchart TD
+    A(["HTTP Request den"]) --> B{Route co yeu cau<br/>xac thuc khong?}
+
+    B -->|Khong - Public route| C["/login, /health, /static"]
+    C --> D(["Tra ve response"])
+
+    B -->|Co - Protected route| E{La Agent API hay<br/>Admin/Teacher Web?}
+
+    E -->|Agent API<br/>/api/*| F{Co API Key<br/>hoac JWT?}
+    F -->|Khong| G(["401 Unauthorized"])
+    F -->|Co API Key| H["Verify API Key<br/>(co che hien tai)"]
+    F -->|Co JWT| I["Verify Agent JWT<br/>(co che hien tai)"]
+    H --> J{Hop le?}
+    I --> J
+    J -->|Khong| G
+    J -->|Co| K(["Xu ly Agent request"])
+
+    E -->|Admin/Teacher Web<br/>Dashboard routes| L{Co access_token<br/>trong cookie?}
+    L -->|Khong| M{Co refresh_token?}
+    M -->|Khong| N(["Redirect toi /login"])
+    M -->|Co| O["Dung refresh_token<br/>tao access_token moi"]
+    O --> P{Refresh thanh cong?}
+    P -->|Khong| N
+    P -->|Co| Q["Set new cookie"]
+
+    L -->|Co| R["Decode JWT<br/>access_token"]
+    Q --> R
+
+    R --> S{Token hop le?}
+    S -->|Khong| M
+    S -->|Co| T{User is_active?}
+    T -->|Khong| U(["403 Account disabled"])
+    T -->|Co| V["Extract: user_id,<br/>role, username"]
+
+    V --> W{Route yeu cau<br/>quyen cu the?}
+
+    W -->|Khong - Chi can login| X(["Cho phep truy cap"])
+    W -->|Co| Y["RBACService.check_permission<br/>(user.role, required_permission)"]
+
+    Y --> Z{Co quyen?}
+    Z -->|Khong| AA(["403 Insufficient permissions"])
+    Z -->|Co| AB{Thao tac tren<br/>resource cu the?}
+
+    AB -->|Khong| AC(["Xu ly request"])
+    AB -->|Co - VD: Group| AD{User la Admin?}
+
+    AD -->|Co - Admin| AE(["Xu ly request<br/>- toan quyen"])
+    AD -->|Khong - Teacher| AF["Kiem tra Ownership<br/>group.created_by == user_id"]
+    AF --> AG{La owner?}
+    AG -->|Khong| AH(["403 Khong co quyen<br/>tren resource nay"])
+    AG -->|Co| AI(["Xu ly request<br/>+ Ghi Audit Log"])
+
+    style A fill:#1e40af,stroke:#3b82f6,color:white
+    style D fill:#166534,stroke:#22c55e,color:white
+    style G fill:#991b1b,stroke:#ef4444,color:white
+    style K fill:#166534,stroke:#22c55e,color:white
+    style N fill:#92400e,stroke:#f59e0b,color:white
+    style U fill:#991b1b,stroke:#ef4444,color:white
+    style X fill:#166534,stroke:#22c55e,color:white
+    style AA fill:#991b1b,stroke:#ef4444,color:white
+    style AC fill:#166534,stroke:#22c55e,color:white
+    style AE fill:#166534,stroke:#22c55e,color:white
+    style AH fill:#991b1b,stroke:#ef4444,color:white
+    style AI fill:#166534,stroke:#22c55e,color:white
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Activity Diagram</h3>
+                <p>Day la <strong>luong tong quat</strong> cua moi HTTP request trong he thong SAINT sau khi tich hop RBAC. Diem quan trong:</p>
+                <ul>
+                    <li><strong>Tach biet 2 luong auth:</strong> Agent API (<code>/api/*</code>) van dung API Key + JWT hien tai - khong thay doi gi. Admin/Teacher Web (dashboard routes) dung cookie-based JWT moi.</li>
+                    <li><strong>Auto-refresh token:</strong> Khi access token het han, he thong tu dong thu refresh bang refresh token. User khong can dang nhap lai trong 7 ngay.</li>
+                    <li><strong>3 lop bao ve cho Teacher:</strong> Authentication &rarr; Permission Check &rarr; <strong>Ownership Check</strong>. Buoc Ownership la diem dac biet: Teacher phai la owner cua resource (Group) moi duoc thao tac.</li>
+                    <li><strong>Admin bypass Ownership:</strong> Admin luon pass buoc Ownership check - co quyen thao tac tren moi resource.</li>
+                    <li><strong>Audit logging:</strong> Moi request thanh cong den protected route deu ghi audit log (ai, lam gi, luc nao, tu IP nao).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 7: STATE DIAGRAM ========== -->
+    <div class="diagram-section" id="d7">
+        <div class="section-header">
+            <div class="section-number">7</div>
+            <h2>State Diagram - Vong doi phien dang nhap</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> Unauthenticated: User truy cap he thong
+
+    Unauthenticated --> Authenticating: Submit login form
+    Authenticating --> LoginFailed: Sai credentials
+    LoginFailed --> AccountLocked: failed_attempts >= 5
+    LoginFailed --> Unauthenticated: Thu lai
+
+    AccountLocked --> Unauthenticated: Het thoi gian lock 15 phut
+
+    Authenticating --> Authenticated: Login thanh cong
+
+    state Authenticated {
+        [*] --> ActiveSession
+        ActiveSession --> TokenExpired: Access token het han 24h
+        TokenExpired --> ActiveSession: Auto-refresh thanh cong
+        TokenExpired --> SessionExpired: Refresh token het han 7d
+        ActiveSession --> ActiveSession: Moi request gia han activity
+    }
+
+    Authenticated --> Unauthenticated: User click Logout
+    Authenticated --> Unauthenticated: Admin revoke session
+    Authenticated --> Unauthenticated: Account bi deactivate
+    Authenticated --> SessionExpired: Refresh token het han
+
+    SessionExpired --> Unauthenticated: Redirect toi /login
+
+    state AccountLocked {
+        [*] --> Locked
+        Locked --> [*]: Timer 15 phut
+    }
+
+    note right of Authenticated
+        Access Token: 24 gio
+        Refresh Token: 7 ngay
+        Cookie: httpOnly, Secure, SameSite=Lax
+    end note
+
+    note left of AccountLocked
+        Lock sau 5 lan sai
+        Thoi gian lock: 15 phut
+        Reset counter khi login thanh cong
+    end note
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich State Diagram</h3>
+                <ul>
+                    <li><strong>Unauthenticated:</strong> Trang thai mac dinh. Moi request toi protected route deu redirect ve <code>/login</code>.</li>
+                    <li><strong>Authenticating:</strong> Trang thai chuyen tiep khi user submit form. Server xac minh credentials.</li>
+                    <li><strong>Authenticated &rarr; ActiveSession:</strong> User dang online, access token con han. Moi request deu kiem tra token validity.</li>
+                    <li><strong>TokenExpired:</strong> Access token het han (24h). Browser tu gui refresh token de lay access token moi - transparent cho user.</li>
+                    <li><strong>SessionExpired:</strong> Ca refresh token cung het han (7 ngay). User phai dang nhap lai.</li>
+                    <li><strong>AccountLocked:</strong> Sau 5 lan dang nhap sai lien tiep &rarr; khoa 15 phut. Bao ve chong brute-force attack.</li>
+                    <li><strong>Force logout:</strong> Co 3 cach ket thuc session som: user tu logout, Admin revoke tu xa, hoac tai khoan bi deactivate boi Admin.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 8: COMPONENT DIAGRAM ========== -->
+    <div class="diagram-section" id="d8">
+        <div class="section-header">
+            <div class="section-number">8</div>
+            <h2>Component Diagram - Tich hop RBAC vao kien truc SAINT</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+graph TB
+    subgraph Client["Client Layer"]
+        subgraph AdminUI["Admin/Teacher Web UI - Jinja2"]
+            LOGIN["Login Page<br/>/login"]
+            DASH["Dashboard<br/>@require_login"]
+            AGENT_UI["Agents Page<br/>@require_login"]
+            GRP_UI["Groups Page<br/>@require_login + ownership"]
+            GRP_DT["Group Detail<br/>@require_login + ownership"]
+            WL_UI["Whitelist Page<br/>@require_login + ownership"]
+            LOG_UI["Logs Page<br/>@require_login"]
+            APIKEY_UI["API Keys<br/>@require_admin"]
+            USER_UI["User Management<br/>@require_admin"]
+            AUDIT_UI["Audit Logs<br/>@require_admin"]
+        end
+
+        subgraph AgentApp["Windows Agent"]
+            AG_REG["Registration Module"]
+            AG_HB["Heartbeat Sender"]
+            AG_LOG["Log Sender"]
+            AG_CAP["Packet Capture"]
+        end
+    end
+
+    subgraph Server["Flask Server"]
+        subgraph Middleware["Middleware Layer"]
+            CORS["CORS Handler"]
+            AUTH_MW["Auth Middleware<br/>Existing - Agent API"]
+            RBAC_MW["RBAC Middleware<br/>NEW - Admin/Teacher"]
+        end
+
+        subgraph Controllers["Controller Layer - Blueprints"]
+            subgraph ExistingCtrl["Existing Controllers - KHONG DOI"]
+                AGENT_C["AgentController<br/>/api/agents/*"]
+                WL_C["WhitelistController<br/>/api/whitelist/*"]
+                LOG_C["LogController<br/>/api/logs/*"]
+                GROUP_C["GroupController<br/>/api/groups/*"]
+                APIKEY_C["APIKeyController<br/>/api/api-keys/*"]
+                AUTH_C["AuthController<br/>/api/auth/*"]
+            end
+            subgraph NewCtrl["NEW Controllers"]
+                ADMIN_AUTH_C["AdminAuthController<br/>/admin/auth/*"]
+                USER_C["UserMgmtController<br/>/admin/users/*"]
+                AUDIT_C["AuditController<br/>/admin/audit/*"]
+            end
+        end
+
+        subgraph Services["Service Layer"]
+            subgraph ExistingSvc["Existing Services - KHONG DOI"]
+                JWT_S["JWTService"]
+                WL_S["WhitelistService"]
+                APIKEY_S["APIKeyService"]
+                AGENT_S["AgentService"]
+                LOG_S["LogService"]
+                GROUP_S["GroupService"]
+            end
+            subgraph NewSvc["NEW Services"]
+                ADMIN_AUTH_S["AdminAuthService"]
+                RBAC_S["RBACService"]
+                USER_S["UserService"]
+                AUDIT_S["AuditService"]
+            end
+        end
+    end
+
+    subgraph Database["MongoDB Atlas"]
+        subgraph ExistingDB["Existing Collections - KHONG DOI"]
+            DB_AGENTS[(agents)]
+            DB_GROUPS[(groups)]
+            DB_WL[(whitelist)]
+            DB_LOGS[(logs)]
+            DB_APIKEYS[(api_keys)]
+            DB_TOKENS[(revoked_tokens)]
+        end
+        subgraph NewDB["NEW Collections"]
+            DB_USERS[(users)]
+            DB_SESSIONS[(admin_sessions)]
+            DB_AUDIT[(audit_logs)]
+        end
+    end
+
+    LOGIN --> ADMIN_AUTH_C
+    DASH --> RBAC_MW
+    USER_UI --> USER_C
+    AUDIT_UI --> AUDIT_C
+
+    AG_REG --> AUTH_MW --> AGENT_C
+    AG_HB --> AUTH_MW
+    AG_LOG --> AUTH_MW --> LOG_C
+
+    ADMIN_AUTH_C --> ADMIN_AUTH_S --> JWT_S
+    USER_C --> USER_S
+    AUDIT_C --> AUDIT_S
+    RBAC_MW --> RBAC_S
+
+    ADMIN_AUTH_S --> DB_USERS
+    ADMIN_AUTH_S --> DB_SESSIONS
+    AUDIT_S --> DB_AUDIT
+    USER_S --> DB_USERS
+
+    style NewCtrl fill:#1e3a5f,stroke:#3b82f6
+    style NewSvc fill:#1e3a5f,stroke:#3b82f6
+    style NewDB fill:#1e3a5f,stroke:#3b82f6
+    style ExistingCtrl fill:#14532d,stroke:#22c55e
+    style ExistingSvc fill:#14532d,stroke:#22c55e
+    style ExistingDB fill:#14532d,stroke:#22c55e
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Component Diagram</h3>
+                <p>Diagram nay cho thay RBAC duoc <strong>them vao (additive)</strong> chu khong thay the kien truc hien tai:</p>
+                <ul>
+                    <li><strong>Mau xanh la (Existing):</strong> 6 Controllers, 6 Services, 6 Collections hien tai - <strong>HOAN TOAN KHONG THAY DOI</strong>. Agent auth, API controllers, services deu giu nguyen.</li>
+                    <li><strong>Mau xanh duong (NEW):</strong> 3 Controllers moi (AdminAuthController, UserMgmtController, AuditController), 4 Services moi (AdminAuthService, RBACService, UserService, AuditService), va 3 Collections moi (users, admin_sessions, audit_logs).</li>
+                    <li><strong>2 middleware song song:</strong> <code>AUTH_MW</code> (cu) xu ly Agent API Key + JWT. <code>RBAC_MW</code> (moi) xu ly Admin/Teacher cookie-based JWT + permission check + ownership check.</li>
+                    <li><strong>Reuse JWTService:</strong> Service JWT hien tai duoc dung chung cho ca agent va admin tokens (chi khac payload).</li>
+                    <li><strong>Groups collection:</strong> Them truong <code>created_by</code> - thay doi nho nhung <strong>then chot</strong> cho ownership-based access control.</li>
+                </ul>
+            </div>
+
+            <div class="note-box">
+                <strong>Quan trong - Zero Breaking Changes:</strong> Tat ca Agent API hien tai (<code>/api/*</code>) hoat dong binh thuong. RBAC chi them routes moi (<code>/admin/*</code>, <code>/login</code>) va them decorator vao dashboard routes hien co. Khong xoa, khong sua bat ky API endpoint nao cua Agent.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 9: DEPLOYMENT DIAGRAM ========== -->
+    <div class="diagram-section" id="d9">
+        <div class="section-header">
+            <div class="section-number">9</div>
+            <h2>Deployment Diagram - Trien khai he thong</h2>
+        </div>
+        <div class="section-body">
+            <div class="diagram-box">
+                <div class="mermaid">
+graph TB
+    subgraph Internet["Internet"]
+        subgraph Render["Render.com - PaaS"]
+            subgraph WebService["Web Service - Flask"]
+                APP["Flask App<br/>+ Socket.IO<br/>+ RBAC Middleware<br/>+ AdminAuth"]
+                EVT["Eventlet Worker"]
+            end
+        end
+
+        subgraph MongoDB["MongoDB Atlas"]
+            subgraph Cluster["Free Tier M0"]
+                RS1[(Primary)]
+                RS2[(Secondary)]
+                RS3[(Secondary)]
+            end
+            subgraph Collections["Collections"]
+                C1["agents, groups, whitelist<br/>logs, api_keys, revoked_tokens"]
+                C2["users, admin_sessions<br/>audit_logs"]
+            end
+        end
+    end
+
+    subgraph Classroom["Phong hoc / Mang noi bo"]
+        subgraph PC1["PC 1 - Windows"]
+            AGENT1["SAINT Agent<br/>Scapy + Firewall"]
+        end
+        subgraph PC2["PC 2 - Windows"]
+            AGENT2["SAINT Agent<br/>Scapy + Firewall"]
+        end
+        subgraph PCn["PC n - Windows"]
+            AGENTn["SAINT Agent<br/>Scapy + Firewall"]
+        end
+    end
+
+    subgraph AdminArea["Admin / Teacher"]
+        subgraph AdminPC["Admin PC"]
+            ADMIN_BR["Admin Browser<br/>Toan quyen"]
+        end
+        subgraph TeacherPC["Teacher PC"]
+            TEACHER_BR["Teacher Browser<br/>Chi Group cua minh"]
+        end
+    end
+
+    AGENT1 -- "HTTPS<br/>API Key + JWT" --> APP
+    AGENT2 -- "HTTPS<br/>API Key + JWT" --> APP
+    AGENTn -- "HTTPS<br/>API Key + JWT" --> APP
+    ADMIN_BR -- "HTTPS<br/>Cookie JWT<br/>Admin UI" --> APP
+    TEACHER_BR -- "HTTPS<br/>Cookie JWT<br/>Teacher UI" --> APP
+
+    APP -- "WebSocket<br/>Socket.IO" --> ADMIN_BR
+    APP -- "WebSocket<br/>Socket.IO" --> TEACHER_BR
+    APP -- "MongoDB Wire<br/>Protocol" --> RS1
+    RS1 -.- RS2
+    RS1 -.- RS3
+
+    style C2 fill:#1e3a5f,stroke:#3b82f6,color:#93c5fd
+    style ADMIN_BR fill:#7f1d1d,stroke:#ef4444,color:#fecaca
+    style TEACHER_BR fill:#14532d,stroke:#22c55e,color:#dcfce7
+                </div>
+            </div>
+
+            <div class="explanation">
+                <h3>Giai thich Deployment Diagram</h3>
+                <ul>
+                    <li><strong>Render.com:</strong> Flask app chay tren 1 web service duy nhat voi Eventlet async worker. RBAC middleware chay in-process, khong can service rieng.</li>
+                    <li><strong>MongoDB Atlas M0:</strong> 3 replica set (auto-managed). Them 3 collections moi (users, admin_sessions, audit_logs) khong anh huong storage limit.</li>
+                    <li><strong>Agent &rarr; Server:</strong> Giao tiep qua HTTPS, auth bang API Key + JWT (khong doi).</li>
+                    <li><strong>Admin &rarr; Server:</strong> Truy cap Dashboard qua browser voi <strong>toan quyen</strong>, auth bang httpOnly cookie chua JWT.</li>
+                    <li><strong>Teacher &rarr; Server:</strong> Truy cap Dashboard qua browser, <strong>chi thay Groups cua minh</strong>. WebSocket cho real-time updates.</li>
+                    <li><strong>Mo hinh phong hoc:</strong> Moi Teacher quan ly mot so phong hoc (Groups), moi phong co nhieu PC (Agents). Teacher A khong the thay phong cua Teacher B.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 10: PERMISSION MATRIX ========== -->
+    <div class="diagram-section" id="d10">
+        <div class="section-header">
+            <div class="section-number">10</div>
+            <h2>Permission Matrix - Ma tran quyen chi tiet</h2>
+        </div>
+        <div class="section-body">
+            <div class="explanation" style="margin-top:0">
+                <h3>Ma tran phan quyen day du - Admin vs Teacher</h3>
+                <p>Bang duoi day mo ta chi tiet quyen cua tung role doi voi moi resource va action. Luu y cot <strong>"Ownership"</strong> - cho biet Teacher co bi gioi han boi ownership khong.</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Action</th>
+                        <th>Permission String</th>
+                        <th style="color:#ef4444">Admin</th>
+                        <th style="color:#22c55e">Teacher</th>
+                        <th>Ghi chu Ownership</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- USERS -->
+                    <tr>
+                        <td rowspan="5"><strong>Users</strong></td>
+                        <td>Tao tai khoan Teacher</td>
+                        <td><code>users:create</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin tao duoc</td>
+                    </tr>
+                    <tr>
+                        <td>Xem danh sach</td>
+                        <td><code>users:read</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin xem duoc</td>
+                    </tr>
+                    <tr>
+                        <td>Sua thong tin</td>
+                        <td><code>users:update</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin sua duoc</td>
+                    </tr>
+                    <tr>
+                        <td>Xoa tai khoan</td>
+                        <td><code>users:delete</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin xoa duoc</td>
+                    </tr>
+                    <tr>
+                        <td>Reset mat khau</td>
+                        <td><code>users:reset_password</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Admin reset cho Teacher</td>
+                    </tr>
+                    <!-- PROFILE -->
+                    <tr>
+                        <td rowspan="2"><strong>Profile</strong></td>
+                        <td>Xem thong tin ca nhan</td>
+                        <td><code>profile:read</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Xem thong tin cua chinh minh</td>
+                    </tr>
+                    <tr>
+                        <td>Doi mat khau</td>
+                        <td><code>profile:change_password</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Doi mat khau cua chinh minh</td>
+                    </tr>
+                    <!-- GROUPS -->
+                    <tr>
+                        <td rowspan="5"><strong>Groups</strong></td>
+                        <td>Xem danh sach</td>
+                        <td><code>groups:read</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi thay Groups cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Tao Group</td>
+                        <td><code>groups:create</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Teacher tao &rarr; tu dong la owner</td>
+                    </tr>
+                    <tr>
+                        <td>Sua Group</td>
+                        <td><code>groups:update</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi sua Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Xoa Group</td>
+                        <td><code>groups:delete</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi xoa Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Them/Xoa Agent</td>
+                        <td><code>groups:manage_agents</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi thao tac Agent trong Group cua minh</td>
+                    </tr>
+                    <!-- AGENTS -->
+                    <tr>
+                        <td rowspan="4"><strong>Agents</strong></td>
+                        <td>Xem danh sach</td>
+                        <td><code>agents:read</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Teacher thay Agents trong Groups cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Xem chi tiet</td>
+                        <td><code>agents:detail</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Teacher chi xem Agent thuoc Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Xoa Agent</td>
+                        <td><code>agents:delete</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin xoa Agent</td>
+                    </tr>
+                    <tr>
+                        <td>Gui lenh</td>
+                        <td><code>agents:command</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin gui lenh toi Agent</td>
+                    </tr>
+                    <!-- WHITELIST -->
+                    <tr>
+                        <td rowspan="5"><strong>Whitelist</strong></td>
+                        <td>Xem rules</td>
+                        <td><code>whitelist:read</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi thay rules cua Groups minh</td>
+                    </tr>
+                    <tr>
+                        <td>Them rule</td>
+                        <td><code>whitelist:create</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi them rule vao Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Sua rule</td>
+                        <td><code>whitelist:update</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi sua rule trong Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Xoa rule</td>
+                        <td><code>whitelist:delete</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi xoa rule trong Group cua minh</td>
+                    </tr>
+                    <tr>
+                        <td>Dong bo toi Agents</td>
+                        <td><code>whitelist:sync</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi sync Group cua minh</td>
+                    </tr>
+                    <!-- LOGS -->
+                    <tr>
+                        <td rowspan="3"><strong>Logs</strong></td>
+                        <td>Xem logs</td>
+                        <td><code>logs:read</code></td>
+                        <td class="check">&#10003;</td><td class="partial">~ Own</td>
+                        <td>Teacher chi thay logs tu Agents trong Group minh</td>
+                    </tr>
+                    <tr>
+                        <td>Xuat bao cao</td>
+                        <td><code>logs:export</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin xuat bao cao</td>
+                    </tr>
+                    <tr>
+                        <td>Xoa logs</td>
+                        <td><code>logs:delete</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin xoa logs</td>
+                    </tr>
+                    <!-- API KEYS -->
+                    <tr>
+                        <td rowspan="3"><strong>API Keys</strong></td>
+                        <td>Xem keys</td>
+                        <td><code>api_keys:read</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin</td>
+                    </tr>
+                    <tr>
+                        <td>Tao key</td>
+                        <td><code>api_keys:create</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin</td>
+                    </tr>
+                    <tr>
+                        <td>Thu hoi key</td>
+                        <td><code>api_keys:revoke</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin</td>
+                    </tr>
+                    <!-- DASHBOARD -->
+                    <tr>
+                        <td><strong>Dashboard</strong></td>
+                        <td>Xem Dashboard</td>
+                        <td><code>dashboard:read</code></td>
+                        <td class="check">&#10003;</td><td class="check">&#10003;</td>
+                        <td>Teacher thay stats cua Groups minh</td>
+                    </tr>
+                    <!-- SYSTEM -->
+                    <tr>
+                        <td rowspan="2"><strong>System</strong></td>
+                        <td>Cau hinh he thong</td>
+                        <td><code>system:config</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin</td>
+                    </tr>
+                    <tr>
+                        <td>Xem Audit Log</td>
+                        <td><code>audit:read</code></td>
+                        <td class="check">&#10003;</td><td class="cross">&#10007;</td>
+                        <td>Chi Admin</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="explanation">
+                <h3>Giai thich Permission Matrix</h3>
+                <ul>
+                    <li><strong>&#10003; = Co quyen day du</strong> - Thao tac tren tat ca resources.</li>
+                    <li><strong class="partial">~ Own = Co quyen gioi han boi Ownership</strong> - Chi thao tac tren resources ma Teacher so huu (created_by = user_id). Day la diem <strong>then chot</strong> cua thiet ke.</li>
+                    <li><strong>&#10007; = Khong co quyen</strong> - Khong the truy cap chuc nang nay.</li>
+                    <li><strong>Format permission:</strong> <code>resource:action</code> - de mo rong, de kiem tra. Vi du: <code>whitelist:create</code> = quyen tao whitelist rule.</li>
+                    <li><strong>Nguyen tac:</strong> Admin co <strong>toan quyen</strong> (30 permissions). Teacher co <strong>15 permissions</strong> nhung bi gioi han boi ownership tren Groups/Whitelist/Agents.</li>
+                </ul>
+            </div>
+
+            <div class="explanation">
+                <h3>Implementation Code - Permission Config</h3>
+            </div>
+            <div class="code-block">
+<span class="cmt"># server/config/rbac_config.py</span>
+
+<span class="kw">ROLE_HIERARCHY</span> = {
+    <span class="str">"admin"</span>:   <span class="cls">100</span>,   <span class="cmt"># Toan quyen</span>
+    <span class="str">"teacher"</span>: <span class="cls">50</span>,    <span class="cmt"># Gioi han boi ownership</span>
+}
+
+<span class="kw">ROLE_PERMISSIONS</span> = {
+    <span class="str">"teacher"</span>: [
+        <span class="cmt"># Profile</span>
+        <span class="str">"profile:read"</span>, <span class="str">"profile:change_password"</span>,
+        <span class="cmt"># Dashboard</span>
+        <span class="str">"dashboard:read"</span>,
+        <span class="cmt"># Groups (gioi han boi ownership)</span>
+        <span class="str">"groups:read"</span>, <span class="str">"groups:create"</span>, <span class="str">"groups:update"</span>,
+        <span class="str">"groups:delete"</span>, <span class="str">"groups:manage_agents"</span>,
+        <span class="cmt"># Agents (chi xem trong Group cua minh)</span>
+        <span class="str">"agents:read"</span>, <span class="str">"agents:detail"</span>,
+        <span class="cmt"># Whitelist (gioi han boi ownership)</span>
+        <span class="str">"whitelist:read"</span>, <span class="str">"whitelist:create"</span>,
+        <span class="str">"whitelist:update"</span>, <span class="str">"whitelist:delete"</span>, <span class="str">"whitelist:sync"</span>,
+        <span class="cmt"># Logs (chi thay logs tu Group cua minh)</span>
+        <span class="str">"logs:read"</span>,
+    ],
+    <span class="str">"admin"</span>: [
+        <span class="cmt"># Ke thua toan bo quyen cua teacher +</span>
+        <span class="cmt"># User management</span>
+        <span class="str">"users:create"</span>, <span class="str">"users:read"</span>, <span class="str">"users:update"</span>,
+        <span class="str">"users:delete"</span>, <span class="str">"users:reset_password"</span>,
+        <span class="cmt"># Agent management day du</span>
+        <span class="str">"agents:delete"</span>, <span class="str">"agents:command"</span>,
+        <span class="cmt"># API Keys</span>
+        <span class="str">"api_keys:read"</span>, <span class="str">"api_keys:create"</span>, <span class="str">"api_keys:revoke"</span>,
+        <span class="cmt"># Logs day du</span>
+        <span class="str">"logs:export"</span>, <span class="str">"logs:delete"</span>,
+        <span class="cmt"># System</span>
+        <span class="str">"system:config"</span>, <span class="str">"audit:read"</span>,
+    ],
+}
+
+
+<span class="kw">def</span> <span class="fn">get_all_permissions</span>(role: <span class="cls">str</span>) -> <span class="cls">list</span>:
+    <span class="str">"""Get all permissions for a role including inherited ones."""</span>
+    <span class="kw">if</span> role == <span class="str">"admin"</span>:
+        <span class="cmt"># Admin ke thua toan bo quyen cua teacher</span>
+        <span class="kw">return</span> <span class="cls">list</span>(<span class="cls">set</span>(
+            ROLE_PERMISSIONS[<span class="str">"teacher"</span>] + ROLE_PERMISSIONS[<span class="str">"admin"</span>]
+        ))
+    <span class="kw">return</span> ROLE_PERMISSIONS.get(role, [])
+
+
+<span class="kw">def</span> <span class="fn">check_permission</span>(role: <span class="cls">str</span>, permission: <span class="cls">str</span>) -> <span class="cls">bool</span>:
+    <span class="str">"""Check if role has specific permission."""</span>
+    <span class="kw">return</span> permission <span class="kw">in</span> get_all_permissions(role)
+
+
+<span class="kw">def</span> <span class="fn">can_access_group</span>(user: <span class="cls">dict</span>, group: <span class="cls">dict</span>) -> <span class="cls">bool</span>:
+    <span class="str">"""Check if user can access a specific group.
+    Admin: always True
+    Teacher: only if group.created_by == user._id
+    """</span>
+    <span class="kw">if</span> user[<span class="str">"role"</span>] == <span class="str">"admin"</span>:
+        <span class="kw">return</span> <span class="cls">True</span>
+    <span class="kw">return</span> <span class="cls">str</span>(group.get(<span class="str">"created_by"</span>)) == <span class="cls">str</span>(user[<span class="str">"_id"</span>])
+            </div>
+
+            <div class="note-box">
+                <strong>Seed Data:</strong> Khi deploy, chay script <code>seed_admin.py</code> de tao 1 tai khoan Admin mac dinh (username: <code>admin</code>, password tam thoi yeu cau doi lan dau dang nhap). Teacher accounts do Admin tao thong qua giao dien User Management.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DIAGRAM 11: FILE STRUCTURE ========== -->
+    <div class="diagram-section" id="d11">
+        <div class="section-header">
+            <div class="section-number">11</div>
+            <h2>Cau truc thu muc - Files moi & thay doi</h2>
+        </div>
+        <div class="section-body">
+            <div class="explanation" style="margin-top:0">
+                <h3>Tong quan thay doi trong codebase</h3>
+                <p>Duoi day la cau truc thu muc <strong>day du</strong> cua server/ sau khi tich hop RBAC. Cac file duoc danh dau mau theo trang thai:</p>
+            </div>
+
+            <div class="file-tree">
+<span class="existing">server/</span>
+<span class="existing">├── app.py</span>                              <span class="modified">← SUA: them register RBAC controllers + login route</span>
+<span class="existing">├── requirements.txt</span>                    <span class="modified">← SUA: them bcrypt</span>
+<span class="existing">├── database/</span>
+<span class="existing">│   └── config.py</span>                       <span class="existing">(khong doi)</span>
+<span class="existing">├── models/</span>
+<span class="existing">│   ├── agent_model.py</span>                  <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── api_key_model.py</span>                <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── group_model.py</span>                  <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── log_model.py</span>                    <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── whitelist_model.py</span>              <span class="existing">(khong doi)</span>
+<span class="new">│   ├── user_model.py</span>                   <span class="new">← MOI: CRUD users, bcrypt, lock account</span>
+<span class="new">│   ├── session_model.py</span>                <span class="new">← MOI: admin sessions CRUD</span>
+<span class="new">│   └── audit_model.py</span>                  <span class="new">← MOI: audit logs CRUD</span>
+<span class="existing">├── services/</span>
+<span class="existing">│   ├── agent_service.py</span>                <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── api_key_service.py</span>              <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── group_service.py</span>                <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── jwt_service.py</span>                  <span class="existing">(khong doi - tai su dung)</span>
+<span class="existing">│   ├── log_service.py</span>                  <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── whitelist_service.py</span>            <span class="existing">(khong doi)</span>
+<span class="new">│   ├── admin_auth_service.py</span>           <span class="new">← MOI: login/logout/refresh/change-password</span>
+<span class="new">│   ├── rbac_service.py</span>                 <span class="new">← MOI: permission check, ownership check</span>
+<span class="new">│   ├── user_service.py</span>                 <span class="new">← MOI: CRUD Teacher accounts</span>
+<span class="new">│   └── audit_service.py</span>                <span class="new">← MOI: ghi va truy van audit logs</span>
+<span class="existing">├── controllers/</span>
+<span class="existing">│   ├── agent_controller.py</span>             <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── api_key_controller.py</span>           <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── auth_controller.py</span>              <span class="existing">(khong doi - Agent auth)</span>
+<span class="existing">│   ├── group_controller.py</span>             <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── log_controller.py</span>               <span class="existing">(khong doi)</span>
+<span class="existing">│   ├── whitelist_controller.py</span>         <span class="existing">(khong doi)</span>
+<span class="new">│   ├── admin_auth_controller.py</span>        <span class="new">← MOI: /admin/auth/* login/logout/refresh</span>
+<span class="new">│   ├── user_controller.py</span>              <span class="new">← MOI: /admin/users/* CRUD Teacher</span>
+<span class="new">│   └── audit_controller.py</span>             <span class="new">← MOI: /admin/audit/* xem audit logs</span>
+<span class="existing">├── middleware/</span>
+<span class="existing">│   ├── auth.py</span>                         <span class="existing">(khong doi - Agent API auth)</span>
+<span class="new">│   └── rbac.py</span>                         <span class="new">← MOI: @require_login, @require_admin, ownership</span>
+<span class="new">├── config/</span>
+<span class="new">│   └── rbac_config.py</span>                  <span class="new">← MOI: role permissions, hierarchy</span>
+<span class="new">├── scripts/</span>
+<span class="new">│   └── seed_admin.py</span>                   <span class="new">← MOI: tao Admin account mac dinh</span>
+<span class="existing">├── views/</span>
+<span class="existing">│   ├── templates/</span>
+<span class="existing">│   │   ├── base.html</span>                   <span class="modified">← SUA: them user menu, login/logout, role-based nav</span>
+<span class="existing">│   │   ├── dashboard.html</span>              <span class="modified">← SUA: filter stats theo Group (cho Teacher)</span>
+<span class="existing">│   │   ├── agents.html</span>                 <span class="modified">← SUA: filter Agents theo Group ownership</span>
+<span class="existing">│   │   ├── groups.html</span>                 <span class="modified">← SUA: chi hien Groups cua Teacher</span>
+<span class="existing">│   │   ├── group_detail.html</span>           <span class="modified">← SUA: kiem tra ownership truoc khi render</span>
+<span class="existing">│   │   ├── whitelist.html</span>              <span class="modified">← SUA: filter rules theo Group ownership</span>
+<span class="existing">│   │   ├── logs.html</span>                   <span class="modified">← SUA: filter logs theo Agent/Group ownership</span>
+<span class="existing">│   │   ├── api_keys.html</span>               <span class="modified">← SUA: an trang nay voi Teacher</span>
+<span class="new">│   │   ├── login.html</span>                  <span class="new">← MOI: trang dang nhap</span>
+<span class="new">│   │   ├── admin_users.html</span>            <span class="new">← MOI: quan ly tai khoan (Admin only)</span>
+<span class="new">│   │   ├── admin_audit.html</span>            <span class="new">← MOI: xem audit logs (Admin only)</span>
+<span class="new">│   │   └── change_password.html</span>        <span class="new">← MOI: doi mat khau ca nhan</span>
+<span class="existing">│   └── static/</span>
+<span class="existing">│       ├── css/</span>
+<span class="new">│       │   └── login.css</span>               <span class="new">← MOI: style trang login</span>
+<span class="existing">│       └── js/</span>
+<span class="new">│           ├── login.js</span>                <span class="new">← MOI: login form handler</span>
+<span class="new">│           ├── admin_users.js</span>          <span class="new">← MOI: CRUD Teacher UI</span>
+<span class="new">│           └── auth.js</span>                 <span class="new">← MOI: token refresh, auto-logout</span>
+<span class="existing">└── time_utils.py</span>                       <span class="existing">(khong doi)</span>
+            </div>
+
+            <div class="explanation">
+                <h3>Thong ke thay doi</h3>
+                <ul>
+                    <li><strong class="new" style="color:#3fb950">Files MOI:</strong> 16 files - 3 models, 4 services, 3 controllers, 1 middleware, 1 config, 1 script, 4 templates/static</li>
+                    <li><strong class="modified" style="color:#d29922">Files SUA:</strong> 10 files - app.py, requirements.txt, base.html, va 7 templates can them role-based filtering</li>
+                    <li><strong class="existing" style="color:#8b949e">Files GIU NGUYEN:</strong> 17 files - Toan bo Agent auth, controllers, services, models hien tai</li>
+                    <li><strong>Tong cong:</strong> ~43 files, trong do ~60% giu nguyen, dam bao <strong>zero breaking changes</strong></li>
+                </ul>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-card old">
+                    <h4>Truoc khi them RBAC</h4>
+                    <ul>
+                        <li>Dashboard khong co login</li>
+                        <li>Bat ky ai cung truy cap duoc</li>
+                        <li>Khong phan biet nguoi dung</li>
+                        <li>Khong co audit trail</li>
+                        <li>Group khong co owner</li>
+                        <li>5 models, 6 services, 6 controllers</li>
+                    </ul>
+                </div>
+                <div class="comparison-card new">
+                    <h4>Sau khi them RBAC</h4>
+                    <ul>
+                        <li>Login bat buoc cho moi route</li>
+                        <li>Admin: toan quyen he thong</li>
+                        <li>Teacher: chi thao tac Group cua minh</li>
+                        <li>Audit log ghi lai moi thay doi</li>
+                        <li>Group co owner (created_by)</li>
+                        <li>8 models, 10 services, 9 controllers</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <strong>Luu y quan trong ve tinh tuong thich:</strong> Tat ca 6 controllers hien tai (AgentController, WhitelistController, LogController, GroupController, APIKeyController, AuthController) <strong>khong bi sua doi</strong>. Agent van giao tiep qua <code>/api/*</code> voi API Key + JWT nhu binh thuong. RBAC chi anh huong den luong Admin/Teacher Web.
+            </div>
+
+            <div class="info-box">
+                <strong>Buoc tiep theo:</strong> Sau khi duyet thiet ke, trien khai theo thu tu:
+                (1) Models &rarr; (2) Services &rarr; (3) Config &rarr; (4) Middleware &rarr; (5) Controllers &rarr; (6) Templates &rarr; (7) Seed script &rarr; (8) Test
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    SAINT - Security Agent Integrated Network Tool | Admin & Teacher RBAC System Design v2.0<br/>
+    Bui Xuan Son - 20225586 - HUST/SOICT - 2026
+</div>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            darkMode: true,
+            background: '#f8fafc',
+            primaryColor: '#3b82f6',
+            primaryTextColor: '#1e293b',
+            primaryBorderColor: '#60a5fa',
+            lineColor: '#64748b',
+            secondaryColor: '#f1f5f9',
+            tertiaryColor: '#e2e8f0',
+            fontSize: '14px',
+        },
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            curve: 'basis',
+            padding: 15,
+        },
+        sequence: {
+            useMaxWidth: true,
+            actorMargin: 60,
+            messageMargin: 40,
+            mirrorActors: false,
+            bottomMarginAdj: 1,
+        },
+        er: {
+            useMaxWidth: true,
+            fontSize: 12,
+        },
+    });
+</script>
+
+</body>
+</html>

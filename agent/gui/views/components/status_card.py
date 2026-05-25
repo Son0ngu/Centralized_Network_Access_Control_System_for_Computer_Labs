@@ -18,7 +18,7 @@ class StatusCard(ctk.CTkFrame):
         super().__init__(
             parent,
             corner_radius=12,
-            fg_color="#1a1a2e",
+            fg_color="#e8e8ed",
             width=width,
             height=height,
             **kwargs
@@ -62,7 +62,7 @@ class StatusCard(ctk.CTkFrame):
             top_frame,
             text=self._title,
             font=ctk.CTkFont(size=12),
-            text_color="#888888"
+            text_color="#6a6a7a"
         )
         self._title_label.pack(side="left", padx=(8, 0))
         
@@ -82,7 +82,7 @@ class StatusCard(ctk.CTkFrame):
             self,
             text=self._subtitle,
             font=ctk.CTkFont(size=11),
-            text_color="#666666"
+            text_color="#9a9aaa"
         )
         self._subtitle_label.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 12))
     
@@ -164,7 +164,7 @@ class AnimatedStatusCard(StatusCard):
                 self,
                 text="",
                 font=ctk.CTkFont(size=14),
-                text_color="#888888"
+                text_color="#6a6a7a"
             )
             self._trend_label.place(relx=0.85, rely=0.5, anchor="center")
     
@@ -199,32 +199,17 @@ class AnimatedStatusCard(StatusCard):
         elif diff < 0:
             self._trend_label.configure(text="↓", text_color="#ff4444")
         else:
-            self._trend_label.configure(text="→", text_color="#888888")
+            self._trend_label.configure(text="→", text_color="#6a6a7a")
     
     def _animate_value_change(self, start: float, end: float, duration_ms: int = 300):
-        """Animate numeric value change."""
+        """Skip animation to improve performance, just set new value."""
         # Cancel any existing animation
         if self._animation_id:
             self.after_cancel(self._animation_id)
-        
-        steps = 10
-        step_duration = duration_ms // steps
-        diff = end - start
-        step_value = diff / steps
-        
-        def animate_step(current_step: int):
-            if current_step >= steps:
-                self._value = str(int(end) if end == int(end) else round(end, 1))
-                self._value_label.configure(text=self._value)
-                return
+            self._animation_id = None
             
-            current_value = start + (step_value * (current_step + 1))
-            display_value = str(int(current_value) if current_value == int(current_value) else round(current_value, 1))
-            self._value_label.configure(text=display_value)
-            
-            self._animation_id = self.after(step_duration, lambda: animate_step(current_step + 1))
-        
-        animate_step(0)
+        self._value = str(int(end) if end == int(end) else round(end, 1))
+        self._value_label.configure(text=self._value)
     
     def _is_numeric(self, value: str) -> bool:
         """Check if value is numeric."""

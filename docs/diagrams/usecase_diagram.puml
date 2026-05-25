@@ -1,0 +1,151 @@
+@startuml SAINT_UseCase_Diagram
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FEFECE
+  BorderColor #A80036
+  ArrowColor #A80036
+}
+skinparam actor {
+  BackgroundColor #FEFECE
+  BorderColor #A80036
+}
+
+title Use Case Diagram - SAINT System
+
+actor "Admin" as Admin
+actor "Teacher" as Teacher
+actor "Agent\n(Windows PC)" as Agent <<machine>>
+
+rectangle "SAINT System" {
+
+  package "Authentication" {
+    usecase "Login" as UC_Login
+    usecase "Logout" as UC_Logout
+    usecase "Change Password" as UC_ChangePass
+    usecase "Register Agent\n(API Key)" as UC_RegAgent
+  }
+
+  package "User Management" {
+    usecase "Create User" as UC_CreateUser
+    usecase "Update User" as UC_UpdateUser
+    usecase "Delete User" as UC_DeleteUser
+    usecase "List Users" as UC_ListUsers
+    usecase "Reset Password" as UC_ResetPass
+  }
+
+  package "Group Management" {
+    usecase "Create Group" as UC_CreateGroup
+    usecase "Update Group" as UC_UpdateGroup
+    usecase "Delete Group" as UC_DeleteGroup
+    usecase "List Groups" as UC_ListGroups
+    usecase "Assign Teachers\nto Group" as UC_AssignTeacher
+    usecase "Assign Agents\nto Group" as UC_AssignAgent
+  }
+
+  package "Whitelist Management" {
+    usecase "Add Domain/IP" as UC_AddDomain
+    usecase "Delete Domain/IP" as UC_DelDomain
+    usecase "Import Whitelist" as UC_ImportWL
+    usecase "Export Whitelist" as UC_ExportWL
+    usecase "Manage Whitelist\nProfile" as UC_WLProfile
+    usecase "Sync Whitelist" as UC_SyncWL
+  }
+
+  package "Network Monitoring" {
+    usecase "Capture Packets" as UC_Capture
+    usecase "Extract Domains\n(DNS/HTTP/SNI)" as UC_Extract
+    usecase "Send Logs\nto Server" as UC_SendLogs
+    usecase "View Logs" as UC_ViewLogs
+    usecase "Export Logs" as UC_ExportLogs
+  }
+
+  package "Firewall Control" {
+    usecase "Apply Firewall\nRules" as UC_ApplyFW
+    usecase "Set Firewall\nMode" as UC_SetFWMode
+    usecase "Send Heartbeat" as UC_Heartbeat
+    usecase "Set Agent Policy" as UC_SetPolicy
+  }
+
+  package "API Key Management" {
+    usecase "Create API Key" as UC_CreateKey
+    usecase "Revoke API Key" as UC_RevokeKey
+    usecase "List API Keys" as UC_ListKeys
+  }
+
+  package "Audit" {
+    usecase "View Audit Logs" as UC_ViewAudit
+    usecase "View User Activity" as UC_ViewActivity
+  }
+}
+
+' === Admin connections ===
+Admin --> UC_Login
+Admin --> UC_Logout
+Admin --> UC_ChangePass
+Admin --> UC_CreateUser
+Admin --> UC_UpdateUser
+Admin --> UC_DeleteUser
+Admin --> UC_ListUsers
+Admin --> UC_ResetPass
+Admin --> UC_CreateGroup
+Admin --> UC_UpdateGroup
+Admin --> UC_DeleteGroup
+Admin --> UC_ListGroups
+Admin --> UC_AssignTeacher
+Admin --> UC_AssignAgent
+Admin --> UC_AddDomain
+Admin --> UC_DelDomain
+Admin --> UC_ImportWL
+Admin --> UC_ExportWL
+Admin --> UC_WLProfile
+Admin --> UC_ViewLogs
+Admin --> UC_ExportLogs
+Admin --> UC_SetFWMode
+Admin --> UC_SetPolicy
+Admin --> UC_CreateKey
+Admin --> UC_RevokeKey
+Admin --> UC_ListKeys
+Admin --> UC_ViewAudit
+Admin --> UC_ViewActivity
+
+' === Teacher connections ===
+Teacher --> UC_Login
+Teacher --> UC_Logout
+Teacher --> UC_ChangePass
+Teacher --> UC_ListGroups
+Teacher --> UC_UpdateGroup
+Teacher --> UC_AssignAgent
+Teacher --> UC_AddDomain
+Teacher --> UC_DelDomain
+Teacher --> UC_WLProfile
+Teacher --> UC_ViewLogs
+
+' === Agent connections ===
+Agent --> UC_RegAgent
+Agent --> UC_Heartbeat
+Agent --> UC_SyncWL
+Agent --> UC_Capture
+Agent --> UC_SendLogs
+Agent --> UC_ApplyFW
+
+' === Include/Extend relationships ===
+UC_Capture ..> UC_Extract : <<include>>
+UC_SyncWL ..> UC_ApplyFW : <<include>>
+UC_ApplyFW ..> UC_SetFWMode : <<include>>
+
+note right of Agent
+  Agent is automated software
+  running on Windows PCs.
+  Uses API Key for registration,
+  JWT Token for authentication.
+end note
+
+note left of Teacher
+  Teacher can only manage
+  groups assigned to them
+  (ownership-based RBAC).
+end note
+
+@enduml

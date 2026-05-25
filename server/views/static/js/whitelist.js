@@ -3,6 +3,12 @@ let selectedItems = new Set();
 let groupsData = [];
 let selectedGroupId = '';
 
+// === Profile editing state (Teacher only) ===
+let teacherProfiles = [];
+let selectedProfileId = '';
+let selectedProfileData = null;
+let isProfileEditMode = false;
+
 // Type configurations
 const typeConfigs = {
     domain: {
@@ -322,7 +328,7 @@ function renderItems(items) {
             try {
                 const dateObj = new Date(dateValue);
                 if (!isNaN(dateObj.getTime())) {
-                    created = dateObj.toLocaleDateString('vi-VN', {
+                    created = dateObj.toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: '2-digit',
                         day: '2-digit'
@@ -398,20 +404,26 @@ function renderItems(items) {
                     </div>
                 </div>
                 <div class="col-md-4 text-end">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-danger btn-action"
-                                data-action="remove"
-                                data-item-id="${itemId}"
-                                data-group-id="${groupId}"
-                                data-scope="${scope}"
-                                data-item-type="${itemType}"
-                                data-item-value="${escapeHtml(value)}"
-                                title="Remove this item"
-                                ${!itemId && scope === 'global' ? 'disabled' : ''}>
-                            <i class="fas fa-trash-alt me-1"></i>
-                            <span>Remove</span>
-                        </button>
-                    </div>
+                    ${(() => {
+                        // Teacher in read-only mode (no profile selected): hide remove buttons
+                        const isTeacher = window.SAINT_AUTH && window.SAINT_AUTH.isTeacher;
+                        if (isTeacher && !isProfileEditMode) return '';
+                        return `
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-danger btn-action"
+                                    data-action="remove"
+                                    data-item-id="${itemId}"
+                                    data-group-id="${groupId}"
+                                    data-scope="${scope}"
+                                    data-item-type="${itemType}"
+                                    data-item-value="${escapeHtml(value)}"
+                                    title="Remove this item"
+                                    ${!itemId && scope === 'global' ? 'disabled' : ''}>
+                                <i class="fas fa-trash-alt me-1"></i>
+                                <span>Remove</span>
+                            </button>
+                        </div>`;
+                    })()}
                 </div>
             </div>
         `;
@@ -578,9 +590,20 @@ async function addItem() {
             notes: formData.get('notes') || '',
             active: formData.get('active') === 'on'
         };
-        
+
         console.log('Sending item data:', itemData);
-        
+
+        // === PROFILE EDIT MODE: save to profile instead ===
+        if (isProfileEditMode && selectedProfileData) {
+            await addItemToProfile(itemData);
+            showSuccess(`${itemData.value} added to profile "${selectedProfileData.name}"`);
+
+            form.reset();
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
+            if (modalInstance) modalInstance.hide();
+            return; // renderProfileDomains() already called by saveProfileDomains
+        }
+
         if (itemData.scope === 'group') {
             const targetGroupId = formData.get('group_id') || selectedGroupId;
             if (!targetGroupId) {
@@ -770,6 +793,18 @@ function showAddItemModal(type = 'domain') {
         itemTypeEl.value = type;
     }
     
+    // Hide scope/group selectors when in profile edit mode
+    const scopeEl = document.getElementById('scopeSelect');
+    const groupSelectGroup = document.getElementById('groupSelectGroup');
+    // Find the mb-3 container wrapping scope select (may be wrapped by custom-select-wrapper)
+    const scopeContainer = scopeEl ? scopeEl.closest('.mb-3') : null;
+    if (isProfileEditMode) {
+        if (scopeContainer) scopeContainer.style.display = 'none';
+        if (groupSelectGroup) groupSelectGroup.style.display = 'none';
+    } else {
+        if (scopeContainer) scopeContainer.style.display = '';
+    }
+
     // Show modal
     const modalEl = document.getElementById('addItemModal');
     if (modalEl) {
@@ -784,6 +819,16 @@ function showAddItemModal(type = 'domain') {
 function showBulkImportModal() {
     const modalEl = document.getElementById('bulkImportModal');
     if (modalEl) {
+        // Hide scope/group selectors when in profile edit mode
+        const bulkScopeEl = document.getElementById('bulkScope');
+        const bulkGroupEl = document.getElementById('bulkGroupSelectGroup');
+        if (isProfileEditMode) {
+            if (bulkScopeEl && bulkScopeEl.closest('.col-md-4')) bulkScopeEl.closest('.col-md-4').style.display = 'none';
+            if (bulkGroupEl) bulkGroupEl.style.display = 'none';
+        } else {
+            if (bulkScopeEl && bulkScopeEl.closest('.col-md-4')) bulkScopeEl.closest('.col-md-4').style.display = '';
+        }
+
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
     }
@@ -887,28 +932,45 @@ async function bulkImportItems() {
     btn.disabled = true;
 
     try {
-        // If group scope, we might need a different API or simply pass group_id in payload
-        // The current controller bulk_add_entries handles global list mostly, 
-        // but let's check if it supports group_id. 
-        // Looking at whitelist_service.py, bulk_add_entries creates entries with "group_id" if we pass it 
-        // to processed_entry? Wait, whitelist_service.py bulk_add_entries implementation I read 
-        // DOES NOT seem to explicitly extract group_id from entry_data. 
-        // I need to update the service to handle group_id if it's missing.
-        // BUT, let's assume standard behavior first.
-        
+        // === PROFILE EDIT MODE: merge into profile domains ===
+        if (isProfileEditMode && selectedProfileData) {
+            const currentDomains = [...(selectedProfileData.domains || [])];
+            let addedCount = 0;
+            for (const item of items) {
+                const exists = currentDomains.some(d => {
+                    const dVal = typeof d === 'string' ? d : d.value;
+                    return dVal === item.value;
+                });
+                if (!exists) {
+                    currentDomains.push({
+                        value: item.value,
+                        type: item.type || 'domain',
+                        notes: item.notes || '',
+                    });
+                    addedCount++;
+                }
+            }
+
+            await saveProfileDomains(currentDomains);
+            showSuccess(`Import complete: ${addedCount} domain(s) added to profile "${selectedProfileData.name}"`);
+
+            document.getElementById('bulkTextarea').value = '';
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkImportModal'));
+            if (modal) modal.hide();
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
         // Split into chunks of 100 to avoid timeouts
         const chunkSize = 100;
         let successCount = 0;
         let errorCount = 0;
-        
+
         for (let i = 0; i < items.length; i += chunkSize) {
             const chunk = items.slice(i, i + chunkSize);
-            
-            // Allow processing via group endpoint if scope is group? 
-            // Currently using /api/whitelist/bulk which is general.
-            // If the service doesn't backend support group_id in bulk, we might have issues.
-            // Let's rely on the payload passing.
-            
+
             const response = await fetch('/api/whitelist/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -952,6 +1014,279 @@ function readFileContent(file) {
         reader.onerror = (e) => reject(e);
         reader.readAsText(file);
     });
+}
+
+// =====================================================================
+// PROFILE EDITING MODE (Teacher only)
+// =====================================================================
+
+/**
+ * Load teacher's profiles across all groups
+ */
+async function loadTeacherProfiles() {
+    try {
+        const response = await fetch('/api/my-profiles');
+        if (!response.ok) throw new Error('Failed to load profiles');
+        const data = await response.json();
+        teacherProfiles = data.data || [];
+        populateProfileSelect();
+    } catch (error) {
+        console.error('Error loading teacher profiles:', error);
+    }
+}
+
+/**
+ * Populate the profile selector dropdown
+ */
+function populateProfileSelect() {
+    const select = document.getElementById('profileSelect');
+    if (!select) return;
+
+    const current = select.value;
+    select.innerHTML = '<option value="">-- View mode (Read-only) --</option>';
+
+    teacherProfiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p._id;
+        opt.textContent = `${p.name} - ${p.group_name || 'Unknown Group'}`;
+        if (p.is_active) {
+            opt.textContent += ' Active';
+        }
+        select.appendChild(opt);
+    });
+
+    if (current) select.value = current;
+
+    // Update Custom UI if initialized
+    if (window.updateCustomOptions) {
+        window.updateCustomOptions('profileSelect');
+    }
+}
+
+/**
+ * Handle profile selection change
+ */
+function onProfileSelected(profileId) {
+    selectedProfileId = profileId;
+
+    if (!profileId) {
+        // Switch to read-only mode
+        isProfileEditMode = false;
+        selectedProfileData = null;
+        updateProfileUI();
+        loadItems(); // Reload normal whitelist
+        return;
+    }
+
+    // Find profile data
+    selectedProfileData = teacherProfiles.find(p => p._id === profileId);
+    if (!selectedProfileData) {
+        showError('Profile not found');
+        return;
+    }
+
+    isProfileEditMode = true;
+    updateProfileUI();
+    renderProfileDomains();
+}
+
+/**
+ * Update UI elements based on profile edit mode
+ */
+function updateProfileUI() {
+    const addSection = document.getElementById('addItemsSection');
+    const infoBadge = document.getElementById('profileInfoBadge');
+    const readonlyHint = document.getElementById('profileReadonlyHint');
+    const searchCard = document.querySelector('.search-card');
+    const bulkActions = document.getElementById('bulkActions');
+
+    if (isProfileEditMode && selectedProfileData) {
+        // Show editing state
+        if (infoBadge) {
+            infoBadge.style.display = 'block';
+            document.getElementById('profileEditingName').textContent = selectedProfileData.name;
+            document.getElementById('profileEditingGroup').textContent = selectedProfileData.group_name || '';
+            document.getElementById('profileDomainCount').textContent = (selectedProfileData.domains || []).length;
+        }
+        if (readonlyHint) readonlyHint.style.display = 'none';
+        if (addSection) addSection.style.display = '';
+        // Hide group filter & scope when editing profile (not relevant)
+        if (searchCard) searchCard.style.display = 'none';
+        if (bulkActions) bulkActions.classList.remove('show');
+    } else {
+        // Read-only mode for teacher
+        if (infoBadge) infoBadge.style.display = 'none';
+        if (readonlyHint) readonlyHint.style.display = '';
+
+        // For teacher without profile selected: hide add section
+        const isTeacher = window.SAINT_AUTH && window.SAINT_AUTH.isTeacher;
+        if (isTeacher) {
+            if (addSection) addSection.style.display = 'none';
+        } else {
+            if (addSection) addSection.style.display = '';
+        }
+        if (searchCard) searchCard.style.display = '';
+    }
+}
+
+/**
+ * Render profile domains in the items container (replacing normal whitelist view)
+ */
+function renderProfileDomains() {
+    if (!selectedProfileData) return;
+
+    const domains = selectedProfileData.domains || [];
+    const container = document.getElementById('itemsContainer');
+
+    // Update stats for profile
+    document.getElementById('totalItemsCount').textContent = domains.length;
+    document.getElementById('activeItemsCount').textContent = domains.length;
+    document.getElementById('domainsCount').textContent = domains.filter(d => (d.type || 'domain') === 'domain').length;
+    document.getElementById('ipsCount').textContent = domains.filter(d => d.type === 'ip').length;
+    document.getElementById('itemCount').textContent = domains.length;
+    document.getElementById('profileDomainCount').textContent = domains.length;
+
+    if (domains.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-list"></i>
+                <h5 class="fw-bold">Profile has no domains yet</h5>
+                <p>Add domains/IPs/URLs using the buttons above.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+
+    domains.forEach((domain, index) => {
+        const value = typeof domain === 'string' ? domain : (domain.value || domain.domain || '');
+        const itemType = typeof domain === 'string' ? 'domain' : (domain.type || 'domain');
+        const notes = typeof domain === 'string' ? '' : (domain.notes || '');
+        const typeConfig = typeConfigs[itemType] || typeConfigs.domain;
+
+        if (!value) return;
+
+        const el = document.createElement('div');
+        el.className = 'p-4 border-bottom item-row';
+        el.dataset.value = value.toLowerCase();
+        el.dataset.type = itemType;
+
+        el.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-1">
+                    <span class="text-muted fw-bold">#${index + 1}</span>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-${typeConfig.icon} fa-2x text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-bold">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                ${escapeHtml(value)}
+                            </h6>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="domain-status active">
+                                    <span class="pulse-indicator active"></span>Active
+                                </span>
+                                <span class="type-badge ${itemType}">${itemType.toUpperCase()}</span>
+                                <span class="domain-type-badge" style="background:rgba(var(--bs-success-rgb),0.1);color:var(--bs-success);">
+                                    Profile: ${escapeHtml(selectedProfileData.name)}
+                                </span>
+                            </div>
+                            ${notes ? `<small class="text-muted mt-1 d-block"><i class="fas fa-sticky-note me-1"></i>${escapeHtml(notes)}</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-outline-danger btn-sm btn-action"
+                            onclick="removeProfileDomain(${index})"
+                            title="Remove from profile">
+                        <i class="fas fa-trash-alt me-1"></i>Remove
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(el);
+    });
+}
+
+/**
+ * Remove a domain from the selected profile by index
+ */
+async function removeProfileDomain(index) {
+    if (!selectedProfileData) return;
+    if (!confirm('Remove this domain from profile?')) return;
+
+    const domains = [...(selectedProfileData.domains || [])];
+    const removed = domains.splice(index, 1);
+
+    try {
+        await saveProfileDomains(domains);
+        showSuccess(`Removed "${removed[0]?.value || removed[0]}" from profile`);
+    } catch (error) {
+        showError('Error removing domain: ' + error.message);
+    }
+}
+
+/**
+ * Save domains array to the selected profile via PATCH API
+ */
+async function saveProfileDomains(domains) {
+    if (!selectedProfileData) throw new Error('No profile selected');
+
+    const groupId = selectedProfileData.group_id;
+    const profileId = selectedProfileData._id;
+
+    const response = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domains: domains })
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update profile');
+    }
+
+    // Update local state
+    selectedProfileData.domains = domains;
+    // Also update in teacherProfiles array
+    const idx = teacherProfiles.findIndex(p => p._id === profileId);
+    if (idx !== -1) {
+        teacherProfiles[idx].domains = domains;
+    }
+
+    renderProfileDomains();
+}
+
+/**
+ * Add a domain to the selected profile
+ */
+async function addItemToProfile(itemData) {
+    if (!selectedProfileData) throw new Error('No profile selected');
+
+    const domains = [...(selectedProfileData.domains || [])];
+
+    // Check duplicate
+    const exists = domains.some(d => {
+        const dVal = typeof d === 'string' ? d : d.value;
+        return dVal === itemData.value;
+    });
+    if (exists) {
+        throw new Error(`"${itemData.value}" already exists in profile`);
+    }
+
+    domains.push({
+        value: itemData.value,
+        type: itemData.type || 'domain',
+        notes: itemData.notes || '',
+    });
+
+    await saveProfileDomains(domains);
 }
 
 /**
@@ -1032,14 +1367,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         loadItems();
     });
-    
+
+    // === TEACHER PROFILE INTEGRATION ===
+    const profileSelect = document.getElementById('profileSelect');
+    if (profileSelect) {
+        profileSelect.addEventListener('change', function () {
+            onProfileSelected(this.value);
+        });
+    }
+
+    // Wait for auth to be ready, then init profile selector for teachers
+    function initProfileSelector() {
+        const isTeacher = window.SAINT_AUTH && window.SAINT_AUTH.isTeacher;
+        const profileBar = document.getElementById('profileSelectorBar');
+        const addSection = document.getElementById('addItemsSection');
+
+        if (isTeacher && profileBar) {
+            profileBar.style.display = '';
+            // Teacher starts in read-only mode: hide add section
+            if (addSection) addSection.style.display = 'none';
+            loadTeacherProfiles();
+        }
+    }
+
+    // SAINT_AUTH may be set after DOMContentLoaded by auth.js applyUserUI()
+    if (window.SAINT_AUTH) {
+        initProfileSelector();
+    } else {
+        // Retry after short delay for auth.js to finish
+        setTimeout(initProfileSelector, 500);
+        setTimeout(initProfileSelector, 1500);
+    }
+
     // Initialize Custom Selects
-    ['type-filter', 'status-filter', 'group-filter', 'scopeSelect', 'groupSelect', 'bulkScope', 'bulkGroupSelect', 'bulkType'].forEach(id => {
+    ['profileSelect', 'type-filter', 'status-filter', 'group-filter', 'scopeSelect', 'groupSelect', 'bulkScope', 'bulkGroupSelect', 'bulkType'].forEach(id => {
         if (window.initCustomSelect) window.initCustomSelect(id);
     });
-    
-    // Auto-refresh every 60 seconds
-    setInterval(loadItems, 60000);
-    
+
+    // Auto-refresh every 60 seconds (only when NOT in profile edit mode)
+    setInterval(() => {
+        if (!isProfileEditMode) loadItems();
+    }, 60000);
+
     console.log('Enhanced whitelist management initialized');
 });

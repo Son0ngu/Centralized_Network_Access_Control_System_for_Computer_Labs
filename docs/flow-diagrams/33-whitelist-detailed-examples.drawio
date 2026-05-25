@@ -1,0 +1,541 @@
+<mxfile host="app.diagrams.net" modified="2026-03-26T00:00:00.000Z" agent="Claude" version="24.0.0">
+
+  <!-- ================================================================== -->
+  <!-- PAGE 1: DATABASE STATE + SYNC PIPELINE                             -->
+  <!-- ================================================================== -->
+  <diagram id="page1-setup" name="1. Database State + Pipeline">
+    <mxGraphModel dx="2200" dy="4200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="4200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- TITLE -->
+        <mxCell id="title1" value="&lt;b style='font-size:20px'&gt;Flow 33: Whitelist Pipeline — Chi tiet den tung dong code&lt;/b&gt;&lt;br&gt;&lt;i&gt;Page 1/4: Trang thai MongoDB truoc khi sync + Pipeline xu ly tren server&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="1200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SECTION A: MONGODB COLLECTIONS                                -->
+        <!-- ============================================================ -->
+        <mxCell id="dbTitle" value="&lt;b&gt;A. MONGODB STATE — 5 Collections lien quan&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="70" width="600" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- COLLECTION 1: whitelist (Global) -->
+        <mxCell id="col1_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="110" width="420" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="col1_title" value="&lt;b&gt;Collection: whitelist&lt;/b&gt;&lt;br&gt;&lt;i&gt;scope=&quot;global&quot; | global_version = 5&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#4a148c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="115" width="400" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="col1_data" value="&lt;pre style='font-size:9px;margin:0;text-align:left'&gt;[&#10;  {_id: &quot;64a1&quot;, value: &quot;google.com&quot;,      type: &quot;domain&quot;,   scope: &quot;global&quot;, is_active: true},&#10;  {_id: &quot;64a2&quot;, value: &quot;wikipedia.org&quot;,   type: &quot;domain&quot;,   scope: &quot;global&quot;, is_active: true},&#10;  {_id: &quot;64a3&quot;, value: &quot;10.0.0.0/24&quot;,    type: &quot;ip_range&quot;, scope: &quot;global&quot;, is_active: true},&#10;  {_id: &quot;64a4&quot;, value: &quot;*.edu.vn&quot;,       type: &quot;pattern&quot;,  scope: &quot;global&quot;, is_active: true},&#10;  {_id: &quot;64a5&quot;, value: &quot;stackoverflow.com&quot;,type:&quot;domain&quot;,   scope: &quot;global&quot;, is_active: true},&#10;  {_id: &quot;64a6&quot;, value: &quot;old-site.com&quot;,   type: &quot;domain&quot;,   scope: &quot;global&quot;, is_active: false},&#10;]&#10;&#10;// get_entries_for_sync(scope=&quot;global&quot;)&#10;// → Returns 5 active entries (skip old-site)&#10;// whitelist_model.py:448-460&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="150" width="400" height="310" as="geometry"/>
+        </mxCell>
+
+        <!-- COLLECTION 2: groups -->
+        <mxCell id="col2_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="110" width="520" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="col2_title" value="&lt;b&gt;Collection: groups&lt;/b&gt;&lt;br&gt;&lt;i&gt;4 groups: A (IT class), B (English), C (Free), Pending&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#0d47a1;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="115" width="500" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="col2_data" value="&lt;pre style='font-size:9px;margin:0;text-align:left'&gt;// GROUP A — &quot;Lop 10A Tin hoc&quot;&#10;{&#10;  _id: &quot;grpA&quot;, name: &quot;Lop 10A Tin hoc&quot;,&#10;  whitelist_version: 12, teacher_ids: [&quot;teacher_nguyen&quot;],&#10;  whitelist: [  // LEGACY — bi Active Profile ghi de&#10;    {value: &quot;python.org&quot;, type: &quot;domain&quot;},&#10;    {value: &quot;scratch.mit.edu&quot;, type: &quot;domain&quot;},&#10;    {value: &quot;code.org&quot;, type: &quot;domain&quot;}&#10;  ]&#10;}&#10;&#10;// GROUP B — &quot;Lop 11B Ngoai ngu&quot;&#10;{&#10;  _id: &quot;grpB&quot;, name: &quot;Lop 11B Ngoai ngu&quot;,&#10;  whitelist_version: 8, teacher_ids: [&quot;teacher_tran&quot;],&#10;  whitelist: [{value:&quot;duolingo.com&quot;},{value:&quot;bbc.co.uk&quot;},{value:&quot;cambridge.org&quot;}]&#10;}&#10;&#10;// GROUP C — &quot;Phong may tu do&quot;&#10;{_id:&quot;grpC&quot;, name:&quot;Phong may tu do&quot;, whitelist_version:3,&#10; whitelist:[{value:&quot;youtube.com&quot;},{value:&quot;facebook.com&quot;},{value:&quot;tiktok.com&quot;}]}&#10;&#10;// PENDING — system group&#10;{_id:&quot;pending&quot;, name:&quot;pending&quot;, is_system:true, whitelist_version:1, whitelist:[]}&#10;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1565c0;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="480" y="150" width="500" height="310" as="geometry"/>
+        </mxCell>
+
+        <!-- COLLECTION 3: whitelist_profiles -->
+        <mxCell id="col3_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="110" width="530" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="col3_title" value="&lt;b&gt;Collection: whitelist_profiles&lt;/b&gt;&lt;br&gt;&lt;i&gt;Fallback: Active Profile → Default Profile → group.whitelist&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#1b5e20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="115" width="510" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="col3_data" value="&lt;pre style='font-size:9px;margin:0;text-align:left'&gt;// GROUP A — 2 profiles&#10;{&#10;  group_id: &quot;grpA&quot;, name: &quot;Bai thuc hanh Python&quot;,&#10;  teacher_id: &quot;teacher_nguyen&quot;,&#10;  is_active: true,    // ← ACTIVE! Agent A dung cai nay&#10;  is_default: false,  version: 3,&#10;  domains: [&#10;    {domain: &quot;docs.python.org&quot;, category: &quot;education&quot;},&#10;    {domain: &quot;replit.com&quot;, category: &quot;tool&quot;},&#10;    {domain: &quot;stackoverflow.com&quot;, category: &quot;education&quot;},  // TRUNG global!&#10;    {domain: &quot;github.com&quot;, category: &quot;tool&quot;}&#10;  ]&#10;}&#10;{&#10;  group_id: &quot;grpA&quot;, name: &quot;Mac dinh 10A&quot;,&#10;  is_active: false, is_default: true, version: 1,&#10;  domains: [{domain:&quot;python.org&quot;},{domain:&quot;w3schools.com&quot;}]&#10;}&#10;&#10;// GROUP B — 1 Default profile only (ko co Active)&#10;{&#10;  group_id: &quot;grpB&quot;, name: &quot;Hoc online co ban&quot;,&#10;  is_active: false, is_default: true, version: 2,&#10;  domains: [&#10;    {domain:&quot;duolingo.com&quot;},{domain:&quot;cambridge.org&quot;},&#10;    {domain:&quot;merriam-webster.com&quot;},{domain:&quot;bbc.co.uk/learning&quot;}&#10;  ]&#10;}&#10;&#10;// GROUP C — KHONG CO PROFILE NAO → Legacy fallback!&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2e7d32;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="150" width="510" height="310" as="geometry"/>
+        </mxCell>
+
+        <!-- COLLECTION 4: agent_policies -->
+        <mxCell id="col4_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="110" width="430" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="col4_title" value="&lt;b&gt;Collection: agent_policies&lt;/b&gt;&lt;br&gt;&lt;i&gt;Per-AGENT (khong phai per-group!) | 3 modes&lt;/i&gt;" style="text;html=1;align=center;fontSize=11;fontColor=#b71c1c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1570" y="115" width="410" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="col4_data" value="&lt;pre style='font-size:9px;margin:0;text-align:left'&gt;// Agent A1 — KHONG CO RECORD → mode = &quot;none&quot;&#10;// (get_effective_mode tra ve &quot;none&quot; khi khong tim thay)&#10;&#10;// Agent A2 — ISOLATE (giao vien phat vi xem YouTube)&#10;{&#10;  agent_id: &quot;agent_a2&quot;,&#10;  override_mode: &quot;isolate&quot;,&#10;  applied_by_username: &quot;teacher_nguyen&quot;,&#10;  reason: &quot;Xem YouTube trong gio hoc&quot;,&#10;  expires_at: &quot;2026-03-26T17:00:00+07:00&quot;,  // Tu het han 5PM&#10;  override_version: 1&#10;}&#10;&#10;// Agent A3 — CUSTOM (on thi cuoi ky)&#10;{&#10;  agent_id: &quot;agent_a3&quot;,&#10;  override_mode: &quot;custom_whitelist&quot;,&#10;  custom_whitelist: [&#10;    {domain: &quot;docs.python.org&quot;, category: &quot;education&quot;},&#10;    {domain: &quot;w3schools.com&quot;, category: &quot;education&quot;}&#10;  ],&#10;  applied_by_username: &quot;teacher_nguyen&quot;,&#10;  reason: &quot;On thi — chi cho xem tai lieu&quot;,&#10;  expires_at: null,  // Khong het han, phai go thu cong&#10;  override_version: 2&#10;}&#10;&#10;// Agent A4, B1, C1, D1 — KHONG CO → &quot;none&quot;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c62828;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1570" y="150" width="410" height="310" as="geometry"/>
+        </mxCell>
+
+        <!-- AGENTS TABLE -->
+        <mxCell id="agents_title" value="&lt;b&gt;Collection: agents — 7 Agents, 4 Groups&lt;/b&gt;" style="text;html=1;align=left;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="490" width="400" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="agents_table" value="&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Agent&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Hostname&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Group&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Policy&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Agent State (truoc sync)&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;Scenario&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;A1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-01&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#2e7d32'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=4, group_v=10, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Active Profile + Merge&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#ffebee'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;A2&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-02&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#c62828'&gt;&lt;b&gt;ISOLATE&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=4, group_v=10, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Same group, ISOLATED&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;A3&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-03&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#e65100'&gt;&lt;b&gt;CUSTOM&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=4, group_v=10, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Same group, Custom WL&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;A4&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-04&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#2e7d32'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;&lt;b&gt;global_v=5, group_v=12&lt;/b&gt;, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;up_to_date (skip)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff9c4'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;B1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-05&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;B (Ngoai ngu)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#2e7d32'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=5, group_v=6, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Default Profile fallback&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fce4ec'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;C1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-10&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;C (Tu do)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#2e7d32'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=5, group_v=2, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Legacy fallback (no profile)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;D1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;PC-NEW&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;None→Pending&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#2e7d32'&gt;&lt;b&gt;none&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;font-size:9px'&gt;global_v=0, group_v=0, policy=none&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;New agent, auto-pending&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#616161;fontSize=10;verticalAlign=top;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="520" width="960" height="210" as="geometry"/>
+        </mxCell>
+
+        <!-- FALLBACK CHAIN DIAGRAM -->
+        <mxCell id="fb_title" value="&lt;b&gt;PROFILE FALLBACK CHAIN (whitelist_service.py:528-549)&lt;/b&gt;" style="text;html=1;align=left;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="490" width="600" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_step1" value="&lt;b&gt;1. Active Profile?&lt;/b&gt;&lt;br&gt;&lt;i&gt;get_active_profile(group_id)&lt;/i&gt;&lt;br&gt;is_active=True" style="rhombus;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="530" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_step2" value="&lt;b&gt;2. Default Profile?&lt;/b&gt;&lt;br&gt;&lt;i&gt;get_default_profile(group_id)&lt;/i&gt;&lt;br&gt;is_default=True" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="530" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_step3" value="&lt;b&gt;3. Legacy&lt;/b&gt;&lt;br&gt;group.whitelist[]" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1540" y="540" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_yes1" value="&lt;b style='color:#2e7d32'&gt;YES → Dung domains nay&lt;/b&gt;" style="text;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="640" width="200" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_no1" value="NO →" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#c62828;fontStyle=1;fontSize=10;" edge="1" source="fb_step1" target="fb_step2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_no2" value="NO →" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#c62828;fontStyle=1;fontSize=10;" edge="1" source="fb_step2" target="fb_step3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="fb_examples" value="&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Group&lt;/th&gt;&lt;th style='background:#c8e6c9;padding:3px;border:1px solid #ccc'&gt;Active?&lt;/th&gt;&lt;th style='background:#fff3e0;padding:3px;border:1px solid #ccc'&gt;Default?&lt;/th&gt;&lt;th style='background:#ffcdd2;padding:3px;border:1px solid #ccc'&gt;Legacy?&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;→ Dung&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;A&lt;/b&gt; Tin hoc&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;YES&lt;/b&gt; &quot;Bai thuc hanh&quot;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;skip&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;skip&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b style='color:#2e7d32'&gt;Active Profile&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;B&lt;/b&gt; Ngoai ngu&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;NO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#fff3e0'&gt;&lt;b&gt;YES&lt;/b&gt; &quot;Hoc online&quot;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;skip&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b style='color:#e65100'&gt;Default Profile&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;C&lt;/b&gt; Tu do&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;NO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;NO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;YES&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b style='color:#c62828'&gt;Legacy (group.wl)&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;Pending&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;NO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;color:#999'&gt;NO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;whitelist=[]&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;EMPTY (chi global)&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#616161;fontSize=10;verticalAlign=top;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="670" width="690" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SECTION B: SERVER PIPELINE                                    -->
+        <!-- ============================================================ -->
+        <mxCell id="pipeTitle" value="&lt;b&gt;B. SERVER SYNC PIPELINE — whitelist_service.py:get_agent_sync_data()&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="840" width="800" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 1: Agent Request -->
+        <mxCell id="pipe_req" value="&lt;b&gt;AGENT REQUEST&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;GET /api/whitelist/agent-sync?&#10;  agent_id=agent_a1&#10;  &amp;amp;global_version=4&#10;  &amp;amp;group_version=10&#10;  &amp;amp;policy_mode=none&#10;&#10;Headers:&#10;  Authorization: Bearer &amp;lt;JWT&amp;gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="880" width="250" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 2: Load Agent + Group -->
+        <mxCell id="pipe_s2" value="&lt;b&gt;Step 1: Load Agent + Group&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;agent = agent_model.find_by_agent_id()&#10;group_id = agent[&quot;group_id&quot;]  // &quot;grpA&quot;&#10;group = group_model.find_by_id()&#10;&#10;if not group:&#10;  group = ensure_pending_group()&#10;  agent.group_id = pending._id&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="310" y="880" width="280" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 3: Policy Check -->
+        <mxCell id="pipe_s3" value="&lt;b&gt;Step 2: Policy Changed?&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;effective = get_effective_mode(agent_id)&#10;// Check expires_at &amp;lt; now → auto-reset&#10;&#10;policy_changed = (&#10;  effective != &quot;none&quot; OR&#10;  effective != agent_policy_mode&#10;)&#10;// If changed → skip version cache!&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="620" y="880" width="280" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 4: Version Check -->
+        <mxCell id="pipe_s4" value="&lt;b&gt;Step 3: Version Cache&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;if NOT policy_changed&#10;   AND global_v == server_global_v&#10;   AND group_v == server_group_v:&#10;  return {up_to_date: true}&#10;  // → Agent skip update!&#10;&#10;// A4: g=5==5, grp=12==12&#10;//   → up_to_date! STOP HERE.&#10;// A1: g=4!=5 → CONTINUE&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="930" y="880" width="260" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 5: Load Global -->
+        <mxCell id="pipe_s5" value="&lt;b&gt;Step 4: Load Global Entries&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;// Full if version changed:&#10;global_entries = get_entries_for_sync(&#10;  scope=&quot;global&quot;&#10;)&#10;// → 5 active entries&#10;// type = &quot;full&quot;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1080" width="250" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 6: Resolve Group Profile -->
+        <mxCell id="pipe_s6" value="&lt;b&gt;Step 5: Profile Resolution (Fallback Chain)&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;active_profile = get_active_profile(group_id)&#10;&#10;if active_profile:            // Group A → YES&#10;  group_entries = normalize(active_profile.domains)&#10;elif default_profile:         // Group B → YES&#10;  group_entries = normalize(default_profile.domains)&#10;else:                         // Group C → LEGACY&#10;  group_entries = normalize(group.whitelist)&#10;&#10;// normalize: them pseudo_id, scope=&quot;group&quot;, group_id, group_name&#10;// pseudo_id = &quot;group::grpA::domain::docs.python.org&quot;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1070" width="440" height="190" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 7: Merge -->
+        <mxCell id="pipe_s7" value="&lt;b&gt;Step 6: _merge_whitelists()&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;combined = merge(global, group)&#10;// Key = &quot;{type}:{value}&quot;&#10;// If same key: group wins (more specific)&#10;// stackoverflow.com: global → replaced by group&#10;&#10;// Result: unique entries from both scopes&#10;// Group A: 5 global + 4 profile - 1 dup = 8&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1080" width="340" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 8: Apply Policy -->
+        <mxCell id="pipe_s8" value="&lt;b&gt;Step 7: apply_policy_to_sync()&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;effective = get_effective_mode(agent_id)&#10;&#10;if effective == &quot;none&quot;:&#10;  return combined  // UNCHANGED (A1, B1, C1)&#10;&#10;if effective == &quot;isolate&quot;:&#10;  return system_entries_only()  // A2&#10;  // [server_host, 8.8.8.8, 8.8.4.4, 1.1.1.1]&#10;&#10;if effective == &quot;custom_whitelist&quot;:&#10;  return system + custom_list   // A3&#10;  // [server_host, DNS] + [docs.python, w3schools]&#10;&#10;// CRITICAL: system entries ALWAYS included&#10;// → prevent deadlock (agent can reach server)&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="1070" width="350" height="250" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 9: Response -->
+        <mxCell id="pipe_resp" value="&lt;b&gt;Step 8: HTTP Response&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px'&gt;{&#10;  &quot;success&quot;: true,&#10;  &quot;domains&quot;: [...],        // After policy&#10;  &quot;type&quot;: &quot;full&quot;,&#10;  &quot;global_version&quot;: 5,&#10;  &quot;group_version&quot;: 12,&#10;  &quot;group_id&quot;: &quot;grpA&quot;,&#10;  &quot;policy_mode&quot;: &quot;none&quot;,   // or isolate/custom&#10;  &quot;policy_active&quot;: false, // or true&#10;  &quot;count&quot;: 8,             // varies per agent&#10;  &quot;up_to_date&quot;: false     // only true for A4&#10;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="1070" width="280" height="240" as="geometry"/>
+        </mxCell>
+
+        <!-- Pipeline Arrows -->
+        <mxCell id="pa1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_req" target="pipe_s2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s2" target="pipe_s3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa3" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s3" target="pipe_s4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa4" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s5" target="pipe_s6" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa5" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s6" target="pipe_s7" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa6" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s7" target="pipe_s8" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="pa7" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="pipe_s8" target="pipe_resp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SECTION C: AGENT-SIDE PROCESSING                              -->
+        <!-- ============================================================ -->
+        <mxCell id="agentTitle" value="&lt;b&gt;C. AGENT-SIDE PROCESSING — state.py:update() + manager.py:sync_now()&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1350" width="800" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="agent_flow" value="&lt;pre style='font-size:9px;margin:0;text-align:left'&gt;// manager.py:sync_now() — AGENT RECEIVES RESPONSE&#10;&#10;result = sync.sync_with_server(params)   // HTTP GET to server&#10;data = result[&quot;data&quot;]                    // Full JSON response&#10;&#10;// state.py:update(data) — UPDATE LOCAL STATE&#10;&#10;1. sync_type = data[&quot;type&quot;]              // &quot;full&quot; or &quot;incremental&quot;&#10;&#10;2. GROUP CHANGE DETECTION (Bug #24 fix):&#10;   new_group_id = data[&quot;group_id&quot;]&#10;   if self._group_id != new_group_id:&#10;     sync_type = &quot;full&quot;                  // Force full sync!&#10;     // Don't trust up_to_date flag&#10;&#10;3. if data[&quot;up_to_date&quot;] and NOT group_changed:&#10;     return False                        // No update needed (A4)&#10;&#10;4. Parse data[&quot;domains&quot;] → _domains (set), _patterns (set), _ips (set)&#10;   // Each entry: if type==&quot;ip&quot; → _ips, if has wildcard → _patterns, else → _domains&#10;&#10;5. if sync_type == &quot;incremental&quot; and _domains not empty:&#10;     _domains |= new_domains             // MERGE (union)&#10;     _patterns |= new_patterns&#10;     _ips |= new_ips&#10;   else:  // &quot;full&quot; sync&#10;     _domains = new_domains              // REPLACE&#10;     _patterns = new_patterns&#10;     _ips = new_ips&#10;&#10;6. Update metadata:&#10;   _version = data[&quot;global_version&quot;]&#10;   _group_version = data[&quot;group_version&quot;]&#10;   _group_id = data[&quot;group_id&quot;]&#10;   _policy_mode = data[&quot;policy_mode&quot;]    // Store for next sync request&#10;&#10;7. manager: if state changed → _update_firewall_rules()&#10;   // Resolve domains to IPs (DNS cache) → update Windows Firewall&#10;   // netsh: default deny + allow rules per IP&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontSize=9;align=left;spacingLeft=10;fontFamily=Courier New;verticalAlign=top;spacingTop=10;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1390" width="700" height="500" as="geometry"/>
+        </mxCell>
+
+        <!-- Domain matching -->
+        <mxCell id="match_flow" value="&lt;b&gt;D. PACKET SNIFFING — is_domain_allowed() check&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px;text-align:left'&gt;// handlers.py:handle_domain_detection()&#10;// Called for every DNS/HTTP/HTTPS packet captured&#10;&#10;domain = extract_from_packet()  // e.g. &quot;youtube.com&quot;&#10;&#10;allowed = whitelist_state.is_domain_allowed(domain)&#10;  1. Direct match: domain in _domains?  // O(1) set lookup&#10;  2. Pattern match: fnmatch(domain, pattern)?&#10;     // e.g. &quot;hcmut.edu.vn&quot; matches &quot;*.edu.vn&quot;&#10;  3. Parent domain: split(&quot;.&quot;) → check each parent&#10;     // &quot;sub.google.com&quot; → check &quot;google.com&quot; → YES&#10;&#10;ip_allowed = whitelist_state.is_ip_allowed(dest_ip)&#10;  // Direct set lookup&#10;&#10;action:&#10;  if firewall_mode == &quot;whitelist_only&quot;:&#10;    if allowed or ip_allowed → ALLOWED&#10;    else → BLOCKED (Windows Firewall drops packet)&#10;  elif firewall_mode == &quot;monitor&quot;:&#10;    → MONITORED (log only, don't block)&#10;&#10;// Create log record and queue via LogSender&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=10;fontFamily=Courier New;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1390" width="440" height="420" as="geometry"/>
+        </mxCell>
+
+        <!-- System entries explanation -->
+        <mxCell id="sys_explain" value="&lt;b&gt;E. SYSTEM ENTRIES — Anti-deadlock&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px;text-align:left'&gt;// agent_policy_service.py:_build_system_entries()&#10;// LUON co trong isolate va custom mode&#10;&#10;system_entries = [&#10;  {value: &quot;192.168.1.100&quot;,  // Server IP&#10;   type: &quot;ip&quot;, category: &quot;system&quot;,&#10;   source: &quot;policy_isolate&quot;},&#10;&#10;  {value: &quot;8.8.8.8&quot;,         // Google DNS&#10;   type: &quot;ip&quot;, category: &quot;system_dns&quot;},&#10;&#10;  {value: &quot;8.8.4.4&quot;,         // Google DNS backup&#10;   type: &quot;ip&quot;, category: &quot;system_dns&quot;},&#10;&#10;  {value: &quot;1.1.1.1&quot;,         // Cloudflare DNS&#10;   type: &quot;ip&quot;, category: &quot;system_dns&quot;}&#10;]&#10;&#10;// TAI SAO CAN?&#10;// Agent MUST reach server de:&#10;//   1. Heartbeat (report alive)&#10;//   2. Sync (nhan lenh go policy)&#10;//   3. Token refresh&#10;// Neu chan server → agent mat ket noi&#10;//   → teacher khong go duoc isolate&#10;//   → DEADLOCK vinh vien!&#10;&#10;// DNS IPs needed de resolve server hostname&#10;// (neu server dung domain thay vi IP)&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=10;fontFamily=Courier New;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1390" width="380" height="480" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ================================================================== -->
+  <!-- PAGE 2: GROUP A — 4 AGENTS, SAME GROUP, 4 DIFFERENT RESULTS       -->
+  <!-- ================================================================== -->
+  <diagram id="page2-groupA" name="2. Group A — 4 Agents, 4 Ket qua">
+    <mxGraphModel dx="2200" dy="5800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="5800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="t2" value="&lt;b style='font-size:20px'&gt;Group A &quot;Lop 10A Tin hoc&quot; — 4 Agents CUNG GROUP, 4 ket qua KHAC NHAU&lt;/b&gt;&lt;br&gt;&lt;i&gt;Policy la per-AGENT (khong phai per-group). Cung profile, cung merge → khac nhau tai Step 7 (apply_policy)&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="1400" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 1: A1 — NONE (FULL ACCESS)                          -->
+        <!-- ============================================================ -->
+        <mxCell id="s1bg" value="" style="rounded=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="1950" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1t" value="&lt;b&gt;SCENARIO 1: Agent A1 (PC-01) — policy=none → FULL ACCESS theo Active Profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent co version cu (g=4, grp=10). Server co (g=5, grp=12) → version mismatch → full sync&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#1b5e20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="88" width="1200" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_before" value="&lt;b&gt;AGENT STATE BEFORE:&lt;/b&gt;&lt;hr&gt;_domains: {google.com, wiki...}&lt;br&gt;_version: &quot;4&quot;&lt;br&gt;_group_version: &quot;10&quot;&lt;br&gt;_group_id: &quot;grpA&quot;&lt;br&gt;_policy_mode: &quot;none&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="135" width="200" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_http" value="&lt;b&gt;HTTP REQUEST:&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:8px'&gt;GET /api/whitelist/agent-sync&#10;  ?agent_id=agent_a1&#10;  &amp;amp;global_version=4&#10;  &amp;amp;group_version=10&#10;  &amp;amp;policy_mode=none&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="280" y="135" width="210" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_server" value="&lt;b&gt;SERVER PROCESSING:&lt;/b&gt;&lt;hr&gt;1. Load agent A1 → group_id=&quot;grpA&quot;&lt;br&gt;2. Policy check: &lt;b style='color:#2e7d32'&gt;no record → &quot;none&quot;&lt;/b&gt;&lt;br&gt;3. Version: g=4!=5, grp=10!=12 → &lt;b&gt;CHANGED&lt;/b&gt;&lt;br&gt;4. Full sync: load 5 global entries&lt;br&gt;5. Profile: &lt;b style='color:#2e7d32'&gt;Active &quot;Bai thuc hanh&quot; FOUND&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ 4 domains (docs.python, replit, SO, github)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ SKIP Default, SKIP Legacy&lt;br&gt;6. Merge: 5 global + 4 profile - 1 dup = &lt;b&gt;8&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;stackoverflow: global→group (group wins)&lt;br&gt;7. Policy: &quot;none&quot; → &lt;b style='color:#2e7d32'&gt;KEEP 8 entries&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="135" width="340" height="220" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_resp" value="&lt;b&gt;HTTP RESPONSE:&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:8px'&gt;{&#10; &quot;success&quot;: true,&#10; &quot;type&quot;: &quot;full&quot;,&#10; &quot;count&quot;: 8,&#10; &quot;global_version&quot;: 5,&#10; &quot;group_version&quot;: 12,&#10; &quot;policy_mode&quot;: &quot;none&quot;,&#10; &quot;policy_active&quot;: false,&#10; &quot;domains&quot;: [&#10;   {value:&quot;google.com&quot;, scope:&quot;global&quot;},&#10;   {value:&quot;wikipedia.org&quot;,scope:&quot;global&quot;},&#10;   {value:&quot;10.0.0.0/24&quot;, scope:&quot;global&quot;},&#10;   {value:&quot;*.edu.vn&quot;, scope:&quot;global&quot;},&#10;   {value:&quot;docs.python.org&quot;,scope:&quot;group&quot;},&#10;   {value:&quot;replit.com&quot;, scope:&quot;group&quot;},&#10;   {value:&quot;stackoverflow.com&quot;,scope:&quot;group&quot;},&#10;   {value:&quot;github.com&quot;, scope:&quot;group&quot;}&#10; ]&#10;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="890" y="135" width="310" height="340" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_after" value="&lt;b&gt;AGENT STATE AFTER:&lt;/b&gt;&lt;hr&gt;_domains: {google.com, wikipedia.org,&lt;br&gt;&amp;nbsp;docs.python.org, replit.com,&lt;br&gt;&amp;nbsp;stackoverflow.com, github.com}&lt;br&gt;_patterns: {*.edu.vn}&lt;br&gt;_ips: {10.0.0.0/24}&lt;br&gt;_version: &quot;5&quot;&lt;br&gt;_group_version: &quot;12&quot;&lt;br&gt;_policy_mode: &quot;none&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="135" width="250" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1_fw" value="&lt;b&gt;WINDOWS FIREWALL:&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#2e7d32'&gt;ALLOWED:&lt;/b&gt;&lt;br&gt;✅ google.com (→ 142.250.x.x)&lt;br&gt;✅ docs.python.org&lt;br&gt;✅ replit.com, github.com&lt;br&gt;✅ stackoverflow.com&lt;br&gt;✅ *.edu.vn (hcmut.edu.vn...)&lt;br&gt;✅ 10.0.0.0/24 range&lt;hr&gt;&lt;b style='color:#c62828'&gt;BLOCKED:&lt;/b&gt;&lt;br&gt;❌ youtube.com&lt;br&gt;❌ facebook.com, tiktok.com&lt;br&gt;❌ netflix.com, spotify.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="135" width="230" height="250" as="geometry"/>
+        </mxCell>
+
+        <!-- S1 arrows -->
+        <mxCell id="s1a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s1_before" target="s1_http" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s1_http" target="s1_server" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a3" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s1_server" target="s1_resp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a4" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s1_resp" target="s1_after" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s1a5" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#2e7d32;" edge="1" source="s1_after" target="s1_fw" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 2: A2 — ISOLATE (SAME GROUP!)                       -->
+        <!-- ============================================================ -->
+        <mxCell id="s2bg" value="" style="rounded=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="660" width="1950" height="530" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2t" value="&lt;b&gt;SCENARIO 2: Agent A2 (PC-02) — CUNG GROUP A nhung policy=ISOLATE → CHAN HET&lt;/b&gt;&lt;br&gt;&lt;i&gt;Step 1-6 GIONG HET A1 (cung group → cung profile → cung merge = 8 entries). KHAC o Step 7: policy DISCARD tat ca!&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#b71c1c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="668" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_same" value="&lt;b&gt;Step 1-6: GIONG A1&lt;/b&gt;&lt;br&gt;Same group A → same cascade&lt;br&gt;Active Profile → 4 domains&lt;br&gt;Merge → 8 entries&lt;br&gt;&lt;b&gt;Den day = giong het A1!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="720" width="210" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_policy_detail" value="&lt;b style='font-size:14px'&gt;Step 7: APPLY POLICY&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px;text-align:left'&gt;effective = get_effective_mode(&quot;agent_a2&quot;)&#10;// Found: {override_mode: &quot;isolate&quot;,&#10;//         expires_at: &quot;2026-03-26T17:00&quot;}&#10;// now() = 14:00 &amp;lt; 17:00 → NOT expired&#10;// → effective = &quot;isolate&quot;&#10;&#10;// DISCARD all 8 merged entries!&#10;domains = _build_system_entries(&quot;192.168.1.100&quot;)&#10;// → [server_ip, 8.8.8.8, 8.8.4.4, 1.1.1.1]&#10;&#10;return {&#10;  domains: [4 system entries],&#10;  policy_mode: &quot;isolate&quot;,&#10;  policy_active: true&#10;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="300" y="710" width="370" height="260" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_resp" value="&lt;b&gt;HTTP RESPONSE:&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:8px'&gt;{&#10; &quot;success&quot;: true,&#10; &quot;type&quot;: &quot;full&quot;,&#10; &quot;count&quot;: 4,  // CHI 4!&#10; &quot;policy_mode&quot;: &quot;isolate&quot;,&#10; &quot;policy_active&quot;: true,&#10; &quot;domains&quot;: [&#10;   {value:&quot;192.168.1.100&quot;,type:&quot;ip&quot;,&#10;    category:&quot;system&quot;},&#10;   {value:&quot;8.8.8.8&quot;,type:&quot;ip&quot;,&#10;    category:&quot;system_dns&quot;},&#10;   {value:&quot;8.8.4.4&quot;,...},&#10;   {value:&quot;1.1.1.1&quot;,...}&#10; ]&#10;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="710" y="710" width="280" height="270" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_fw" value="&lt;b&gt;WINDOWS FIREWALL (A2):&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#c62828;font-size:14px'&gt;DEFAULT DENY ALL&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b style='color:#2e7d32'&gt;ALLOWED (chi 4 IP):&lt;/b&gt;&lt;br&gt;✅ 192.168.1.100 (server)&lt;br&gt;✅ 8.8.8.8 (DNS)&lt;br&gt;✅ 8.8.4.4 (DNS)&lt;br&gt;✅ 1.1.1.1 (DNS)&lt;hr&gt;&lt;b style='color:#c62828'&gt;BLOCKED — TAT CA:&lt;/b&gt;&lt;br&gt;❌ google.com&lt;br&gt;❌ docs.python.org&lt;br&gt;❌ replit.com, github.com&lt;br&gt;❌ stackoverflow.com&lt;br&gt;❌ youtube, facebook, tiktok...&lt;br&gt;❌ &lt;b&gt;MOI THU ngoai server!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="710" width="260" height="300" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_compare" value="&lt;b style='font-size:14px'&gt;A1 vs A2 — CUNG GROUP, KHAC KET QUA!&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;&lt;/th&gt;&lt;th style='background:#c8e6c9;padding:4px;border:1px solid #ccc'&gt;A1 (none)&lt;/th&gt;&lt;th style='background:#ffcdd2;padding:4px;border:1px solid #ccc'&gt;A2 (isolate)&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Group&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;A (GIONG)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Profile cascade&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Active&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Active (GIONG)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;After merge&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;8 entries&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;8 entries (GIONG)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;After policy&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#c8e6c9'&gt;&lt;b&gt;8 entries ✅&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;&lt;b&gt;0 + 4 system ❌&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;google.com?&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ ALLOWED&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;❌ BLOCKED&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;docs.python?&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ ALLOWED&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;❌ BLOCKED&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;youtube?&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;❌ BLOCKED&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;background:#ffcdd2'&gt;❌ BLOCKED&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;br&gt;&lt;b&gt;Policy la PER-AGENT, khong per-group!&lt;/b&gt;&lt;br&gt;A1 va A2 ngoi canh nhau, cung phong,&lt;br&gt;cung group, cung teacher — nhung A2&lt;br&gt;bi co lap vi &lt;b&gt;xem YouTube trong gio hoc&lt;/b&gt;." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="700" width="330" height="350" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2_expire" value="&lt;b&gt;TU DONG GO ISOLATE:&lt;/b&gt;&lt;hr&gt;expires_at = 17:00 hom nay&lt;br&gt;&lt;br&gt;Luc 17:01, A2 sync lai:&lt;br&gt;→ get_effective_mode()&lt;br&gt;→ &lt;b&gt;expires_at &amp;lt; now()&lt;/b&gt;&lt;br&gt;→ auto reset to &quot;none&quot;&lt;br&gt;→ A2 nhan lai 8 entries&lt;br&gt;&lt;b style='color:#2e7d32'&gt;→ Tu dong khoi phuc!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="710" width="230" height="180" as="geometry"/>
+        </mxCell>
+
+        <!-- S2 arrows -->
+        <mxCell id="s2a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#c62828;" edge="1" source="s2_same" target="s2_policy_detail" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s2a2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#c62828;" edge="1" source="s2_policy_detail" target="s2_resp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s2a3" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#c62828;" edge="1" source="s2_resp" target="s2_fw" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 3: A3 — CUSTOM WHITELIST                            -->
+        <!-- ============================================================ -->
+        <mxCell id="s3bg" value="" style="rounded=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1220" width="1950" height="450" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3t" value="&lt;b&gt;SCENARIO 3: Agent A3 (PC-03) — CUNG GROUP A nhung policy=custom_whitelist → CHI 2 trang + system&lt;/b&gt;&lt;br&gt;&lt;i&gt;Teacher cho A3 on thi: chi duoc xem docs.python.org va w3schools.com. Khong het han (go thu cong).&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#e65100;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1228" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_policy_detail" value="&lt;b style='font-size:14px'&gt;Step 7: APPLY POLICY&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px;text-align:left'&gt;effective = get_effective_mode(&quot;agent_a3&quot;)&#10;// Found: {override_mode: &quot;custom_whitelist&quot;,&#10;//  custom_whitelist: [&#10;//    {domain:&quot;docs.python.org&quot;},&#10;//    {domain:&quot;w3schools.com&quot;}&#10;//  ],&#10;//  expires_at: null}  // KHONG het han&#10;&#10;// DISCARD 8 merged entries!&#10;system = _build_system_entries()&#10;custom = policy.custom_whitelist&#10;&#10;return {&#10;  domains: system + custom,  // 4 + 2 = 6&#10;  policy_mode: &quot;custom_whitelist&quot;,&#10;  policy_active: true&#10;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1280" width="380" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_fw" value="&lt;b&gt;WINDOWS FIREWALL (A3):&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#2e7d32'&gt;ALLOWED (6 entries):&lt;/b&gt;&lt;br&gt;✅ 192.168.1.100 (server)&lt;br&gt;✅ 8.8.8.8, 8.8.4.4, 1.1.1.1 (DNS)&lt;br&gt;✅ &lt;b&gt;docs.python.org&lt;/b&gt; (custom)&lt;br&gt;✅ &lt;b&gt;w3schools.com&lt;/b&gt; (custom)&lt;hr&gt;&lt;b style='color:#c62828'&gt;BLOCKED — bao gom ca:&lt;/b&gt;&lt;br&gt;❌ google.com (du la global!)&lt;br&gt;❌ replit.com (du profile co!)&lt;br&gt;❌ github.com (du profile co!)&lt;br&gt;❌ stackoverflow.com&lt;br&gt;❌ youtube, facebook..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1280" width="280" height="270" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_compare" value="&lt;b style='font-size:13px'&gt;A1 vs A2 vs A3 — CUNG GROUP A!&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:4px;border:1px solid #ccc'&gt;URL&lt;/th&gt;&lt;th style='background:#c8e6c9;padding:4px;border:1px solid #ccc'&gt;A1 (none)&lt;/th&gt;&lt;th style='background:#ffcdd2;padding:4px;border:1px solid #ccc'&gt;A2 (isolate)&lt;/th&gt;&lt;th style='background:#fff3e0;padding:4px;border:1px solid #ccc'&gt;A3 (custom)&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;google.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;docs.python.org&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ (profile)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ (custom)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;w3schools.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ (custom)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;replit.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ (profile)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;github.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅ (profile)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;youtube.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e0e0e0'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;Total allowed&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;0 (+4 sys)&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;b&gt;2 (+4 sys)&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="790" y="1280" width="420" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3_note" value="&lt;b&gt;Key Insight:&lt;/b&gt;&lt;br&gt;• A3 co &lt;b&gt;docs.python&lt;/b&gt; trong CA HAI profile va custom&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Nhung no duoc phep vi nam trong custom list&lt;br&gt;&amp;nbsp;&amp;nbsp;→ KHONG phai vi profile (profile bi discard!)&lt;br&gt;&lt;br&gt;• A1 co &lt;b&gt;w3schools&lt;/b&gt; = BLOCKED&lt;br&gt;&amp;nbsp;&amp;nbsp;(khong co trong profile &quot;Bai thuc hanh&quot;)&lt;br&gt;• A3 co &lt;b&gt;w3schools&lt;/b&gt; = ALLOWED&lt;br&gt;&amp;nbsp;&amp;nbsp;(co trong custom list!)&lt;br&gt;&lt;br&gt;• &lt;b style='color:#e65100'&gt;expires_at = null&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Khong tu het han&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Teacher phai go thu cong:&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;policy_service.reset_agent()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1280" width="310" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- S3 arrows -->
+        <mxCell id="s3a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#e65100;" edge="1" source="s3_policy_detail" target="s3_fw" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 4: A4 — UP TO DATE (SKIP)                           -->
+        <!-- ============================================================ -->
+        <mxCell id="s4bg" value="" style="rounded=1;fillColor=#e8eaf6;strokeColor=#3f51b5;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1700" width="1950" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4t" value="&lt;b&gt;SCENARIO 4: Agent A4 (PC-04) — CUNG GROUP A, policy=none, nhung DA CAP NHAT → up_to_date=true → SKIP&lt;/b&gt;&lt;br&gt;&lt;i&gt;A4 da sync thanh cong truoc do (g=5, grp=12 = trung server). Server tra ve response nho, agent khong lam gi.&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#1a237e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1708" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s4_http" value="&lt;b&gt;HTTP REQUEST:&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:8px'&gt;GET /agent-sync&#10;  ?agent_id=agent_a4&#10;  &amp;amp;global_version=5   ← trung!&#10;  &amp;amp;group_version=12  ← trung!&#10;  &amp;amp;policy_mode=none&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3f51b5;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1760" width="220" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s4_server" value="&lt;b&gt;SERVER: Short-circuit!&lt;/b&gt;&lt;hr&gt;1. Policy: &quot;none&quot; (khong doi)&lt;br&gt;2. Version: g=5==5, grp=12==12&lt;br&gt;&lt;b style='color:#3f51b5;font-size:14px'&gt;→ up_to_date = true!&lt;/b&gt;&lt;br&gt;&lt;br&gt;KHONG query DB&lt;br&gt;KHONG load global entries&lt;br&gt;KHONG resolve profile&lt;br&gt;KHONG merge&lt;br&gt;KHONG apply policy&lt;br&gt;&lt;b&gt;→ Tra ve ngay lap tuc!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3f51b5;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1760" width="250" height="210" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s4_resp" value="&lt;b&gt;RESPONSE (nho!):&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:8px'&gt;{&#10; &quot;domains&quot;: [],  // RONG!&#10; &quot;up_to_date&quot;: true,&#10; &quot;global_version&quot;: 5,&#10; &quot;group_version&quot;: 12,&#10; &quot;type&quot;: &quot;versioned&quot;&#10;}&lt;/pre&gt;&lt;br&gt;&lt;b&gt;Agent: state.update()&lt;/b&gt;&lt;br&gt;→ up_to_date=true&lt;br&gt;→ return False (no change)&lt;br&gt;→ SKIP firewall update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1760" width="250" height="210" as="geometry"/>
+        </mxCell>
+
+        <!-- S4 arrows -->
+        <mxCell id="s4a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#3f51b5;" edge="1" source="s4_http" target="s4_server" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s4a2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#3f51b5;" edge="1" source="s4_server" target="s4_resp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- GRAND SUMMARY FOR GROUP A -->
+        <mxCell id="ga_sum" value="&lt;b style='font-size:16px'&gt;TONG KET GROUP A: 4 agent, 1 group, 1 profile → 4 ket qua hoan toan khac&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:11px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;Agent&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;Policy&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;Entries&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;google?&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;docs.python?&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;w3schools?&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;youtube?&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:5px;border:1px solid #ccc'&gt;Ly do&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Binh thuong, theo profile&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#ffebee'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A2&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;isolate&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;0+4sys&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Bi phat vi xem YouTube&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A3&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;custom&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;2+4sys&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;On thi, chi xem tai lieu&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;A4&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;none&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;&lt;b&gt;skip&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;❌&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Da sync truoc do, skip&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="900" y="1750" width="960" height="230" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ================================================================== -->
+  <!-- PAGE 3: CROSS-GROUP + DYNAMIC SCENARIOS                            -->
+  <!-- ================================================================== -->
+  <diagram id="page3-cross" name="3. Cross-Group + Dynamic Changes">
+    <mxGraphModel dx="2200" dy="4800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="4800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="t3" value="&lt;b style='font-size:20px'&gt;Cross-Group Scenarios + Dynamic Changes&lt;/b&gt;&lt;br&gt;&lt;i&gt;B1 (Default fallback), C1 (Legacy fallback), D1 (Pending/no group), Group Change, Profile Switch&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="1200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 5: B1 — DEFAULT PROFILE FALLBACK                    -->
+        <!-- ============================================================ -->
+        <mxCell id="s5bg" value="" style="rounded=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="1950" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5t" value="&lt;b&gt;SCENARIO 5: Agent B1 (PC-05) — Group B &quot;Ngoai ngu&quot; — KHONG Active Profile → Fallback sang Default Profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;Teacher chua activate profile nao. System tim Default Profile (is_default=true) → dung domains cua Default.&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#e65100;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="88" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s5_server" value="&lt;b&gt;SERVER PROCESSING:&lt;/b&gt;&lt;hr&gt;1. Agent B1 → group_id=&quot;grpB&quot;&lt;br&gt;2. Policy: no record → &quot;none&quot;&lt;br&gt;3. Version: g=5==5, &lt;b&gt;grp=6!=8&lt;/b&gt; → CHANGED&lt;br&gt;4. Full sync: 5 global entries&lt;br&gt;5. Profile cascade:&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;a) Active? → &lt;b style='color:#c62828'&gt;NO (khong co is_active=true)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;b) Default? → &lt;b style='color:#2e7d32'&gt;YES! &quot;Hoc online co ban&quot;&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ domains: duolingo, cambridge,&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;merriam-webster, bbc.co.uk/learning&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;c) Legacy? → SKIP (da co Default)&lt;br&gt;6. Merge: 5 global + 4 default = &lt;b&gt;9 entries&lt;/b&gt;&lt;br&gt;7. Policy: &quot;none&quot; → keep 9" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="135" width="380" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s5_fw" value="&lt;b&gt;B1 FIREWALL (9 entries):&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#2e7d32'&gt;ALLOWED:&lt;/b&gt;&lt;br&gt;✅ google.com (global)&lt;br&gt;✅ wikipedia.org (global)&lt;br&gt;✅ *.edu.vn (global)&lt;br&gt;✅ &lt;b&gt;duolingo.com&lt;/b&gt; (Default profile)&lt;br&gt;✅ &lt;b&gt;cambridge.org&lt;/b&gt; (Default profile)&lt;br&gt;✅ &lt;b&gt;merriam-webster.com&lt;/b&gt;&lt;br&gt;✅ &lt;b&gt;bbc.co.uk/learning&lt;/b&gt;&lt;hr&gt;&lt;b style='color:#c62828'&gt;BLOCKED:&lt;/b&gt;&lt;br&gt;❌ docs.python.org (Group A only!)&lt;br&gt;❌ replit.com (Group A only!)&lt;br&gt;❌ youtube, facebook, tiktok" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="135" width="280" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s5_vs" value="&lt;b&gt;A1 (Group A) vs B1 (Group B):&lt;/b&gt;&lt;hr&gt;&lt;table style='font-size:10px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;URL&lt;/th&gt;&lt;th style='background:#e3f2fd;padding:3px;border:1px solid #ccc'&gt;A1&lt;/th&gt;&lt;th style='background:#fff9c4;padding:3px;border:1px solid #ccc'&gt;B1&lt;/th&gt;&lt;th style='background:#e0e0e0;padding:3px;border:1px solid #ccc'&gt;Tai sao?&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;google.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Global — ca 2 co&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;docs.python.org&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Chi trong Active Profile A&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;duolingo.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Chi trong Default Profile B&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;youtube.com&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Khong group nao co&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;br&gt;&lt;b&gt;Key: Group entries chi anh huong agent TRONG group do.&lt;br&gt;Global entries anh huong TAT CA agent.&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="790" y="135" width="430" height="290" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 6: C1 — LEGACY FALLBACK                             -->
+        <!-- ============================================================ -->
+        <mxCell id="s6bg" value="" style="rounded=1;fillColor=#fce4ec;strokeColor=#880e4f;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="510" width="1950" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="s6t" value="&lt;b&gt;SCENARIO 6: Agent C1 (PC-10) — Group C &quot;Phong may tu do&quot; — KHONG PROFILE NAO → Legacy group.whitelist[]&lt;/b&gt;&lt;br&gt;&lt;i&gt;Group C chua co teacher tao profile. Fallback chain: Active=NO → Default=NO → Legacy=group.whitelist[].&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#880e4f;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="518" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s6_server" value="&lt;b&gt;SERVER PROCESSING:&lt;/b&gt;&lt;hr&gt;5. Profile cascade:&lt;br&gt;&amp;nbsp;&amp;nbsp;a) Active? → &lt;b style='color:#c62828'&gt;NO&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;b) Default? → &lt;b style='color:#c62828'&gt;NO (khong co profile nao!)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;c) Legacy? → &lt;b style='color:#2e7d32'&gt;YES!&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ group.whitelist = [youtube, facebook, tiktok]&lt;br&gt;6. Merge: 5 global + 3 legacy = &lt;b&gt;8 entries&lt;/b&gt;&lt;br&gt;7. Policy: &quot;none&quot; → keep 8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="565" width="380" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s6_fw" value="&lt;b&gt;C1 FIREWALL (8 entries):&lt;/b&gt;&lt;hr&gt;✅ google, wikipedia, *.edu.vn, 10.0.0.0/24, stackoverflow&lt;br&gt;✅ &lt;b&gt;youtube.com&lt;/b&gt; (legacy!)&lt;br&gt;✅ &lt;b&gt;facebook.com&lt;/b&gt; (legacy!)&lt;br&gt;✅ &lt;b&gt;tiktok.com&lt;/b&gt; (legacy!)&lt;hr&gt;❌ docs.python.org (A only)&lt;br&gt;❌ duolingo.com (B only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="565" width="280" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s6_note" value="&lt;b&gt;Tai sao C1 co youtube nhung A1 khong?&lt;/b&gt;&lt;hr&gt;• A1 thuoc Group A (Tin hoc)&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Active Profile: KHONG co youtube&lt;br&gt;&amp;nbsp;&amp;nbsp;→ youtube bi BLOCKED&lt;br&gt;&lt;br&gt;• C1 thuoc Group C (Tu do)&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Legacy whitelist CO youtube&lt;br&gt;&amp;nbsp;&amp;nbsp;→ youtube duoc ALLOWED&lt;br&gt;&lt;br&gt;&lt;b style='color:#880e4f'&gt;Moi group co whitelist rieng.&lt;br&gt;Agent chi nhan whitelist cua GROUP minh.&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="790" y="565" width="340" height="220" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 7: D1 — NEW AGENT, NO GROUP                         -->
+        <!-- ============================================================ -->
+        <mxCell id="s7bg" value="" style="rounded=1;fillColor=#e8eaf6;strokeColor=#283593;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="890" width="1950" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="s7t" value="&lt;b&gt;SCENARIO 7: Agent D1 (PC-NEW) — Moi cai, group_id=None → Tu dong vao Pending Group → Chi co Global&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent moi chua duoc admin gan group. Server auto-assign vao pending system group (whitelist=[] rong).&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#1a237e;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="898" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s7_server" value="&lt;b&gt;SERVER PROCESSING:&lt;/b&gt;&lt;hr&gt;1. Agent D1 → &lt;b&gt;group_id = None&lt;/b&gt;&lt;br&gt;2. group = find_by_id(None) → null&lt;br&gt;3. &lt;b style='color:#283593'&gt;group = ensure_pending_group()&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ find_one_and_update (atomic upsert)&lt;br&gt;&amp;nbsp;&amp;nbsp;→ {name:&quot;pending&quot;, is_system:true, whitelist:[]}&lt;br&gt;4. &lt;b&gt;agent.group_id = pending._id&lt;/b&gt; (save!)&lt;br&gt;5. Profile cascade: NO profiles, whitelist=[]&lt;br&gt;6. Merge: 5 global + 0 = &lt;b&gt;5 entries (global only)&lt;/b&gt;&lt;br&gt;7. Policy: &quot;none&quot; → keep 5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="945" width="400" height="210" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s7_fw" value="&lt;b&gt;D1 FIREWALL (5 entries):&lt;/b&gt;&lt;hr&gt;✅ google, wikipedia, *.edu.vn,&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;10.0.0.0/24, stackoverflow&lt;br&gt;&lt;br&gt;❌ Khong co group-specific nao&lt;br&gt;❌ youtube, facebook, tiktok&lt;br&gt;❌ docs.python, replit, duolingo&lt;hr&gt;&lt;i&gt;Khi admin gan D1 vao Group A:&lt;br&gt;→ Next sync: group_id change detected!&lt;br&gt;→ Force full sync&lt;br&gt;→ Nhan them 4 profile entries&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="490" y="945" width="300" height="230" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 8: GROUP CHANGE                                      -->
+        <!-- ============================================================ -->
+        <mxCell id="s8bg" value="" style="rounded=1;fillColor=#e0f2f1;strokeColor=#00695c;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1270" width="1950" height="430" as="geometry"/>
+        </mxCell>
+        <mxCell id="s8t" value="&lt;b&gt;SCENARIO 8: Agent D1 duoc CHUYEN tu Pending → Group A (Group Change Detection)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin gan D1 vao Group A. Lan sync tiep theo: state.py detect group_id thay doi → force full sync → nhan profile moi.&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#00695c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1278" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_before" value="&lt;b&gt;D1 STATE BEFORE:&lt;/b&gt;&lt;hr&gt;_domains: {google, wiki, SO}&lt;br&gt;_group_id: &quot;pending&quot;&lt;br&gt;_version: &quot;5&quot;&lt;br&gt;_group_version: &quot;1&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b2dfdb;strokeColor=#00695c;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1330" width="200" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_admin" value="&lt;b&gt;ADMIN ACTION:&lt;/b&gt;&lt;hr&gt;PATCH /api/agents/D1/group&lt;br&gt;{group_id: &quot;grpA&quot;}&lt;br&gt;&lt;br&gt;→ Agent D1.group_id = &quot;grpA&quot;&lt;br&gt;→ SocketIO: agent_group_updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="290" y="1330" width="240" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_sync" value="&lt;b&gt;D1 NEXT SYNC (60s later):&lt;/b&gt;&lt;hr&gt;Server responds:&lt;br&gt;group_id = &quot;grpA&quot; (NEW!)&lt;br&gt;group_version = 12&lt;br&gt;&lt;br&gt;&lt;b&gt;state.py:update():&lt;/b&gt;&lt;br&gt;new_group_id = &quot;grpA&quot;&lt;br&gt;self._group_id = &quot;pending&quot;&lt;br&gt;&lt;b style='color:#00695c;font-size:13px'&gt;GROUP CHANGED!&lt;/b&gt;&lt;br&gt;→ sync_type = &quot;full&quot; (forced)&lt;br&gt;→ bypass up_to_date check&lt;br&gt;→ REPLACE entire state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00695c;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="570" y="1330" width="280" height="230" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_after" value="&lt;b&gt;D1 STATE AFTER:&lt;/b&gt;&lt;hr&gt;_domains: {google, wiki, SO,&lt;br&gt;&amp;nbsp;&lt;b style='color:#2e7d32'&gt;+ docs.python, replit,&lt;br&gt;&amp;nbsp;+ github&lt;/b&gt;}&lt;br&gt;_group_id: &quot;grpA&quot; (NEW)&lt;br&gt;_version: &quot;5&quot;&lt;br&gt;_group_version: &quot;12&quot;&lt;br&gt;&lt;br&gt;&lt;b&gt;Firewall updated:&lt;/b&gt;&lt;br&gt;+3 new allow rules!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="890" y="1330" width="230" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s8_code" value="&lt;b&gt;Bug #24 Fix — state.py:72-83&lt;/b&gt;&lt;hr&gt;&lt;pre style='font-size:9px;text-align:left'&gt;new_group_id = str(data.get(&quot;group_id&quot;, &quot;&quot;))&#10;group_changed = (&#10;  self._group_id          # has old value&#10;  and new_group_id        # has new value&#10;  and new_group_id != self._group_id&#10;)&#10;&#10;if group_changed:&#10;  sync_type = &quot;full&quot;  # Force REPLACE&#10;  # Don't trust up_to_date!&#10;&#10;if up_to_date and not group_changed:&#10;  return False  # Only skip if NO change&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00695c;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1330" width="350" height="230" as="geometry"/>
+        </mxCell>
+
+        <!-- S8 arrows -->
+        <mxCell id="s8a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s8_before" target="s8_admin" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s8a2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;" edge="1" source="s8_admin" target="s8_sync" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s8a3" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#2e7d32;" edge="1" source="s8_sync" target="s8_after" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- SCENARIO 9: PROFILE SWITCH                                    -->
+        <!-- ============================================================ -->
+        <mxCell id="s9bg" value="" style="rounded=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1730" width="1950" height="430" as="geometry"/>
+        </mxCell>
+        <mxCell id="s9t" value="&lt;b&gt;SCENARIO 9: Teacher DEACTIVATE &quot;Bai thuc hanh&quot; → Agents A1,A4 fallback sang Default Profile&lt;/b&gt;&lt;br&gt;&lt;i&gt;Teacher tat Active Profile. group_version tang. Next sync: agents nhan Default Profile thay vi Active.&lt;/i&gt;" style="text;html=1;align=left;fontSize=13;fontColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1738" width="1400" height="35" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s9_action" value="&lt;b&gt;TEACHER ACTION:&lt;/b&gt;&lt;hr&gt;POST /groups/grpA/profiles/&lt;id&gt;/deactivate&lt;br&gt;&lt;br&gt;profile_service.deactivate_profile():&lt;br&gt;1. Set is_active = false&lt;br&gt;2. &lt;b style='color:#7b1fa2'&gt;group_model.bump_whitelist_version()&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ grpA.whitelist_version: 12 → &lt;b&gt;13&lt;/b&gt;&lt;br&gt;3. SocketIO: whitelist_updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#7b1fa2;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1790" width="340" height="170" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s9_before_agents" value="&lt;b&gt;A1 STATE BEFORE:&lt;/b&gt;&lt;br&gt;_group_version: &quot;12&quot;&lt;br&gt;_domains: {google,wiki,SO,&lt;br&gt;&amp;nbsp;&lt;b&gt;docs.python,replit,github&lt;/b&gt;}&lt;br&gt;(8 entries from Active Profile)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1790" width="260" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s9_sync" value="&lt;b&gt;A1 NEXT SYNC:&lt;/b&gt;&lt;hr&gt;group_version: 12 != &lt;b&gt;13&lt;/b&gt; → CHANGED!&lt;br&gt;Full sync:&lt;br&gt;&lt;br&gt;Profile cascade:&lt;br&gt;a) Active? → &lt;b style='color:#c62828'&gt;NO (da deactivate!)&lt;/b&gt;&lt;br&gt;b) Default? → &lt;b style='color:#2e7d32'&gt;YES &quot;Mac dinh 10A&quot;&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ domains: python.org, w3schools&lt;br&gt;&lt;br&gt;Merge: 5 global + 2 default = &lt;b&gt;7 entries&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b style='color:#c62828'&gt;MAT: replit, github (Active only)&lt;br&gt;THEM: w3schools (Default only)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="730" y="1790" width="310" height="260" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s9_after" value="&lt;b&gt;A1 STATE AFTER:&lt;/b&gt;&lt;hr&gt;_group_version: &quot;13&quot;&lt;br&gt;_domains: {google, wiki, SO,&lt;br&gt;&amp;nbsp;&lt;b style='color:#c62828'&gt;- docs.python (REMOVED)&lt;br&gt;&amp;nbsp;- replit (REMOVED)&lt;br&gt;&amp;nbsp;- github (REMOVED)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&lt;b style='color:#2e7d32'&gt;+ python.org (NEW)&lt;br&gt;&amp;nbsp;+ w3schools (NEW)&lt;/b&gt;}&lt;br&gt;&lt;br&gt;Firewall: remove 3 rules, add 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="1790" width="260" height="210" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s9_note" value="&lt;b&gt;QUAN TRONG:&lt;/b&gt;&lt;hr&gt;1. A2 (isolate) khong bi anh huong&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Van bi isolate (policy ghi de profile)&lt;br&gt;&lt;br&gt;2. A3 (custom) khong bi anh huong&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Van chi co 2 custom domains&lt;br&gt;&lt;br&gt;3. CHI A1 va A4 (policy=none) bi anh huong&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Ho la nhung agent dung &quot;normal flow&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;→ Profile change → version bump&lt;br&gt;&amp;nbsp;&amp;nbsp;→ version mismatch → full sync&lt;br&gt;&amp;nbsp;&amp;nbsp;→ nhan Default thay vi Active" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=5;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="1790" width="300" height="250" as="geometry"/>
+        </mxCell>
+
+        <!-- S9 arrows -->
+        <mxCell id="s9a1" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#7b1fa2;" edge="1" source="s9_action" target="s9_before_agents" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s9a2" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#7b1fa2;" edge="1" source="s9_before_agents" target="s9_sync" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s9a3" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#2e7d32;" edge="1" source="s9_sync" target="s9_after" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ================================================================== -->
+  <!-- PAGE 4: GRAND SUMMARY                                              -->
+  <!-- ================================================================== -->
+  <diagram id="page4-summary" name="4. Tong ket 9 Scenarios">
+    <mxGraphModel dx="2200" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="t4" value="&lt;b style='font-size:20px'&gt;TONG KET: 9 Scenarios — 7 Agents, 4 Groups, 3 Policies, 3 Fallback Levels&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="1200" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sum_table" value="&lt;table style='font-size:11px;width:100%;border-collapse:collapse'&gt;&lt;tr&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;#&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Agent&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Group&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Policy&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Profile Level&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Global&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;Group&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;After Policy&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;google?&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;docs.py?&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;youtube?&lt;/th&gt;&lt;th style='background:#424242;color:white;padding:6px;border:1px solid #ccc'&gt;duolingo?&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#e8f5e9'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;A1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;Active&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;4&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#ffebee'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;2&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;A2&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#c62828'&gt;&lt;b&gt;ISOLATE&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;(discarded)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;0 +4sys&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff3e0'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;3&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;A3&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#e65100'&gt;&lt;b&gt;CUSTOM&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;(discarded)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;2 +4sys&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;4&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;A4&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;(skip)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#999'&gt;-&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;up_to_date&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fff9c4'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;5&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;B1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;B (Ngoai ngu)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#fff3e0'&gt;Default&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;4&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;9&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#fce4ec'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;6&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;C1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;C (Tu do)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;Legacy&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;3&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e8eaf6'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;7&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;D1&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Pending&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;(empty)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;0&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;5&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#e0f2f1'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;D1→A&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Pending→A&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;Active&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;4&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;8&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f3e5f5'&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;9&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;A1(v2)&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;A (Tin hoc)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;color:#2e7d32'&gt;none&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#fff3e0'&gt;Default (after deactivate)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;5&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;2&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;&lt;b&gt;7&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#c8e6c9'&gt;✅&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc;background:#ffcdd2'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#424242;fontSize=10;verticalAlign=top;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="1700" height="310" as="geometry"/>
+        </mxCell>
+
+        <!-- HIERARCHY DIAGRAM -->
+        <mxCell id="hier_title" value="&lt;b style='font-size:16px'&gt;PRIORITY HIERARCHY — Ai ghi de ai?&lt;/b&gt;" style="text;html=1;align=left;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="390" width="500" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hier1" value="&lt;b style='font-size:16px;color:#c62828'&gt;POLICY&lt;/b&gt;&lt;br&gt;(isolate / custom)&lt;br&gt;Ghi de TAT CA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=12;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="30" y="430" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="hier2" value="&lt;b style='font-size:16px;color:#2e7d32'&gt;Active Profile&lt;/b&gt;&lt;br&gt;Ghi de Default + Legacy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=12;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="290" y="430" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="hier3" value="&lt;b style='font-size:16px;color:#e65100'&gt;Default Profile&lt;/b&gt;&lt;br&gt;Ghi de Legacy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=12;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="570" y="430" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="hier4" value="&lt;b style='font-size:16px;color:#880e4f'&gt;Legacy&lt;/b&gt;&lt;br&gt;group.whitelist[]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#880e4f;fontSize=12;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="850" y="430" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="hier5" value="&lt;b style='font-size:16px;color:#9673a6'&gt;Global&lt;/b&gt;&lt;br&gt;Luon co (merge)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9673a6;fontSize=12;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="430" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ha1" value="&lt;b&gt;ghi de ↓&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=3;strokeColor=#c62828;fontSize=11;fontStyle=1;" edge="1" source="hier1" target="hier2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ha2" value="&lt;b&gt;ghi de ↓&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#2e7d32;fontSize=11;fontStyle=1;" edge="1" source="hier2" target="hier3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ha3" value="&lt;b&gt;ghi de ↓&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#e65100;fontSize=11;fontStyle=1;" edge="1" source="hier3" target="hier4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ha4" value="&lt;b&gt;+ merge&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#9673a6;fontSize=11;fontStyle=1;dashed=1;" edge="1" source="hier4" target="hier5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+</mxfile>

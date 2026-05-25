@@ -1,0 +1,197 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="agent-register" name="Agent Registration Flow">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 8: Agent Registration&lt;/b&gt;&lt;br&gt;POST /api/agents/register&lt;br&gt;&lt;i&gt;Luồng đăng ký Agent mới vào hệ thống&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="500" y="15" width="350" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Swimlane headers -->
+        <mxCell id="lane_agent" value="&lt;b&gt;🖥️ AGENT&lt;/b&gt;&lt;br&gt;&lt;i&gt;Máy trạm&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="80" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_server" value="&lt;b&gt;🌐 SERVER&lt;/b&gt;&lt;br&gt;&lt;i&gt;Máy chủ&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="80" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_db" value="&lt;b&gt;🗄️ MongoDB&lt;/b&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="80" width="150" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Divider lines -->
+        <mxCell id="div1" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#cccccc;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="80" as="sourcePoint" />
+            <mxPoint x="420" y="1350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="div2" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#cccccc;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="920" y="80" as="sourcePoint" />
+            <mxPoint x="920" y="1350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agent Start -->
+        <mxCell id="a_start" value="&lt;b&gt;Agent starts&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent khởi động&lt;/i&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="130" y="150" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Collect info -->
+        <mxCell id="a_collect" value="&lt;b&gt;Collect system info&lt;/b&gt;&lt;br&gt;hostname, device_id, platform,&lt;br&gt;os_info, ip_address, agent_version&lt;br&gt;&lt;i&gt;Thu thập thông tin máy&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="90" y="230" width="200" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_start" target="a_collect" parent="1" />
+
+        <!-- Send request -->
+        <mxCell id="a_send" value="&lt;b&gt;POST /api/agents/register&lt;/b&gt;&lt;br&gt;Header: API Key&lt;br&gt;&lt;i&gt;Gửi request đăng ký&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="330" width="160" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="a_collect" target="a_send" parent="1" />
+
+        <!-- Arrow to server -->
+        <mxCell id="e_req" value="HTTP POST + API Key" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="270" y="357" as="sourcePoint" />
+            <mxPoint x="550" y="357" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Server: Validate API Key -->
+        <mxCell id="s_auth" value="&lt;b&gt;@require_api_key&lt;/b&gt;&lt;br&gt;permission='agent_register'&lt;br&gt;&lt;i&gt;Xác thực API Key&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="335" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_d1" value="&lt;b&gt;API Key&lt;br&gt;valid?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="595" y="415" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_auth" target="s_d1" parent="1" />
+
+        <mxCell id="s_err1" value="&lt;b&gt;401&lt;/b&gt; Invalid API Key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="770" y="425" width="130" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="s_d1" target="s_err1" parent="1" />
+
+        <!-- Extract data -->
+        <mxCell id="s_extract" value="&lt;b&gt;Extract registration data&lt;/b&gt;&lt;br&gt;hostname, device_id (required)&lt;br&gt;client_ip from request&lt;br&gt;&lt;i&gt;Trích xuất dữ liệu đăng ký&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="510" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="s_d1" target="s_extract" parent="1" />
+
+        <!-- Check duplicate -->
+        <mxCell id="s_dup_check" value="&lt;b&gt;Check duplicate&lt;/b&gt;&lt;br&gt;1. device_id match?&lt;br&gt;2. IP + hostname match?&lt;br&gt;&lt;i&gt;Kiểm tra trùng lặp&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="605" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_extract" target="s_dup_check" parent="1" />
+
+        <!-- Arrow to DB -->
+        <mxCell id="e_db1" value="find by device_id / IP+hostname" style="endArrow=classic;html=1;strokeColor=#9673a6;strokeWidth=1;fontSize=9;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="635" as="sourcePoint" />
+            <mxPoint x="1040" y="635" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Decision: existing? -->
+        <mxCell id="s_d2" value="&lt;b&gt;Agent&lt;br&gt;exists?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đã tồn tại?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="590" y="700" width="100" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_dup_check" target="s_d2" parent="1" />
+
+        <!-- ===== NEW AGENT PATH (LEFT) ===== -->
+        <mxCell id="new_title" value="&lt;b&gt;New Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent mới&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="445" y="700" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="new_s1" value="&lt;b&gt;Generate credentials&lt;/b&gt;&lt;br&gt;agent_id = UUID v4&lt;br&gt;agent_token = 32-byte hex&lt;br&gt;&lt;i&gt;Tạo ID + token mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="810" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="No (New)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#6c8ebf;fontSize=10;" edge="1" source="s_d2" target="new_s1" parent="1" />
+
+        <mxCell id="new_s2" value="&lt;b&gt;Assign to &quot;Pending&quot; group&lt;/b&gt;&lt;br&gt;status = &quot;pending&quot;&lt;br&gt;&lt;i&gt;Gán vào nhóm chờ duyệt&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="905" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="new_s1" target="new_s2" parent="1" />
+
+        <mxCell id="new_s3" value="&lt;b&gt;model.register_agent()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Lưu agent mới vào DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="990" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="new_s2" target="new_s3" parent="1" />
+
+        <!-- Arrow to DB -->
+        <mxCell id="e_db2" value="insert_one()" style="endArrow=classic;html=1;strokeColor=#9673a6;strokeWidth=1;fontSize=9;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="1012" as="sourcePoint" />
+            <mxPoint x="1040" y="1012" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== EXISTING AGENT PATH (RIGHT) ===== -->
+        <mxCell id="exist_title" value="&lt;b&gt;Existing Agent&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent đã có&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="745" y="700" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="exist_s1" value="&lt;b&gt;Update agent info&lt;/b&gt;&lt;br&gt;last_heartbeat = now&lt;br&gt;status → &quot;active&quot; (if not disabled)&lt;br&gt;Update IP, os_info, version&lt;br&gt;&lt;i&gt;Cập nhật thông tin agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="810" width="200" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="Yes (Exists)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="s_d2" target="exist_s1" parent="1" />
+
+        <mxCell id="exist_s2" value="&lt;b&gt;model.update_agent()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Cập nhật DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="745" y="920" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="exist_s1" target="exist_s2" parent="1" />
+
+        <!-- Arrow to DB -->
+        <mxCell id="e_db3" value="update_one()" style="endArrow=classic;html=1;strokeColor=#9673a6;strokeWidth=1;fontSize=9;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="895" y="940" as="sourcePoint" />
+            <mxPoint x="1040" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Merge: Generate JWT -->
+        <mxCell id="jwt" value="&lt;b&gt;JWTService.generate_tokens()&lt;/b&gt;&lt;br&gt;access_token: 24h | refresh_token: 7d&lt;br&gt;Claims: {agent_id, device_id}&lt;br&gt;&lt;i&gt;Tạo JWT tokens cho Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="1075" width="220" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="new_s3" target="jwt" parent="1" />
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="exist_s2" target="jwt" parent="1" />
+
+        <!-- SocketIO broadcast -->
+        <mxCell id="socket" value="&lt;b&gt;SocketIO.emit(&quot;agent_registered&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, hostname, ip, status}&lt;br&gt;&lt;i&gt;Thông báo realtime đến Dashboard&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="1170" width="220" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="jwt" target="socket" parent="1" />
+
+        <!-- Response -->
+        <mxCell id="resp" value="&lt;b&gt;201 Created&lt;/b&gt;&lt;br&gt;{agent_id, token, status,&lt;br&gt;jwt: {access_token, refresh_token},&lt;br&gt;server_time}&lt;br&gt;&lt;i&gt;Trả kết quả cho Agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="1255" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="socket" target="resp" parent="1" />
+
+        <!-- Response arrow back to agent -->
+        <mxCell id="e_resp" value="201 + JWT tokens" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=2;fontStyle=1;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="1290" as="sourcePoint" />
+            <mxPoint x="270" y="1290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Agent stores -->
+        <mxCell id="a_store" value="&lt;b&gt;Store credentials&lt;/b&gt;&lt;br&gt;Save agent_id + JWT tokens&lt;br&gt;Start heartbeat sender&lt;br&gt;Start whitelist sync&lt;br&gt;&lt;i&gt;Lưu thông tin + bắt đầu gửi heartbeat&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1260" width="200" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- DB icon -->
+        <mxCell id="db1" value="&lt;b&gt;agents&lt;/b&gt;&lt;br&gt;collection" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="600" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="&lt;b&gt;groups&lt;/b&gt;&lt;br&gt;collection" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="970" width="100" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

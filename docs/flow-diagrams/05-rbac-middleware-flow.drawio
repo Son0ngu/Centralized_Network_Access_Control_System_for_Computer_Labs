@@ -1,0 +1,189 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="rbac-flow" name="RBAC Middleware Chain">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 5: RBAC Middleware Chain&lt;/b&gt;&lt;br&gt;@require_login → @require_admin → @require_permission → @require_group_ownership&lt;br&gt;&lt;i&gt;Chuỗi middleware phân quyền&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="350" y="15" width="580" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ========== COLUMN 1: @require_login ========== -->
+        <mxCell id="col1_header" value="&lt;b&gt;@require_login&lt;/b&gt;&lt;br&gt;&lt;i&gt;Bắt buộc đăng nhập&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="200" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1_start" value="HTTP Request" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="160" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1_s1" value="&lt;b&gt;Extract JWT&lt;/b&gt;&lt;br&gt;Cookie → Header (Bearer)&lt;br&gt;&lt;i&gt;Lấy token từ cookie/header&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="225" width="180" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c1_start" target="c1_s1" parent="1" />
+
+        <mxCell id="c1_d1" value="&lt;b&gt;Token&lt;br&gt;found?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="90" y="305" width="100" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c1_s1" target="c1_d1" parent="1" />
+
+        <mxCell id="c1_err1" value="&lt;b&gt;401&lt;/b&gt; / Redirect /login&lt;br&gt;&lt;i&gt;Chưa đăng nhập&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="310" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c1_d1" target="c1_err1" parent="1" />
+
+        <mxCell id="c1_s2" value="&lt;b&gt;Decode JWT&lt;/b&gt;&lt;br&gt;Check token_for==&quot;admin_user&quot;&lt;br&gt;Get user from DB&lt;br&gt;Check is_active &amp; not locked&lt;br&gt;&lt;i&gt;Giải mã + kiểm tra user&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c1_d1" target="c1_s2" parent="1" />
+
+        <mxCell id="c1_d2" value="&lt;b&gt;Valid?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="95" y="510" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c1_s2" target="c1_d2" parent="1" />
+
+        <mxCell id="c1_err2" value="&lt;b&gt;401&lt;/b&gt; TOKEN_EXPIRED&lt;br&gt;&lt;i&gt;Token hết hạn&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="515" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e6" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c1_d2" target="c1_err2" parent="1" />
+
+        <mxCell id="c1_ok" value="&lt;b&gt;Set Flask context&lt;/b&gt;&lt;br&gt;g.current_user = user&lt;br&gt;g.current_user_id = id&lt;br&gt;g.current_role = role&lt;br&gt;&lt;i&gt;Lưu user vào context&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="595" width="180" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c1_d2" target="c1_ok" parent="1" />
+
+        <mxCell id="c1_pass" value="✅ PASS → Next middleware" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="700" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="c1_e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c1_ok" target="c1_pass" parent="1" />
+
+        <!-- ========== COLUMN 2: @require_admin ========== -->
+        <mxCell id="col2_header" value="&lt;b&gt;@require_admin&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chỉ Admin&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="90" width="170" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2_start" value="After @require_login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="165" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2_d1" value="&lt;b&gt;g.current_role&lt;br&gt;== &quot;admin&quot;?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Là Admin?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="462" y="230" width="126" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c2_e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c2_start" target="c2_d1" parent="1" />
+
+        <mxCell id="c2_err" value="&lt;b&gt;403 Forbidden&lt;/b&gt;&lt;br&gt;&quot;Chi Admin moi co quyen truy cap&quot;&lt;br&gt;&lt;i&gt;Chỉ Admin mới có quyền&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="345" width="190" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c2_e2" value="No (Teacher)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c2_d1" target="c2_err" parent="1" />
+
+        <mxCell id="c2_pass" value="✅ PASS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="650" y="250" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="c2_e3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c2_d1" target="c2_pass" parent="1" />
+
+        <!-- ========== COLUMN 3: @require_permission ========== -->
+        <mxCell id="col3_header" value="&lt;b&gt;@require_permission(perm)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kiểm tra quyền cụ thể&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="440" width="210" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c3_start" value="After @require_login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="455" y="505" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c3_s1" value="&lt;b&gt;check_permission(role, perm)&lt;/b&gt;&lt;br&gt;Lookup in RBAC_CONFIG&lt;br&gt;&lt;i&gt;Tra bảng quyền theo role&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="445" y="565" width="180" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c3_e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c3_start" target="c3_s1" parent="1" />
+
+        <mxCell id="c3_d1" value="&lt;b&gt;Has&lt;br&gt;permission?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="482" y="648" width="106" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="c3_e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c3_s1" target="c3_d1" parent="1" />
+
+        <mxCell id="c3_err" value="&lt;b&gt;403&lt;/b&gt; &quot;Khong du quyen&quot;&lt;br&gt;{required: &quot;perm_name&quot;}&lt;br&gt;&lt;i&gt;Không đủ quyền&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="650" y="650" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c3_e3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c3_d1" target="c3_err" parent="1" />
+
+        <mxCell id="c3_pass" value="✅ PASS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="495" y="740" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="c3_e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c3_d1" target="c3_pass" parent="1" />
+
+        <!-- ========== COLUMN 4: @require_group_ownership ========== -->
+        <mxCell id="col4_header" value="&lt;b&gt;@require_group_ownership&lt;/b&gt;&lt;br&gt;&lt;i&gt;Kiểm tra quyền sở hữu nhóm&lt;/i&gt;" style="text;html=1;align=center;fontSize=13;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="90" width="240" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c4_start" value="After @require_login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="165" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c4_d1" value="&lt;b&gt;Is Admin?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Là Admin?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="230" width="100" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c4_start" target="c4_d1" parent="1" />
+
+        <mxCell id="c4_bypass" value="✅ BYPASS&lt;br&gt;&lt;i&gt;Admin bỏ qua check&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="238" width="120" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e2" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c4_d1" target="c4_bypass" parent="1" />
+
+        <mxCell id="c4_s1" value="&lt;b&gt;Get group from DB&lt;/b&gt;&lt;br&gt;group_id from URL/body&lt;br&gt;&lt;i&gt;Lấy group từ DB&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="330" width="160" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e3" value="No (Teacher)" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="c4_d1" target="c4_s1" parent="1" />
+
+        <mxCell id="c4_d2" value="&lt;b&gt;Group&lt;br&gt;exists?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="942" y="415" width="96" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="c4_s1" target="c4_d2" parent="1" />
+
+        <mxCell id="c4_err1" value="&lt;b&gt;404&lt;/b&gt; Group not found" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="420" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e5" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c4_d2" target="c4_err1" parent="1" />
+
+        <mxCell id="c4_d3" value="&lt;b&gt;user._id in&lt;br&gt;group.teacher_ids?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Teacher thuộc nhóm?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="915" y="510" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e6" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c4_d2" target="c4_d3" parent="1" />
+
+        <mxCell id="c4_err2" value="&lt;b&gt;403&lt;/b&gt; &quot;Khong co quyen tren Group nay&quot;&lt;br&gt;&lt;i&gt;Không có quyền trên nhóm này&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="520" width="210" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e7" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=10;" edge="1" source="c4_d3" target="c4_err2" parent="1" />
+
+        <mxCell id="c4_pass" value="✅ PASS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="625" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="c4_e8" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=10;" edge="1" source="c4_d3" target="c4_pass" parent="1" />
+
+        <!-- ========== RBAC Permission Table ========== -->
+        <mxCell id="table_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="810" width="500" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="table_title" value="&lt;b&gt;RBAC Permission Table / Bảng phân quyền&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="140" y="820" width="300" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table" value="&lt;table style='font-size:11px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#6c8ebf;color:white'&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Permission&lt;/th&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Admin&lt;/th&gt;&lt;th style='padding:4px;border:1px solid #999'&gt;Teacher&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;dashboard:read&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;agents:read/write&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅ (own groups)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;groups:read/write&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅ (own groups)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;whitelist:read/write&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅ (own groups)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;whitelist_profile:create/delete&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅ (own groups)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;logs:read&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅ (own groups)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;logs:delete/export&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;users:read/write/delete&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;api_keys:read/write&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f9f9f9'&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;audit:read&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;system:*&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;✅&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc;text-align:center'&gt;❌&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="55" y="850" width="470" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- Middleware chain arrow -->
+        <mxCell id="chain_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="810" width="700" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="chain_title" value="&lt;b&gt;Typical Middleware Chain / Chuỗi middleware điển hình&lt;/b&gt;" style="text;html=1;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="760" y="815" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="chain" value="&lt;div style='font-size:11px;font-family:monospace'&gt;&lt;b&gt;Admin endpoint:&lt;/b&gt; @require_login → @require_admin → handler()&lt;br&gt;&lt;b&gt;Teacher endpoint:&lt;/b&gt; @require_login → @require_permission(&quot;whitelist:write&quot;) → handler()&lt;br&gt;&lt;b&gt;Group endpoint:&lt;/b&gt; @require_login → @require_group_ownership(&quot;group_id&quot;) → handler()&lt;br&gt;&lt;b&gt;Public endpoint:&lt;/b&gt; @inject_current_user → handler() &lt;i&gt;(optional auth)&lt;/i&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="620" y="845" width="660" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

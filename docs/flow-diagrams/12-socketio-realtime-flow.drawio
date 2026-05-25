@@ -1,0 +1,212 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="socketio" name="SocketIO Realtime Events">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 12: SocketIO Realtime Events&lt;/b&gt;&lt;br&gt;Server → Dashboard WebSocket Communication&lt;br&gt;&lt;i&gt;Luồng sự kiện realtime qua WebSocket&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="430" y="10" width="400" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Three columns -->
+        <mxCell id="col_trigger" value="&lt;b&gt;🔥 TRIGGER&lt;/b&gt;&lt;br&gt;&lt;i&gt;Nguồn kích hoạt&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="col_server" value="&lt;b&gt;🌐 SERVER emit()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Server phát sự kiện&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="200" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="col_dash" value="&lt;b&gt;📊 DASHBOARD on()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Dashboard lắng nghe&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="80" width="200" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Connection Events ===== -->
+        <mxCell id="section1" value="&lt;b&gt;Connection Events / Sự kiện kết nối&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontStyle=5;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="135" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_connect" value="&lt;b&gt;Dashboard opens page&lt;/b&gt;&lt;br&gt;&lt;i&gt;Mở trang Dashboard&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="165" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="s_connect" value="&lt;b&gt;emit(&quot;server_message&quot;)&lt;/b&gt;&lt;br&gt;{type: &quot;welcome&quot;, timestamp,&lt;br&gt;message: &quot;Connected&quot;}&lt;br&gt;&lt;i&gt;Chào mừng client&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="155" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d_connect" value="&lt;b&gt;on(&quot;server_message&quot;)&lt;/b&gt;&lt;br&gt;Show connection status&lt;br&gt;&lt;i&gt;Hiện trạng thái kết nối&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="160" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="ec1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="182" as="sourcePoint" /><mxPoint x="480" y="182" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="ec2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="182" as="sourcePoint" /><mxPoint x="1050" y="182" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Agent Events ===== -->
+        <mxCell id="section2" value="&lt;b&gt;Agent Events / Sự kiện Agent&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontStyle=5;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- agent_registered -->
+        <mxCell id="t_reg" value="&lt;b&gt;Agent registers&lt;/b&gt;&lt;br&gt;POST /api/agents/register&lt;br&gt;&lt;i&gt;Agent đăng ký mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="260" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_reg" value="&lt;b&gt;emit(&quot;agent_registered&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, hostname, ip_address,&lt;br&gt;status, timestamp}&lt;br&gt;&lt;i&gt;Thông báo agent mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="255" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d_reg" value="&lt;b&gt;on(&quot;agent_registered&quot;)&lt;/b&gt;&lt;br&gt;Add new row to agents table&lt;br&gt;Update agent count badge&lt;br&gt;&lt;i&gt;Thêm agent vào bảng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="255" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="er1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="285" as="sourcePoint" /><mxPoint x="460" y="285" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="er2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="285" as="sourcePoint" /><mxPoint x="1040" y="285" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- agent_heartbeat -->
+        <mxCell id="t_hb" value="&lt;b&gt;Agent heartbeat&lt;/b&gt;&lt;br&gt;POST /api/agents/heartbeat&lt;br&gt;&lt;i&gt;Agent gửi heartbeat&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="340" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_hb" value="&lt;b&gt;emit(&quot;agent_heartbeat&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, hostname, status,&lt;br&gt;last_heartbeat, metrics, group_id}&lt;br&gt;&lt;i&gt;Cập nhật heartbeat&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="335" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d_hb" value="&lt;b&gt;on(&quot;agent_heartbeat&quot;)&lt;/b&gt;&lt;br&gt;Update status dot (🟢🟡🔴)&lt;br&gt;Update metrics display&lt;br&gt;Update &quot;last seen&quot; text&lt;br&gt;&lt;i&gt;Cập nhật trạng thái agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="330" width="200" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="eh1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="365" as="sourcePoint" /><mxPoint x="460" y="365" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="eh2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="365" as="sourcePoint" /><mxPoint x="1040" y="365" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- agent_deleted -->
+        <mxCell id="t_del" value="&lt;b&gt;Admin deletes agent&lt;/b&gt;&lt;br&gt;DELETE /api/agents/:id&lt;br&gt;&lt;i&gt;Admin xoá agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="420" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_del" value="&lt;b&gt;emit(&quot;agent_deleted&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, hostname, timestamp}&lt;br&gt;&lt;i&gt;Thông báo agent bị xoá&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="420" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="d_del" value="&lt;b&gt;on(&quot;agent_deleted&quot;)&lt;/b&gt;&lt;br&gt;Remove row from table&lt;br&gt;Update count badge&lt;br&gt;&lt;i&gt;Xoá agent khỏi bảng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="415" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="445" as="sourcePoint" /><mxPoint x="460" y="445" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="ed2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="445" as="sourcePoint" /><mxPoint x="1040" y="445" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- agent_group_updated -->
+        <mxCell id="t_grp" value="&lt;b&gt;Admin changes group&lt;/b&gt;&lt;br&gt;PUT /api/agents/:id/group&lt;br&gt;&lt;i&gt;Admin đổi nhóm agent&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="500" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_grp" value="&lt;b&gt;emit(&quot;agent_group_updated&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, hostname, group_id,&lt;br&gt;status, timestamp}&lt;br&gt;&lt;i&gt;Thông báo đổi nhóm&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="495" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="d_grp" value="&lt;b&gt;on(&quot;agent_group_updated&quot;)&lt;/b&gt;&lt;br&gt;Update group column&lt;br&gt;Refresh group detail page&lt;br&gt;&lt;i&gt;Cập nhật cột nhóm&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="495" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="eg1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="525" as="sourcePoint" /><mxPoint x="460" y="525" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="eg2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="525" as="sourcePoint" /><mxPoint x="1040" y="525" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Whitelist Events ===== -->
+        <mxCell id="section3" value="&lt;b&gt;Whitelist Events / Sự kiện Whitelist&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontStyle=5;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="575" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_wl" value="&lt;b&gt;Admin add/delete entry&lt;/b&gt;&lt;br&gt;POST/DELETE /api/whitelist&lt;br&gt;&lt;i&gt;Admin thêm/xoá whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="605" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s_wl" value="&lt;b&gt;emit(&quot;whitelist_updated&quot;)&lt;/b&gt;&lt;br&gt;{action: &quot;added|deleted|imported&quot;,&lt;br&gt;type: &quot;domain|ip|pattern&quot;,&lt;br&gt;value, timestamp}&lt;br&gt;&lt;i&gt;Thông báo whitelist thay đổi&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="600" width="240" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="d_wl" value="&lt;b&gt;on(&quot;whitelist_updated&quot;)&lt;/b&gt;&lt;br&gt;Refresh whitelist table&lt;br&gt;Show notification toast&lt;br&gt;&lt;i&gt;Làm mới bảng whitelist&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="605" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ew1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="632" as="sourcePoint" /><mxPoint x="450" y="632" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="ew2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="632" as="sourcePoint" /><mxPoint x="1040" y="632" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Log Events ===== -->
+        <mxCell id="section4" value="&lt;b&gt;Log Events / Sự kiện Log&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontStyle=5;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="690" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_log1" value="&lt;b&gt;Agent submits logs&lt;/b&gt;&lt;br&gt;POST /api/logs&lt;br&gt;&lt;i&gt;Agent gửi batch log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="720" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_log1" value="&lt;b&gt;emit(&quot;logs_received&quot;)&lt;/b&gt;&lt;br&gt;{count, agents_affected, timestamp}&lt;br&gt;&lt;i&gt;Thông báo nhận log mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="720" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="d_log1" value="&lt;b&gt;on(&quot;logs_received&quot;)&lt;/b&gt;&lt;br&gt;Refresh log entries&lt;br&gt;Update log count&lt;br&gt;&lt;i&gt;Làm mới trang logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="715" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="el1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="745" as="sourcePoint" /><mxPoint x="460" y="745" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="el2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="745" as="sourcePoint" /><mxPoint x="1040" y="745" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- logs_cleared -->
+        <mxCell id="t_log2" value="&lt;b&gt;Admin clears logs&lt;/b&gt;&lt;br&gt;DELETE /api/logs&lt;br&gt;&lt;i&gt;Admin xoá log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="800" width="170" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s_log2" value="&lt;b&gt;emit(&quot;logs_cleared&quot;)&lt;/b&gt;&lt;br&gt;{action, deleted_count, timestamp}&lt;br&gt;&lt;i&gt;Thông báo log bị xoá&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="795" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="d_log2" value="&lt;b&gt;on(&quot;logs_cleared&quot;)&lt;/b&gt;&lt;br&gt;Clear log table&lt;br&gt;Reset count&lt;br&gt;&lt;i&gt;Xoá bảng log&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="795" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="el3" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="822" as="sourcePoint" /><mxPoint x="460" y="822" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="el4" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="822" as="sourcePoint" /><mxPoint x="1040" y="822" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Auth Events ===== -->
+        <mxCell id="section5" value="&lt;b&gt;Auth Events / Sự kiện xác thực&lt;/b&gt;" style="text;html=1;align=left;fontSize=11;fontStyle=5;fontColor=#666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="870" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_auth1" value="&lt;b&gt;Admin logs in&lt;/b&gt;&lt;br&gt;&lt;i&gt;Admin đăng nhập&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="900" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="s_auth1" value="&lt;b&gt;emit(&quot;admin_login&quot;)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="495" y="900" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="917" as="sourcePoint" /><mxPoint x="495" y="917" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="t_auth2" value="&lt;b&gt;Agent refreshes token&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent làm mới token&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="950" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="s_auth2" value="&lt;b&gt;emit(&quot;token_refreshed&quot;)&lt;/b&gt;&lt;br&gt;{agent_id, rotated, timestamp}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="475" y="945" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="967" as="sourcePoint" /><mxPoint x="475" y="967" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Summary box -->
+        <mxCell id="summary_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="500" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="summary" value="&lt;b&gt;Summary / Tổng kết:&lt;/b&gt; 8 event types qua SocketIO&lt;br&gt;• Agent: registered, heartbeat, deleted, group_updated (4)&lt;br&gt;• Whitelist: whitelist_updated (1)&lt;br&gt;• Log: logs_received, logs_cleared (2)&lt;br&gt;• Auth: admin_login, token_refreshed (2) - &lt;i&gt;không push to dashboard&lt;/i&gt;" style="text;html=1;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1025" width="480" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,160 @@
+<mxfile host="app.diagrams.net" modified="2026-03-23" agent="Claude" version="24.0.0" type="device">
+  <diagram id="sync-dns" name="Whitelist Sync + DNS Refresh">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;Flow 22: Whitelist Sync + DNS Refresh Threads&lt;/b&gt;&lt;br&gt;WhitelistSync (60s) + DNSRefresh (10s)&lt;br&gt;&lt;i&gt;Đồng bộ whitelist + làm mới DNS&lt;/i&gt;" style="text;html=1;align=center;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="450" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LEFT: WhitelistSync Thread ===== -->
+        <mxCell id="sync_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f8ff;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="520" height="750" as="geometry" />
+        </mxCell>
+        <mxCell id="sync_title" value="&lt;b&gt;WhitelistSync Thread&lt;/b&gt; - interval: 60s&lt;br&gt;&lt;i&gt;Luồng đồng bộ whitelist từ Server&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="88" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_start" value="Thread Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="225" y="130" width="110" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_init" value="&lt;b&gt;Initial sync_now()&lt;/b&gt;&lt;br&gt;&lt;i&gt;Đồng bộ lần đầu ngay khi start&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="190" y="185" width="180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="se1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_start" target="s_init" parent="1" />
+
+        <!-- sync_now() detail -->
+        <mxCell id="s_params" value="&lt;b&gt;Build sync params&lt;/b&gt;&lt;br&gt;{agent_id, global_version,&lt;br&gt;group_version, group_id, timestamp}&lt;br&gt;&lt;i&gt;Tạo tham số đồng bộ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="160" y="245" width="240" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="se2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_init" target="s_params" parent="1" />
+
+        <mxCell id="s_get" value="&lt;b&gt;GET /api/whitelist/agent-sync&lt;/b&gt;&lt;br&gt;?agent_id=...&amp;global_version=...&lt;br&gt;&amp;group_version=...&amp;group_id=...&lt;br&gt;&lt;i&gt;Gọi API đồng bộ&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="150" y="325" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="se3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_params" target="s_get" parent="1" />
+
+        <!-- Server decision -->
+        <mxCell id="s_d1" value="&lt;b&gt;Server response&lt;br&gt;type?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="230" y="410" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="se4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_get" target="s_d1" parent="1" />
+
+        <!-- up_to_date -->
+        <mxCell id="s_utd" value="&lt;b&gt;up_to_date: true&lt;/b&gt;&lt;br&gt;No changes needed&lt;br&gt;&lt;i&gt;Đã cập nhật&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="60" y="420" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="se5" value="up_to_date" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=8;" edge="1" source="s_d1" target="s_utd" parent="1" />
+
+        <!-- Full sync -->
+        <mxCell id="s_full" value="&lt;b&gt;type: &quot;full&quot;&lt;/b&gt;&lt;br&gt;REPLACE entire state&lt;br&gt;_domains = new_domains&lt;br&gt;_patterns = new_patterns&lt;br&gt;_ips = new_ips&lt;br&gt;&lt;i&gt;Thay thế toàn bộ state&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="370" y="415" width="170" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="se6" value="full" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#b85450;fontSize=8;" edge="1" source="s_d1" target="s_full" parent="1" />
+
+        <!-- Incremental -->
+        <mxCell id="s_inc" value="&lt;b&gt;type: &quot;incremental&quot;&lt;/b&gt;&lt;br&gt;MERGE into existing state&lt;br&gt;merged = existing | new&lt;br&gt;(union, no data loss)&lt;br&gt;&lt;i&gt;Gộp vào state hiện tại&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="370" y="510" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="se7" value="incremental" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=8;" edge="1" source="s_d1" target="s_inc" parent="1" />
+
+        <!-- Update version -->
+        <mxCell id="s_ver" value="&lt;b&gt;Update version + checksum&lt;/b&gt;&lt;br&gt;_version = global_version&lt;br&gt;_group_version = group_version&lt;br&gt;_checksum = sha256(sorted entries)&lt;br&gt;&lt;i&gt;Cập nhật version + checksum&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="140" y="610" width="240" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="se8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_full" target="s_ver" parent="1" />
+        <mxCell id="se9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_inc" target="s_ver" parent="1" />
+
+        <!-- Update firewall -->
+        <mxCell id="s_fw" value="&lt;b&gt;_update_firewall_rules()&lt;/b&gt;&lt;br&gt;Resolve domains → IPs&lt;br&gt;Update Windows Firewall ALLOW rules&lt;br&gt;&lt;i&gt;Cập nhật rules firewall&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="140" y="690" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="se10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_ver" target="s_fw" parent="1" />
+
+        <!-- Sleep 60s -->
+        <mxCell id="s_sleep" value="&lt;b&gt;Sleep 60s&lt;/b&gt; (interruptible)&lt;br&gt;→ Loop back to sync_now()&lt;br&gt;&lt;i&gt;Chờ 60 giây rồi lặp lại&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="165" y="770" width="190" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="se11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_fw" target="s_sleep" parent="1" />
+        <mxCell id="se12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_utd" target="s_sleep" parent="1" />
+
+        <!-- ===== RIGHT: DNSRefresh Thread ===== -->
+        <mxCell id="dns_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fff0;strokeColor=#82b366;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="80" width="450" height="580" as="geometry" />
+        </mxCell>
+        <mxCell id="dns_title" value="&lt;b&gt;DNSRefresh Thread&lt;/b&gt; - check every 10s&lt;br&gt;&lt;i&gt;Luồng làm mới DNS cache&lt;/i&gt;" style="text;html=1;align=center;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="88" width="350" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d_start" value="Thread Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="765" y="135" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d_sleep" value="&lt;b&gt;Sleep 10s&lt;/b&gt;&lt;br&gt;&lt;i&gt;Chờ 10 giây&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="755" y="190" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="de1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_start" target="d_sleep" parent="1" />
+
+        <mxCell id="d_check" value="&lt;b&gt;dns_cache.get_expiring_keys()&lt;/b&gt;&lt;br&gt;threshold: 60 seconds&lt;br&gt;Get domains expiring in next 60s&lt;br&gt;&lt;i&gt;Lấy domain sắp hết hạn trong 60s&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="680" y="245" width="270" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="de2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_sleep" target="d_check" parent="1" />
+
+        <mxCell id="d_d1" value="&lt;b&gt;Any expiring?&lt;/b&gt;&lt;br&gt;&lt;i&gt;Có domain sắp hết?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="760" y="325" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="de3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_check" target="d_d1" parent="1" />
+
+        <mxCell id="d_noop" value="No expiring → loop" style="text;html=1;fontSize=9;fontColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="635" y="340" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="de4" value="No" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#82b366;fontSize=9;" edge="1" source="d_d1" target="d_sleep" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="353" />
+              <mxPoint x="640" y="205" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="d_resolve" value="&lt;b&gt;For each expiring domain:&lt;/b&gt;&lt;br&gt;resolver.resolve_domain_sync(domain)&lt;br&gt;→ DNS A record (IPv4)&lt;br&gt;→ DNS AAAA record (IPv6)&lt;br&gt;→ Get actual TTL from DNS server&lt;br&gt;&lt;i&gt;Phân giải lại từng domain&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="700" y="405" width="230" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="de5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d6b656;fontSize=9;" edge="1" source="d_d1" target="d_resolve" parent="1" />
+
+        <mxCell id="d_cache" value="&lt;b&gt;dns_cache.set(domain, ips, ttl)&lt;/b&gt;&lt;br&gt;Update cache with new IPs + TTL&lt;br&gt;&lt;i&gt;Cập nhật cache DNS&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="710" y="505" width="210" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="de6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_resolve" target="d_cache" parent="1" />
+
+        <mxCell id="d_fw" value="&lt;b&gt;_update_firewall_rules()&lt;/b&gt;&lt;br&gt;Update firewall with new IPs&lt;br&gt;&lt;i&gt;Cập nhật firewall với IP mới&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="710" y="570" width="210" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="de7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_cache" target="d_fw" parent="1" />
+
+        <!-- DNS Resolver detail -->
+        <mxCell id="resolver_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="700" width="450" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="resolver_title" value="&lt;b&gt;OptimizedDNSResolver / Bộ phân giải DNS&lt;/b&gt;" style="text;html=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="680" y="705" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="resolver" value="&lt;pre style='font-size:9px;margin:2px'&gt;• max_workers: 10 (ThreadPoolExecutor)&lt;br&gt;• timeout: 10s per domain&lt;br&gt;• lifetime: 20s total per resolution&lt;br&gt;• Resolves: A (IPv4) + AAAA (IPv6) + CNAME&lt;br&gt;• Uses actual TTL from DNS server&lt;br&gt;• Default TTL fallback: 300s (5 min)&lt;br&gt;• Parallel: resolve_multiple_parallel()&lt;br&gt;  → concurrent.futures.as_completed()&lt;br&gt;&lt;br&gt;DNSRecord: (ipv4: tuple, ipv6: tuple,&lt;br&gt;            cname: str, ttl: float, resolved_at: float)&lt;/pre&gt;" style="text;html=1;align=left;verticalAlign=top;overflow=fill;" vertex="1" parent="1">
+          <mxGeometry x="605" y="730" width="420" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- State threading -->
+        <mxCell id="state_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="860" width="520" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="state" value="&lt;b&gt;Thread Safety / An toàn đa luồng:&lt;/b&gt;&lt;br&gt;&lt;br&gt;WhitelistState uses &lt;b&gt;threading.RLock()&lt;/b&gt; - all reads/writes protected&lt;br&gt;Both WhitelistSync and DNSRefresh can trigger _update_firewall_rules()&lt;br&gt;Lock prevents concurrent state corruption&lt;br&gt;&lt;i&gt;RLock bảo vệ state khỏi xung đột giữa các luồng&lt;/i&gt;" style="text;html=1;align=left;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="40" y="865" width="500" height="90" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

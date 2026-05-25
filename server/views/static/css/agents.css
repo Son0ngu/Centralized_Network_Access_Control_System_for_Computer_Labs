@@ -1,36 +1,6 @@
-.hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 25px;
-    padding: 3rem 2rem;
-    color: white;
-    margin-bottom: 2.5rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: float 20s infinite linear;
-}
-
-.hero-section .hero-content {
-    position: relative;
-    z-index: 1;
-}
-
-.hero-section.hero-agents .hero-content {
-    text-align: left;
-}
-
-.hero-section .btn {
-    backdrop-filter: blur(6px);
+/* Prevent horizontal overflow on mobile */
+html, body {
+    overflow-x: hidden;
 }
 
 .pulse-dot {
@@ -48,32 +18,7 @@
     100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
 }
 
-.agents-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    padding: 3rem 2rem;
-    color: white;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-}
 
-.agents-hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-    background-size: 30px 30px;
-    animation: float 15s infinite linear;
-}
-
-.agents-hero-content {
-    position: relative;
-    z-index: 1;
-}
 
 .agent-card {
     background: white;
@@ -82,6 +27,8 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
     margin-bottom: 1.5rem;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .agent-card:hover {
@@ -152,7 +99,7 @@
 
 .agent-log-panel {
     background: #f8f9fc;
-    border: 1px dashed #d6d8e1;
+    border: 1px solid #d6d8e1;
     border-radius: 12px;
     padding: 12px 14px;
     margin-top: 12px;
@@ -244,10 +191,10 @@
     margin-bottom: 1rem;
 }
 
-.stats-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-.stats-icon.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
-.stats-icon.danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); color: white; }
-.stats-icon.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+.stats-icon.primary { background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color: white; }
+.stats-icon.success { background: linear-gradient(135deg, #C7D2FE 0%, #6366F1 100%); color: white; }
+.stats-icon.danger { background: linear-gradient(135deg, #4F46E5 0%, #4F46E5 100%); color: white; }
+.stats-icon.warning { background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%); color: #312E81; }
 
 .stats-number {
     font-size: 2rem;
@@ -354,8 +301,8 @@
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
 }
 
 @keyframes float {
@@ -407,7 +354,7 @@
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 0;
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(45deg, #4F46E5, #4338CA);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -432,7 +379,7 @@
     
     /* Custom scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: #667eea #f1f1f1;
+    scrollbar-color: #4F46E5 #EEF2FF;
 }
 
 .group-board::-webkit-scrollbar {
@@ -445,12 +392,12 @@
 }
 
 .group-board::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
     border-radius: 10px;
 }
 
 .group-board::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    background: linear-gradient(135deg, #4F46E5 0%, #4F46E5 100%);
 }
 
 /*  Group card fixed width for horizontal layout */
@@ -458,7 +405,7 @@
     min-width: 280px;
     max-width: 320px;
     flex-shrink: 0;
-    border: 2px dashed #d6d8e1;
+    border: 2px solid #d6d8e1;
     border-radius: 12px;
     padding: 14px;
     background: #f8f9fc;
@@ -468,9 +415,9 @@
 }
 
 .group-card:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    border-color: #4F46E5;
+    background: #E0E7FF;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .group-card .group-name {
@@ -514,15 +461,15 @@
 }
 
 .group-agent-count:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
+    border-color: #4F46E5;
+    background: #E0E7FF;
 }
 
 .group-card.dropping {
-    border-color: #0d6efd;
+    border-color: #4F46E5;
     border-style: solid;
-    background: #e7f1ff;
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    background: #E0E7FF;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
 /*  Expand icon animation */
@@ -560,8 +507,8 @@
 }
 
 .group-agent-item:hover {
-    background: #f8f9fc;
-    border-color: #667eea;
+    background: #EEF2FF;
+    border-color: #4F46E5;
 }
 
 .group-agent-item .agent-name {
@@ -601,4 +548,307 @@
 
 .group-agent-item .agent-status-dot.pending {
     background: #17a2b8;
+}
+
+/* ========================================
+   RESPONSIVE - Agents Page
+   ======================================== */
+
+/* Tablet landscape (max-width: 992px) */
+@media (max-width: 992px) {
+    .hero-section {
+        padding: 2.5rem 1.5rem;
+        border-radius: 18px;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.75rem;
+    }
+
+    .agents-hero {
+        padding: 2.5rem 1.5rem;
+    }
+
+    .stats-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+
+    .stats-number {
+        font-size: 1.5rem;
+    }
+
+    .group-board {
+        gap: 12px;
+    }
+
+    .group-card {
+        min-width: 250px;
+        max-width: 280px;
+    }
+}
+
+/* Tablet portrait (max-width: 768px) */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.5rem;
+    }
+
+    .hero-section .lead {
+        font-size: 0.9rem;
+    }
+
+    .hero-section .row .col-md-4 {
+        text-align: left !important;
+        margin-top: 1rem;
+    }
+
+    .agents-hero {
+        padding: 2rem 1.25rem;
+        border-radius: 15px;
+    }
+
+    /* Search card - stack inputs */
+    .search-card .row > div {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Stats cards */
+    .status-card .card-body {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .status-icon {
+        font-size: 1.5rem;
+    }
+
+    /* Agent cards & items */
+    .agent-card .card-body,
+    .agent-item {
+        padding: 1rem;
+    }
+
+    .agent-actions {
+        min-width: auto;
+    }
+
+    .agent-actions .btn-action {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .agent-item .d-flex.align-items-center.justify-content-end {
+        flex-wrap: wrap;
+    }
+
+    /* Group board */
+    .group-board {
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .group-card {
+        min-width: 220px;
+        max-width: 260px;
+        padding: 10px;
+    }
+
+    .group-card .group-name {
+        font-size: 0.9rem;
+    }
+
+    /* Agent log panel */
+    .agent-log-panel {
+        padding: 8px 10px;
+    }
+
+    .agent-log-header {
+        font-size: 0.85rem;
+    }
+
+    .agent-log-meta {
+        font-size: 0.8rem;
+    }
+
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+    }
+}
+
+/* Mobile (max-width: 576px) */
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-section h1.display-5 {
+        font-size: 1.25rem;
+    }
+
+    .hero-section h1 i {
+        display: none;
+    }
+
+    .hero-section .lead {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-section .btn-lg {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .hero-section .d-flex.align-items-center {
+        font-size: 0.85rem;
+    }
+
+    .agents-hero {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+    }
+
+    /* Stats cards - smaller */
+    .status-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .stat-number {
+        font-size: 1.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+        letter-spacing: 0;
+    }
+
+    .status-icon {
+        font-size: 1.25rem;
+    }
+
+    /* Search card */
+    .search-card .card-body {
+        padding: 0.75rem;
+    }
+
+    /* Agent item responsive layout */
+    .agent-item {
+        padding: 0.75rem !important;
+    }
+
+    .agent-item .row {
+        flex-direction: column;
+    }
+
+    .agent-item .col-md-6 {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .agent-item .d-flex.align-items-center.justify-content-end {
+        justify-content: flex-start !important;
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+
+    .agent-item .me-3 {
+        display: none;
+    }
+
+    .agent-log-panel {
+        width: 100%;
+    }
+
+    .agent-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .agent-actions .btn-action {
+        flex: 1;
+        text-align: center;
+    }
+
+    .agent-display-name {
+        font-size: 0.95rem;
+    }
+
+    .agent-hostname {
+        font-size: 0.75rem;
+    }
+
+    .agent-status {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Prevent any child from causing horizontal overflow */
+    .agent-item * {
+        max-width: 100%;
+        overflow-wrap: break-word;
+    }
+
+    /* Group board on mobile */
+    .group-board {
+        gap: 8px;
+    }
+
+    .group-card {
+        min-width: 200px;
+        max-width: 240px;
+        padding: 8px;
+    }
+
+    .group-card .group-name {
+        font-size: 0.85rem;
+        gap: 6px;
+    }
+
+    .group-card .group-meta {
+        font-size: 0.8rem;
+    }
+
+    .group-agent-count {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .group-agent-item {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    /* Card headers - stack on mobile */
+    .card-header .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .card-header .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
 }

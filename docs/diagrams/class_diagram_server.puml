@@ -1,0 +1,351 @@
+@startuml SAINT_Server_Class_Diagram
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FEFECE
+  BorderColor #A80036
+  ArrowColor #A80036
+}
+skinparam package {
+  BackgroundColor #F0F0F0
+  BorderColor #888888
+}
+
+title Class Diagram - SAINT Server
+
+package "Models" {
+  class UserModel {
+    - db: Collection
+    --
+    + create(username, password, role, email): dict
+    + find_by_username(username): dict
+    + find_by_id(user_id): dict
+    + update(user_id, data): bool
+    + delete(user_id): bool
+    + increment_failed_attempts(user_id)
+    + reset_failed_attempts(user_id)
+    + is_locked(user): bool
+    + get_user_statistics(): dict
+  }
+
+  class AgentModel {
+    - db: Collection
+    --
+    + register_agent(agent_data): dict
+    + update_agent(agent_id, data): bool
+    + update_heartbeat(agent_id, metrics): bool
+    + find_by_agent_id(agent_id): dict
+    + find_by_device_id(device_id): dict
+    + get_all_agents(filters): list
+    + get_active_agents(): list
+    + count_agents(): int
+    + delete_agent(agent_id): bool
+    + get_agent_statistics(): dict
+  }
+
+  class GroupModel {
+    - db: Collection
+    --
+    + create_group(name, desc, created_by): dict
+    + find_by_id(group_id): dict
+    + list_groups(filters): list
+    + update_group(group_id, data): bool
+    + delete_group(group_id): bool
+    + add_teacher(group_id, teacher_id): bool
+    + remove_teacher(group_id, teacher_id): bool
+    + ensure_pending_group(): dict
+    + get_agents_count(group_id): int
+  }
+
+  class WhitelistModel {
+    - db: Collection
+    --
+    + add_entry(domain, type, scope, group_id): dict
+    + delete_entry(entry_id): bool
+    + find_all_entries(filters): list
+    + get_entries_by_group(group_id): list
+    + update_entry(entry_id, data): bool
+    + bump_global_version(): int
+    + get_global_version(): int
+    + import_entries(entries): int
+    + export_entries(filters): list
+  }
+
+  class LogModel {
+    - db: Collection
+    --
+    + add_log(log_data): dict
+    + find_all_logs(filters, pagination): list
+    + count_logs(filters): int
+    + find_logs_by_agent(agent_id): list
+    + delete_logs(filters): int
+    + export_logs(filters): list
+  }
+
+  class AuditModel {
+    - db: Collection
+    --
+    + log(user_id, username, role, action, resource_type, resource_id, details, ip): dict
+    + get_logs(filters, pagination): list
+    + get_user_activity(user_id): list
+    + count_logs(filters): int
+  }
+
+  class APIKeyModel {
+    - db: Collection
+    --
+    + generate_api_key(): tuple
+    + create_api_key(name, permissions, created_by): dict
+    + validate_api_key(key_hash): dict
+    + revoke_api_key(key_id): bool
+    + find_by_hash(key_hash): dict
+    + get_all_keys(): list
+  }
+
+  class SessionModel {
+    - db: Collection
+    --
+    + create(user_id, access_jti, refresh_jti, expires): dict
+    + find_by_jti(jti): dict
+    + revoke(session_id): bool
+    + get_active_sessions(user_id): list
+    + delete_expired(): int
+  }
+
+  class WhitelistProfileModel {
+    - db: Collection
+    --
+    + create_profile(group_id, teacher_id, name, domains): dict
+    + find_by_id(profile_id): dict
+    + update_profile(profile_id, data): bool
+    + list_profiles(filters): list
+    + activate_profile(profile_id): bool
+    + deactivate_profile(profile_id): bool
+    + delete_profile(profile_id): bool
+    + get_active_profile(group_id): dict
+  }
+
+  class AgentPolicyModel {
+    - db: Collection
+    --
+    + create_policy(agent_id, policy_data): dict
+    + update_policy(agent_id, data): bool
+    + get_policy(agent_id): dict
+    + check_expiration(agent_id): bool
+  }
+}
+
+package "Services" {
+  class UserService {
+    + create_user(data): dict
+    + update_user(user_id, data): dict
+    + delete_user(user_id): bool
+    + reset_password(user_id): str
+    + toggle_active(user_id): bool
+    + get_user_statistics(): dict
+    + verify_password(user, password): bool
+  }
+
+  class AgentService {
+    + register_agent(agent_data, api_key): dict
+    + update_agent(agent_id, data): dict
+    + get_all_agents(filters): list
+    + calculate_status(last_heartbeat): str
+    + get_agent_statistics(): dict
+  }
+
+  class GroupService {
+    + create_group(data): dict
+    + update_group(group_id, data): dict
+    + delete_group(group_id): bool
+    + list_groups(filters): list
+    + add_teacher(group_id, teacher_id): bool
+    + remove_teacher(group_id, teacher_id): bool
+  }
+
+  class WhitelistService {
+    + get_all_entries(filters): list
+    + add_entry(data): dict
+    + delete_entry(entry_id): bool
+    + update_entry(entry_id, data): dict
+    + import_entries(entries): int
+    + export_entries(filters): list
+    + get_entries_by_group(group_id): list
+    + get_statistics(): dict
+  }
+
+  class LogService {
+    + add_log(log_data): dict
+    + list_logs(filters, pagination): list
+    + get_statistics(): dict
+    + export_logs(filters): list
+    + clear_logs(filters): int
+  }
+
+  class AuditService {
+    + log_action(user, action, resource_type, resource_id, details, ip): dict
+    + get_logs(filters): list
+    + get_user_activity(user_id): list
+  }
+
+  class JWTService {
+    - secret_key: str
+    --
+    + generate_tokens(user_id, role): dict
+    + validate_access_token(token): dict
+    + refresh_token(refresh_token): dict
+    + revoke_token(jti): bool
+  }
+
+  class AdminAuthService {
+    + authenticate(username, password): dict
+    + logout(token): bool
+    + refresh_token(refresh_token): dict
+  }
+
+  class APIKeyService {
+    + create_api_key(name, permissions, user): dict
+    + validate_api_key(api_key): dict
+    + revoke_api_key(key_id, user): bool
+    + get_api_keys(): list
+  }
+
+  class RBACService {
+    + check_permission(user, permission): bool
+    + can_access_group(user, group_id): bool
+    + get_group_query_filter(user): dict
+    + get_teacher_group_ids(teacher_id): list
+  }
+
+  class WhitelistProfileService {
+    + create_profile(data): dict
+    + update_profile(profile_id, data): dict
+    + delete_profile(profile_id): bool
+    + activate_profile(profile_id): bool
+    + list_profiles(filters): list
+  }
+
+  class AgentPolicyService {
+    + create_policy(agent_id, data): dict
+    + update_policy(agent_id, data): dict
+    + get_policy(agent_id): dict
+  }
+}
+
+package "Controllers" {
+  class AuthController << (C,#FF7700) >> {
+    + refresh_token(): Response
+    + logout(): Response
+    + verify_token(): Response
+  }
+
+  class AdminAuthController << (C,#FF7700) >> {
+    + login(): Response
+    + logout(): Response
+    + refresh(): Response
+  }
+
+  class UserController << (C,#FF7700) >> {
+    + list_users(): Response
+    + create_user(): Response
+    + get_user(): Response
+    + update_user(): Response
+    + delete_user(): Response
+  }
+
+  class AgentController << (C,#FF7700) >> {
+    + register_agent(): Response
+    + list_agents(): Response
+    + get_agent(): Response
+    + delete_agent(): Response
+    + heartbeat(): Response
+    + get_statistics(): Response
+  }
+
+  class GroupController << (C,#FF7700) >> {
+    + list_groups(): Response
+    + create_group(): Response
+    + update_group(): Response
+    + delete_group(): Response
+  }
+
+  class WhitelistController << (C,#FF7700) >> {
+    + list_domains(): Response
+    + add_domain(): Response
+    + delete_domain(): Response
+    + agent_sync(): Response
+    + import_domains(): Response
+    + export_domains(): Response
+  }
+
+  class LogController << (C,#FF7700) >> {
+    + list_logs(): Response
+    + receive_logs(): Response
+    + export_logs(): Response
+    + get_statistics(): Response
+  }
+
+  class AuditController << (C,#FF7700) >> {
+    + list_logs(): Response
+    + user_activity(): Response
+  }
+
+  class APIKeyController << (C,#FF7700) >> {
+    + list_keys(): Response
+    + create_key(): Response
+    + revoke_key(): Response
+  }
+}
+
+package "Middleware" {
+  class AuthMiddleware << (M,#00AA00) >> {
+    + require_api_key(): decorator
+    + require_jwt(): decorator
+    + get_api_key_from_request(): str
+  }
+
+  class RBACMiddleware << (M,#00AA00) >> {
+    + require_login(): decorator
+    + require_admin(): decorator
+    + require_permission(perm): decorator
+    + inject_current_user(): decorator
+  }
+}
+
+' === Relationships ===
+' Controllers -> Services
+AdminAuthController ..> AdminAuthService
+UserController ..> UserService
+AgentController ..> AgentService
+GroupController ..> GroupService
+WhitelistController ..> WhitelistService
+LogController ..> LogService
+AuditController ..> AuditService
+APIKeyController ..> APIKeyService
+AuthController ..> JWTService
+
+' Services -> Models
+UserService ..> UserModel
+UserService ..> AuditService
+AgentService ..> AgentModel
+AgentService ..> JWTService
+GroupService ..> GroupModel
+WhitelistService ..> WhitelistModel
+LogService ..> LogModel
+LogService ..> RBACService
+AuditService ..> AuditModel
+AdminAuthService ..> UserModel
+AdminAuthService ..> JWTService
+APIKeyService ..> APIKeyModel
+APIKeyService ..> AuditService
+JWTService ..> SessionModel
+RBACService ..> GroupModel
+WhitelistProfileService ..> WhitelistProfileModel
+AgentPolicyService ..> AgentPolicyModel
+
+' Middleware
+AuthMiddleware ..> APIKeyModel
+AuthMiddleware ..> JWTService
+RBACMiddleware ..> JWTService
+RBACMiddleware ..> RBACService
+
+@enduml

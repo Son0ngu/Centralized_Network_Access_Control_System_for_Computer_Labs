@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Set
 
-from agent.shared.time_utils import now, now_iso, sleep
+from shared.time_utils import now, now_iso, sleep
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.rules")
@@ -14,18 +14,75 @@ class RulesManager:
         self.allowed_ips: Set[str] = set()
         self._rule_lock = threading.Lock()
     
+    def create_self_allow_rules(self, program_path: str) -> bool:
+        """Create allow rules for the agent's own exe.
+
+        Rationale: when Default Deny is enabled, the agent must still reach the
+        control server (HTTPS / TCP 443) and resolve domains via its own
+        dnspython/aiodns stack (DNS / UDP 53 + TCP 53 fallback). Whitelisting
+        by program path is bulletproof against server IP rotation (Render.com
+        load balancer, CDN), unlike `remoteip=` rules.
+
+        Rules are created with deterministic names and re-created idempotently
+        (delete-then-add) so agent restarts don't accumulate duplicates.
+        """
+        if not program_path:
+            logger.error("Self-allow rules skipped: no program path provided")
+            return False
+
+        rules = [
+            ("HTTPS", "tcp", "443"),
+            ("DNS_UDP", "udp", "53"),
+            ("DNS_TCP", "tcp", "53"),
+        ]
+
+        success = True
+        for tag, protocol, remoteport in rules:
+            rule_name = f"{self.rule_prefix}_SelfAllow_{tag}"
+
+            # Idempotent: remove any stale rule with the same name first.
+            # netsh returns non-zero if no match — that's expected on first run.
+            FirewallUtils.run_netsh_command([
+                "advfirewall", "firewall", "delete", "rule",
+                f"name={rule_name}",
+            ])
+
+            result = FirewallUtils.run_netsh_command([
+                "advfirewall", "firewall", "add", "rule",
+                f"name={rule_name}",
+                "dir=out",
+                "action=allow",
+                f"program={program_path}",
+                f"protocol={protocol}",
+                f"remoteport={remoteport}",
+                "enable=yes",
+                "profile=any",
+                f"description=Allow SAINT agent outbound {tag} ({now_iso()})",
+            ])
+
+            if result.returncode == 0:
+                logger.info(f"Self-allow rule created: {rule_name} ({protocol}/{remoteport})")
+            else:
+                logger.error(
+                    f"Failed to create self-allow rule {rule_name}: "
+                    f"{result.stderr.strip() or '(no stderr)'}"
+                )
+                success = False
+
+        return success
+
     def create_allow_rule(self, ip: str) -> bool:
         try:
             if not FirewallUtils.is_valid_ip(ip):
                 logger.warning(f"Invalid IP: {ip}")
                 return False
-            
+
             if ip in self.allowed_ips:
                 logger.debug(f"Allow rule already exists for {ip}")
                 return True
-            
+
             timestamp = int(now())
-            sanitized_ip = ip.replace('.', '_').replace(':', '_')
+            sanitized_ip = ip.replace('.', '_')
             rule_name = f"{self.rule_prefix}_Allow_{sanitized_ip}_{timestamp}"
             
             result = FirewallUtils.run_netsh_command([
@@ -58,7 +115,7 @@ class RulesManager:
                 logger.debug(f"No allow rule exists for {ip}")
                 return True
             
-            rule_pattern = f"_{ip.replace('.', '_').replace(':', '_')}_"
+            rule_pattern = f"_{ip.replace('.', '_')}_"
             
             result = FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "show", "rule",

@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 from typing import Callable, Dict, List, Optional, Set
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
-from agent.cache.lru_cache import LRUCache
-from agent.network import OptimizedDNSResolver
+from cache.lru_cache import LRUCache
+from network import OptimizedDNSResolver
 
 from .state import WhitelistState
 from .sync import WhitelistSyncer  
@@ -177,7 +177,7 @@ class WhitelistManager:
                         try:
                             record = self.resolver.resolve_domain_sync(domain)
                             # Create a set of IPs
-                            ips = set(record.ipv4) | set(record.ipv6)
+                            ips = set(record.ipv4)
                             if ips:
                                 self.dns_cache.set(domain, ips, ttl=self._cache_ttl)
                                 updated = True
@@ -199,7 +199,10 @@ class WhitelistManager:
             # Build sync parameters
             params = {
                 "agent_id": agent_id,
-                "global_version": self._state._version if hasattr(self._state, '_version') and self._state._version else None,
+                "global_version": self._state._version if self._state._version else None,
+                "group_version": self._state._group_version if self._state._group_version else None,
+                "group_id": self._state._group_id if self._state._group_id else None,
+                "policy_mode": self._state._policy_mode if self._state._policy_mode else "none",
                 "timestamp": now_iso()
             }
             
@@ -244,6 +247,12 @@ class WhitelistManager:
                 
                 return True
             else:
+                # Skip noisy error stats + warning when the sync was
+                # short-circuited because the user hasn't configured a
+                # Server URL yet (first-run offline mode).
+                if result.get("offline"):
+                    logger.debug("Whitelist sync skipped: %s", result.get("error"))
+                    return False
                 with self._lock:
                     self._stats["errors"] += 1
                 error_msg = result.get('error', 'Unknown error')
@@ -329,7 +338,7 @@ class WhitelistManager:
                     results = self.resolver.resolve_multiple_parallel(list(domains_to_resolve))
                     
                     for domain, record in results.items():
-                        domain_ips = set(record.ipv4) | set(record.ipv6)
+                        domain_ips = set(record.ipv4)
                         if domain_ips:
                             resolved_ips.update(domain_ips)
                             self.dns_cache.set(domain, domain_ips, ttl=self._cache_ttl)

@@ -244,7 +244,7 @@ class ThemeManager:
             return
         
         self._initialized = True
-        self._current_theme: Theme = DARK_THEME
+        self._current_theme: Theme = LIGHT_THEME
         self._available_themes: Dict[str, Theme] = {
             "dark": DARK_THEME,
             "light": LIGHT_THEME,

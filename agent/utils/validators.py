@@ -76,24 +76,25 @@ def _validate_server_config(config: Dict) -> Tuple[List[str], List[str]]:
 
 
 def _validate_firewall_config(config: Dict) -> Tuple[List[str], List[str]]:
-    errors = []
-    warnings = []
-    
+    """Validate firewall configuration. Only `whitelist_only` is supported."""
+    errors: List[str] = []
+    warnings: List[str] = []
+
     firewall_config = config.get("firewall", {})
-    valid_modes = ["monitor", "whitelist_only"]
-    current_mode = firewall_config.get("mode", "monitor")
-    
-    if current_mode not in valid_modes:
-        errors.append(f"Invalid firewall mode: {current_mode}. Valid modes: {valid_modes}")
-    
-    admin_required_modes = ["whitelist_only"]
-    if current_mode in admin_required_modes:
-        if not check_admin_privileges():
-            warnings.append(
-                f"Mode '{current_mode}' requires admin privileges - "
-                "will auto-switch to 'monitor'"
-            )
-    
+    current_mode = firewall_config.get("mode", "whitelist_only")
+
+    if current_mode != "whitelist_only":
+        warnings.append(
+            f"Unsupported firewall mode '{current_mode}'; only "
+            "'whitelist_only' is supported."
+        )
+
+    if current_mode == "whitelist_only" and not check_admin_privileges():
+        warnings.append(
+            "Firewall mode 'whitelist_only' requires administrator "
+            "privileges. The firewall component will be disabled."
+        )
+
     return errors, warnings
 
 

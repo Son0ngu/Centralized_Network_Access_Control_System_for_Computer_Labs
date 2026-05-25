@@ -17,14 +17,18 @@
             primary: 'fas fa-bell'
         };
 
+        const needsDarkText = (type === 'warning' || type === 'success');
+        const textClass = needsDarkText ? 'text-dark' : 'text-white';
+        const closeBtnClass = needsDarkText ? 'btn-close me-2 m-auto' : 'btn-close btn-close-white me-2 m-auto';
+
         const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert">
+            <div id="${toastId}" class="toast align-items-center ${textClass} bg-${type} border-0" role="alert">
                 <div class="d-flex">
                     <div class="toast-body">
                         <i class="${icons[type] || icons.info} me-2"></i>
                         ${message}
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    <button type="button" class="${closeBtnClass}" data-bs-dismiss="toast"></button>
                 </div>
             </div>
         `;
@@ -161,5 +165,34 @@
                 }
             }
         }
+    };
+})();
+
+// ========================================
+// USER SESSION - fetch current user info & logout
+// ========================================
+(function() {
+    // Fetch current user info for navbar
+    fetch('/api/admin/auth/me', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.user) {
+                const u = data.user;
+                const nameEl = document.getElementById('navUsername');
+                const roleEl = document.getElementById('navUserRole');
+                if (nameEl) nameEl.textContent = u.username || 'User';
+                if (roleEl) roleEl.textContent = 'Role: ' + (u.role || 'unknown');
+            }
+        })
+        .catch(() => {});
+
+    // Logout function
+    window.doLogout = function() {
+        fetch('/api/admin/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+        })
+        .then(() => { window.location.href = '/login'; })
+        .catch(() => { window.location.href = '/login'; });
     };
 })();
