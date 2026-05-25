@@ -72,7 +72,7 @@ Load config từ nhiều nguồn (file → env → defaults), merge theo deep-me
 
 ## Ai gọi module này
 - `agent/agent_gui.py` (entry point) — `load_config()` lúc startup
-- `agent/gui/views/settings_view.py` — `reload_config()` sau khi user save settings
+- `agent/gui_qt/views/settings.py` — `reload_config()` sau khi user save settings
 - `agent/core/lifecycle.py` — nhận `config` dict từ caller, không import config module trực tiếp
 
 ## Module này gọi ra

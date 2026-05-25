@@ -1,0 +1,28 @@
+sequenceDiagram
+  participant User
+  participant GUI as PySide6 GUI
+  participant Controller as AgentController
+  participant Lifecycle
+  participant Server
+  participant Firewall
+  User->>GUI: Click Start Agent
+  GUI->>Controller: start_agent()
+  Controller->>Lifecycle: initialize_components(config)
+  alt Server URL configured
+    Lifecycle->>Server: POST /api/agents/register (API Key)
+    Server-->>Lifecycle: agent_id + JWT
+    Lifecycle->>Server: GET /api/whitelist/agent-sync
+    Server-->>Lifecycle: whitelist + versions
+  else No server URL / unreachable
+    Note over Lifecycle: record registration / whitelist_sync as degraded
+  end
+  Lifecycle->>Firewall: enable_whitelist_mode()
+  Note over Lifecycle: log_sender / heartbeat_sender require server_url + agent_id;<br/>otherwise marked degraded
+  Lifecycle-->>Controller: InitResult (ok | degraded | failed)
+  alt overall == failed
+    Controller-->>GUI: status_changed (error)
+  else overall == degraded
+    Controller-->>GUI: status_changed (degraded, issues=[...])
+  else overall == ok
+    Controller-->>GUI: status_changed (running)
+  end

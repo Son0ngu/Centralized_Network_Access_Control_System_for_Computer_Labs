@@ -74,7 +74,7 @@
 - `agent/core/lifecycle.py` — tạo `WhitelistManager`, gọi `set_firewall_manager`, `sync_now`, `start_sync`, `stop_sync`
 - `agent/core/handlers.py` — `whitelist.is_allowed(domain)`, `whitelist.is_ip_allowed(ip)` qua `safe_execute`
 - `agent/services/heartbeat.py` — đọc `whitelist._state._version` / `_group_version` qua `get_whitelist_versions` callback
-- `agent/gui/views/whitelist_view.py` + `gui/controllers/whitelist_controller.py` — đọc stats, trigger force_refresh
+- `agent/gui_qt/views/whitelist.py` + `controllers/whitelist_controller.py` — đọc stats, trigger force_refresh
 
 ## Module này gọi ra
 - `agent/core/token_manager` — `get_auth_headers` cho sync request

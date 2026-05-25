@@ -1,4 +1,13 @@
 @startuml SAINT_Server_Class_Diagram
+' Generated from source audit of server/ — verified against report/server/*.md
+' Stereotypes:
+'   <<module>>     : Python module exposing only module-level functions (no class)
+'   <<decorator>>  : function returning a decorator
+'   <<C>>          : Flask Blueprint-bound controller
+'   <<M>>          : Middleware class
+' Controllers inject services via __init__; services inject models the same way.
+' RBAC and Auth are decorators, not classes — only APIKeyMiddleware is a class.
+
 skinparam classAttributeIconSize 0
 skinparam class {
   BackgroundColor #FEFECE
@@ -12,340 +21,684 @@ skinparam package {
 
 title Class Diagram - SAINT Server
 
-package "Models" {
+' ============================================================
+' Database config
+' ============================================================
+package "server.database" {
+
+  class Config {
+    + SECRET_KEY: str
+    + DEBUG: bool
+    + TESTING: bool
+    + MONGO_URI: str
+    + MONGO_DBNAME: str
+    + MONGO_MAX_POOL_SIZE: int
+  }
+
+  class DevelopmentConfig extends Config
+  class ProductionConfig extends Config
+  class TestingConfig extends Config
+
+  class "config (module)" as db_cfg_module <<module>> {
+    + get_env(key, default): Any
+    + get_mongo_client(config): MongoClient
+    + get_database(config): Database
+    + validate_config(config): bool
+    + close_mongo_client()
+    + get_config(): Config
+  }
+}
+
+' ============================================================
+' Models — one per MongoDB collection
+' ============================================================
+package "server.models" {
+
   class UserModel {
-    - db: Collection
+    - db: Database
+    - collection: Collection
     --
-    + create(username, password, role, email): dict
-    + find_by_username(username): dict
-    + find_by_id(user_id): dict
-    + update(user_id, data): bool
-    + delete(user_id): bool
-    + increment_failed_attempts(user_id)
-    + reset_failed_attempts(user_id)
+    + create(user_data): Dict
+    + find_by_id(user_id): Optional[Dict]
+    + find_by_username(username): Optional[Dict]
+    + find_by_email(email): Optional[Dict]
+    + get_all_users(query, limit, skip): List[Dict]
+    + count_users(query): int
+    + update(user_id, update_data): bool
+    + update_last_login(user_id): bool
+    + increment_failed_attempts(user_id): int
+    + reset_failed_attempts(user_id): bool
     + is_locked(user): bool
-    + get_user_statistics(): dict
-  }
-
-  class AgentModel {
-    - db: Collection
-    --
-    + register_agent(agent_data): dict
-    + update_agent(agent_id, data): bool
-    + update_heartbeat(agent_id, metrics): bool
-    + find_by_agent_id(agent_id): dict
-    + find_by_device_id(device_id): dict
-    + get_all_agents(filters): list
-    + get_active_agents(): list
-    + count_agents(): int
-    + delete_agent(agent_id): bool
-    + get_agent_statistics(): dict
-  }
-
-  class GroupModel {
-    - db: Collection
-    --
-    + create_group(name, desc, created_by): dict
-    + find_by_id(group_id): dict
-    + list_groups(filters): list
-    + update_group(group_id, data): bool
-    + delete_group(group_id): bool
-    + add_teacher(group_id, teacher_id): bool
-    + remove_teacher(group_id, teacher_id): bool
-    + ensure_pending_group(): dict
-    + get_agents_count(group_id): int
-  }
-
-  class WhitelistModel {
-    - db: Collection
-    --
-    + add_entry(domain, type, scope, group_id): dict
-    + delete_entry(entry_id): bool
-    + find_all_entries(filters): list
-    + get_entries_by_group(group_id): list
-    + update_entry(entry_id, data): bool
-    + bump_global_version(): int
-    + get_global_version(): int
-    + import_entries(entries): int
-    + export_entries(filters): list
-  }
-
-  class LogModel {
-    - db: Collection
-    --
-    + add_log(log_data): dict
-    + find_all_logs(filters, pagination): list
-    + count_logs(filters): int
-    + find_logs_by_agent(agent_id): list
-    + delete_logs(filters): int
-    + export_logs(filters): list
-  }
-
-  class AuditModel {
-    - db: Collection
-    --
-    + log(user_id, username, role, action, resource_type, resource_id, details, ip): dict
-    + get_logs(filters, pagination): list
-    + get_user_activity(user_id): list
-    + count_logs(filters): int
-  }
-
-  class APIKeyModel {
-    - db: Collection
-    --
-    + generate_api_key(): tuple
-    + create_api_key(name, permissions, created_by): dict
-    + validate_api_key(key_hash): dict
-    + revoke_api_key(key_id): bool
-    + find_by_hash(key_hash): dict
-    + get_all_keys(): list
+    + lock_account(user_id, duration_minutes): bool
+    + delete(user_id): bool
+    + get_user_statistics(): Dict
   }
 
   class SessionModel {
-    - db: Collection
+    - db: Database
     --
-    + create(user_id, access_jti, refresh_jti, expires): dict
-    + find_by_jti(jti): dict
-    + revoke(session_id): bool
-    + get_active_sessions(user_id): list
-    + delete_expired(): int
+    + create(session_data): Dict
+    + find_by_access_jti(jti): Optional[Dict]
+    + find_by_refresh_jti(jti): Optional[Dict]
+    + get_user_sessions(user_id): List[Dict]
+    + revoke(jti): bool
+    + revoke_all_user(user_id): int
+    + is_session_revoked(jti): bool
+    + cleanup_expired(): int
+  }
+
+  class AuditModel {
+    - db: Database
+    --
+    + log(audit_data): Dict
+    + get_logs(query, limit, skip): List[Dict]
+    + get_user_activity(user_id, limit): List[Dict]
+    + count_logs(query): int
+  }
+
+  class AgentModel {
+    - db: Database
+    --
+    + register_agent(agent_data): Dict
+    + update_agent(agent_id, update_data): bool
+    + update_agent_group(agent_id, group_id, status): bool
+    + update_heartbeat(agent_id, update_data): bool
+    + find_by_agent_id(agent_id): Optional[Dict]
+    + count_by_group(group_id): int
+    + find_by_hostname(hostname): List[Dict]
+    + find_by_device_id(device_id): Optional[Dict]
+    + get_all_agents(query, limit, skip): List[Dict]
+    + count_agents(query): int
+    + get_active_agents(inactive_threshold_minutes): List[Dict]
+    + get_inactive_agents(inactive_threshold_minutes): List[Dict]
+    + delete_agent(agent_id): bool
+    + get_agent_statistics(inactive_threshold_minutes): Dict
+  }
+
+  class GroupModel {
+    - db: Database
+    --
+    + ensure_pending_group(): Dict
+    + create_group(name, description, whitelist, is_system, created_by): Dict
+    + add_teacher(group_id, teacher_id): Optional[Dict]
+    + remove_teacher(group_id, teacher_id): Optional[Dict]
+    + set_teachers(group_id, teacher_ids): Optional[Dict]
+    + list_groups(query_filter): List[Dict]
+    + find_by_id(group_id): Optional[Dict]
+    + update_group(group_id, update_data): Optional[Dict]
+    + delete_group(group_id): bool
+    + bump_whitelist_version(group_id): Optional[Dict]
+  }
+
+  class WhitelistModel {
+    - db: Database
+    --
+    + get_global_version(): int
+    + bump_global_version(): int
+    + insert_entry(entry_data): str
+    + find_all_entries(query, sort_field, sort_order): List[Dict]
+    + find_entry_by_value(value, active_only): Optional[Dict]
+    + cleanup_expired_entries(): int
+    + validate_entry_value(entry_type, value): Dict
+    + delete_entry(entry_id): bool
+    + update_entry(entry_id, update_data): bool
+    + get_statistics(): Dict
+    + find_entry_by_id(entry_id, active_only): Optional[Dict]
+    + get_entries_for_sync(since_date, scope, group_id): List[Dict]
+    + bulk_insert_entries(entries): List[str]
+    + build_query_from_filters(filters): Dict
+    + verify_dns(domain): Dict
   }
 
   class WhitelistProfileModel {
-    - db: Collection
+    - db: Database
     --
-    + create_profile(group_id, teacher_id, name, domains): dict
-    + find_by_id(profile_id): dict
-    + update_profile(profile_id, data): bool
-    + list_profiles(filters): list
-    + activate_profile(profile_id): bool
-    + deactivate_profile(profile_id): bool
+    + create_profile(group_id, teacher_id, teacher_username, name, domains): Dict
+    + find_by_id(profile_id): Optional[Dict]
+    + list_by_group(group_id, teacher_id): List[Dict]
+    + update_profile(profile_id, update_data): Optional[Dict]
+    + bump_version(profile_id): Optional[Dict]
     + delete_profile(profile_id): bool
-    + get_active_profile(group_id): dict
+    + activate(profile_id): Optional[Dict]
+    + deactivate(profile_id): Optional[Dict]
+    + deactivate_all_in_group(group_id): int
+    + get_active_profile(group_id): Optional[Dict]
+  }
+
+  class LogModel {
+    - db: Database
+    --
+    + count_logs(query): int
+    + find_all_logs(query, limit, offset): List[Dict]
+    + delete_logs(query): int
+    + insert_logs(logs): List[str]
+    + get_total_count(): int
+    + get_count_by_action(action): int
+    + get_recent_logs(limit): List[Dict]
+    + find_logs(query, limit, skip, sort_field, sort_order): List[Dict]
+    + get_logs_summary(since): Dict
+  }
+
+  class APIKeyModel {
+    - db: Database
+    --
+    + {static} generate_api_key(): str
+    + {static} hash_api_key(api_key): str
+    + create_api_key(name, description, expires_in_days, permissions, created_by): Dict
+    + validate_api_key(api_key, required_permission): Dict
+    + revoke_api_key(key_id, revoked_by): Dict
+    + list_api_keys(include_revoked, page, limit): Dict
+    + get_api_key_by_id(key_id): Optional[Dict]
+    + update_api_key(key_id, name, description, permissions, is_active): Dict
+    + get_stats(): Dict
   }
 
   class AgentPolicyModel {
-    - db: Collection
+    - db: Database
     --
-    + create_policy(agent_id, policy_data): dict
-    + update_policy(agent_id, data): bool
-    + get_policy(agent_id): dict
-    + check_expiration(agent_id): bool
+    + get_policy(agent_id): Optional[Dict]
+    + get_effective_mode(agent_id): str
+    + set_policy(agent_id, mode, applied_by_user, reason, custom_whitelist, expires_at): Dict
+    + reset_policy(agent_id, applied_by_user): Dict
+    + get_custom_whitelist(agent_id): List[Dict]
+    + list_isolated_agents(): List[str]
+    + list_policies_by_agent_ids(agent_ids): Dict[str,Dict]
+    + count_by_mode(): Dict[str,int]
   }
 }
 
-package "Services" {
+' ============================================================
+' Services — business logic, inject models + socketio
+' ============================================================
+package "server.services" {
+
   class UserService {
-    + create_user(data): dict
-    + update_user(user_id, data): dict
-    + delete_user(user_id): bool
-    + reset_password(user_id): str
-    + toggle_active(user_id): bool
-    + get_user_statistics(): dict
-    + verify_password(user, password): bool
-  }
-
-  class AgentService {
-    + register_agent(agent_data, api_key): dict
-    + update_agent(agent_id, data): dict
-    + get_all_agents(filters): list
-    + calculate_status(last_heartbeat): str
-    + get_agent_statistics(): dict
-  }
-
-  class GroupService {
-    + create_group(data): dict
-    + update_group(group_id, data): dict
-    + delete_group(group_id): bool
-    + list_groups(filters): list
-    + add_teacher(group_id, teacher_id): bool
-    + remove_teacher(group_id, teacher_id): bool
-  }
-
-  class WhitelistService {
-    + get_all_entries(filters): list
-    + add_entry(data): dict
-    + delete_entry(entry_id): bool
-    + update_entry(entry_id, data): dict
-    + import_entries(entries): int
-    + export_entries(filters): list
-    + get_entries_by_group(group_id): list
-    + get_statistics(): dict
-  }
-
-  class LogService {
-    + add_log(log_data): dict
-    + list_logs(filters, pagination): list
-    + get_statistics(): dict
-    + export_logs(filters): list
-    + clear_logs(filters): int
-  }
-
-  class AuditService {
-    + log_action(user, action, resource_type, resource_id, details, ip): dict
-    + get_logs(filters): list
-    + get_user_activity(user_id): list
+    - user_model: UserModel
+    - audit_service: AuditService
+    - socketio: SocketIO
+    --
+    + create_user(username, password, role, email, created_by_user): Tuple
+    + get_user_by_id(user_id): Optional[Dict]
+    + get_all_users(query, limit, skip): List[Dict]
+    + update_user(user_id, update_data, updated_by_user): Tuple
+    + toggle_active(user_id, is_active, updated_by_user): Tuple
+    + reset_password(user_id, new_password, reset_by_user): Tuple
+    + delete_user(user_id, deleted_by_user): Tuple
+    + ensure_default_admin(username, password): Optional[Dict]
   }
 
   class JWTService {
-    - secret_key: str
+    - db: Optional[Database]
     --
-    + generate_tokens(user_id, role): dict
-    + validate_access_token(token): dict
-    + refresh_token(refresh_token): dict
-    + revoke_token(jti): bool
+    + generate_tokens(agent_id, user_id, additional_claims): Dict
+    + validate_access_token(token): Tuple
+    + validate_refresh_token(token): Tuple
+    + refresh_access_token(refresh_token): Tuple
+    + refresh_tokens_with_rotation(refresh_token): Tuple
+    + revoke_token(token, token_type): bool
+    + revoke_all_agent_tokens(agent_id): int
+    + decode_token_without_verification(token): Optional[Dict]
+    + get_token_info(token): Dict
   }
 
   class AdminAuthService {
-    + authenticate(username, password): dict
-    + logout(token): bool
-    + refresh_token(refresh_token): dict
+    - user_model: UserModel
+    - jwt_service: JWTService
+    - session_model: SessionModel
+    - audit_service: AuditService
+    - socketio: SocketIO
+    --
+    + login(username, password, ip_address, user_agent): Tuple
+    + logout(access_token, refresh_token): Tuple
+    + refresh_token(refresh_token): Tuple
+    + change_password(user_id, old_password, new_password): Tuple
   }
 
-  class APIKeyService {
-    + create_api_key(name, permissions, user): dict
-    + validate_api_key(api_key): dict
-    + revoke_api_key(key_id, user): bool
-    + get_api_keys(): list
+  class AuditService {
+    - audit_model: AuditModel
+    --
+    + log_action(user, action, resource_type, resource_id, details, ip_address)
+    + get_logs(query, limit, skip): List[Dict]
+    + get_user_activity(user_id, limit): List[Dict]
+    + count_logs(query): int
   }
 
   class RBACService {
-    + check_permission(user, permission): bool
-    + can_access_group(user, group_id): bool
-    + get_group_query_filter(user): dict
-    + get_teacher_group_ids(teacher_id): list
+    - group_model: Optional[GroupModel]
+    - agent_model: Optional[AgentModel]
+    --
+    + check_permission(user_role, permission): bool
+    + get_permissions(role): List[str]
+    + is_admin(role): bool
+    + is_owner(user_id, resource): bool
+    + can_access_group(user, group): bool
+    + filter_groups_for_user(user, groups): List[Dict]
+    + get_teacher_group_ids(user): Optional[List[str]]
+    + get_group_query_filter(user): Optional[Dict]
+    + get_agent_query_filter(user): Optional[Dict]
+    + get_log_query_filter(user): Optional[Dict]
+    + get_whitelist_query_filter(user): Optional[Dict]
+    + validate_group_ids_ownership(user, group_ids): tuple
+    + can_teacher_access_agent(user, agent): bool
+  }
+
+  class AgentService {
+    - agent_model: AgentModel
+    - group_model: GroupModel
+    - socketio: SocketIO
+    - jwt_service: Optional[JWTService]
+    - policy_model: Optional[AgentPolicyModel]
+    --
+    + set_jwt_service(jwt_service)
+    + register_agent(agent_data, client_ip): Dict
+    + update_heartbeat(agent_id, payload): Dict
+    + list_agents(filters): List[Dict]
+    + get_statistics(): Dict
+    + calculate_status(last_heartbeat): str
+    + delete_agent(agent_id): bool
+    + update_agent(agent_id, data): Dict
+  }
+
+  class GroupService {
+    - group_model: GroupModel
+    - agent_model: AgentModel
+    - user_model: Optional[UserModel]
+    --
+    + list_groups(query_filter): List[Dict]
+    + create_group(name, description, whitelist, created_by): Dict
+    + update_group(group_id, payload): Dict
+    + delete_group(group_id): bool
+    + bump_group_whitelist_version(group_id): Dict
+    + get_pending_group_id(): str
+    + get_group(group_id): Dict
+    + get_default_metadata(): Dict
+  }
+
+  class WhitelistService {
+    - whitelist_model: WhitelistModel
+    - agent_model: AgentModel
+    - group_model: GroupModel
+    - socketio: SocketIO
+    - policy_service: Optional[AgentPolicyService]
+    - profile_service: Optional[WhitelistProfileService]
+    --
+    + get_all_entries(filters): Dict
+    + add_entry(entry_data, client_ip): Dict
+    + delete_entry(entry_id): bool
+    + update_entry(entry_id, data): Dict
+    + import_entries(entries): int
+    + export_entries(filters): List[Dict]
+    + get_entries_by_group(group_id): List[Dict]
+    + agent_sync(agent_id, version, checksum): Dict
+  }
+
+  class LogService {
+    - log_model: LogModel
+    - agent_model: Optional[AgentModel]
+    - socketio: SocketIO
+    --
+    + receive_logs(logs_data, agent_id): Dict
+    + list_logs(query, limit, skip): Dict
+    + get_statistics(): Dict
+    + clear_logs(filters): int
+  }
+
+  class APIKeyService {
+    - api_key_model: APIKeyModel
+    - socketio: SocketIO
+    --
+    + create_api_key(name, description, expires_in_days, permissions, created_by): Dict
+    + validate_api_key(api_key, required_permission): Dict
+    + revoke_api_key(key_id, revoked_by): Dict
+    + list_api_keys(include_revoked, page, limit): Dict
   }
 
   class WhitelistProfileService {
-    + create_profile(data): dict
-    + update_profile(profile_id, data): dict
+    - profile_model: WhitelistProfileModel
+    - group_model: GroupModel
+    - socketio: SocketIO
+    --
+    + create_profile(data): Dict
+    + update_profile(profile_id, data): Dict
     + delete_profile(profile_id): bool
-    + activate_profile(profile_id): bool
-    + list_profiles(filters): list
+    + activate_profile(profile_id): Dict
+    + deactivate_profile(profile_id): Dict
+    + list_profiles(filters): List[Dict]
+    + get_active_profile(group_id): Optional[Dict]
   }
 
   class AgentPolicyService {
-    + create_policy(agent_id, data): dict
-    + update_policy(agent_id, data): dict
-    + get_policy(agent_id): dict
+    - policy_model: AgentPolicyModel
+    - socketio: SocketIO
+    --
+    + get_policy(agent_id): Dict
+    + set_policy(agent_id, mode, applied_by_user, reason, custom_whitelist, expires_at): Dict
+    + reset_policy(agent_id, applied_by_user): Dict
+    + get_effective_mode(agent_id): str
+  }
+
+  class "jwt_service (module)" as svc_jwt_mod <<module>> {
+    + init_jwt_service(db): JWTService
+    + get_jwt_service(): Optional[JWTService]
   }
 }
 
-package "Controllers" {
-  class AuthController << (C,#FF7700) >> {
-    + refresh_token(): Response
-    + logout(): Response
-    + verify_token(): Response
+' ============================================================
+' Controllers — Flask Blueprint per controller
+' ============================================================
+package "server.controllers" {
+
+  class AdminAuthController <<C>> {
+    - admin_auth_service: AdminAuthService
+    - jwt_service: JWTService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + login()
+    + get_profile()
+    + refresh_token()
+    + logout()
+    + change_password()
+    + update_profile()
   }
 
-  class AdminAuthController << (C,#FF7700) >> {
-    + login(): Response
-    + logout(): Response
-    + refresh(): Response
+  class AuthController <<C>> {
+    - jwt_service: JWTService
+    - blueprint: Blueprint
+    --
+    + refresh_token()
+    + logout()
+    + verify_token()
+    + token_info()
   }
 
-  class UserController << (C,#FF7700) >> {
-    + list_users(): Response
-    + create_user(): Response
-    + get_user(): Response
-    + update_user(): Response
-    + delete_user(): Response
+  class UserController <<C>> {
+    - user_service: UserService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + list_users()
+    + create_user()
+    + get_user(user_id)
+    + update_user(user_id)
+    + delete_user(user_id)
+    + reset_password(user_id)
+    + get_statistics()
   }
 
-  class AgentController << (C,#FF7700) >> {
-    + register_agent(): Response
-    + list_agents(): Response
-    + get_agent(): Response
-    + delete_agent(): Response
-    + heartbeat(): Response
-    + get_statistics(): Response
+  class AgentController <<C>> {
+    - agent_model: AgentModel
+    - agent_service: AgentService
+    - rbac_service: Optional[RBACService]
+    - socketio: SocketIO
+    - policy_service: Optional[AgentPolicyService]
+    - blueprint: Blueprint
+    --
+    + register_agent()
+    + heartbeat()
+    + list_agents()
+    + get_statistics()
+    + get_agent(agent_id)
+    + delete_agent(agent_id)
+    + update_display_name(agent_id)
+    + update_position(agent_id)
+    + update_group(agent_id)
+    + get_agent_policy(agent_id)
+    + set_agent_policy(agent_id)
   }
 
-  class GroupController << (C,#FF7700) >> {
-    + list_groups(): Response
-    + create_group(): Response
-    + update_group(): Response
-    + delete_group(): Response
+  class GroupController <<C>> {
+    - group_service: GroupService
+    - rbac_service: RBACService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + list_groups()
+    + get_group(group_id)
+    + create_group()
+    + update_group(group_id)
+    + delete_group(group_id)
+    + set_teachers(group_id)
   }
 
-  class WhitelistController << (C,#FF7700) >> {
-    + list_domains(): Response
-    + add_domain(): Response
-    + delete_domain(): Response
-    + agent_sync(): Response
-    + import_domains(): Response
-    + export_domains(): Response
+  class WhitelistController <<C>> {
+    - whitelist_service: WhitelistService
+    - rbac_service: RBACService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + agent_sync()
+    + list_domains()
+    + add_domain()
+    + delete_domain(entry_id)
+    + update_entry(entry_id)
+    + import_domains()
+    + export_domains()
+    + bulk_add_entries()
+    + bulk_update_entries()
+    + bulk_delete_entries()
   }
 
-  class LogController << (C,#FF7700) >> {
-    + list_logs(): Response
-    + receive_logs(): Response
-    + export_logs(): Response
-    + get_statistics(): Response
+  class WhitelistProfileController <<C>> {
+    - profile_service: WhitelistProfileService
+    - rbac_service: RBACService
+    - blueprint: Blueprint
+    --
+    + my_profiles()
+    + list_profiles(group_id)
+    + create_profile(group_id)
+    + update_profile(profile_id)
+    + delete_profile(profile_id)
+    + activate_profile(profile_id)
+    + deactivate_profile(profile_id)
   }
 
-  class AuditController << (C,#FF7700) >> {
-    + list_logs(): Response
-    + user_activity(): Response
+  class LogController <<C>> {
+    - log_model: LogModel
+    - log_service: LogService
+    - rbac_service: Optional[RBACService]
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + receive_logs()
+    + list_logs()
+    + clear_logs()
+    + export_logs()
+    + get_log_statistics()
+    + get_statistics()
   }
 
-  class APIKeyController << (C,#FF7700) >> {
-    + list_keys(): Response
-    + create_key(): Response
-    + revoke_key(): Response
+  class APIKeyController <<C>> {
+    - api_key_service: APIKeyService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + list_api_keys()
+    + create_api_key()
+    + get_api_key(key_id)
+    + update_api_key(key_id)
+    + delete_api_key(key_id)
+    + revoke_api_key(key_id)
+  }
+
+  class AuditController <<C>> {
+    - audit_service: AuditService
+    - socketio: SocketIO
+    - blueprint: Blueprint
+    --
+    + list_logs()
+    + user_activity(user_id)
   }
 }
 
-package "Middleware" {
-  class AuthMiddleware << (M,#00AA00) >> {
-    + require_api_key(): decorator
-    + require_jwt(): decorator
-    + get_api_key_from_request(): str
+' ============================================================
+' Middleware — module functions + 1 class (APIKeyMiddleware)
+' ============================================================
+package "server.middleware" {
+
+  class "auth" as mw_auth <<module>> {
+    + init_auth_middleware(api_key_service, jwt_service)
+    + get_api_key_from_request(): Optional[str]
+    + get_jwt_from_request(): Optional[str]
+    + require_api_key(permission) <<decorator>>
+    + optional_api_key(f) <<decorator>>
+    + require_jwt(f) <<decorator>>
+    + optional_jwt(f) <<decorator>>
+    + require_jwt_or_api_key(permission) <<decorator>>
   }
 
-  class RBACMiddleware << (M,#00AA00) >> {
-    + require_login(): decorator
-    + require_admin(): decorator
-    + require_permission(perm): decorator
-    + inject_current_user(): decorator
+  class APIKeyMiddleware <<M>> {
+    - api_key_service: APIKeyService
+    - protected_prefixes: List[str]
+    --
+    + before_request()
+  }
+
+  class "rbac" as mw_rbac <<module>> {
+    + init_rbac_middleware(admin_auth_service, rbac_service, jwt_service, user_model)
+    + get_rbac_service(): RBACService
+    + require_login(f) <<decorator>>
+    + require_admin(f) <<decorator>>
+    + require_permission(permission) <<decorator>>
+    + inject_current_user(f) <<decorator>>
+    + require_group_ownership(group_id_param) <<decorator>>
   }
 }
 
-' === Relationships ===
-' Controllers -> Services
-AdminAuthController ..> AdminAuthService
-UserController ..> UserService
-AgentController ..> AgentService
-GroupController ..> GroupService
-WhitelistController ..> WhitelistService
-LogController ..> LogService
-AuditController ..> AuditService
-APIKeyController ..> APIKeyService
-AuthController ..> JWTService
+' ============================================================
+' Config — RBAC role/permission map
+' ============================================================
+package "server.config" {
+  class "rbac_config" as rbac_config <<module>> {
+    + VALID_ROLES: List[str]
+    + ROLE_HIERARCHY: Dict
+    + PERMISSIONS: Dict
+    + check_permission(role, permission): bool
+    + get_all_permissions(role): List[str]
+    + is_admin(role): bool
+  }
+}
 
-' Services -> Models
-UserService ..> UserModel
-UserService ..> AuditService
-AgentService ..> AgentModel
-AgentService ..> JWTService
-GroupService ..> GroupModel
-WhitelistService ..> WhitelistModel
-LogService ..> LogModel
-LogService ..> RBACService
-AuditService ..> AuditModel
-AdminAuthService ..> UserModel
-AdminAuthService ..> JWTService
-APIKeyService ..> APIKeyModel
-APIKeyService ..> AuditService
-JWTService ..> SessionModel
-RBACService ..> GroupModel
-WhitelistProfileService ..> WhitelistProfileModel
-AgentPolicyService ..> AgentPolicyModel
+' ============================================================
+' App factory
+' ============================================================
+class "app (factory)" as app_factory <<module>> {
+  + create_app(): (Flask, SocketIO)
+  + initialize_database_indexes(app, db)
+  + register_controllers(app, socketio, db)
+  + register_main_routes(app, log_service, agent_service)
+  + register_error_handlers(app)
+  + register_socketio_events(socketio)
+}
 
-' Middleware
-AuthMiddleware ..> APIKeyModel
-AuthMiddleware ..> JWTService
-RBACMiddleware ..> JWTService
-RBACMiddleware ..> RBACService
+' ============================================================
+' Relationships
+' ============================================================
+
+' --- Database hierarchy ---
+DevelopmentConfig --|> Config
+ProductionConfig --|> Config
+TestingConfig --|> Config
+
+' --- Services -> Models ---
+UserService o-- UserModel
+UserService o-- AuditService
+SessionModel <.. JWTService : access/refresh_jti
+AdminAuthService o-- UserModel
+AdminAuthService o-- JWTService
+AdminAuthService o-- SessionModel
+AdminAuthService o-- AuditService
+AuditService o-- AuditModel
+RBACService o-- GroupModel
+RBACService o-- AgentModel
+AgentService o-- AgentModel
+AgentService o-- GroupModel
+AgentService o-- JWTService
+AgentService o-- AgentPolicyModel
+GroupService o-- GroupModel
+GroupService o-- AgentModel
+GroupService o-- UserModel
+WhitelistService o-- WhitelistModel
+WhitelistService o-- AgentModel
+WhitelistService o-- GroupModel
+WhitelistService o-- AgentPolicyService
+WhitelistService o-- WhitelistProfileService
+LogService o-- LogModel
+LogService o-- AgentModel
+APIKeyService o-- APIKeyModel
+WhitelistProfileService o-- WhitelistProfileModel
+WhitelistProfileService o-- GroupModel
+AgentPolicyService o-- AgentPolicyModel
+
+' --- JWT module ---
+svc_jwt_mod ..> JWTService : factory
+
+' --- Controllers -> Services ---
+AdminAuthController o-- AdminAuthService
+AdminAuthController o-- JWTService
+AuthController o-- JWTService
+UserController o-- UserService
+AgentController o-- AgentService
+AgentController o-- AgentModel
+AgentController o-- RBACService
+AgentController o-- AgentPolicyService
+GroupController o-- GroupService
+GroupController o-- RBACService
+WhitelistController o-- WhitelistService
+WhitelistController o-- RBACService
+WhitelistProfileController o-- WhitelistProfileService
+WhitelistProfileController o-- RBACService
+LogController o-- LogModel
+LogController o-- LogService
+LogController o-- RBACService
+APIKeyController o-- APIKeyService
+AuditController o-- AuditService
+
+' --- Middleware wired at init ---
+mw_auth ..> APIKeyService : validate api_key
+mw_auth ..> JWTService : validate jwt
+mw_auth ..> APIKeyMiddleware : registers
+APIKeyMiddleware o-- APIKeyService
+mw_rbac ..> AdminAuthService
+mw_rbac ..> RBACService
+mw_rbac ..> JWTService
+mw_rbac ..> UserModel
+RBACService ..> rbac_config : permissions lookup
+
+' --- Controllers use middleware decorators ---
+AdminAuthController ..> mw_rbac : @require_login
+UserController ..> mw_rbac : @require_admin
+AgentController ..> mw_auth : @require_api_key/@require_jwt
+AgentController ..> mw_rbac : @require_login
+GroupController ..> mw_rbac : @require_login
+WhitelistController ..> mw_auth : @require_jwt (agent_sync)
+WhitelistController ..> mw_rbac : @require_login (admin pages)
+WhitelistProfileController ..> mw_rbac : @require_login
+LogController ..> mw_auth : @require_jwt (receive_logs)
+LogController ..> mw_rbac : @require_login (admin pages)
+APIKeyController ..> mw_rbac : @require_admin
+AuditController ..> mw_rbac : @require_permission("audit:read")
+AuthController ..> mw_auth : @require_jwt
+
+' --- App factory wires everything ---
+app_factory ..> db_cfg_module : load config + Mongo
+app_factory ..> svc_jwt_mod : init_jwt_service(db)
+app_factory ..> AdminAuthController : register blueprint
+app_factory ..> AuthController : register blueprint
+app_factory ..> UserController : register blueprint
+app_factory ..> AgentController : register blueprint
+app_factory ..> GroupController : register blueprint
+app_factory ..> WhitelistController : register blueprint
+app_factory ..> WhitelistProfileController : register blueprint
+app_factory ..> LogController : register blueprint
+app_factory ..> APIKeyController : register blueprint
+app_factory ..> AuditController : register blueprint
+
+note bottom of mw_auth
+  middleware/auth.py and middleware/rbac.py
+  expose decorator functions, NOT classes.
+  Only APIKeyMiddleware is an actual class
+  (registered as a Flask before_request hook).
+end note
 
 @enduml

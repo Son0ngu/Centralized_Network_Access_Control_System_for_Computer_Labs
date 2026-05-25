@@ -77,7 +77,7 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 ## Ai gọi module này
 - `agent/core/lifecycle.py` — khởi tạo `FirewallManager`, gọi `save_snapshot`, `enable_whitelist_mode`, `cleanup`
 - `agent/whitelist/manager.py` — gọi `update_whitelist(domains, ips)` sau mỗi sync
-- `agent/gui/views/settings_view.py` — gọi `restore_snapshot` từ nút Restore
+- `agent/gui_qt/views/settings.py` — gọi `restore_snapshot` từ nút Restore
 
 ## Module này gọi ra
 - `agent/shared/time_utils` — timestamp cho rule descriptions

@@ -1,0 +1,14 @@
+flowchart TD
+  Request["User opens website"] --> FW["Windows Firewall default deny"]
+  FW -->|"IP in whitelist"| Pass["Traffic allowed"]
+  FW -->|"IP not whitelisted"| Drop["Traffic blocked by OS"]
+  Pass --> Sniffer["Scapy passive copy"]
+  Sniffer --> Extract["Extract DNS / HTTP Host / TLS SNI"]
+  Extract --> Check{"Domain/IP whitelisted?"}
+  Check -->|"Yes"| Allowed["Log ALLOWED"]
+  Check -->|"IP only"| Warn["Log ALLOWED_BY_IP warning"]
+  Check -->|"No"| Blocked["Log BLOCKED/OBSERVED"]
+  Allowed --> Sender["LogSender batch"]
+  Warn --> Sender
+  Blocked --> Sender
+  Sender --> Server["POST /api/logs"]

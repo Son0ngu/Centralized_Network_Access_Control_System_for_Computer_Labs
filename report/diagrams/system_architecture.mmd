@@ -1,0 +1,12 @@
+flowchart TB
+  Admin["Admin / Teacher Browser"] -->|"HTTP + SocketIO"| Server["Flask Server"]
+  Server --> Controllers["Controllers / Blueprints"]
+  Controllers --> Services["Services"]
+  Services --> Models["Models"]
+  Models --> Mongo[("MongoDB")]
+  Agent1["Windows Agent #1"] -->|"REST API + JWT"| Server
+  Agent2["Windows Agent #N"] -->|"REST API + JWT"| Server
+  Server -->|"SocketIO events"| Admin
+  Agent1 --> Firewall["Windows Firewall / netsh"]
+  Agent1 --> Sniffer["Scapy Packet Sniffer"]
+  Agent1 --> GUI["PySide6 GUI"]
