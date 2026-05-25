@@ -1,0 +1,10 @@
+flowchart LR
+  Route["/api/* Blueprints"] --> Controller["Controller layer"]
+  Controller --> Middleware["Auth/RBAC middleware"]
+  Controller --> Service["Service layer"]
+  Service --> Model["Model layer"]
+  Model --> DB[("MongoDB collections")]
+  Service --> SocketIO["SocketIO emit"]
+  App["create_app()"] --> Route
+  App --> CORS["CORS"]
+  App --> Templates["Server-rendered templates"]

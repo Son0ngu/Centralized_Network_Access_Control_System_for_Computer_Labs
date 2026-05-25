@@ -1,4 +1,14 @@
 @startuml SAINT_Agent_Class_Diagram
+' Generated from source audit of agent/ — verified against report/agent/*.md
+' Stereotypes:
+'   <<singleton>>  : __new__-based singleton class
+'   <<module>>     : Python module exposing only module-level functions (no class)
+'   <<dataclass>>  : @dataclass
+'   <<enum>>       : enum.Enum subclass
+'   <<static>>     : class with only @staticmethod members
+' Composition (*--) follows __init__() instantiation; aggregation (o--) follows
+' setter/late-binding injection; dependency (..>) follows method-level usage.
+
 skinparam classAttributeIconSize 0
 skinparam class {
   BackgroundColor #FEFECE
@@ -12,370 +22,652 @@ skinparam package {
 
 title Class Diagram - SAINT Agent
 
-package "Core" {
-  class Agent << (S,#FF7700) Singleton >> {
+' ============================================================
+' Core package
+' ============================================================
+package "agent.core" {
+
+  class Agent <<singleton>> {
     - _instance: Agent
-    - config: dict
-    - state: dict
+    - _initialized: bool
+    - config: Dict
+    - firewall: FirewallManager
+    - whitelist: WhitelistManager
+    - log_sender: LogSender
+    - sniffer: PacketSniffer
+    - heartbeat: HeartbeatSender
+    - running: bool
     --
-    + get_agent_id(): str
-    + get_agent_token(): str
+    + __new__(): Agent
+    + hostname: str <<property>>
+    + device_id: str <<property>>
+    + state: Dict <<property>>
+    + update_state(**kwargs)
+    + get_agent_id(): Optional[str]
+    + get_agent_token(): Optional[str]
     + is_registered(): bool
     + is_running(): bool
     + stop()
-    + update_state(key, value)
-  }
-
-  class AgentLifecycle {
-    + initialize_components(agent): bool
-    + start_components(agent): bool
-    + stop_components(agent)
-    + cleanup(agent)
-  }
-
-  class AgentRegistry {
-    + register_with_server(config): dict
-    + check_registration(agent_id): bool
   }
 
   class TokenManager {
-    - _token: str
-    - _expires_at: datetime
-    --
-    + get_token(): str
-    + refresh_token(): str
-    + is_token_valid(): bool
-    + set_token(token, expires)
-  }
-
-  enum AgentStatus {
-    STOPPED
-    STARTING
-    RUNNING
-    STOPPING
-    ERROR
-  }
-}
-
-package "GUI" {
-  class FirewallControllerApp << (S,#FF7700) Singleton >> {
-    - root: CTk
-    - main_window: MainWindow
-    --
-    + run()
-    + quit()
-  }
-
-  class MainWindow {
-    - sidebar: CTkFrame
-    - content: CTkFrame
-    - views: dict
-    --
-    + show_view(view_name)
-    + update_status(status)
-  }
-
-  class DashboardView {
-    - status_cards: list
-    - activity_log: LogConsole
-    --
-    + update_stats(stats)
-    + add_log_entry(entry)
-  }
-
-  class FirewallView {
-    - rules_table: DataTable
-    - mode_selector: CTkSegmentedButton
-    --
-    + update_rules(rules)
-    + set_mode(mode)
-  }
-
-  class WhitelistView {
-    - domain_table: DataTable
-    --
-    + update_domains(domains)
-  }
-
-  class LogsView {
-    - log_console: LogConsole
-    --
-    + add_log(entry)
-    + clear_logs()
-  }
-
-  class SettingsView {
-    - server_url: CTkEntry
-    - api_key: CTkEntry
-    --
-    + save_settings()
-    + load_settings()
-  }
-
-  class AgentGUIController {
-    - agent: Agent
-    - signals: AgentSignals
-    --
-    + start_agent()
-    + stop_agent()
-    + on_status_changed(status)
-    + on_packet_captured(packet)
-    + on_log_received(log)
-    + on_error(error)
-  }
-
-  class AgentSignals {
-    - _callbacks: dict
-    - _event_queue: Queue
+    - config: Dict
+    - _access_token: Optional[str]
+    - _refresh_token: Optional[str]
+    - _access_expires_at: Optional[datetime]
+    - _refresh_expires_at: Optional[datetime]
+    - _refresh_thread: Optional[Thread]
+    - _running: bool
     - _lock: Lock
+    - _consecutive_refresh_failures: int
+    - _needs_reregistration: bool
     --
-    + connect(signal, callback)
-    + disconnect(signal, callback)
-    + emit(signal, data)
-    + process_events()
+    + set_tokens(access, refresh, access_exp, refresh_exp)
+    + access_token: Optional[str] <<property>>
+    + refresh_token: Optional[str] <<property>>
+    + has_valid_token: bool <<property>>
+    + is_expired: bool <<property>>
+    + get_auth_header(): Dict[str,str]
+    + refresh_now(): bool
+    + start_auto_refresh(on_refreshed, on_expired)
+    + stop_auto_refresh()
+    + on_token_refreshed(callback)
+    + on_token_expired(callback)
+    + on_reregistration_needed(callback)
+    + needs_reregistration: bool <<property>>
+    + reset_reregistration_flag()
+    + get_token_status(): Dict
   }
 
-  class AgentEvent {
-    + event_type: str
-    + data: dict
-    + timestamp: datetime
+  class "lifecycle" as core_lifecycle <<module>> {
+    + initialize_components(config): bool
+    + cleanup(config)
+    + build_lifecycle_log(config, event_type, action, message): Dict
+  }
+
+  class "registry" as core_registry <<module>> {
+    + register_agent(config): bool
+    + try_register_with_server(server_url, agent_info, config): bool
+  }
+
+  class "handlers" as core_handlers <<module>> {
+    + create_domain_handler(config, agent): Callable
+    + handle_domain_detection(record, config, whitelist, log_sender)
+  }
+
+  class "agent (module)" as core_agent_module <<module>> {
+    + generate_device_id(): str
+    + get_agent(): Agent
+  }
+
+  class "token_manager (module)" as core_tm_module <<module>> {
+    + init_token_manager(config): TokenManager
+    + get_token_manager(): Optional[TokenManager]
+    + get_auth_headers(config): Dict[str,str]
   }
 }
 
-package "Firewall" {
+' ============================================================
+' Firewall package
+' ============================================================
+package "agent.firewall" {
+
   class FirewallManager {
+    - rule_prefix: str
     - policy_manager: PolicyManager
     - rules_manager: RulesManager
-    - essential_ips: set
+    - essential_ips: Set[str]
     - whitelist_mode_active: bool
-    - rule_prefix: str
     --
-    + setup_whitelist_firewall(domains, ips)
-    + disable_whitelist_firewall()
-    + add_whitelisted_ip(ip)
-    + remove_whitelisted_ip(ip)
-    + get_status(): dict
+    + setup_whitelist_firewall(whitelisted_ips, essential_ips): bool
+    + add_ip_to_whitelist(ip, reason): bool
+    + remove_ip_from_whitelist(ip): bool
+    + sync_whitelist_changes(old_ips, new_ips): bool
+    + cleanup_whitelist_firewall(): bool
+    + clear_all_rules(): bool
+    + cleanup_all_rules(): bool
+    + allowed_ips: Set[str] <<property>>
+    + default_deny_enabled: bool <<property>>
+    + get_whitelist_status(): Dict
+    + get_firewall_policy_status(): Dict
+    + validate_firewall_state(): Dict
+    + test_whitelist_connectivity(sample_ips): Dict[str,bool]
+    + is_blocked(ip): bool
+    + get_blocked_ips(): List[str]
+    + block_ip(ip, domain): bool
+    + unblock_ip(ip): bool
+    + update_whitelist(domains, ips): bool
+    + enable_whitelist_mode(server_urls, whitelist_ips, whitelist_domains): bool
+    + save_snapshot(path, force): bool
+    + restore_snapshot(path): bool
   }
 
   class PolicyManager {
-    - _original_policies: dict
+    - _original_policies: Dict[str,str]
     - default_deny_enabled: bool
     --
-    + get_current_policy(): dict
+    + get_current_policy(): Dict[str,str]
     + backup_current_policy()
-    + enable_default_deny()
-    + disable_default_deny()
-    + restore_policy()
+    + enable_default_deny(): bool
     + verify_default_deny(): bool
+    + restore_original_policy(): bool
+    + restore_default_policy(): bool
   }
 
   class RulesManager {
-    - allowed_ips: set
     - rule_prefix: str
+    - allowed_ips: Set[str]
     - _rule_lock: Lock
     --
-    + create_allow_rule(name, ip, protocol)
-    + remove_allow_rule(name)
-    + create_allow_rules_batch(rules: list)
-    + load_existing_rules(): list
+    + create_self_allow_rules(program_path): bool
+    + create_allow_rule(ip): bool
+    + remove_allow_rule(ip): bool
+    + create_allow_rules_batch(ips): bool
+    + clear_all_rules(): bool
+    + load_existing_rules()
+    + get_rule_count(): int
+  }
+
+  class FirewallUtils <<static>> {
+    + {static} is_valid_ipv4(ip): bool
+    + {static} is_valid_ip(ip): bool
+    + {static} get_essential_ips(): Set[str]
+    + {static} has_admin_privileges(): bool
+    + {static} run_netsh_command(args): tuple
+    + {static} test_ip_connectivity(ip): bool
   }
 }
 
-package "Whitelist" {
+' ============================================================
+' Whitelist package
+' ============================================================
+package "agent.whitelist" {
+
   class WhitelistManager {
-    - config: dict
+    - config: Dict
     - _state: WhitelistState
     - _sync: WhitelistSyncer
-    - _firewall_manager: FirewallManager
+    - _firewall_manager: Optional[FirewallManager]
+    - _on_sync_callbacks: List[Callable]
+    - _lock: RLock
+    - _sync_thread: Optional[Thread]
+    - _dns_refresh_thread: Optional[Thread]
+    - _running: bool
+    - _sync_interval: int
+    - _cache_ttl: int
     - dns_cache: LRUCache
     - resolver: OptimizedDNSResolver
-    - _sync_thread: Thread
-    - _running: bool
+    - _stats: Dict
     --
-    + start()
-    + stop()
-    + sync_whitelist_from_server()
-    + apply_whitelist()
-    + is_domain_allowed(domain): bool
-    + check_ip(ip): bool
-    + on_sync_complete(data)
-    + get_statistics(): dict
+    + on_sync_complete(callback)
+    + set_firewall_manager(firewall_manager)
+    + start_sync()
+    + stop_sync()
+    + sync_now(): bool
+    + is_allowed(domain, ip): bool
+    + is_ip_allowed(ip): bool
+    + remove_ip(ip): bool
+    + get_stats(): Dict
+    + get_cache_info(): Dict
+    + force_refresh(): bool
+    + cleanup()
   }
 
   class WhitelistState {
-    - _domains: set
-    - _patterns: list
-    - _ips: set
-    - _version: int
-    - _group_version: int
+    - _lock: RLock
+    - _domains: Set[str]
+    - _patterns: Set[str]
+    - _ips: Set[str]
+    - _last_updated: Optional[float]
+    - _version: str
+    - _group_version: str
+    - _group_id: str
     - _policy_mode: str
     - _checksum: str
-    - _lock: Lock
+    - _metadata: Dict
     --
-    + load_from_dict(data)
-    + get_domains(): set
-    + get_ips(): set
-    + get_patterns(): list
-    + calculate_checksum(): str
-    + get_metadata(): dict
+    + update(data): bool
+    + is_domain_allowed(domain): bool
+    + is_ip_allowed(ip): bool
+    + get_stats(): Dict
+    + get_all_domains(): Set[str]
+    + get_all_patterns(): Set[str]
+    + get_all_ips(): Set[str]
+    + remove_ip(ip): bool
+    + clear()
   }
 
   class WhitelistSyncer {
-    - server_urls: list
+    - server_urls: List[str]
     - agent_id: str
-    - config: dict
+    - config: Dict
     - connect_timeout: int
     - read_timeout: int
+    - max_retries: int
+    - current_server_index: int
     --
-    + sync_with_server(): dict
-    - _build_sync_url(): str
-    - _get_headers(): dict
+    + current_url: str <<property>>
+    + sync_with_server(params): Dict
+    + extract_domain_value(domain_data): Optional[str]
   }
 
   class WhitelistMonitor {
-    + check_domain(domain): bool
-    + check_ip(ip): bool
-    + log_access(domain, allowed)
+    - _sync_callback: Callable
+    - _interval: float
+    - _running: bool
+    - _thread: Optional[Thread]
+    - _last_sync: Optional[float]
+    - _sync_count: int
+    - _error_count: int
+    --
+    + start()
+    + stop()
+    + get_status(): dict
   }
 }
 
-package "Capture" {
+' ============================================================
+' Capture package
+' ============================================================
+package "agent.capture" {
+
   class PacketSniffer {
-    - callback: callable
+    - callback: Callable
     - running: bool
-    - _capture_thread: Thread
+    - _capture_thread: Optional[Thread]
     - _stop_event: Event
     - _extractor: DomainExtractor
     - packet_count: int
     - domain_count: int
+    - _stats_lock: Lock
     --
     + start()
     + stop()
-    - _capture_loop()
-    + get_stats(): dict
-    + reset_stats()
   }
 
-  class DomainExtractor {
-    + extract_from_packet(packet): list
-    + extract_domains(packet): list
-    - _extract_dns(packet): str
-    - _extract_http_host(packet): str
-    - _extract_tls_sni(packet): str
+  class DomainExtractor <<static>> {
+    + {static} extract_http_host(packet): Optional[str]
+    + {static} extract_https_sni(packet): Optional[str]
+    + {static} extract_dns_query(packet): Optional[str]
+  }
+
+  class "scapy_config" as cap_scapy <<module>> {
+    + configure_scapy()
+    + ensure_pcap_driver()
+    + apply_scapy_config()
+  }
+
+  class "winpcap_installer" as cap_winpcap <<module>> {
+    + ensure_winpcap_available()
+    + download_winpcap()
+    + install_winpcap_silent()
+    + uninstall_winpcap_silent()
   }
 }
 
-package "Network" {
+' ============================================================
+' Network package
+' ============================================================
+package "agent.network" {
+
   class OptimizedDNSResolver {
-    - _cache: LRUCache
-    - _resolvers: list
+    - max_workers: int
+    - timeout: float
+    - _shutdown: bool
+    - resolver: dns.resolver.Resolver
+    - executor: ThreadPoolExecutor
     --
-    + resolve(domain): list[str]
-    + resolve_batch(domains): dict
-    + clear_cache()
+    + resolve_domain_sync(domain): DNSRecord
+    + resolve_domain_async(domain): DNSRecord
+    + resolve_multiple_parallel(domains): Dict[str,DNSRecord]
+    + resolve_multiple_async(domains): Dict[str,DNSRecord]
+    + shutdown()
+  }
+}
+
+' ============================================================
+' Cache package
+' ============================================================
+package "agent.cache" {
+
+  class DNSRecord <<dataclass>> {
+    + ipv4: Tuple[str,...]
+    + cname: Optional[str]
+    + ttl: int
+    + resolved_at: float
+  }
+
+  class CacheValue <<dataclass>> {
+    + value: Any
+    + created_at: float
+    + ttl: float
   }
 
   class LRUCache {
     - _cache: OrderedDict
+    - _timestamps: Dict[str,float]
+    - _ttls: Dict[str,float]
     - _max_size: int
-    - _ttl: int
+    - _default_ttl: float
+    - _lock: RLock
+    - _hits: int
+    - _misses: int
     --
-    + get(key): any
-    + put(key, value)
+    + get(key): Optional[Any]
+    + set(key, value, ttl)
+    + delete(key): bool
     + clear()
-    + size(): int
+    + cleanup_expired(): int
+    + get_expiring_keys(threshold_seconds): list[str]
+    + get_stats(): Dict
+    + __len__(): int
+    + __contains__(key): bool
   }
 }
 
-package "Services" {
+' ============================================================
+' Services & Logging packages
+' ============================================================
+package "agent.services" {
+
   class HeartbeatSender {
-    - agent_id: str
-    - config: dict
-    - _interval: int
+    - config: Dict
+    - enabled: bool
+    - interval: int
+    - timeout: int
+    - retry_interval: int
+    - max_failures: int
+    - agent_id: Optional[str]
+    - agent_token: Optional[str]
+    - server_urls: list
     - _running: bool
-    - _thread: Thread
+    - _thread: Optional[Thread]
+    - _consecutive_failures: int
+    - on_force_sync: Optional[Callable]
+    - get_whitelist_versions: Optional[Callable]
     --
+    + set_agent_credentials(agent_id, token)
     + start()
     + stop()
-    - _send_heartbeat()
-    - _heartbeat_loop()
+    + get_status(): Dict
   }
+}
+
+package "agent.logging_module" {
 
   class LogSender {
+    - config: Dict
+    - server_urls: List[str]
+    - max_queue_size: int
+    - batch_size: int
+    - send_interval: int
+    - log_queue: Queue
+    - running: bool
+    - _sender_thread: Optional[Thread]
     - agent_id: str
-    - config: dict
-    - _batch_size: int
-    - _send_interval: float
-    - _queue: Queue
-    - _running: bool
+    - last_send_time: float
+    - _send_lock: Lock
     --
     + start()
     + stop()
-    + add_log(entry)
-    - _send_batch()
-    - _sender_loop()
+    + queue_log(log_data): bool
+    + get_status(): Dict
   }
 }
 
-package "Config" {
-  class ConfigLoader {
-    - _config: dict
+' ============================================================
+' Utils package
+' ============================================================
+package "agent.utils" {
+
+  class CriticalErrorHandler <<static>> {
+    + {static} safe_execute(func, *args, error_msg, return_on_error, log_traceback, **kwargs): Any
+    + {static} critical_operation(operation_name): Callable
+    + {static} retry_operation(max_retries, delay, backoff, exceptions): Callable
+  }
+
+  class IPDetector {
+    - _cached_local_ip: Optional[str]
+    - _cached_admin_status: Optional[bool]
+    - _last_ip_check: float
+    - _ip_cache_ttl: int
     --
-    + load(): dict
-    + get(key, default): any
-    + set(key, value)
-    + save()
+    + get_local_ip(force_refresh): str
+    + get_admin_status(force_refresh): bool
+    + get_cache_debug_info(): Dict
+  }
+
+  class "ip_detector (module)" as utils_ip_mod <<module>> {
+    + get_local_ip(force_refresh): str
+    + check_admin_privileges(force_refresh): bool
+    + get_ip_detector(): IPDetector
   }
 }
 
-' === Relationships ===
+' ============================================================
+' Config package — pure module functions (no ConfigLoader class)
+' ============================================================
+package "agent.config" {
 
-' Core composition
+  class "loader" as cfg_loader <<module>> {
+    + load_config(): Dict
+    + get_config(): Dict
+    + reload_config(): Dict
+  }
+
+  class "crypto" as cfg_crypto <<module>> {
+    + encrypt_config(config, path)
+    + decrypt_config(path): Dict
+  }
+
+  class "validator" as cfg_validator <<module>> {
+    + validate_config(config): bool
+  }
+
+  class "defaults" as cfg_defaults <<module>> {
+    + DEFAULT_CONFIG: Dict
+  }
+}
+
+' ============================================================
+' GUI package
+' ============================================================
+package "agent.gui" {
+
+  class FirewallControllerApp <<singleton>> {
+    - _instance: FirewallControllerApp
+    - _initialized: bool
+    - _root: ctk.CTk
+    - _main_window: MainWindow
+    - _controller: AgentController
+    --
+    + __new__(): FirewallControllerApp
+    + run()
+    + quit()
+  }
+
+  package "agent.gui.controllers" {
+
+    enum AgentStatus <<enum>> {
+      STOPPED
+      STARTING
+      RUNNING
+      STOPPING
+      ERROR
+    }
+
+    class AgentEvent <<dataclass>> {
+      + event_type: str
+      + data: Dict[str,Any]
+      + timestamp: float
+    }
+
+    class AgentSignals {
+      - _callbacks: Dict[str,List[Callable]]
+      - _event_queue: Queue
+      - _lock: Lock
+      --
+      + connect(signal_name, callback): bool
+      + disconnect(signal_name, callback): bool
+      + emit(signal_name, data)
+      + process_events(root)
+    }
+
+    class AgentController <<singleton>> {
+      - _instance: AgentController
+      - _initialized: bool
+      - signals: AgentSignals
+      - _status: AgentStatus
+      - _agent: Optional[Agent]
+      - _config: Optional[Dict]
+      - _worker_thread: Optional[Thread]
+      - _stop_event: Event
+      - _stats_lock: Lock
+      - _stats: Dict
+      - _root: Optional[ctk.CTk]
+      --
+      + __new__(): AgentController
+      + status: AgentStatus <<property>>
+      + is_running: bool <<property>>
+      + stats: Dict <<property>>
+      + set_root(root)
+      + start_agent(): bool
+      + stop_agent(): bool
+    }
+
+    class WhitelistController <<singleton>> {
+      --
+      + set_whitelist_manager(manager)
+      + on_data_changed(callback)
+      + on_error(callback)
+      + on_success(callback)
+      + remove_ip(ip): bool
+      + get_all_ips(): List[Dict]
+      + refresh()
+      + get_stats(): Dict
+    }
+  }
+
+  package "agent.gui.views" {
+    class MainWindow {
+      - _theme: Dict
+      - _current_view: Optional[str]
+      - _views: Dict[str, ctk.CTkFrame]
+      - _menu_buttons: Dict[str, ctk.CTkButton]
+      - _sidebar: ctk.CTkFrame
+      - _content_area: ctk.CTkFrame
+    }
+    class DashboardView
+    class FirewallView
+    class WhitelistView
+    class LogsView
+    class SettingsView
+  }
+
+  package "agent.gui.views.components" {
+    class DataTable
+    class SearchableDataTable
+    class LogConsole
+    class StatusCard
+  }
+}
+
+' ============================================================
+' Relationships
+' ============================================================
+
+' --- Core composition (set inside Agent.__init__ via lifecycle) ---
 Agent *-- FirewallManager
 Agent *-- WhitelistManager
-Agent *-- PacketSniffer
-Agent *-- HeartbeatSender
 Agent *-- LogSender
-Agent *-- TokenManager
-Agent *-- ConfigLoader
-Agent -- AgentStatus
+Agent *-- HeartbeatSender
+Agent *-- PacketSniffer
 
-' Lifecycle
-AgentLifecycle ..> Agent
-AgentRegistry ..> Agent
+' --- Core modules orchestrate lifecycle ---
+core_lifecycle ..> Agent : init/cleanup
+core_lifecycle ..> core_registry : step 1
+core_lifecycle ..> core_tm_module : step 2 (init_token_manager)
+core_lifecycle ..> WhitelistManager : step 3
+core_lifecycle ..> FirewallManager : step 4
+core_lifecycle ..> LogSender : step 5
+core_lifecycle ..> HeartbeatSender : step 6
+core_lifecycle ..> PacketSniffer : step 7
+core_lifecycle ..> core_handlers : domain callback
+core_handlers ..> WhitelistManager : is_allowed
+core_handlers ..> LogSender : queue_log
+core_tm_module ..> TokenManager : factory
+core_agent_module ..> Agent : factory
 
-' GUI composition
-FirewallControllerApp *-- MainWindow
-MainWindow *-- DashboardView
-MainWindow *-- FirewallView
-MainWindow *-- WhitelistView
-MainWindow *-- LogsView
-MainWindow *-- SettingsView
-FirewallControllerApp *-- AgentGUIController
-AgentGUIController *-- AgentSignals
-AgentSignals -- AgentEvent
-AgentGUIController ..> Agent : controls
-
-' Firewall composition
+' --- Firewall composition ---
 FirewallManager *-- PolicyManager
 FirewallManager *-- RulesManager
+FirewallManager ..> FirewallUtils : netsh / validation
+FirewallManager ..> OptimizedDNSResolver : _resolve_domains_to_ips
 
-' Whitelist composition
+' --- Whitelist composition ---
 WhitelistManager *-- WhitelistState
 WhitelistManager *-- WhitelistSyncer
-WhitelistManager *-- WhitelistMonitor
-WhitelistManager o-- FirewallManager : uses
-WhitelistManager *-- OptimizedDNSResolver
+WhitelistManager *-- LRUCache : dns_cache
+WhitelistManager *-- OptimizedDNSResolver : resolver
+WhitelistManager o-- FirewallManager : set_firewall_manager()
+WhitelistMonitor ..> WhitelistManager : sync_callback
 
-' Network
-OptimizedDNSResolver *-- LRUCache
-
-' Capture
+' --- Capture composition ---
 PacketSniffer *-- DomainExtractor
+PacketSniffer ..> cap_scapy : configure
+cap_scapy ..> cap_winpcap : ensure driver
 
-' Cross-package dependencies
-PacketSniffer ..> WhitelistManager : checks domain
-LogSender ..> PacketSniffer : receives logs
-HeartbeatSender ..> WhitelistManager : triggers sync
+' --- Network/Cache composition ---
+OptimizedDNSResolver ..> DNSRecord : returns
+
+' --- Services use TokenManager for auth headers ---
+HeartbeatSender ..> core_tm_module : get_auth_headers()
+LogSender ..> core_tm_module : get_auth_headers()
+HeartbeatSender ..> WhitelistManager : on_force_sync callback
+
+' --- Config wired into Agent at load ---
+cfg_loader ..> cfg_crypto : encrypted file
+cfg_loader ..> cfg_validator : validate
+cfg_loader ..> cfg_defaults : merge defaults
+
+' --- Utils ---
+utils_ip_mod ..> IPDetector : factory
+core_registry ..> CriticalErrorHandler : @critical_operation
+core_registry ..> utils_ip_mod : device info
+
+' --- GUI composition ---
+FirewallControllerApp *-- MainWindow
+FirewallControllerApp *-- AgentController
+AgentController *-- AgentSignals
+AgentSignals ..> AgentEvent : queues
+AgentController ..> Agent : creates / drives
+AgentController ..> core_lifecycle : initialize_components()
+AgentController -- AgentStatus
+WhitelistController ..> WhitelistManager : remove_ip
+
+' --- Views ---
+MainWindow *-- DashboardView : lazy
+MainWindow *-- FirewallView : lazy
+MainWindow *-- WhitelistView : lazy
+MainWindow *-- LogsView : lazy
+MainWindow *-- SettingsView : lazy
+MainWindow ..> AgentSignals : connect()
+DashboardView ..> StatusCard
+DashboardView ..> LogConsole
+FirewallView ..> DataTable
+WhitelistView ..> SearchableDataTable
+WhitelistView ..> WhitelistController
+LogsView ..> LogConsole
+
+note bottom of cfg_loader
+  No ConfigLoader class exists.
+  Config is loaded via module-level functions
+  using DEFAULTS + file (encrypted/plain) + FC_* env vars.
+end note
+
+note right of core_lifecycle
+  lifecycle.py / registry.py / handlers.py
+  are module-level functions, NOT classes.
+end note
 
 @enduml

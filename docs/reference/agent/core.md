@@ -82,8 +82,8 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | `get_auth_headers(config)` | `(Dict) -> Dict[str, str]` | [token_manager.py:460](../../../agent/core/token_manager.py#L460) | **Cách đúng để lấy auth header**: JWT từ TokenManager → JWT từ config → legacy `X-Agent-Token`. Mọi nơi gửi request lên server nên dùng cái này. |
 
 ## Ai gọi module này
-- `lifecycle` được gọi bởi `agent_gui.py` (entry point) và `gui/controllers/agent_controller`.
-- `get_agent()` / `Agent` được dùng bởi `gui/controllers/agent_controller`, `whitelist/sync`, `services/heartbeat`, `logging_module/sender` để lấy state/config.
+- `lifecycle` được gọi bởi `agent_gui.py` (entry point) và `controllers/agent_controller`.
+- `get_agent()` / `Agent` được dùng bởi `controllers/agent_controller`, `whitelist/sync`, `services/heartbeat`, `logging_module/sender` để lấy state/config.
 - `get_auth_headers` được dùng bởi mọi module gửi HTTP (heartbeat, log_sender, whitelist sync).
 - `AGENT_HOSTNAME / AGENT_DEVICE_ID` được dùng trong logs (handlers, lifecycle), heartbeat, registry.
 

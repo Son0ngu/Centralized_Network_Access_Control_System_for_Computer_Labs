@@ -1,0 +1,11 @@
+flowchart TB
+  GUI["Views: Dashboard, Firewall, Whitelist, Logs, Settings"] --> Signals["AgentSignals event queue"]
+  Signals --> Controller["AgentController singleton"]
+  Controller --> Lifecycle["core.lifecycle"]
+  Lifecycle --> Registry["register_agent"]
+  Lifecycle --> Token["TokenManager"]
+  Lifecycle --> Whitelist["WhitelistManager"]
+  Lifecycle --> Firewall["FirewallManager"]
+  Lifecycle --> Sniffer["PacketSniffer"]
+  Lifecycle --> Heartbeat["HeartbeatSender"]
+  Lifecycle --> Logs["LogSender"]

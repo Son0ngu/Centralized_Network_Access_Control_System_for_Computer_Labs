@@ -1,0 +1,14 @@
+sequenceDiagram
+  participant Teacher
+  participant Server
+  participant MongoDB
+  participant Agent
+  participant Firewall
+  Teacher->>Server: Update whitelist/profile
+  Server->>MongoDB: Save entry and bump version
+  Agent->>Server: POST /api/agents/heartbeat
+  Server-->>Agent: force_sync/version change
+  Agent->>Server: GET /api/whitelist/agent-sync
+  Server-->>Agent: scoped whitelist
+  Agent->>Agent: Resolve domains to IPs
+  Agent->>Firewall: Update allow rules

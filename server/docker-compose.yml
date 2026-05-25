@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  server:
+    build: .
+    container_name: nac_server
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Uncomment the below block if you want to run a local MongoDB instance
+    # depends_on:
+    #   - mongodb
+
+  # mongodb:
+  #   image: mongo:latest
+  #   container_name: nac_mongodb
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   restart: unless-stopped
+
+# volumes:
+#   mongodb_data:

@@ -1,8 +1,93 @@
 # HƯỚNG DẪN CHI TIẾT: Viết Report + Làm Slide ĐATN theo Template HUST
 
 > **Template sử dụng:**
-> - Report: `SOICT_DATN_Application_ENG_Template.pdf` (format LaTeX/Word chuẩn ISO 7144)
+> - Report: `SOICT_DATN_Application_ENG_Template.pdf` (LaTeX, chuẩn báo cáo kỹ thuật ISO 7144:1986, 31 trang)
 > - Slide: `HUST_PPT_template_2022_RED_4x3.pptx` (13 slides, theme đỏ BKHN, tỉ lệ 4:3)
+
+> **Quan trọng:** Template ghi rõ "Sinh viên viết trực tiếp vào file này, chỉ chỉnh sửa nội dung, và **không viết trên file mới**." Khi paste văn bản từ tài liệu khác, dùng "Copy as Text Only" để giữ format template.
+
+---
+
+# PHẦN 0: QUY ĐỊNH BẮT BUỘC CỦA TEMPLATE
+
+Đây là các quy định bắt buộc lấy từ **Phụ lục A** của template. Vi phạm các quy định này có thể bị trừ điểm hoặc **không được phép bảo vệ**.
+
+## 0.1 Cách hành văn khoa học
+
+**Bắt buộc:**
+- Viết thành **đoạn văn liền mạch**, không gạch đầu dòng (bullets), không viết ý lẻ.
+- Mỗi đoạn có **một ý chính** và các câu phân tích bổ trợ. Câu sau liên kết câu trước, đoạn sau liên kết đoạn trước.
+- Mọi câu phải đầy đủ chủ ngữ, vị ngữ.
+- Khi cần liệt kê, dùng **chữ số La Mã**: (i), (ii), (iii), (iv)... Ví dụ: "Đồ án có 3 đóng góp: (i) ..., (ii) ..., và (iii) ...".
+
+**Cấm dùng:**
+- Từ trong văn nói, từ phóng đại, thái quá, mang tính cảm xúc cá nhân: "tuyệt vời", "cực hay", "cực kỳ hữu ích", "rất ấn tượng"...
+- Câu dài dòng. Mỗi câu cần được tối ưu, "rất khó thêm hoặc bớt đi dù chỉ một từ" (trích template).
+
+**Trường hợp bất khả kháng phải dùng bullet:** thống nhất style cho toàn báo cáo (ví dụ tròn đen cấp 1 thì mọi nơi đều vậy).
+
+## 0.2 Tổng quan + Kết chương (BẮT BUỘC cho CH2–CH6)
+
+Mỗi chương từ Chương 2 trở đi **phải có hai đoạn**:
+
+**Đoạn Tổng quan (đầu chương):**
+- Liên kết với chương trước (ví dụ: "Chương 3 đã thảo luận về cơ sở lý thuyết...").
+- Nêu lý do có mặt chương này và sự cần thiết của nó.
+- Giới thiệu các vấn đề/đề mục lớn sẽ trình bày.
+
+**Đoạn Kết chương (cuối chương):**
+- Tóm tắt các kết luận quan trọng của chương.
+- Trả lời các vấn đề đã mở ra ở Tổng quan.
+- Có câu liên kết tới chương tiếp theo (ví dụ: "...được trình bày trong chương tiếp theo – Chương 5").
+- **Không viết Kết chương giống hệt Tổng quan.**
+
+Hai đoạn này dùng định dạng văn bản **Normal**, không in đậm/nghiêng, không đóng khung.
+
+**Lưu ý:** Chương 1 không cần phần mô tả chương trong mục `1.4 Thesis organization` (đã có sẵn ở 1.4).
+
+## 0.3 Tham chiếu chéo bắt buộc
+
+Mọi **hình vẽ, bảng biểu, công thức, tài liệu tham khảo** trong ĐATN **bắt buộc phải được tham chiếu ít nhất một lần** trong phần nội dung.
+
+Ví dụ tham chiếu đúng:
+- "Bảng 4.1 liệt kê các công cụ phần mềm được sử dụng..."
+- "Hình 4.2 minh hoạ thiết kế gói của module Whitelist..."
+- "Theo lý thuyết RBAC [4], phân quyền được tổ chức..."
+- "Phương trình (5.1) thể hiện công thức tính checksum của whitelist..."
+
+**Không chấp nhận** hình/bảng "tự xuất hiện" mà không có lời mô tả/giải thích nào trong văn bản.
+
+## 0.4 Cấm đạo văn
+
+- **Tuyệt đối cấm đạo văn.** Bị phát hiện → **không được bảo vệ ĐATN**.
+- Ghi rõ nguồn cho **mọi thứ không tự viết/vẽ**: trích dẫn, hình ảnh, bảng biểu, sơ đồ, code snippet...
+- Trích dẫn theo IEEE: `[1]`, `[2]`... Chi tiết tại mục `REFERENCE` cuối tài liệu này.
+
+## 0.5 Quy định đóng quyển
+
+- Bìa trước và bìa sau là giấy liền khổ, chế bản theo template.
+- Dùng **keo nhiệt** dán gáy, **không dùng băng dính/dập ghim**.
+- **Phần gáy** ghi: `Kỳ làm ĐATN - Ngành đào tạo - Họ và tên SV - MSSV`. Ví dụ:
+  ```
+  2026.1 - KHOA HỌC MÁY TÍNH - NGUYỄN VĂN A - 20210xxx
+  ```
+- Tên ngành đúng theo khoá học (xem template Phụ lục A.2):
+  - K61 trở về trước: **Kỹ thuật phần mềm**
+  - K62 trở về sau: **Khoa học máy tính**
+  - Cử nhân CNTT: **Công nghệ thông tin**
+  - ICT Global: **Information Technology**
+  - DS&AI: **Khoa học dữ liệu**
+
+## 0.6 Độ dài từng chương (theo template)
+
+| Chương | Độ dài |
+|---|---|
+| CH1: Introduction | 3–6 trang |
+| CH2: Requirement Survey and Analysis | 9–11 trang |
+| CH3: Theoretical Background and Technologies | ≤ 10 trang (vượt thì đưa vào phụ lục) |
+| CH4: Design, Implementation, and Evaluation | Không quy định tổng, nhưng: 4.1.1: 1–3 tr, 4.2.1: 2–3 tr, 4.2.2: 3–4 tr, 4.2.3: 2–4 tr, 4.4: 2–3 tr |
+| CH5: Solution and Contribution | ≥ 5 trang. **Nếu < 5 trang thì gộp vào CH6**, không tách thành chương riêng |
+| CH6: Conclusion and Future Work | Tự cân đối |
 
 ---
 
@@ -220,6 +305,10 @@ xuất hướng phát triển trong tương lai.
 
 ## CHAPTER 2: REQUIREMENT SURVEY AND ANALYSIS (9-11 trang)
 
+> **Bắt buộc**: Đầu chương có đoạn **Tổng quan** liên kết với Chương 1 và giới thiệu nội dung sẽ trình bày. Cuối chương có đoạn **Kết chương** tóm tắt và liên kết tới Chương 3. Xem mục 0.2.
+
+> **Phương pháp**: Template mặc định dùng **biểu đồ use case** (OOAD). Nếu chọn phương pháp khác (ví dụ Agile + User Story), trao đổi với GVHD để đổi tên đề mục.
+
 ### 2.1 Status survey (Khảo sát hiện trạng)
 
 **Phân tích, so sánh các sản phẩm tương tự:**
@@ -381,6 +470,15 @@ UC5: Giám sát hoạt động mạng (Network Monitoring)
 
 ## CHAPTER 3: THEORETICAL BACKGROUND AND TECHNOLOGIES (≤ 10 trang)
 
+> **Bắt buộc**: Có Tổng quan + Kết chương. Tổng quan liên kết với CH2 ("Sau khi đã phân tích yêu cầu ở Chương 2, Chương 3 trình bày các nền tảng công nghệ được dùng để hiện thực hoá các yêu cầu đó..."). Kết chương liên kết với CH4.
+
+> **Quy định template**:
+> - **Mỗi công nghệ/lý thuyết phải có 3 phần**: (i) giải quyết vấn đề/yêu cầu cụ thể nào ở CH2, (ii) các alternative có thể thay thế, (iii) lý do chọn phương án này.
+> - **Trích nguồn**: kiến thức thu thập từ đâu phải có citation [n] đến mục REFERENCE.
+> - **Không trình bày dài dòng chi tiết**. Đây là kiến thức có sẵn, chỉ tóm tắt và phân tích.
+> - Nếu cần > 10 trang, đưa phần dư vào **Phụ lục**.
+> - Công nghệ trong CH3 phải khớp với phần **Tentative solution (1.3)** ở CH1.
+
 **Mỗi công nghệ phải nêu: dùng để giải quyết vấn đề gì ở Chương 2, tại sao chọn nó thay vì alternative.**
 
 ```
@@ -436,6 +534,10 @@ UC5: Giám sát hoạt động mạng (Network Monitoring)
 ---
 
 ## CHAPTER 4: DESIGN, IMPLEMENTATION, AND EVALUATION
+
+> **Bắt buộc**: Có Tổng quan + Kết chương. Tổng quan liên kết với CH3, Kết chương liên kết với CH5.
+
+> **Lưu ý template**: Tránh trình bày trùng lặp với **CH5 (Solution and Contribution)**. Những nội dung mang tính đóng góp/giải pháp chỉ **tóm lược** ở CH4, sau đó dùng tham chiếu chéo: *"Chi tiết về kiến trúc/giải pháp này được trình bày trong phần 5.x"*. Chi tiết đầy đủ đặt ở CH5.
 
 ### 4.1 Architecture design
 
@@ -684,7 +786,18 @@ Kết quả thử nghiệm:
 
 ---
 
-## CHAPTER 5: SOLUTION AND CONTRIBUTION (≥ 5 trang)
+## CHAPTER 5: SOLUTION AND CONTRIBUTION (≥ 5 trang, tối đa không giới hạn)
+
+> **Bắt buộc**: Có Tổng quan + Kết chương. Tổng quan liên kết với CH4 ("Sau khi đã trình bày kiến trúc, thiết kế và cài đặt ở Chương 4, Chương 5 này tập trung vào các giải pháp và đóng góp nổi bật...").
+
+> **Quan trọng - footnote template**: Nếu phần này **dưới 5 trang** thì **gộp vào CH6 (Conclusion)**, **KHÔNG tách thành chương riêng**. Khi gộp, đổi tên CH6 thành "CONCLUSION, CONTRIBUTION, AND FUTURE WORK".
+
+> **Cấu trúc bắt buộc cho mỗi đóng góp**: 3 mục con
+> - (i) **Dẫn dắt/giới thiệu** bài toán/vấn đề cụ thể.
+> - (ii) **Giải pháp** mà sinh viên đề xuất.
+> - (iii) **Kết quả đạt được** (nếu có): số liệu, so sánh, đánh giá.
+
+> **Không trình bày lặp**: CH4 đã có gì thì CH5 không nói lại. Dùng tham chiếu chéo từ CH4 sang CH5.
 
 **Chương QUAN TRỌNG NHẤT - thầy cô đánh giá chủ yếu từ đây.**
 
@@ -723,6 +836,10 @@ Kết quả thử nghiệm:
 ---
 
 ## CHAPTER 6: CONCLUSION AND FUTURE WORK
+
+> **Bắt buộc**: Có Tổng quan đầu chương ngắn gọn liên kết với CH5. Không cần Kết chương (vì là chương cuối).
+
+> **Lưu ý**: Nếu CH5 < 5 trang, gộp vào đây và đổi tiêu đề thành "CONCLUSION, CONTRIBUTION, AND FUTURE WORK".
 
 ### 6.1 Conclusion
 
@@ -767,24 +884,116 @@ Nâng cấp:
 
 ---
 
-## REFERENCE
+## REFERENCE (IEEE format)
 
-Tối thiểu 10-15 tài liệu tham khảo:
+> **Quy định nghiêm ngặt từ template:**
+> - **Tối thiểu 10–15 tài liệu** tham khảo.
+> - **CẤM**: bài giảng/slide, Wikipedia, blog cá nhân, các trang web thông thường.
+> - **Cho phép**: trang web nếu là công bố chính thống của tổ chức (W3C, IETF RFC, ISO, vendor docs chính thức).
+> - **Chỉ tài liệu được trích dẫn `[n]` trong văn bản** mới xuất hiện trong danh sách REFERENCE.
+> - Hạn chế trích từ website, ưu tiên sách + bài báo hội nghị/tạp chí.
+
+### 5 loại tài liệu tham khảo theo IEEE
+
+**Loại 1 — Bài báo tạp chí khoa học:** *Tên tác giả, "tên bài báo", tên tạp chí, vol., no., pp. trang–trang, NXB, năm.*
+```
+[1] E. H. Hovy, "Automated discourse generation using discourse
+    structure relations," Artificial Intelligence, vol. 63,
+    no. 1-2, pp. 341–385, 1993.
+```
+
+**Loại 2 — Sách:** *Tên tác giả, tên sách, edition. NXB, năm.*
+```
+[2] L. L. Peterson and B. S. Davie, Computer Networks: A Systems
+    Approach. Elsevier, 2007.
+[3] M. Grinberg, Flask Web Development, 2nd ed. O'Reilly, 2018.
+```
+
+**Loại 3 — Báo cáo hội nghị:** *Tên tác giả, "tên báo cáo", in tên hội nghị, địa điểm, năm, pp. trang–trang.*
+```
+[4] M. Poesio and B. Di Eugenio, "Discourse structure and
+    anaphoric accessibility," in ESSLLI workshop on information
+    structure, discourse structure and discourse semantics,
+    Copenhagen, Denmark, 2001, pp. 129–143.
+[5] D. F. Ferraiolo and R. Kuhn, "Role-based access controls,"
+    in Proc. 15th NIST-NCSC National Computer Security Conf.,
+    Baltimore, USA, 1992, pp. 554–563.
+```
+
+**Loại 4 — Luận văn/Đồ án/Luận án:** *Tên tác giả, "tên luận văn", loại luận văn, tên trường, địa điểm, năm.*
+```
+[6] A. Knott, "A data-driven methodology for motivating a set
+    of coherence relations," Ph.D. dissertation, The University
+    of Edinburgh, UK, 1996.
+```
+
+**Loại 5 — Tài liệu Internet (chính thống):** *Tên tác giả/tổ chức, tên tài liệu. [Online]. Available: URL (visited on dd/mm/yyyy).*
+```
+[7] M. Jones, JSON Web Token (JWT), RFC 7519, IETF, 2015.
+    [Online]. Available: https://datatracker.ietf.org/doc/
+    html/rfc7519 (visited on 05/2026).
+[8] P. Biondi, Scapy documentation. [Online]. Available:
+    https://scapy.readthedocs.io/ (visited on 05/2026).
+```
+
+### Gợi ý nguồn cho project SAINT
+
+| Chủ đề | Nguồn đáng tin cậy |
+|---|---|
+| RBAC | Ferraiolo & Kuhn (1992), NIST RBAC standard |
+| JWT | RFC 7519 (IETF) |
+| Flask | "Flask Web Development" — M. Grinberg, O'Reilly |
+| MongoDB | "MongoDB: The Definitive Guide" — K. Chodorow, O'Reilly |
+| Scapy | P. Biondi, official documentation |
+| TLS SNI | RFC 6066 (IETF) |
+| DNS | RFC 1035 (IETF) |
+| HTTP Host header | RFC 7230 (IETF) |
+| bcrypt | Provos & Mazières (1999), USENIX paper |
+| Windows Firewall netsh | Microsoft Docs (docs.microsoft.com) |
+
+---
+
+## APPENDIX A: THESIS WRITING GUIDELINE
+
+Phần này template đã có sẵn (Phụ lục A từ A.1 đến A.8), bao gồm:
+- A.1 General Regulations (đã trình bày ở **Phần 0** của file hướng dẫn này)
+- A.2 Majoring (ghi đúng tên ngành, xem mục 0.5)
+- A.3 Bulleting and Numbering (cú pháp LaTeX `\begin{itemize}`, `\begin{enumerate}`)
+- A.4 Table insertion (mọi bảng phải có caption + được tham chiếu trong văn bản)
+- A.5 Figure Insertion (mọi hình phải có caption ở dưới + được tham chiếu)
+- A.6 Reference (IEEE format, xem section REFERENCE ở trên)
+- A.7 Equations (gói `amsmath`, `amssymb`, `amsfonts` đã sẵn trong template)
+- A.8 Qui cách đóng quyển (xem mục 0.5)
+
+**Sinh viên KHÔNG sửa Phụ lục A** (template đã viết sẵn các hướng dẫn này).
+
+---
+
+## APPENDIX B: USE CASE DESCRIPTIONS (nếu cần)
+
+Template cung cấp Phụ lục B để chứa đặc tả use case **overflow** từ Chương 2 nếu CH2 không đủ chỗ.
+
+**Khi nào dùng:**
+- CH2 mục 2.3 chỉ đặc tả 4-7 UC quan trọng nhất.
+- Các UC còn lại (nếu muốn đặc tả) đặt vào Phụ lục B.
+
+**Đặc tả mỗi UC phải có:**
+- (i) Tên use case
+- (ii) Tác nhân tham gia
+- (iii) Tiền điều kiện
+- (iv) Luồng sự kiện chính
+- (v) Luồng sự kiện phát sinh (ngoại lệ)
+- (vi) Hậu điều kiện
+- (vii) (Tuỳ chọn) Biểu đồ hoạt động nếu UC phức tạp
+
+**Áp dụng cho SAINT** — các UC có thể đẩy xuống Phụ lục B nếu CH2 hết chỗ:
 
 ```
-[1] M. Grinberg, Flask Web Development, 2nd ed. O'Reilly, 2018.
-[2] K. Chodorow, MongoDB: The Definitive Guide, 3rd ed. O'Reilly, 2019.
-[3] M. Jones, JSON Web Token (JWT), RFC 7519, IETF, 2015.
-[4] D. F. Ferraiolo and R. Kuhn, "Role-based access controls,"
-    in Proceedings of 15th NIST-NCSC National Computer Security
-    Conference, 1992.
-[5] P. Biondi, Scapy documentation. [Online]. Available:
-    https://scapy.readthedocs.io/ (visited on 03/2026).
-[6] Flask documentation. [Online]. Available:
-    https://flask.palletsprojects.com/ (visited on 03/2026).
-[7] MongoDB documentation. [Online]. Available:
-    https://docs.mongodb.com/ (visited on 03/2026).
-...thêm các tài liệu liên quan...
+B.1 Đặc tả use case "Quản lý API Key"
+B.2 Đặc tả use case "Bulk import/export Whitelist"
+B.3 Đặc tả use case "Audit log viewing"
+B.4 Đặc tả use case "Reset password người dùng"
+B.5 Đặc tả use case "Set Agent Policy (isolate/reset/custom)"
 ```
 
 ---
@@ -903,23 +1112,41 @@ Slide 18: [Template slide 13] THANK YOU / Q&A
 
 # PHẦN C: CHECKLIST TRƯỚC KHI NỘP
 
-## Report
-- [ ] Trang bìa đúng format (tên trường, đề tài, GVHD, SVTH)
-- [ ] Acknowledgments 100-150 từ
-- [ ] Abstract 200-350 từ, viết đoạn văn (không gạch đầu dòng)
-- [ ] Mục lục cập nhật
-- [ ] Danh sách viết tắt đầy đủ
-- [ ] Chương 1: 3-6 trang, có Motivation + Objectives + Solution + Organization
-- [ ] Chương 2: 9-11 trang, có use case diagram + đặc tả 4-7 UC
-- [ ] Chương 3: ≤ 10 trang, mỗi công nghệ có lý do chọn
-- [ ] Chương 4: đủ architecture + design + implementation + testing + deployment
-- [ ] Chương 5: ≥ 5 trang, đóng góp chi tiết
-- [ ] Chương 6: kết luận + hướng phát triển
-- [ ] Tài liệu tham khảo ≥ 10 mục, đúng format
-- [ ] Không có slide/Wikipedia trong tài liệu tham khảo
-- [ ] Mỗi chương có tổng quan + kết chương
-- [ ] Không dùng từ phóng đại ("tuyệt vời", "cực kỳ")
-- [ ] Hành văn khoa học, ngắn gọn
+## Report — Nội dung
+
+- [ ] Trang bìa + trang phụ đúng format (tên trường, đề tài, GVHD, SVTH, signature)
+- [ ] Acknowledgments **100–150 từ** (đếm thật)
+- [ ] Abstract **200–350 từ**, viết đoạn văn liền mạch theo trình tự (i)(ii)(iii)(iv)
+- [ ] Mục lục, List of Figures, List of Tables, List of Abbreviations cập nhật
+- [ ] Chương 1 — **3–6 trang**, đủ 4 mục: Motivation, Objectives & scope, Tentative solution, Thesis organization
+- [ ] Chương 2 — **9–11 trang**, đủ 4 mục: Status survey, Functional Overview (3 sub), Functional description (4–7 UC), Non-functional requirement
+- [ ] Chương 3 — **≤ 10 trang**, mỗi công nghệ có (i) giải quyết vấn đề gì ở CH2, (ii) alternative, (iii) lý do chọn
+- [ ] Chương 4 — đủ Architecture (4.1) + Detailed design (4.2) + App Building (4.3) + Testing (4.4) + Deployment (4.5)
+- [ ] Chương 5 — **≥ 5 trang**, mỗi đóng góp có 3 mục con (dẫn dắt / giải pháp / kết quả). Nếu < 5 trang → gộp CH6.
+- [ ] Chương 6 — đủ Conclusion + Future work
+- [ ] Tài liệu tham khảo ≥ 10 mục, đúng IEEE format, **đủ ít nhất 3 trong 5 loại** (sách / tạp chí / hội nghị / luận văn / internet chính thống)
+- [ ] Phụ lục A (template tự viết, không sửa)
+- [ ] Phụ lục B (Use Case Descriptions) — nếu CH2 không đủ chỗ
+
+## Report — Quy định format (Phần 0)
+
+- [ ] **KHÔNG** gạch đầu dòng / viết ý. Phải viết đoạn văn.
+- [ ] Khi liệt kê: dùng (i), (ii), (iii), (iv) — không dùng "•", "*", "-"
+- [ ] **KHÔNG** từ phóng đại: "tuyệt vời", "cực hay", "cực kỳ", "rất ấn tượng"...
+- [ ] Mỗi đoạn có **một ý chính** + câu phân tích. Đoạn không quá dài.
+- [ ] **Mỗi chương CH2–CH5 có Tổng quan đầu chương + Kết chương** (Normal text, không in đậm/khung)
+- [ ] **Mọi hình, bảng, công thức được tham chiếu ít nhất 1 lần** trong văn bản
+- [ ] Mọi hình/bảng/code không tự viết → ghi nguồn `[n]` đầy đủ
+- [ ] **KHÔNG** Wikipedia, slide, blog làm tài liệu tham khảo
+- [ ] Citation IEEE `[n]` xuất hiện trong văn bản trước khi vào REFERENCE
+- [ ] Format thống nhất toàn báo cáo (font, margin, page numbering từ template)
+
+## Report — Đóng quyển
+
+- [ ] Bìa trước + bìa sau giấy liền khổ, chế bản theo template
+- [ ] Dùng **keo nhiệt** dán gáy (không băng dính/dập ghim)
+- [ ] **Gáy ĐATN** ghi đúng: `Kỳ ĐATN - Ngành - Họ tên SV - MSSV` (ví dụ: `2026.1 - KHOA HỌC MÁY TÍNH - NGUYỄN VĂN A - 20210xxx`)
+- [ ] Tên ngành đúng khoá học (K61 KTPM / K62+ KHMT / cử nhân CNTT / ICT Global / DS&AI)
 
 ## Slide
 - [ ] Dùng đúng template HUST

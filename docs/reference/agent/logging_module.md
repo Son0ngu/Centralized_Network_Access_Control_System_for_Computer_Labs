@@ -39,7 +39,7 @@ Module 1 file (`sender.py`). Tên module là `logging_module` (không phải `lo
 ## Ai gọi module này
 - `agent/core/lifecycle.py` — tạo `LogSender(config)`, gọi `start()`, queue shutdown log, gọi `stop()`
 - `agent/core/handlers.py` — `log_sender.queue_log(enhanced_record)` qua `CriticalErrorHandler.safe_execute`
-- `agent/gui/views/components/log_console.py` (`GUILogHandler`) — bắt Python logging và **không** đẩy qua sender (chỉ hiển thị local). Sender chỉ nhận record từ handlers
+- `agent/gui_qt/components/log_console.py` (`GUILogHandler`) — bắt Python logging và **không** đẩy qua sender (chỉ hiển thị local). Sender chỉ nhận record từ handlers
 
 ## Module này gọi ra
 - `agent/core/token_manager.get_auth_headers` — JWT

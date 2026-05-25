@@ -3,7 +3,7 @@
 Bộ tham chiếu API per-module cho agent và server. **Trước khi viết helper mới**, scan section ["Common utilities"](#common-utilities--check-tr%C6%B0%E1%BB%9Bc-khi-t%E1%BB%B1-vi%E1%BB%BFt) ở cuối file này — phần lớn thứ bạn cần đã có.
 
 Khác biệt với các docs còn lại:
-- [docs/AGENT_DOCUMENTATION.md](../AGENT_DOCUMENTATION.md), [docs/SERVER_DOCUMENTATION.md](../SERVER_DOCUMENTATION.md), [docs/SYSTEM_OVERVIEW.md](../SYSTEM_OVERVIEW.md) → **kiến trúc** (luồng, sơ đồ, vì sao).
+- [docs/SYSTEM_OVERVIEW.md](../SYSTEM_OVERVIEW.md) → **kiến trúc** (luồng, sơ đồ, vì sao).
 - Thư mục này → **API surface** (class/function nào tồn tại, signature, vị trí, ai gọi).
 
 ---
@@ -23,7 +23,9 @@ Khác biệt với các docs còn lại:
 | [agent/cache](agent/cache.md) | LRU cache + `DNSRecord` | ✅ |
 | [agent/shared](agent/shared.md) | Time/timezone, OS info | ✅ |
 | [agent/utils](agent/utils.md) | error_handler, ip_detector, validators | ✅ |
-| [agent/gui](agent/gui.md) | App + controllers + views + components + styles + resources | ✅ |
+| [agent/controllers](agent/controllers.md) | Framework-agnostic GUI controllers, worker thread, AgentSignals, whitelist bridge | ✅ |
+| [agent/gui_qt](agent/gui_qt.md) | PySide6 app/view layer, Qt signal bridge, views, components, QSS styles | ✅ |
+| [agent/gui legacy](agent/gui.md) | Compatibility note for removed legacy GUI package | ⚠️ legacy |
 
 ## Server
 
@@ -98,7 +100,7 @@ Những helper hay bị **viết lại** vì không biết đã có. Trước kh
 
 ## Quy ước trong các file reference
 
-- **Vị trí** ghi dạng `[file.py:line](path)` — click thẳng vào dòng code.
+- **Vị trí** ghi dạng link tương đối tới source, ví dụ `file.py:line -> ../../../agent/module/file.py#Lline`.
 - Cột **Signature** đã lược bớt `self` và type hint dài; xem source để chính xác.
 - **Ai gọi module này** ghi theo *package*, không liệt từng file (grep nếu cần chi tiết).
 - **Module này gọi ra**: bỏ qua khi chỉ stdlib.
