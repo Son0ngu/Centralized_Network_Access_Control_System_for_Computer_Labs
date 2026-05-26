@@ -7,7 +7,7 @@ A centralized network access management system tailored for computer labs. It pr
 The project is built on a **Modular Monolith** and **Client-Server** real-time architecture:
 
 - **Server (Controller):** A centralized Flask application using `gevent` and `Flask-SocketIO` to manage agents, authenticate users, and synchronize network policies.
-- **Agent (Client):** A Windows-native application running on lab workstations. It interacts deeply with the system network layer via `pydivert`, `scapy`, and `pywin32` to intercept and drop/allow network packets based on the configurations pushed by the Server.
+- **Agent (Client):** A Windows-native application running on lab workstations. It uses a PySide6/Qt GUI, synchronizes policies from the Server, applies whitelist enforcement through Windows Firewall (`netsh`), and uses Scapy/DNS helpers for passive monitoring and domain resolution.
 
 ## ✨ Key Features
 
@@ -20,7 +20,7 @@ The project is built on a **Modular Monolith** and **Client-Server** real-time a
 ## 🛠 Tech Stack
 
 - **Server:** Python 3.11, Flask, Flask-SocketIO (gevent), MongoDB (PyMongo), JWT, Pydantic.
-- **Agent:** Python, PySide6/Qt (GUI), Pydivert, Scapy, Pywin32.
+- **Agent:** Python, PySide6/Qt, Scapy, PyWin32, Windows Firewall (`netsh`), Requests, Cryptography, dnspython/aiodns.
 - **Infrastructure / Deployment:** Docker & Docker Compose.
 
 ---
@@ -62,4 +62,4 @@ The Agent must be run directly on the Windows workstations.
    ```bash
    python agent_gui.py
    ```
-   *(Alternatively, you can build the Agent into an executable `.exe` file using PyInstaller with the provided `FirewallAgent.spec` file for easier deployment across multiple machines).*
+   *(Alternatively, build the Agent into `dist/SAINT/SAINT.exe` with PyInstaller using `agent/saint_agent.spec` for easier deployment across multiple machines).*

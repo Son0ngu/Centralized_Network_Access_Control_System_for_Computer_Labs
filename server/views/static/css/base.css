@@ -226,7 +226,7 @@ footer {
 }
 
 /* ========================================
-   Buttons — flat, high-contrast, Stripe-style
+   Buttons - flat, high-contrast, Stripe-style
    ======================================== */
 
 .btn-primary {
@@ -277,7 +277,7 @@ footer {
 }
 
 /* ========================================
-   Bootstrap utility overrides — Indigo accent
+   Bootstrap utility overrides - Indigo accent
    ======================================== */
 
 .bg-primary   { background-color: #6366F1 !important; color: #ffffff !important; }
@@ -325,7 +325,7 @@ footer {
     filter: brightness(0) invert(1);
 }
 
-/* Badges — flat, no harsh contrast */
+/* Badges - flat, no harsh contrast */
 .badge {
     font-weight: 500;
     padding: 0.3em 0.6em;
@@ -340,7 +340,7 @@ footer {
 .badge.bg-warning { background-color: #FEF3C7 !important; color: #92400E !important; }
 .badge.bg-secondary { background-color: #F4F4F5 !important; color: #3F3F46 !important; }
 
-/* Bootstrap buttons — neutral surfaces, indigo accent */
+/* Bootstrap buttons - neutral surfaces, indigo accent */
 .btn-success {
     background-color: #6366F1;
     border-color: #6366F1;
@@ -405,7 +405,7 @@ footer {
 .alert-danger  { background-color: #FEE2E2; color: #991B1B; border-color: #FECACA; }
 .alert-warning { background-color: #FEF3C7; color: #92400E; border-color: #FDE68A; }
 
-/* Forms — clean Stripe-like inputs */
+/* Forms - clean Stripe-like inputs */
 .form-control,
 .form-select {
     background: #FFFFFF;
@@ -589,7 +589,7 @@ footer {
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-/* Stat / feature icons — indigo-50 bg + indigo icon, no gradient */
+/* Stat / feature icons - indigo-50 bg + indigo icon, no gradient */
 .stats-icon,
 .feature-icon {
     background: #EEF2FF !important;
@@ -621,7 +621,7 @@ footer {
     color: #92400E !important;
 }
 
-/* Type badge — flat solid pill */
+/* Type badge - flat solid pill */
 .type-badge,
 .domain-type-badge {
     background: #EEF2FF !important;
@@ -647,7 +647,7 @@ footer {
     color: #4338CA !important;
 }
 
-/* Generic cards — unify white surface + soft shadow */
+/* Generic cards - unify white surface + soft shadow */
 .stats-card,
 .search-card,
 .domain-card,
@@ -674,7 +674,7 @@ footer {
     box-shadow: 0 2px 4px rgba(16, 24, 40, 0.06), 0 12px 32px rgba(16, 24, 40, 0.08) !important;
 }
 
-/* Add-item cards on whitelist — Stripe-like dashed → solid border, indigo accent */
+/* Add-item cards on whitelist - Stripe-like dashed → solid border, indigo accent */
 .add-item-card {
     background: #FFFFFF !important;
     border: 1px solid #E4E4E7 !important;
@@ -695,7 +695,7 @@ footer {
     opacity: 1 !important;
 }
 
-/* Status badges — muted neutral with semantic hint */
+/* Status badges - muted neutral with semantic hint */
 .agent-status,
 .domain-status,
 .log-level,
@@ -749,7 +749,7 @@ footer {
     border-color: #E4E4E7 !important;
 }
 
-/* Group card stripes — keep colored but muted/flat */
+/* Group card stripes - keep colored but muted/flat */
 .group-card-stripe.primary { background: #6366F1 !important; }
 .group-card-stripe.success { background: #10B981 !important; }
 .group-card-stripe.warning { background: #F59E0B !important; }

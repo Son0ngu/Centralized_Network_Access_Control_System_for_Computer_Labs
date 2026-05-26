@@ -1,11 +1,11 @@
-# `agent/controllers` — GUI Controllers & Worker Bridge
+# `agent/controllers` - GUI Controllers & Worker Bridge
 
 ## Mục đích
 Tầng controller không phụ thuộc framework UI. Package này giữ lifecycle worker, signal queue, snapshot status/stats cho dashboard, và adapter whitelist state sang dữ liệu bảng. PySide6 view layer nằm ở [`agent/gui_qt`](gui_qt.md); controller vẫn không import widget Qt.
 
 ## Public API
 
-### `agent/controllers/agent_controller.py` — Agent lifecycle presenter
+### `agent/controllers/agent_controller.py` - Agent lifecycle presenter
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -15,14 +15,15 @@ Tầng controller không phụ thuộc framework UI. Package này giữ lifecycl
 | `AgentSignals.connect(signal, callback)` | `(str, Callable) -> bool` | [agent_controller.py:45](../../../agent/controllers/agent_controller.py#L45) | Đăng ký callback cho signal name hợp lệ. |
 | `AgentSignals.disconnect(signal, callback)` | `(str, Callable) -> bool` | [agent_controller.py:53](../../../agent/controllers/agent_controller.py#L53) | Gỡ callback nếu đang có. |
 | `AgentSignals.emit(signal, data=None)` | `(str, Any) -> None` | [agent_controller.py:61](../../../agent/controllers/agent_controller.py#L61) | Push event vào queue; không gọi callback trực tiếp từ worker thread. |
-| `AgentSignals.process_events(root)` | `(root) -> None` | [agent_controller.py:83](../../../agent/controllers/agent_controller.py#L83) | Legacy Tk-compatible queue drain. GUI hiện tại dùng `QtSignalBridge` thay vì API này. |
-| `AgentSignals.DRAIN_INTERVAL_MS` | `50` | [agent_controller.py:73](../../../agent/controllers/agent_controller.py#L73) | Tick drain để UI phản hồi nhanh. |
-| `AgentSignals.MAX_EVENTS_PER_TICK` | `100` | [agent_controller.py:78](../../../agent/controllers/agent_controller.py#L78) | Soft cap tránh block GUI khi packet burst. |
-| `AgentController` | `class` singleton | [agent_controller.py:123](../../../agent/controllers/agent_controller.py#L123) | Owner của worker thread, `_agent`, `_config`, `_stats`, `signals`. |
-| `.status` | `@property -> AgentStatus` | [agent_controller.py:170](../../../agent/controllers/agent_controller.py#L170) | Status hiện tại. |
-| `.is_running` | `@property -> bool` | [agent_controller.py:174](../../../agent/controllers/agent_controller.py#L174) | `RUNNING` hoặc `DEGRADED`. |
-| `.stats` | `@property -> Dict` | [agent_controller.py:181](../../../agent/controllers/agent_controller.py#L181) | Copy snapshot `_stats`. |
-| `.set_root(root)` | `(root) -> None` | [agent_controller.py:184](../../../agent/controllers/agent_controller.py#L184) | Legacy queue drain hook. Qt không cần gọi. |
+| `AgentSignals.DRAIN_INTERVAL_MS` | `50` | [agent_controller.py](../../../agent/controllers/agent_controller.py) | Tick drain. Mirror sang `QtSignalBridge` — đổi đồng thời cả 2 chỗ. |
+| `AgentSignals.MAX_EVENTS_PER_TICK` | `100` | [agent_controller.py](../../../agent/controllers/agent_controller.py) | Soft cap tránh block GUI khi packet burst. |
+| _`AgentSignals.process_events(root)`_ | _removed_ | _was Tk hook_ | Đã xóa. Qt frontends drain queue qua `QtSignalBridge` (`agent/gui_qt/signal_bridge.py`); không có caller nào khác. |
+| `AgentController(runtime=None)` | `class` singleton | [agent_controller.py:123](../../../agent/controllers/agent_controller.py#L123) | Owner của worker thread, `_runtime`, `_config`, `_stats`, `signals`. Singleton qua `__new__`, nhưng accept injected `AgentRuntime` qua constructor — test pass `runtime=make_runtime()`. |
+| `AgentController.reset_for_test()` | `@classmethod -> None` | [agent_controller.py:134](../../../agent/controllers/agent_controller.py#L134) | Drop singleton + stop running worker. Tests gọi giữa cases để có instance mới. |
+| `.status` | `@property -> AgentStatus` | [agent_controller.py](../../../agent/controllers/agent_controller.py) | Status hiện tại. |
+| `.is_running` | `@property -> bool` | [agent_controller.py](../../../agent/controllers/agent_controller.py) | `RUNNING` hoặc `DEGRADED`. |
+| `.stats` | `@property -> Dict` | [agent_controller.py](../../../agent/controllers/agent_controller.py) | Copy snapshot `_stats`. |
+| _`.set_root(root)`_ | _removed_ | _was Tk hook_ | Đã xóa. Qt frontends construct `QtSignalBridge(self.signals)` thẳng — controller không cần biết về toolkit. |
 | `.start_agent()` | `() -> bool` | [agent_controller.py:190](../../../agent/controllers/agent_controller.py#L190) | Spawn `AgentWorker-{id}`; trả ngay, status gửi qua `signals`. |
 | `.stop_agent()` | `() -> bool` | [agent_controller.py:250](../../../agent/controllers/agent_controller.py#L250) | Set stop event, gọi `Agent.stop()`, để worker cleanup lifecycle. |
 | `._agent_worker(worker_id=0)` | `(int) -> None` | [agent_controller.py:269](../../../agent/controllers/agent_controller.py#L269) | Reload config, force whitelist mode, init components, wire `WhitelistController`, emit status/stats, cleanup ở `finally`. |
@@ -32,7 +33,7 @@ Tầng controller không phụ thuộc framework UI. Package này giữ lifecycl
 | `.force_whitelist_sync()` | `() -> bool` | [agent_controller.py:501](../../../agent/controllers/agent_controller.py#L501) | Trigger `agent.whitelist.sync_now()` khi agent đang chạy. |
 | `get_agent_controller()` | `() -> AgentController` | [agent_controller.py:520](../../../agent/controllers/agent_controller.py#L520) | Singleton accessor. |
 
-### `agent/controllers/whitelist_controller.py` — Whitelist UI data bridge
+### `agent/controllers/whitelist_controller.py` - Whitelist UI data bridge
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -57,21 +58,22 @@ Tầng controller không phụ thuộc framework UI. Package này giữ lifecycl
 - [`agent/core/lifecycle.py`](../../../agent/core/lifecycle.py) không gọi controller; controller mới là caller của lifecycle.
 
 ## Module này gọi ra
-- `agent/config` — `reload_config()` lúc start worker.
-- `agent/core` — `get_agent()`, `initialize_components()`, `cleanup()`, `AGENT_DEVICE_ID`.
-- `agent/utils` — `check_admin_privileges()`.
-- `agent/shared` — time helpers cho timestamp/uptime/sleep.
-- `agent/whitelist` — qua `Agent.whitelist` manager instance.
+- `agent/config` - `reload_config()` lúc start worker.
+- `agent/core` - `get_agent()` (singleton), `make_runtime()` (test/multi-tenant), `initialize_components(config, runtime=None)`, `cleanup(config, runtime=None)`, `DeviceIdentityProvider.get_device_id()`.
+- `agent/utils` - `check_admin_privileges()`.
+- `agent/shared` - time helpers cho timestamp/uptime/sleep.
+- `agent/whitelist` - qua `Agent.whitelist` manager instance.
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần start/stop agent từ UI? → `AgentController.start_agent()` / `stop_agent()`.
 - Cần signal worker → GUI? → `AgentController.signals.emit(...)`, rồi Qt nhận qua `QtSignalBridge`.
 - Cần whitelist table data? → `WhitelistController.get_all_ips()` hoặc callback `on_data_changed`.
 - Cần force whitelist sync? → `AgentController.force_whitelist_sync()` nếu đang chạy, hoặc `WhitelistController.refresh()` cho view whitelist.
 
 ## Gotchas
-- `AgentController` là singleton và `Agent` trong `core` cũng là singleton. Start quá nhanh sau Stop có guard bằng `_worker_id` + join ngắn; không bypass bằng cách tự spawn worker khác.
+- `AgentController` là singleton và `Agent` trong `core` cũng là singleton. Tests dùng `AgentController.reset_for_test()` + `Agent.reset_for_test()` (kèm `DeviceIdentityProvider.reset()` nếu mock identity) thay vì tự touch `_instance`/`_initialized` từ bên ngoài. Start quá nhanh sau Stop có guard bằng `_worker_id` + join ngắn; không bypass bằng cách tự spawn worker khác.
 - `DEGRADED` vẫn là running. UI nên dùng `.is_running` cho toggle Start/Stop, còn nếu cần strict healthy thì so sánh `.status == AgentStatus.RUNNING`.
-- `AgentSignals.process_events(root)` còn tồn tại vì tương thích API cũ, nhưng Qt path hiện tại đọc trực tiếp queue trong `QtSignalBridge`. Đừng wire cả hai cùng lúc vì có thể drain mất event của nhau.
+- `AgentSignals.process_events(root)` (Tk-style) **đã bị xóa**. Qt path đọc thẳng queue qua `QtSignalBridge`; đừng tái tạo Tk hook.
+- `AgentController(runtime=...)` accept injected runtime, nhưng singleton vẫn enforce — pass runtime ở lần `__init__` đầu tiên hoặc gọi `reset_for_test()` rồi construct lại.
 - `WhitelistController._sync_from_manager()` xoá/rebuild toàn bộ server entries. Nếu thêm local-only entry sau này, phải giữ `source != "Server"` như logic hiện tại.
 - Controller import theo top-level package (`from config`, `from core`) dựa vào `agent/agent_gui.py` thêm `agent/` vào `sys.path`. Khi đổi entry point hoặc spec, phải giữ invariant này.

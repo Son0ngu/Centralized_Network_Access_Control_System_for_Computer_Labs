@@ -98,7 +98,7 @@ class _StackedField(QVBoxLayout):
     """Label-on-top / value-below pair for the Server Overview panel.
 
     Old horizontal `label : value` layout meant the value column ended up
-    half the panel width — fine for short strings like "42ms" but the
+    half the panel width - fine for short strings like "42ms" but the
     server URL (30+ chars) collapsed to an unreadable ellipsis. Stacking
     the label above the value gives the value the full available width.
     """
@@ -109,7 +109,7 @@ class _StackedField(QVBoxLayout):
         self.setSpacing(2)
         self._label = QLabel(label)
         self._label.setStyleSheet(f"color: {FG_SECONDARY}; font-size: 11px;")
-        self.value_label = QLabel("—")
+        self.value_label = QLabel("-")
         self.value_label.setStyleSheet(
             f"color: {FG_PRIMARY}; font-size: 13px; font-weight: 500;"
         )
@@ -142,7 +142,7 @@ class _MetricCell(QVBoxLayout):
         self._label = QLabel(label)
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setStyleSheet(f"color: {FG_SECONDARY}; font-size: 11px;")
-        self._value = QLabel("—")
+        self._value = QLabel("-")
         self._value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._value.setStyleSheet(
             f"color: {FG_PRIMARY}; font-size: 16px; font-weight: bold;"
@@ -192,7 +192,7 @@ class DashboardView(QWidget):
         self._render_initial_stats()
 
         # 1s tick to refresh relative-time strings ("10s ago"). Doesn't fetch
-        # any data — just re-formats from cached timestamps.
+        # any data - just re-formats from cached timestamps.
         self._tick_timer = QTimer(self)
         self._tick_timer.setInterval(1000)
         self._tick_timer.timeout.connect(self._refresh_relative_times)
@@ -232,11 +232,11 @@ class DashboardView(QWidget):
         layout.addLayout(title_block)
         layout.addStretch(1)
 
-        # Status pill — replaces the old plain-text indicator
+        # Status pill - replaces the old plain-text indicator
         self._status_pill = StatusPill("Stopped", "#888888")
         layout.addWidget(self._status_pill)
 
-        # Sync Now button — calls whitelist controller refresh
+        # Sync Now button - calls whitelist controller refresh
         self._sync_btn = QPushButton("🔄  Sync Now")
         self._sync_btn.setMinimumHeight(38)
         self._sync_btn.setMinimumWidth(120)
@@ -267,7 +267,7 @@ class DashboardView(QWidget):
         # (key, title, value, icon, color, subtitle)
         specs = [
             ("status",  "Agent Status", "Stopped", "🛡",  ACCENT_RED,    "Agent state"),
-            ("mode",    "Mode",         "—",       "🛡",  "#F472B6",     "Current mode"),
+            ("mode",    "Mode",         "-",       "🛡",  "#F472B6",     "Current mode"),
             ("domains", "Whitelist",    "0",       "📋", ACCENT_BLUE,   "Domains"),
             ("ips",     "Allowed IPs",  "0",       "🌐", ACCENT_GREEN,  "In whitelist"),
             ("packets", "Packets",      "0",       "📦", ACCENT_PURPLE, "Processed"),
@@ -356,7 +356,7 @@ class DashboardView(QWidget):
         header.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {FG_PRIMARY};")
         layout.addWidget(header)
 
-        # URL gets the full panel width — a typical server URL like
+        # URL gets the full panel width - a typical server URL like
         # "firewall-controller.onrender.com" is 30+ chars and was getting
         # clipped to "firewall-co..." when it shared a row with another
         # field. WordWrap=True lets it spill onto a second line if needed
@@ -364,7 +364,7 @@ class DashboardView(QWidget):
         self._server_url = _StackedField("URL", wrap=True)
         layout.addLayout(self._server_url)
 
-        # Latency / Heartbeat / Last sync are all short — fit 3-up under
+        # Latency / Heartbeat / Last sync are all short - fit 3-up under
         # the URL row to keep the panel compact.
         row = QHBoxLayout()
         row.setSpacing(16)
@@ -472,7 +472,7 @@ class DashboardView(QWidget):
             self._set_card_color_if_changed("server", ACCENT_RED)
 
     # =======================================================================
-    # Side panels — Server Overview + Firewall Status
+    # Side panels - Server Overview + Firewall Status
     # =======================================================================
 
     def _update_server_overview(self, initial: bool = False) -> None:
@@ -481,23 +481,23 @@ class DashboardView(QWidget):
             cfg = getattr(self._controller, "_config", None) or {}
         except Exception:
             cfg = {}
-        url = (cfg.get("server", {}) or {}).get("url") or "—"
+        url = (cfg.get("server", {}) or {}).get("url") or "-"
         self._server_url.set_value(url)
-        # Latency is left as "—" until the agent measures it. Heartbeat age
+        # Latency is left as "-" until the agent measures it. Heartbeat age
         # is recomputed by the 1s tick from a timestamp we'll capture when
         # `whitelist_synced` fires (proxy for "agent talked to server").
         if initial:
-            self._server_latency.set_value("—")
-            self._server_heartbeat.set_value("—")
+            self._server_latency.set_value("-")
+            self._server_heartbeat.set_value("-")
             self._server_last_sync.set_value("Never")
 
     def _update_firewall_status_panel(self) -> None:
         agent = getattr(self._controller, "_agent", None)
         fw = getattr(agent, "firewall", None) if agent else None
         if fw is None:
-            self._fw_policy.set_value("—", color=FG_SECONDARY)
+            self._fw_policy.set_value("-", color=FG_SECONDARY)
             self._fw_rules.set_value("0")
-            self._fw_mode.set_value("—")
+            self._fw_mode.set_value("-")
             self._fw_allowed.set_value("0")
             return
         pm = getattr(fw, "policy_manager", None)
@@ -515,7 +515,7 @@ class DashboardView(QWidget):
             self._fw_mode.set_value("Idle", color=FG_SECONDARY)
 
     def _refresh_relative_times(self) -> None:
-        """Tick handler — re-formats `Ns ago` strings without re-pulling
+        """Tick handler - re-formats `Ns ago` strings without re-pulling
         backend state."""
         if self._last_sync_ts is not None:
             age = int(time.time() - self._last_sync_ts)
@@ -594,7 +594,7 @@ class DashboardView(QWidget):
 
     def _on_stats_updated(self, data: Dict) -> None:
         self._apply_stats_to_cards(data)
-        # Whenever stats update we also refresh the firewall side-panel —
+        # Whenever stats update we also refresh the firewall side-panel -
         # rule counts may change as the whitelist syncs.
         self._update_firewall_status_panel()
         # And the server URL row (config could have just been saved).
@@ -614,7 +614,7 @@ class DashboardView(QWidget):
 
     def _on_whitelist_synced(self, data: Dict) -> None:
         if data.get("agent_ready"):
-            self._append_log("Agent ready — whitelist sync enabled", "INFO")
+            self._append_log("Agent ready - whitelist sync enabled", "INFO")
             return
         if data.get("success"):
             self._last_sync_ts = time.time()
@@ -708,7 +708,7 @@ class DashboardView(QWidget):
 
     def _update_mode_card(self, running: bool, degraded: bool) -> None:
         if not running:
-            self._cards["mode"].set_value("—")
+            self._cards["mode"].set_value("-")
             self._cards["mode"].set_icon("🛡")
             self._cards["mode"].set_color("#888888")
             self._cards["mode"].set_subtitle("Mode not set")
@@ -737,7 +737,7 @@ class DashboardView(QWidget):
     def _on_sync_now(self) -> None:
         """Quick Action: force whitelist refresh now."""
         if not self._controller or not self._controller.is_running:
-            self._append_log("Sync ignored — agent isn't running", "WARN")
+            self._append_log("Sync ignored - agent isn't running", "WARN")
             return
         try:
             self._controller.force_whitelist_sync()

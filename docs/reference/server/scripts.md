@@ -1,9 +1,9 @@
-# `server/scripts` — Maintenance scripts
+# `server/scripts` - Maintenance scripts
 
 ## Mục đích
 Standalone scripts chạy thủ công cho setup/migration. Hiện chỉ có 1 script: `seed_rbac.py` (tạo default admin).
 
-App bootstrap (`app.py`) cũng tự gọi `user_service.ensure_default_admin()` lần đầu chạy — script này dùng khi cần force tạo với username/password tuỳ chỉnh, hoặc CI/CD bootstrap database fresh.
+App bootstrap (`app.py`) cũng tự gọi `user_service.ensure_default_admin()` lần đầu chạy - script này dùng khi cần force tạo với username/password tuỳ chỉnh, hoặc CI/CD bootstrap database fresh.
 
 ## Public API
 
@@ -39,21 +39,21 @@ SAINT RBAC Seeder
 - Có thể tích hợp vào Dockerfile entrypoint hoặc CI step
 
 ## Module này gọi ra
-- `database.config.get_config, get_database` — Mongo connection
+- `database.config.get_config, get_database` - Mongo connection
 - `models.user_model.UserModel, models.audit_model.AuditModel`
 - `services.audit_service.AuditService, services.user_service.UserService.ensure_default_admin`
-- `config.rbac_config.ROLE_PERMISSIONS, VALID_ROLES` — list để show info
-- `dotenv` — load `.env`
+- `config.rbac_config.ROLE_PERMISSIONS, VALID_ROLES` - list để show info
+- `dotenv` - load `.env`
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần tạo admin user mới? → script này, hoặc qua API `/api/admin/users` (cần có admin sẵn để auth)
-- Cần migrate dữ liệu? → chưa có script — tạo file mới `scripts/migrate_*.py` theo pattern `seed_rbac.py` (sys.path + dotenv + connect + work)
+- Cần migrate dữ liệu? → chưa có script - tạo file mới `scripts/migrate_*.py` theo pattern `seed_rbac.py` (sys.path + dotenv + connect + work)
 
 ## Gotchas
 - **`sys.path.insert(0, ...)`** (line 19) chèn parent dir để `from models.X` work. PHẢI chạy từ `server/` hoặc absolute path. Nếu chạy từ root repo, import sẽ fail.
 - **`load_dotenv()` không pass path** (line 22): tìm `.env` ở cwd. Cần chạy từ `server/` (cùng cấp với `.env`). Khác với `database/config.py` chỉ định path tuyệt đối.
 - **`ensure_default_admin` idempotent**: nếu đã có admin nào trong DB, script log "already exists" và không tạo. Phải `db.users.deleteOne({username:"admin"})` thủ công nếu muốn re-seed.
-- **Default password `admin123456`** weak — đổi ngay sau login. Script log warning cảnh báo.
-- **Roles không lưu DB** — script chỉ tạo user. Permissions ở `config/rbac_config.py`. Nếu muốn seed thêm test data (groups, agents), tạo script riêng.
-- **Không có tear-down script** — drop DB phải thủ công: `mongosh ... db.dropDatabase()`.
-- **`pragma: no cover`** không có — không skip khi pytest --cov.
+- **Default password `admin123456`** weak - đổi ngay sau login. Script log warning cảnh báo.
+- **Roles không lưu DB** - script chỉ tạo user. Permissions ở `config/rbac_config.py`. Nếu muốn seed thêm test data (groups, agents), tạo script riêng.
+- **Không có tear-down script** - drop DB phải thủ công: `mongosh ... db.dropDatabase()`.
+- **`pragma: no cover`** không có - không skip khi pytest --cov.

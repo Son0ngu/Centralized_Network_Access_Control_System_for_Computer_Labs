@@ -11,6 +11,7 @@ from typing import Dict, Tuple
 from models.whitelist_model import WhitelistModel
 from services.whitelist_service import WhitelistService
 from services.rbac_service import RBACService
+from utils.request_ip import get_client_ip
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_iso, parse_agent_timestamp
@@ -87,14 +88,23 @@ class WhitelistController:
     # ========================================================================
 
     def _is_teacher(self):
-        """Check if current request is from a teacher via web UI."""
-        user = getattr(g, 'current_user', None)
-        if user and user.get('role') == 'teacher':
-            return True, user
-        return False, user
+        """Thin wrapper — calls ``RBACService.is_teacher_request`` statically.
+
+        Static so a mocked ``rbac_service`` in tests doesn't swallow the call
+        and return a MagicMock instead of the expected ``(bool, user)`` tuple.
+        """
+        return RBACService.is_teacher_request(getattr(g, 'current_user', None))
 
     def _teacher_can_access_group(self, user, group_id):
-        """Check if teacher owns this group_id."""
+        """Check if teacher owns this group_id.
+
+        Mirrors ``RBACService.assert_group_access`` but consults
+        ``get_teacher_group_ids`` directly so existing tests that mock that
+        return value keep working. New code should prefer
+        ``self.rbac_service.assert_group_access(user, group_id)`` — both
+        paths apply the same rule (group_id ∈ teacher's assigned groups);
+        the service method is just the canonical entry point.
+        """
         if not group_id:
             return False
         teacher_group_ids = self.rbac_service.get_teacher_group_ids(user)
@@ -232,9 +242,7 @@ class WhitelistController:
                 return self._error_response("Value is required", 400)
 
             entry_type = data.get('type', 'domain')
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            if client_ip and ',' in client_ip:
-                client_ip = client_ip.split(',')[0].strip()
+            client_ip = get_client_ip()
 
             # RBAC: Teacher can only add to their own groups, not global
             is_teacher, user = self._is_teacher()
@@ -278,19 +286,12 @@ class WhitelistController:
             # RBAC: Teacher ownership check on the entry
             is_teacher, user = self._is_teacher()
             if is_teacher:
-                # Lookup the entry to check its group
-                from bson import ObjectId as BsonObjectId
-                try:
-                    entry = self.model.collection.find_one({"_id": BsonObjectId(domain_id)})
-                except Exception:
-                    entry = None
-
-                if entry:
-                    if entry.get("scope") == "global" and not entry.get("group_id"):
-                        return self._error_response("Teachers cannot delete from global whitelist", 403)
-                    entry_group = entry.get("group_id")
-                    if entry_group and not self._teacher_can_access_group(user, entry_group):
-                        return self._error_response("No permission to delete this entry", 403)
+                teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
+                allowed, error = self.service.validate_teacher_entry_access(
+                    domain_id, teacher_group_ids, "delete"
+                )
+                if not allowed:
+                    return self._error_response(error, 403)
 
             result = self.service.delete_domain(domain_id)
 
@@ -421,9 +422,7 @@ class WhitelistController:
                         return self._error_response(
                             "Teachers can only add whitelist to their own Groups", 403)
 
-            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            if ',' in client_ip:
-                client_ip = client_ip.split(',')[0].strip()
+            client_ip = get_client_ip()
 
             result = self.service.bulk_add_entries(items, client_ip)
             return jsonify(result), 200 if result['success'] else 400
@@ -449,29 +448,12 @@ class WhitelistController:
             is_teacher, user = self._is_teacher()
             if is_teacher:
                 teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
-                from bson import ObjectId as BsonObjectId
                 for item_id in item_ids:
-                    # Handle group pseudo-IDs: group::<gid>::<type>::<value>
-                    if item_id.startswith("group::") or item_id.startswith("group|"):
-                        sep = "::" if "::" in item_id else "|"
-                        parts = item_id.split(sep, 3)
-                        if len(parts) == 4:
-                            gid = parts[1]
-                            if gid not in teacher_group_ids:
-                                return self._error_response("No permission to edit this entry", 403)
-                        continue
-                    # Global entry - check via DB
-                    try:
-                        entry = self.model.collection.find_one(
-                            {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
-                    except Exception:
-                        entry = None
-                    if entry:
-                        if entry.get("scope") == "global" and not entry.get("group_id"):
-                            return self._error_response("Teachers cannot edit global whitelist", 403)
-                        entry_group = entry.get("group_id")
-                        if entry_group and str(entry_group) not in teacher_group_ids:
-                            return self._error_response("No permission to edit this entry", 403)
+                    allowed, error = self.service.validate_teacher_entry_access(
+                        item_id, teacher_group_ids, "edit"
+                    )
+                    if not allowed:
+                        return self._error_response(error, 403)
 
             updated_count = 0
             errors = []
@@ -510,29 +492,12 @@ class WhitelistController:
             is_teacher, user = self._is_teacher()
             if is_teacher:
                 teacher_group_ids = self.rbac_service.get_teacher_group_ids(user) or []
-                from bson import ObjectId as BsonObjectId
                 for item_id in item_ids:
-                    # Handle group pseudo-IDs
-                    if item_id.startswith("group::") or item_id.startswith("group|"):
-                        sep = "::" if "::" in item_id else "|"
-                        parts = item_id.split(sep, 3)
-                        if len(parts) == 4:
-                            gid = parts[1]
-                            if gid not in teacher_group_ids:
-                                return self._error_response("No permission to delete this entry", 403)
-                        continue
-                    # Global entry
-                    try:
-                        entry = self.model.collection.find_one(
-                            {"_id": BsonObjectId(item_id)}, {"group_id": 1, "scope": 1})
-                    except Exception:
-                        entry = None
-                    if entry:
-                        if entry.get("scope") == "global" and not entry.get("group_id"):
-                            return self._error_response("Teachers cannot delete from global whitelist", 403)
-                        entry_group = entry.get("group_id")
-                        if entry_group and str(entry_group) not in teacher_group_ids:
-                            return self._error_response("No permission to delete this entry", 403)
+                    allowed, error = self.service.validate_teacher_entry_access(
+                        item_id, teacher_group_ids, "delete"
+                    )
+                    if not allowed:
+                        return self._error_response(error, 403)
 
             result = self.service.bulk_delete_entries(item_ids)
             return jsonify(result), 200

@@ -68,7 +68,7 @@ class WhitelistState:
             try:
                 up_to_date = data.get("up_to_date", False)
 
-                # Detect group change — if agent moved to a different group,
+                # Detect group change - if agent moved to a different group,
                 # force full sync even if server says up_to_date
                 new_group_id = str(data.get("group_id", ""))
                 group_changed = (self._group_id and new_group_id

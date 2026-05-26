@@ -37,7 +37,7 @@ class Sparkline(QWidget):
         self._line_color = QColor(line_color)
         self._fill_color = QColor(fill_color)
         self._grid_color = QColor(grid_color)
-        # Reasonable defaults — caller can override via setMinimumHeight.
+        # Reasonable defaults - caller can override via setMinimumHeight.
         self.setMinimumHeight(80)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
@@ -91,7 +91,7 @@ class Sparkline(QWidget):
 
         n = len(self._values)
         if n < 2:
-            # Nothing meaningful to plot yet — draw a baseline so the panel
+            # Nothing meaningful to plot yet - draw a baseline so the panel
             # doesn't look broken when the agent has just started.
             painter.setPen(QPen(self._line_color, 1.5))
             y = plot.bottom()
@@ -103,7 +103,7 @@ class Sparkline(QWidget):
 
         max_v = max(self._values)
         min_v = min(self._values)
-        # Guard against a flat series (max == min) — pin to mid-height.
+        # Guard against a flat series (max == min) - pin to mid-height.
         span = max(max_v - min_v, 1e-9)
 
         step_x = plot.width() / (self._max_points - 1)

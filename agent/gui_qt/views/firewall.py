@@ -5,7 +5,7 @@ the agent reports running). When the manager isn't available the view falls
 back to parsing `netsh advfirewall firewall show rule` directly.
 
 Visibility-aware: the 5s refresh timer only does work while the view is on
-screen (Qt's `showEvent`/`hideEvent` make this trivial — no buggy `hasattr`
+screen (Qt's `showEvent`/`hideEvent` make this trivial - no buggy `hasattr`
 check needed).
 """
 
@@ -44,7 +44,7 @@ class FirewallView(QWidget):
         self._load_signals = _LoadSignals()
         self._load_signals.finished.connect(self._on_load_finished)
 
-        # Periodic refresh — only active while visible (see showEvent/hideEvent).
+        # Periodic refresh - only active while visible (see showEvent/hideEvent).
         self._refresh_timer = QTimer(self)
         self._refresh_timer.setInterval(_REFRESH_INTERVAL_MS)
         self._refresh_timer.timeout.connect(self._refresh_rules)
@@ -114,7 +114,7 @@ class FirewallView(QWidget):
         #   direction: "Outbound" / "Inbound" → 90px
         #   action:    "Allow" / "Block" → 80px
         #   protocol:  "Any" / "TCP" / "UDP" → 80px
-        #   rule_name: "FirewallController_Allow_192_168_170_129" — the wide
+        #   rule_name: "FirewallController_Allow_192_168_170_129" - the wide
         #              tail; let this column auto-stretch to fill window width.
         columns = [
             {"key": "ip", "title": "IP Address", "width": 150},
@@ -141,7 +141,7 @@ class FirewallView(QWidget):
         self._refresh_rules()
 
     # =======================================================================
-    # Visibility-aware refresh — Qt does this cleanly with showEvent/hideEvent.
+    # Visibility-aware refresh - Qt does this cleanly with showEvent/hideEvent.
     # No more "hasattr typo" bug.
     # =======================================================================
 
@@ -201,7 +201,7 @@ class FirewallView(QWidget):
                 else:
                     mode = "Whitelist Only (idle)"
             else:
-                # No manager wired yet — fall back to netsh.
+                # No manager wired yet - fall back to netsh.
                 rules = self._get_rules_from_netsh()
                 policy_status = self._get_policy_from_netsh()
         except Exception as e:
@@ -242,63 +242,58 @@ class FirewallView(QWidget):
         self._status_label.setStyleSheet(f"color: {ACCENT_GREEN};")
 
     # =======================================================================
-    # netsh fallback (used when no FirewallManager is wired)
+    # Provider-backed fallback (used when no FirewallManager is wired)
     # =======================================================================
+    #
+    # Historically these helpers shelled out to ``netsh`` directly and parsed
+    # the text output here. That meant the GUI carried its own copy of the
+    # English-only parser. Now we delegate to FirewallProvider — the same
+    # abstraction RulesManager uses — so non-English Windows hosts and any
+    # future PowerShell/NetSecurity migration work for the GUI automatically.
 
     @staticmethod
     def _get_rules_from_netsh() -> List[Dict]:
-        rules: List[Dict] = []
+        """Return SAINT-owned outbound rules in the legacy dict shape.
+
+        Kept under the old name to avoid touching call sites. The provider
+        returns structured ``FirewallRule`` dicts; we project them to the
+        legacy ``{rule_name, direction, action, protocol, ip}`` shape so the
+        table widget keeps rendering as before.
+        """
+        from agent.firewall.provider import get_default_provider
+        out: List[Dict] = []
         try:
-            result = subprocess.run(
-                ["netsh", "advfirewall", "firewall", "show", "rule",
-                 "name=all", "dir=out", "status=enabled"],
-                capture_output=True, text=True, timeout=30,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            if result.returncode != 0:
-                return rules
-            current: Dict[str, str] = {}
-            for line in result.stdout.split("\n"):
-                line = line.strip()
-                if not line:
-                    if current.get("rule_name", "").startswith("FirewallController"):
-                        rules.append(current)
-                    current = {}
-                elif ":" in line:
-                    key, value = line.split(":", 1)
-                    key = key.strip().lower()
-                    value = value.strip()
-                    if "rule name" in key:
-                        current["rule_name"] = value
-                    elif "direction" in key:
-                        current["direction"] = value
-                    elif "action" in key:
-                        current["action"] = value
-                    elif "protocol" in key:
-                        current["protocol"] = value
-                    elif "remoteip" in key:
-                        current["ip"] = value
-            if current.get("rule_name", "").startswith("FirewallController"):
-                rules.append(current)
+            provider = get_default_provider()
+            for rule in provider.list_rules(
+                rule_prefix="FirewallController", direction="out",
+                enabled_only=True,
+            ):
+                out.append({
+                    "rule_name": rule.get("rule_name", ""),
+                    "direction": rule.get("direction", ""),
+                    "action": rule.get("action", ""),
+                    "protocol": rule.get("protocol", ""),
+                    # ``ip`` is what the table widget consumes; join the list
+                    # so the column shows multi-IP rules clearly.
+                    "ip": ",".join(rule.get("remote_addresses") or []),
+                })
         except Exception as e:
-            logger.debug(f"netsh fallback failed: {e}")
-        return rules
+            logger.debug("Firewall provider list_rules failed: %s", e)
+        return out
 
     @staticmethod
     def _get_policy_from_netsh() -> str:
+        """Return policy label for the dashboard chip.
+
+        Tri-state: "Default Deny (Active)" / "Default Allow" / "Unknown".
+        Translation from FirewallPolicyStatus lives here because the GUI
+        uses Vietnamese-leaning labels that don't belong in the provider.
+        """
+        from agent.firewall.provider import get_default_provider
         try:
-            result = subprocess.run(
-                ["netsh", "advfirewall", "show", "currentprofile"],
-                capture_output=True, text=True, timeout=10,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            if result.returncode != 0:
-                return "Unknown"
-            for line in result.stdout.split("\n"):
-                if "Outbound" in line and "Block" in line:
-                    return "Default Deny (Active)"
-                if "Outbound" in line and "Allow" in line:
-                    return "Default Allow"
+            status = get_default_provider().get_policy_status()
         except Exception:
-            pass
-        return "Unknown"
+            return "Unknown"
+        if not status:
+            return "Unknown"
+        return "Default Deny (Active)" if status.get("outbound_default_block") else "Default Allow"

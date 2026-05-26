@@ -603,9 +603,16 @@ function getStatusInfo(status) {
 
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Never';
+    // Delegate to SaintDate so this page renders identical timestamps to
+    // every other admin page (vi-VN, dd/MM/yyyy HH:mm). The local impl used
+    // to call ``toLocaleString()`` with no args, which silently varies by
+    // browser locale.
+    if (window.SaintDate) {
+        const formatted = window.SaintDate.formatVN(timestamp);
+        return formatted || 'Invalid Date';
+    }
     try {
-        const date = new Date(timestamp);
-        return date.toLocaleString();
+        return new Date(timestamp).toLocaleString();
     } catch {
         return 'Invalid Date';
     }

@@ -65,6 +65,10 @@ ADMIN_EXTRA_PERMISSIONS = [
     "agents:delete",
     "agents:command",
 
+    # Group lifecycle (admin owns create/delete; teacher only reads/updates assigned groups)
+    "groups:create",
+    "groups:delete",
+
     # API Keys
     "api_keys:read",
     "api_keys:create",

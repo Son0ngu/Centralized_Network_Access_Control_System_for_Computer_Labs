@@ -6,7 +6,7 @@ Test Suite: Users + Auth (Admin/Teacher accounts)
 3. SessionModel       - create/find/revoke sessions, is_session_revoked
 4. AdminAuthService   - login, logout, refresh, change_password, brute-force
 5. UserController     - admin-only CRUD endpoints
-6. AdminAuthController - login/logout/refresh/profile endpoints
+6. WebAuthController   - login/logout/refresh/profile endpoints
 
 Run:
   cd server && python -m pytest tests/test_users_auth.py -v
@@ -301,14 +301,14 @@ class TestUserService:
             username="dup_user", password="password123"
         )
         assert success is False
-        assert "ton tai" in error
+        assert "exists" in error.lower()
 
     def test_create_user_invalid_role(self, user_service):
         success, _, error = user_service.create_user(
             username="bad_role", password="password123", role="superadmin"
         )
         assert success is False
-        assert "Role" in error
+        assert "role" in error.lower()
 
     def test_create_user_short_password(self, user_service):
         success, _, error = user_service.create_user(
@@ -372,7 +372,7 @@ class TestUserService:
         admin = make_admin_user(user_model, username="svc_last_admin")
         success, error = user_service.toggle_active(str(admin["_id"]), False)
         assert success is False
-        assert "admin cuoi cung" in error
+        assert "last admin" in error.lower()
 
     def test_reset_password(self, user_service, user_model):
         user = _create_user(user_model, username="svc_resetpw")
@@ -397,7 +397,7 @@ class TestUserService:
         deleter = {"_id": ObjectId(), "username": "other", "role": "admin"}
         success, error = user_service.delete_user(str(admin["_id"]), deleter)
         assert success is False
-        assert "admin cuoi cung" in error
+        assert "last admin" in error.lower()
 
     def test_delete_self_protection(self, user_service, user_model):
         user = _create_user(user_model, username="svc_self_del")
@@ -406,7 +406,7 @@ class TestUserService:
             {"_id": user["_id"], "username": "svc_self_del", "role": "admin"},
         )
         assert success is False
-        assert "chinh minh" in error
+        assert "yourself" in error.lower()
 
     def test_ensure_default_admin(self, user_service, user_model):
         result = user_service.ensure_default_admin("seed_admin", "seedpassword123")
@@ -559,7 +559,7 @@ class TestAdminAuthService:
         _create_user(user_model, username="login_wrongpw", password="password123")
         success, _, error = auth_service.login("login_wrongpw", "wrongpass")
         assert success is False
-        assert "Sai" in error
+        assert "invalid" in error.lower()
 
     def test_login_user_not_found(self, auth_service):
         success, _, error = auth_service.login("nonexistent_user", "password123")
@@ -771,16 +771,19 @@ class TestUserController:
 
 class TestAdminAuthController:
     """
-    AdminAuthController uses @require_login as method decorators.
+    WebAuthController uses @require_login as method decorators.
     Login is public, but get_profile/logout/refresh/change_password need _mock_auth.
+
+    Class name kept as TestAdminAuthController so pytest selection by the old
+    name still resolves; new tests should reference WebAuthController directly.
     """
 
     @pytest.fixture
     def app(self, auth_service, jwt_service):
-        from controllers.admin_auth_controller import AdminAuthController
+        from controllers.web_auth_controller import WebAuthController
         app = Flask(__name__)
         app.config['TESTING'] = True
-        controller = AdminAuthController(auth_service, jwt_service)
+        controller = WebAuthController(auth_service, jwt_service)
         app.register_blueprint(controller.blueprint, url_prefix='/api')
         yield app
 
@@ -855,3 +858,78 @@ class TestAdminAuthController:
                 assert resp.status_code == 200
                 data = resp.get_json()
                 assert data["success"] is True
+
+    # ── PUT /api/admin/auth/profile ──
+    # P0.4 verification: profile updates must call audit_service.log_action
+    # (the old code called audit_service.log which silently failed).
+
+    def test_update_profile_writes_audit_entry(self, app, user_model, audit_model):
+        user = _create_user(
+            user_model, username="auth_prof_audit",
+            password="password123", role="admin",
+        )
+        with _mock_auth(user):
+            with app.test_client() as client:
+                resp = client.put('/api/admin/auth/profile', json={
+                    "email": "newprofile@test.com",
+                })
+                assert resp.status_code == 200
+                assert resp.get_json()["success"] is True
+
+        # Email must have been persisted
+        refreshed = user_model.find_by_id(str(user["_id"]))
+        assert refreshed["email"] == "newprofile@test.com"
+
+        # Exactly one audit entry for profile.update by this user
+        logs = audit_model.get_logs({
+            "action": "profile.update",
+            "username": "auth_prof_audit",
+        })
+        assert len(logs) >= 1
+        entry = logs[0]
+        assert entry["resource_type"] == "users"
+        assert entry["resource_id"] == str(user["_id"])
+        assert "email" in (entry.get("details") or {}).get("updated_fields", [])
+
+    def test_update_profile_no_change_skips_audit(self, app, user_model, audit_model):
+        """Empty payload → no DB write, no audit entry."""
+        user = _create_user(
+            user_model, username="auth_prof_noop",
+            password="password123", role="admin",
+        )
+        with _mock_auth(user):
+            with app.test_client() as client:
+                resp = client.put('/api/admin/auth/profile', json={})
+                assert resp.status_code == 200
+
+        logs = audit_model.get_logs({
+            "action": "profile.update",
+            "username": "auth_prof_noop",
+        })
+        assert len(logs) == 0
+
+    def test_update_profile_duplicate_email_rejected(self, app, user_model, audit_model):
+        """Email already used by another user → 400, no audit entry."""
+        # Another user owns the email
+        _create_user(
+            user_model, username="auth_prof_other",
+            password="password123", email="taken@test.com",
+        )
+        user = _create_user(
+            user_model, username="auth_prof_dup",
+            password="password123", role="admin",
+        )
+
+        with _mock_auth(user):
+            with app.test_client() as client:
+                resp = client.put('/api/admin/auth/profile', json={
+                    "email": "taken@test.com",
+                })
+                assert resp.status_code == 400
+                assert "already in use" in resp.get_json()["error"].lower()
+
+        logs = audit_model.get_logs({
+            "action": "profile.update",
+            "username": "auth_prof_dup",
+        })
+        assert len(logs) == 0

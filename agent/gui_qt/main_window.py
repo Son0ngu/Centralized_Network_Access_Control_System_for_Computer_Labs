@@ -1,4 +1,4 @@
-"""Qt main window — sidebar nav + stacked view area.
+"""Qt main window - sidebar nav + stacked view area.
 
 Only Dashboard is wired up in Phase 1. The other tabs render a placeholder
 panel so the layout looks complete; they're filled in by later phases.
@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self._controller = controller
         self._bridge = bridge
 
-        self.setWindowTitle("SAINT — Security Agent Integrated Network Tool")
+        self.setWindowTitle("SAINT - Security Agent Integrated Network Tool")
         self.resize(1200, 800)
         self.setMinimumSize(900, 600)
 
@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
             "logs": LogsView(),
             "settings": SettingsView(),
         }
-        # Defensive fallback — if a future nav item gets added but the view
+        # Defensive fallback - if a future nav item gets added but the view
         # isn't built yet, the sidebar button still navigates to a placeholder
         # instead of crashing.
         for view_id, label in _NAV_ITEMS:
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
             self._stack.setCurrentWidget(widget)
 
     # -----------------------------------------------------------------------
-    # Window close — confirm if the agent is running so we don't yank the
+    # Window close - confirm if the agent is running so we don't yank the
     # firewall out from under the user mid-session.
     # -----------------------------------------------------------------------
 
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         if self._controller and self._controller.is_running:
             reply = QMessageBox.warning(
                 self,
-                "SAINT — Confirm Exit",
+                "SAINT - Confirm Exit",
                 "Agent is currently running.\n\n"
                 "Exiting will stop the agent and restore the firewall to its "
                 "original state.\n\nAre you sure you want to exit?",

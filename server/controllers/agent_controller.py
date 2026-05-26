@@ -10,6 +10,7 @@ from flask import Blueprint, request, jsonify, g
 from typing import Dict, Tuple
 from models.agent_model import AgentModel
 from services.agent_service import AgentService
+from utils.request_ip import get_client_ip
 
 # Import time utilities - vietnam ONLY
 from time_utils import now_vietnam, now_iso
@@ -17,6 +18,7 @@ from time_utils import now_vietnam, now_iso
 # Import auth middleware for API key and JWT validation
 from middleware.auth import require_api_key, require_jwt, require_jwt_or_api_key
 from middleware.rbac import require_login, get_rbac_service
+from database.config import get_config_by_name
 
 class AgentController:
     """Controller for agent operations"""
@@ -59,9 +61,17 @@ class AgentController:
         self.blueprint.add_url_rule('/agents/<agent_id>/policy', 'get_agent_policy', require_login(self.get_agent_policy), methods=['GET'])
         self.blueprint.add_url_rule('/agents/<agent_id>/policy', 'set_agent_policy', require_login(self.set_agent_policy), methods=['PATCH'])
 
-        # DEBUG routes (requires admin login)
-        self.blueprint.add_url_rule('/agents/debug/status', 'debug_status', require_login(self.debug_status), methods=['GET'])
-        self.blueprint.add_url_rule('/agents/debug/direct', 'debug_direct_call', require_login(self.debug_direct_call), methods=['GET'])
+        # DEBUG routes — only registered when ENABLE_DEBUG_ENDPOINTS is on.
+        # In production these routes leak internal controller state and the
+        # sample agent list, so we leave them unregistered by default.
+        try:
+            debug_enabled = bool(get_config_by_name().ENABLE_DEBUG_ENDPOINTS)
+        except Exception:
+            debug_enabled = False
+        if debug_enabled:
+            self.logger.warning("Debug agent endpoints ENABLED (set ENABLE_DEBUG_ENDPOINTS=false to disable)")
+            self.blueprint.add_url_rule('/agents/debug/status', 'debug_status', require_login(self.debug_status), methods=['GET'])
+            self.blueprint.add_url_rule('/agents/debug/direct', 'debug_direct_call', require_login(self.debug_direct_call), methods=['GET'])
 
     def _success_response(self, data=None, message="Success", status_code=200) -> Tuple:
         """Helper method for success responses"""
@@ -135,7 +145,7 @@ class AgentController:
         """Register a new agent"""
         try:
             data = self._validate_json_request(['hostname', 'device_id'])
-            client_ip = request.remote_addr or data.get("ip_address", "unknown")
+            client_ip = get_client_ip(default=data.get("ip_address", "unknown"))
             
             # Call service method
             result = self.service.register_agent(data, client_ip)
@@ -163,7 +173,7 @@ class AgentController:
         """Process agent heartbeat"""
         try:
             data = self._validate_json_request(['agent_id', 'token'])
-            client_ip = request.remote_addr
+            client_ip = get_client_ip()
             
             # Call service method
             result = self.service.process_heartbeat(
@@ -344,8 +354,13 @@ class AgentController:
             return self._error_response("Failed to retrieve agent details", 500)
     
     def delete_agent(self, agent_id: str):
-        """Delete an agent"""
+        """Delete an agent (admin only)"""
         try:
+            # Teachers do not have agents:delete permission
+            user = getattr(g, 'current_user', None)
+            if user and user.get('role') != 'admin':
+                return self._error_response("Only admin can delete agents", 403)
+
             agent = self.model.find_by_agent_id(agent_id)
             if not agent:
                 return self._error_response("Agent not found", 404)

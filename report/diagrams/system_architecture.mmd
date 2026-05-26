@@ -1,6 +1,7 @@
 flowchart TB
   Admin["Admin / Teacher Browser"] -->|"HTTP + SocketIO"| Server["Flask Server"]
-  Server --> Controllers["Controllers / Blueprints"]
+  Server --> Bootstrap["Bootstrap / Routes"]
+  Bootstrap --> Controllers["Controllers / Blueprints"]
   Controllers --> Services["Services"]
   Services --> Models["Models"]
   Models --> Mongo[("MongoDB")]

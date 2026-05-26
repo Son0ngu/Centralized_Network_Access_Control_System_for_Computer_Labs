@@ -1,6 +1,6 @@
 # Tổng hợp API Server và giải thích
 
-Tất cả blueprint controller trong `server/controllers/*.py` được đăng ký trong `server/app.py` với `url_prefix='/api'`.
+Tất cả blueprint controller trong `server/controllers/*.py` được khởi tạo và đăng ký trong `server/bootstrap/container.py` với `url_prefix='/api'`. `server/app.py` chỉ import/export `create_app` từ `server/bootstrap/app_factory.py` và chạy server khi gọi trực tiếp.
 
 | Method | Path | Handler | Auth/RBAC | Mục đích | Input chính | Output chính | Service/Model |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -27,8 +27,8 @@ Tất cả blueprint controller trong `server/controllers/*.py` được đăng 
 | GET | /api/agents/<agent_id>/policy | get_agent_policy | Login session | Truy vấn dữ liệu, có áp dụng phân quyền hoặc lọc theo vai trò khi cần. | Query filter/pagination/path params. | JSON dữ liệu hoặc danh sách dữ liệu. | AgentService, AgentModel, AgentPolicyService, JWTService |
 | PATCH | /api/agents/<agent_id>/policy | set_agent_policy | Login session | Cập nhật một phần hoặc toàn bộ tài nguyên. | JSON body theo tài nguyên. | JSON tài nguyên sau cập nhật hoặc trạng thái thành công. | AgentService, AgentModel, AgentPolicyService, JWTService |
 | PATCH | /api/agents/<agent_id>/position | update_position | Login session | Cập nhật một phần hoặc toàn bộ tài nguyên. | JSON body theo tài nguyên. | JSON tài nguyên sau cập nhật hoặc trạng thái thành công. | AgentService, AgentModel, AgentPolicyService, JWTService |
-| GET | /api/agents/debug/direct | debug_direct_call | Login session | Truy vấn dữ liệu, có áp dụng phân quyền hoặc lọc theo vai trò khi cần. | Query filter/pagination/path params. | JSON dữ liệu hoặc danh sách dữ liệu. | AgentService, AgentModel, AgentPolicyService, JWTService |
-| GET | /api/agents/debug/status | debug_status | Login session | Truy vấn dữ liệu, có áp dụng phân quyền hoặc lọc theo vai trò khi cần. | Query filter/pagination/path params. | JSON dữ liệu hoặc danh sách dữ liệu. | AgentService, AgentModel, AgentPolicyService, JWTService |
+| GET | /api/agents/debug/direct | debug_direct_call | Login session + `ENABLE_DEBUG_ENDPOINTS=True` | Debug: thử gọi service trực tiếp (chỉ register khi flag bật; production trả 404). | Query filter/pagination/path params. | JSON debug. | AgentService, AgentModel, AgentPolicyService, JWTService |
+| GET | /api/agents/debug/status | debug_status | Login session + `ENABLE_DEBUG_ENDPOINTS=True` | Debug: snapshot internal controller state (gate cùng `ENABLE_DEBUG_ENDPOINTS`). | Query filter/pagination/path params. | JSON debug. | AgentService, AgentModel, AgentPolicyService, JWTService |
 | POST | /api/agents/heartbeat | heartbeat | JWT Agent | Nhận heartbeat từ Agent, cập nhật trạng thái online/offline và trả tín hiệu đồng bộ. | JSON trạng thái Agent, metrics, version; JWT Agent. | Kết quả heartbeat, cờ sync/policy nếu có thay đổi. | AgentService, AgentModel, AgentPolicyService, JWTService |
 | POST | /api/agents/register | register_agent | API Key (agent_register) | Đăng ký Agent hoặc tạo tài nguyên mới tùy ngữ cảnh endpoint. | JSON thông tin máy/Agent, API Key qua header. | `agent_id`, JWT token, metadata đăng ký. | AgentService, AgentModel, AgentPolicyService, JWTService |
 | GET | /api/agents/statistics | get_statistics | Login session | Trả số liệu tổng hợp phục vụ dashboard. | Query filter/pagination/path params. | JSON thống kê tổng hợp. | AgentService, AgentModel, AgentPolicyService, JWTService |
@@ -77,4 +77,6 @@ Tất cả blueprint controller trong `server/controllers/*.py` được đăng 
 
 ## Route web không thuộc `/api`
 
-Các route như `/`, `/agents`, `/groups`, `/whitelist`, `/logs`, `/api-keys`, `/login`, `/admin/users`, `/admin/audit`, `/profile`, `/admin/change-password` trong `server/app.py` render HTML template cho dashboard. Chúng không phải REST API Agent.
+Các route như `/`, `/agents`, `/groups`, `/whitelist`, `/logs`, `/api-keys`, `/login`, `/admin/users`, `/admin/audit`, `/profile` nằm trong `server/routes/pages.py` và render HTML template cho dashboard. Chúng không phải REST API Agent.
+
+Riêng `/admin/change-password` hiện chỉ là route redirect về `/profile` (template `change_password.html` và CSS đã bị xoá ở Phase 1 — đổi mật khẩu được làm trực tiếp trên trang profile). Sẽ gỡ hẳn route ở release sau khi xác nhận không còn bookmark nào trỏ vào.

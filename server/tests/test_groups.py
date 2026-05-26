@@ -263,6 +263,34 @@ class TestGroupModel:
         assert len(updated["whitelist"]) == 1
         assert updated["whitelist_version"] == 2
 
+    def test_model_update_group_whitelist_normalizes_string_id(self, group_model):
+        """PATCH payload from frontend sends _id as string; DB must keep ObjectId."""
+        entry_oid = ObjectId()
+        created = group_model.create_group("WLStringId", "", [])
+        gid = str(created["_id"])
+
+        updated = group_model.update_group(gid, {
+            "whitelist": [{
+                "_id": str(entry_oid),
+                "value": "example.com",
+                "type": "domain",
+            }]
+        })
+
+        assert updated["whitelist"][0]["_id"] == entry_oid
+        assert isinstance(updated["whitelist"][0]["_id"], ObjectId)
+
+    def test_model_update_group_whitelist_stamps_missing_id(self, group_model):
+        """New embedded entries from group PATCH receive a real ObjectId."""
+        created = group_model.create_group("WLMissingId", "", [])
+        gid = str(created["_id"])
+
+        updated = group_model.update_group(gid, {
+            "whitelist": [{"value": "new-entry.com", "type": "domain"}]
+        })
+
+        assert isinstance(updated["whitelist"][0]["_id"], ObjectId)
+
     def test_model_update_group_layout(self, group_model):
         """Update layout (room layout config)."""
         created = group_model.create_group("LayoutTest", "", [])
@@ -432,20 +460,32 @@ class TestGroupService:
         with pytest.raises(ValueError, match="Cannot delete system groups"):
             group_service.delete_group(gid)
 
-    def test_service_delete_group_with_agents_rejected(self, group_service, group_model, agent_model):
-        """Không cho xóa group có agents."""
+    def test_service_delete_group_with_agents_moves_to_pending(self, group_service, group_model, agent_model):
+        """Group có agents thì khi xóa, agents được dời sang pending trước.
+
+        Hành vi mới: thay vì raise ValueError, service tự đảm bảo không mồ côi agent
+        bằng cách bulk-move sang pending group rồi xóa group cũ.
+        """
+        # Ensure the pending system group exists so the migration path can run
+        pending = group_model.ensure_pending_group()
+        pending_id = str(pending["_id"])
+
         created = group_model.create_group("HasAgents", "", [])
         gid = str(created["_id"])
 
-        # Insert a fake agent vào group này
         agent_model.collection.insert_one({
             "agent_id": "test-agent-001",
             "hostname": "PC-1",
             "group_id": gid,
         })
 
-        with pytest.raises(ValueError, match="Cannot delete group with assigned agents"):
-            group_service.delete_group(gid)
+        # Should succeed (no ValueError) and reassign the agent to pending
+        result = group_service.delete_group(gid)
+        assert result is True
+
+        relocated = agent_model.collection.find_one({"agent_id": "test-agent-001"})
+        assert relocated is not None
+        assert relocated["group_id"] == pending_id
 
     def test_service_bump_whitelist_version(self, group_service, group_model):
         """Bump whitelist version qua service."""
@@ -598,17 +638,15 @@ class TestGroupController:
         assert data["name"] == "AdminCreated"
         assert data["created_by"] == str(ADMIN_ID)
 
-    def test_controller_create_group_teacher(self, app, client, teacher_a):
-        """Teacher tạo group - created_by = teacher ID."""
+    def test_controller_create_group_teacher_forbidden(self, app, client, teacher_a):
+        """Teacher KHÔNG được tạo group (admin-only lifecycle) - 403."""
         with self._mock_auth(teacher_a):
             resp = client.post('/api/groups', json={
                 "name": "TeacherCreated",
                 "description": "My class"
             })
 
-        assert resp.status_code == 201
-        data = resp.get_json()["data"]
-        assert data["created_by"] == str(TEACHER_A_ID)
+        assert resp.status_code == 403
 
     def test_controller_create_group_no_name(self, app, client, admin_user):
         """Tạo group thiếu name - 400."""
@@ -729,9 +767,12 @@ class TestRBACGroupFiltering:
         assert qf is None
 
     def test_rbac_teacher_filter_by_ownership(self, rbac_service, teacher_a):
-        """Teacher - filter groups by created_by."""
+        """Teacher - filter groups by teacher_ids (current) + created_by (legacy fallback)."""
         qf = rbac_service.get_group_query_filter(teacher_a)
-        assert qf == {"created_by": TEACHER_A_ID}
+        assert qf == {"$or": [
+            {"teacher_ids": TEACHER_A_ID},
+            {"created_by": TEACHER_A_ID},
+        ]}
 
     def test_rbac_can_access_group_admin(self, rbac_service, admin_user):
         """Admin can access any group."""

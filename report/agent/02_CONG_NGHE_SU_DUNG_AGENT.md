@@ -3,7 +3,7 @@
 | Dependency | Vai trò trong source |
 | --- | --- |
 | scapy>=2.4.5 | Packet capture và phân tích DNS/HTTP/TLS. |
-| pydivert>=2.1.0 | Khả năng chặn/lọc packet Windows ở mức driver nếu dùng. |
+| Windows Firewall / netsh | Cơ chế enforcement chính: chặn mặc định và cho phép IP whitelist bằng rule hệ thống. |
 | dnspython | DNS resolver đồng bộ. |
 | aiodns | DNS resolver bất đồng bộ. |
 | requests>=2.28.0 | HTTP client Agent -> Server. |
@@ -14,7 +14,7 @@
 | requests | HTTP client Agent -> Server. |
 | netifaces>=0.11.0 | Thông tin network interface. |
 | distro>=1.6.0 | Thông tin OS. |
-| PySide6>=6.6.0 | GUI desktop Agent (Qt for Python — LGPL). |
+| PySide6>=6.6.0 | GUI desktop Agent (Qt for Python - LGPL). |
 | cryptography | Mã hóa config Agent. |
 
 ## Công nghệ theo nhóm chức năng

@@ -212,11 +212,11 @@
           <mxGeometry x="690" y="855" width="60" height="22" as="geometry" />
         </mxCell>
         <!-- ==================== LAYER 3: AGENT ==================== -->
-        <mxCell id="agent_layer" value="&lt;b&gt;AGENT LAYER - Python Desktop Application&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent chạy trên máy tính học sinh (CustomTkinter GUI + Windows Firewall)&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=13;html=1;swimlaneLine=0;" vertex="1" parent="1">
+        <mxCell id="agent_layer" value="&lt;b&gt;AGENT LAYER - Python Desktop Application&lt;/b&gt;&lt;br&gt;&lt;i&gt;Agent chạy trên máy tính học sinh (PySide6 GUI + Windows Firewall)&lt;/i&gt;" style="swimlane;startSize=40;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=13;html=1;swimlaneLine=0;" vertex="1" parent="1">
           <mxGeometry x="900" y="810" width="860" height="310" as="geometry" />
         </mxCell>
         <!-- GUI -->
-        <mxCell id="ag_gui" value="&lt;b&gt;GUI (CustomTkinter)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1200×800, dark mode&lt;br&gt;5 tabs: Dashboard | Firewall&lt;br&gt;| Whitelist | Logs | Settings&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
+        <mxCell id="ag_gui" value="&lt;b&gt;GUI (PySide6/Qt)&lt;/b&gt;&lt;br&gt;&lt;i&gt;1200×800, Fusion/QSS theme&lt;br&gt;5 tabs: Dashboard | Firewall&lt;br&gt;| Whitelist | Logs | Settings&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
           <mxGeometry x="20" y="50" width="170" height="70" as="geometry" />
         </mxCell>
         <!-- Agent threads -->
@@ -253,7 +253,7 @@
         <mxCell id="ag_modes" value="&lt;b&gt;Firewall Modes&lt;/b&gt;&lt;br&gt;&lt;i&gt;monitor | whitelist_only | warn&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d6b656;fontFamily=Segoe UI;fontSize=10;" vertex="1" parent="agent_layer">
           <mxGeometry x="530" y="140" width="200" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="ag_tech" value="&lt;i&gt;Python 3.x + CustomTkinter + scapy + requests + threading + queue.Queue + netsh (Windows)&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#333333;" vertex="1" parent="agent_layer">
+        <mxCell id="ag_tech" value="&lt;i&gt;Python 3.x + PySide6 + Scapy + requests + threading + queue.Queue + netsh (Windows)&lt;/i&gt;" style="text;html=1;align=center;fontSize=10;fontFamily=Segoe UI;fontColor=#333333;" vertex="1" parent="agent_layer">
           <mxGeometry x="20" y="220" width="800" height="20" as="geometry" />
         </mxCell>
         <!-- Agent to Server connection -->

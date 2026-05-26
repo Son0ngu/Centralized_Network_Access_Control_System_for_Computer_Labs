@@ -147,6 +147,15 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
     </div>
 
+    <!--
+        Shared SAINT JS core. Order matters: ``api.js`` exposes SaintAPI which
+        ``base.js`` and several page scripts use, so it loads first. ``toast.js``
+        and ``date.js`` are independent.
+    -->
+    <script src="{{ url_for('static', filename='js/core/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/date.js') }}"></script>
+
     <script src="{{ url_for('static', filename='js/base.js') }}"></script>
     <!-- RBAC: Auth handler (token refresh, auto-logout, role-based UI) -->
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>

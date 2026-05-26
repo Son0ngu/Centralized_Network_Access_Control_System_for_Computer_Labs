@@ -81,25 +81,25 @@ def handle_domain_detection(
         # observe and log traffic but never claim it was blocked.
         #
         # Compliance levels (Preventive Layer 3 + Detective Layer 7):
-        #   ALLOWED        — domain explicitly in whitelist (compliant).
-        #   ALLOWED_BY_IP  — destination IP is whitelisted but domain (SNI/Host)
+        #   ALLOWED        - domain explicitly in whitelist (compliant).
+        #   ALLOWED_BY_IP  - destination IP is whitelisted but domain (SNI/Host)
         #                    is NOT in whitelist. This indicates CDN/shared-IP
         #                    bleed-through (e.g. phimlau.com served from the same
         #                    Cloudflare IP as an allowed school site). Layer 3
         #                    cannot distinguish; this WARNING surfaces it so
         #                    admins can investigate and tighten policy.
-        #   BLOCKED        — neither domain nor IP whitelisted; firewall dropped.
-        #   OBSERVED       — passive mode (no admin / firewall disabled).
+        #   BLOCKED        - neither domain nor IP whitelisted; firewall dropped.
+        #   OBSERVED       - passive mode (no admin / firewall disabled).
         if firewall_enabled:
             if domain_allowed:
                 action, level = "ALLOWED", "INFO"
             elif ip_allowed and domain and not domain_allowed:
                 # IP let through, but SNI/Host points to a non-whitelisted
-                # domain — likely CDN co-tenant. Detective signal for admin.
+                # domain - likely CDN co-tenant. Detective signal for admin.
                 action, level = "ALLOWED_BY_IP", "WARNING"
             elif is_whitelisted:
                 # ip_allowed without identifiable domain (e.g. raw IP traffic
-                # to a whitelisted host) — legitimate non-DNS connection.
+                # to a whitelisted host) - legitimate non-DNS connection.
                 action, level = "ALLOWED", "INFO"
             else:
                 action, level = "BLOCKED", "BLOCKED"

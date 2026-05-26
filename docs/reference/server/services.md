@@ -1,4 +1,4 @@
-# `server/services` — Business logic layer
+# `server/services` - Business logic layer
 
 ## Mục đích
 Tầng business logic giữa controllers (HTTP) và models (DB). Mỗi service nhận một hoặc nhiều model trong constructor + tuỳ chọn `socketio`. Mọi side effect (DB write, socket emit, audit log) tập trung ở đây. Controllers chỉ validate/parse request rồi gọi service.
@@ -10,7 +10,7 @@ Tầng business logic giữa controllers (HTTP) và models (DB). Mỗi service n
 
 ## Public API
 
-### `services/jwt_service.py` — `JWTService`
+### `services/jwt_service.py` - `JWTService`
 
 Token operations cho Agent JWT. Token rotation hỗ trợ tuỳ chọn.
 
@@ -18,7 +18,7 @@ Token operations cho Agent JWT. Token rotation hỗ trợ tuỳ chọn.
 |---|---|---|---|
 | `ACCESS_TOKEN_EXPIRY_HOURS = 24` / `REFRESH_TOKEN_EXPIRY_DAYS = 7` | const | [jwt_service.py:18-19](../../../server/services/jwt_service.py#L18) | Lifetime |
 | `JWT_ALGORITHM = "HS256"` | const | [jwt_service.py:20](../../../server/services/jwt_service.py#L20) | |
-| `JWT_SECRET_KEY` / `JWT_REFRESH_SECRET_KEY` | env | [jwt_service.py:23-24](../../../server/services/jwt_service.py#L23) | **Production raise** nếu thiếu. Dev fallback random — tokens invalid sau restart |
+| `JWT_SECRET_KEY` / `JWT_REFRESH_SECRET_KEY` | env | [jwt_service.py:23-24](../../../server/services/jwt_service.py#L23) | **Production raise** nếu thiếu. Dev fallback random - tokens invalid sau restart |
 | `JWTService.__init__(db=None)` | | [jwt_service.py:44](../../../server/services/jwt_service.py#L44) | Tạo `revoked_tokens` collection với TTL index nếu db provided |
 | `.generate_tokens(agent_id, user_id, additional_claims=None)` | `→ Dict` | [jwt_service.py:81](../../../server/services/jwt_service.py#L81) | Issue cặp access+refresh với JTI unique. Claims: `sub, user_id, jti, type, iat, exp, iss="firewall-controller"`. Trả `access_token, refresh_token, token_type, *_expires_in, *_expires_at` |
 | `.validate_access_token(token)` | `→ (bool, payload, error)` | [jwt_service.py:142](../../../server/services/jwt_service.py#L142) | Require claims `sub/jti/type/exp`. Check `type=="access"`. Check revoked qua JTI |
@@ -26,14 +26,14 @@ Token operations cho Agent JWT. Token rotation hỗ trợ tuỳ chọn.
 | `.refresh_access_token(refresh_token)` | `→ (bool, tokens, error)` | [jwt_service.py:218](../../../server/services/jwt_service.py#L218) | **Chỉ access**, refresh không đổi. Used by Agent `/api/auth/refresh` mặc định |
 | `.refresh_tokens_with_rotation(refresh_token)` | | [jwt_service.py:262](../../../server/services/jwt_service.py#L262) | **Revoke refresh cũ + issue cặp mới**. Chống reuse attack. Agent gọi với `rotate=true` |
 | `.revoke_token(token, token_type="access")` | `→ bool` | [jwt_service.py:316](../../../server/services/jwt_service.py#L316) | Decode (allow expired) → upsert vào `revoked_tokens` với TTL = `exp` |
-| `.revoke_all_agent_tokens(agent_id)` | `→ int` | [jwt_service.py:378](../../../server/services/jwt_service.py#L378) | Mark "revoke_all" — hiện ko force kick existing tokens (TTL auto-cleanup) |
+| `.revoke_all_agent_tokens(agent_id)` | `→ int` | [jwt_service.py:378](../../../server/services/jwt_service.py#L378) | Mark "revoke_all" - hiện ko force kick existing tokens (TTL auto-cleanup) |
 | `.decode_token_without_verification(token)` | | [jwt_service.py:419](../../../server/services/jwt_service.py#L419) | Debug helper. **KHÔNG verify signature** |
 | `.get_token_info(token)` | `→ Dict` | [jwt_service.py:437](../../../server/services/jwt_service.py#L437) | Status snapshot (agent_id, type, expires_at, is_expired, is_revoked) |
 | `.{_is_token_revoked, _setup_indexes}` | | [jwt_service.py:408, 66](../../../server/services/jwt_service.py#L408) | Internal |
 | `init_jwt_service(db=None)` | | [jwt_service.py:479](../../../server/services/jwt_service.py#L479) | Tạo singleton global `_jwt_service`. Gọi từ `app.register_controllers` |
 | `get_jwt_service()` | `→ Optional[JWTService]` | [jwt_service.py:486](../../../server/services/jwt_service.py#L486) | Accessor |
 
-### `services/rbac_service.py` — `RBACService`
+### `services/rbac_service.py` - `RBACService`
 
 Owns ownership check + query filter builder cho teacher.
 
@@ -49,12 +49,12 @@ Owns ownership check + query filter builder cho teacher.
 | `.get_teacher_group_ids(user)` | `→ Optional[List[str]]` | [rbac_service.py:98](../../../server/services/rbac_service.py#L98) | Admin → None (all). Teacher → list ids. **None vs `[]` khác nhau** |
 | `.get_group_query_filter(user)` | `→ Optional[Dict]` | [rbac_service.py:124](../../../server/services/rbac_service.py#L124) | None cho admin, `{"$or": [teacher_ids, created_by]}` cho teacher |
 | `.get_agent_query_filter(user)` | `→ Optional[Dict]` | [rbac_service.py:139](../../../server/services/rbac_service.py#L139) | None / `{"group_id": {"$in": [...]}}` |
-| `.get_log_query_filter(user)` | `→ Optional[Dict]` | [rbac_service.py:155](../../../server/services/rbac_service.py#L155) | None / `{"agent_id": {"$in": [...]}}` — chain teacher → groups → agents → logs |
+| `.get_log_query_filter(user)` | `→ Optional[Dict]` | [rbac_service.py:155](../../../server/services/rbac_service.py#L155) | None / `{"agent_id": {"$in": [...]}}` - chain teacher → groups → agents → logs |
 | `.get_whitelist_query_filter(user)` | `→ Optional[Dict]` | [rbac_service.py:192](../../../server/services/rbac_service.py#L192) | None / `{"$or": [{"scope":"global"}, {"group_id":{"$in":[...]}}]}` |
 | `.validate_group_ids_ownership(user, group_ids)` | `→ (bool, List[str])` | [rbac_service.py:214](../../../server/services/rbac_service.py#L214) | Bulk validate. Admin pass. Trả invalid ids |
 | `.can_teacher_access_agent(user, agent)` | `→ bool` | [rbac_service.py:243](../../../server/services/rbac_service.py#L243) | Admin pass. Teacher check `agent.group_id ∈ teacher_group_ids` |
 
-### `services/admin_auth_service.py` — `AdminAuthService`
+### `services/admin_auth_service.py` - `AdminAuthService`
 
 Login flow cho Admin/Teacher. Bcrypt password. Session record. Brute-force protection.
 
@@ -68,18 +68,18 @@ Login flow cho Admin/Teacher. Bcrypt password. Session record. Brute-force prote
 | `.change_password(user_id, old_password, new_password)` | `→ (bool, error)` | [admin_auth_service.py:225](../../../server/services/admin_auth_service.py#L225) | Verify old → validate new (length) → bcrypt hash → update → audit `profile.change_password` |
 | `_hash_password / _verify_password / _validate_password / _extract_jti / _sanitize_user` | staticmethods/methods | [admin_auth_service.py:261-307](../../../server/services/admin_auth_service.py#L261) | Helpers. Sanitize loại bỏ `password_hash, failed_login_attempts, locked_until` |
 
-### `services/audit_service.py` — `AuditService`
+### `services/audit_service.py` - `AuditService`
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `__init__(audit_model)` | | [audit_service.py:21](../../../server/services/audit_service.py#L21) | |
-| `.log_action(user, action, resource_type, resource_id=None, details=None, ip_address=None)` | `→ None` | [audit_service.py:25](../../../server/services/audit_service.py#L25) | Auto-detect IP từ `flask.request.remote_addr`. **Never raise** — swallow exception |
+| `.log_action(user, action, resource_type, resource_id=None, details=None, ip_address=None)` | `→ None` | [audit_service.py:25](../../../server/services/audit_service.py#L25) | Auto-detect IP từ `flask.request.remote_addr`. **Never raise** - swallow exception |
 | `.get_logs(query=None, limit=100, skip=0)` | `→ List[Dict]` | [audit_service.py:71](../../../server/services/audit_service.py#L71) | Serialize ObjectId |
 | `.get_user_activity(user_id, limit=50)` | | [audit_service.py:77](../../../server/services/audit_service.py#L77) | |
 | `.count_logs(query=None)` | | [audit_service.py:82](../../../server/services/audit_service.py#L82) | |
 | `_serialize(log)` | `@staticmethod` | [audit_service.py:86](../../../server/services/audit_service.py#L86) | `_id` → str, `user_id` → str |
 
-### `services/user_service.py` — `UserService`
+### `services/user_service.py` - `UserService`
 
 CRUD teacher accounts. Admin only operations.
 
@@ -89,14 +89,14 @@ CRUD teacher accounts. Admin only operations.
 | `.create_user(username, password, role="teacher", email=None, created_by_user=None)` | `→ (bool, user, error)` | [user_service.py:35](../../../server/services/user_service.py#L35) | Validate username (3-50, alnum/_/.-), uniqueness, role in VALID_ROLES, password length. bcrypt rounds=12 |
 | `.get_user_by_id(user_id)` | `→ Optional[Dict]` | [user_service.py:122](../../../server/services/user_service.py#L122) | Sanitized |
 | `.get_all_users(query=None, limit=100, skip=0)` | | [user_service.py:129](../../../server/services/user_service.py#L129) | Sanitized list |
-| `.update_user(user_id, update_data, updated_by_user=None)` | `→ (bool, error)` | [user_service.py:139](../../../server/services/user_service.py#L139) | **Allowlist `email, role, is_active`** — không update password qua đây |
+| `.update_user(user_id, update_data, updated_by_user=None)` | `→ (bool, error)` | [user_service.py:139](../../../server/services/user_service.py#L139) | **Allowlist `email, role, is_active`** - không update password qua đây |
 | `.toggle_active(user_id, is_active, updated_by_user=None)` | | [user_service.py:176](../../../server/services/user_service.py#L176) | Block disable last admin (count check) |
 | `.reset_password(user_id, new_password, reset_by_user=None)` | | [user_service.py:208](../../../server/services/user_service.py#L208) | Admin reset, không cần old_password |
 | `.delete_user(user_id, deleted_by_user=None)` | | [user_service.py:245](../../../server/services/user_service.py#L245) | Block delete last admin + self-delete |
 | `.ensure_default_admin(username="admin", password="admin123456")` | `→ Optional[Dict]` | [user_service.py:284](../../../server/services/user_service.py#L284) | Seed nếu chưa có admin. Log warning với plaintext password. Gọi từ app bootstrap |
 | `_sanitize_user(user)` | `@staticmethod` | [user_service.py:325](../../../server/services/user_service.py#L325) | Loại password_hash, failed_login_attempts, locked_until |
 
-### `services/agent_service.py` — `AgentService`
+### `services/agent_service.py` - `AgentService`
 
 Agent register + heartbeat + status calculation (active/inactive/offline based on heartbeat age).
 
@@ -118,7 +118,7 @@ Agent register + heartbeat + status calculation (active/inactive/offline based o
 | `.move_agent_to_group(agent_id, group_id)` | `→ Dict` | [agent_service.py:623](../../../server/services/agent_service.py#L623) | Reset status="pending" nếu vào pending group, "active" nếu rời. Trả dict tương thích JSON |
 | `_persist_status_change(agent, new_status)` | | [agent_service.py:53](../../../server/services/agent_service.py#L53) | Detect drift → update DB |
 
-### `services/whitelist_service.py` — `WhitelistService`
+### `services/whitelist_service.py` - `WhitelistService`
 
 Lớn nhất. Manage global + group + per-teacher profile whitelists. Build sync response cho agent.
 
@@ -139,11 +139,11 @@ Lớn nhất. Manage global + group + per-teacher profile whitelists. Build sync
 | `.get_all_domains(limit=100, offset=0, search=None) / .add_domain(...) / .delete_domain(domain_id) / .import_domains(...) / .export_domains(...)` | | [whitelist_service.py:958-1193](../../../server/services/whitelist_service.py#L958) | Legacy API names cho UI cũ |
 | `_normalize_group_entries(group, include_inactive=True)` | `→ List[Dict]` | [whitelist_service.py:370](../../../server/services/whitelist_service.py#L370) | Convert string/dict entries trong group sang dict chuẩn với pseudo-ID `group::<gid>::<type>::<value>` |
 | `_merge_whitelists(global_entries, group_entries)` | | [whitelist_service.py:420](../../../server/services/whitelist_service.py#L420) | Merge theo key `type:value`. **Group entry thắng** global. Preserve priority="high" |
-| `_get_detailed_changes(since_dt)` | | [whitelist_service.py:302](../../../server/services/whitelist_service.py#L302) | Diff added/removed/modified — hiện không dùng trong sync path |
+| `_get_detailed_changes(since_dt)` | | [whitelist_service.py:302](../../../server/services/whitelist_service.py#L302) | Diff added/removed/modified - hiện không dùng trong sync path |
 | `_update_group_entry(pseudo_id, update_data)` | | [whitelist_service.py:886](../../../server/services/whitelist_service.py#L886) | Update inline trong groups.whitelist. Upgrade string entry → dict |
 | `_delete_group_entry(group_id, value, entry_type)` | | [whitelist_service.py:935](../../../server/services/whitelist_service.py#L935) | |
 
-### `services/group_service.py` — `GroupService`
+### `services/group_service.py` - `GroupService`
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -157,7 +157,7 @@ Lớn nhất. Manage global + group + per-teacher profile whitelists. Build sync
 | `.get_group(group_id)` | | [group_service.py:98](../../../server/services/group_service.py#L98) | Enriched |
 | `.get_default_metadata()` | | [group_service.py:104](../../../server/services/group_service.py#L104) | |
 
-### `services/log_service.py` — `LogService`
+### `services/log_service.py` - `LogService`
 
 Receive logs từ agent, store, format query results.
 
@@ -172,7 +172,7 @@ Receive logs từ agent, store, format query results.
 | `.get_comprehensive_statistics(filters=None)` | `→ Dict` | [log_service.py:491](../../../server/services/log_service.py#L491) | Total + filtered counts cho 4 categories: allowed/blocked/warnings/allowed_by_ip |
 | `_build_query_from_filters(filters)` | | [log_service.py:552](../../../server/services/log_service.py#L552) | |
 
-### `services/agent_policy_service.py` — `AgentPolicyService`
+### `services/agent_policy_service.py` - `AgentPolicyService`
 
 Override mode per-agent: `none` / `isolate` / `custom_whitelist`. Merge vào sync response.
 
@@ -189,7 +189,7 @@ Override mode per-agent: `none` / `isolate` / `custom_whitelist`. Merge vào syn
 | `.get_stats()` | `→ Dict` | [agent_policy_service.py:214](../../../server/services/agent_policy_service.py#L214) | |
 | `_build_system_entries(server_host=None, source="policy_system")` | `→ List[Dict]` | [agent_policy_service.py:125](../../../server/services/agent_policy_service.py#L125) | Server + 3 DNS entries |
 
-### `services/whitelist_profile_service.py` — `WhitelistProfileService`
+### `services/whitelist_profile_service.py` - `WhitelistProfileService`
 
 Per-teacher profile trong group. 1 active per group.
 
@@ -206,7 +206,7 @@ Per-teacher profile trong group. 1 active per group.
 | `.get_teacher_profiles(teacher_id, group_ids)` | `→ List[Dict]` | [whitelist_profile_service.py:142](../../../server/services/whitelist_profile_service.py#L142) | Cho /whitelist page dropdown. Enrich `group_name` |
 | `_notify_group_update(group_id)` | | [whitelist_profile_service.py:171](../../../server/services/whitelist_profile_service.py#L171) | Emit `whitelist_updated` |
 
-### `services/api_key_service.py` — `APIKeyService`
+### `services/api_key_service.py` - `APIKeyService`
 
 Wrap `APIKeyModel`, add socket events.
 
@@ -223,27 +223,27 @@ Wrap `APIKeyModel`, add socket events.
 | `.create_default_key_if_none()` | | [api_key_service.py:216](../../../server/services/api_key_service.py#L216) | Auto-tạo "Default Agent Key" lần đầu boot. Plaintext log warning |
 
 ## Ai gọi module này
-- `server/app.py:194-274` — construct mọi service trong `register_controllers`
-- `server/controllers/*` — controllers gọi service methods (rare model direct access)
-- `server/middleware/auth.py` + `rbac.py` — dùng `JWTService`, `RBACService`, `APIKeyService`, `AdminAuthService` để validate
+- `server/app.py:194-274` - construct mọi service trong `register_controllers`
+- `server/controllers/*` - controllers gọi service methods (rare model direct access)
+- `server/middleware/auth.py` + `rbac.py` - dùng `JWTService`, `RBACService`, `APIKeyService`, `AdminAuthService` để validate
 
 ## Module này gọi ra
-- `models/*` — DB CRUD
-- `bcrypt` — password hashing
-- `jwt` (PyJWT) — token operations
-- `time_utils` — datetime helpers
-- `flask.request` (audit_service) — auto-detect IP
-- `socketio` — realtime emit
+- `models/*` - DB CRUD
+- `bcrypt` - password hashing
+- `jwt` (PyJWT) - token operations
+- `time_utils` - datetime helpers
+- `flask.request` (audit_service) - auto-detect IP
+- `socketio` - realtime emit
 
-## Đã có sẵn — đừng viết lại
-- Cần auth flow login? → `AdminAuthService.login(username, password, ip, ua)` — đã có brute-force, session, audit, tokens với admin claims
-- Cần issue JWT? → `JWTService.generate_tokens(agent_id, user_id, additional_claims)` — **đừng** `jwt.encode` trực tiếp
+## Đã có sẵn - đừng viết lại
+- Cần auth flow login? → `AdminAuthService.login(username, password, ip, ua)` - đã có brute-force, session, audit, tokens với admin claims
+- Cần issue JWT? → `JWTService.generate_tokens(agent_id, user_id, additional_claims)` - **đừng** `jwt.encode` trực tiếp
 - Cần validate JWT? → `JWTService.validate_access_token / validate_refresh_token` (check signature + revoke list)
-- Cần audit log? → `AuditService.log_action(user, action, resource_type, resource_id=None, details=None)` — IP auto-detect
+- Cần audit log? → `AuditService.log_action(user, action, resource_type, resource_id=None, details=None)` - IP auto-detect
 - Cần filter teacher data? → `RBACService.get_*_query_filter(user)` rồi merge vào query bằng `$and` (xem [controllers.md](controllers.md))
 - Cần check teacher access? → `RBACService.can_access_group / can_teacher_access_agent`
-- Cần bcrypt password hash? → service đã wrap (`AdminAuthService._hash_password`, `UserService.create_user`). Đừng `bcrypt.hashpw` rải rác — dễ quên rounds=12
-- Cần build whitelist cho agent? → `WhitelistService.get_agent_sync_data(...)` — đã merge global+group+profile+policy
+- Cần bcrypt password hash? → service đã wrap (`AdminAuthService._hash_password`, `UserService.create_user`). Đừng `bcrypt.hashpw` rải rác - dễ quên rounds=12
+- Cần build whitelist cho agent? → `WhitelistService.get_agent_sync_data(...)` - đã merge global+group+profile+policy
 - Cần check agent online? → `AgentService.get_agents_with_status()` (auto persist status drift)
 - Cần process heartbeat? → `AgentService.process_heartbeat(...)` (force_sync auto-detect)
 - Cần apply policy override? → `AgentPolicyService.apply_policy_to_sync(...)`
@@ -253,9 +253,9 @@ Wrap `APIKeyModel`, add socket events.
 
 ### JWT lifecycle
 - **Production raise nếu thiếu `JWT_SECRET_KEY`** (jwt_service.py:30). Dev fallback random key → tokens invalidate sau restart (acceptable).
-- **`refresh_access_token` KHÔNG carry additional_claims** (line 218): bug behavior — token mới mất `token_for, role, username`. Caller cho admin path phải dùng `AdminAuthService.refresh_token` (re-generate full claims). Agent path OK vì agent tokens không cần claims đó.
+- **`refresh_access_token` KHÔNG carry additional_claims** (line 218): bug behavior - token mới mất `token_for, role, username`. Caller cho admin path phải dùng `AdminAuthService.refresh_token` (re-generate full claims). Agent path OK vì agent tokens không cần claims đó.
 - **`refresh_tokens_with_rotation` revoke refresh cũ** (line 287-301). Nếu agent gọi refresh đồng thời từ 2 process → 1 thành công, 1 fail. Acceptable cho single-instance agent.
-- **`_is_token_revoked` chỉ check `revoked_tokens` collection** — sessions revoked trong `admin_sessions` không check ở đây. Admin logout flow revoke cả 2 chỗ (`SessionModel.revoke` + `JWTService.revoke_token`).
+- **`_is_token_revoked` chỉ check `revoked_tokens` collection** - sessions revoked trong `admin_sessions` không check ở đây. Admin logout flow revoke cả 2 chỗ (`SessionModel.revoke` + `JWTService.revoke_token`).
 - **TTL index `expireAfterSeconds=0`** trên `revoked_tokens.expires_at`: auto-cleanup. Hơi lag ~60s vì TTL chạy interval.
 
 ### RBAC filter logic
@@ -267,10 +267,10 @@ Wrap `APIKeyModel`, add socket events.
 - **Status calc mutate DB** (line 53-78 `_persist_status_change`). Mỗi lần list agents, drift detected → write. High traffic = nhiều write. Acceptable vì rare drift.
 - **`process_heartbeat` chỉ check `token` field legacy** (line 358), không check JWT. JWT verify đã làm ở middleware. Agent vẫn gửi token field để backward compat.
 - **`force_sync` flag**: policy change HOẶC version mismatch trigger. Agent đọc `force_sync=true` từ heartbeat response sẽ sync ngay lập tức.
-- **`active_threshold / inactive_threshold` instance attr** (line 42-43) — hard-coded không từ config. Sửa giá trị cần code change + restart.
+- **`active_threshold / inactive_threshold` instance attr** (line 42-43) - hard-coded không từ config. Sửa giá trị cần code change + restart.
 
 ### Whitelist service complexity
-- **3 storage cho whitelist**: global (`whitelist` collection), group (`groups.whitelist` inline), profile (`whitelist_profiles.domains` inline). `WhitelistService` handle cả 3 — cùng method có code path khác nhau.
+- **3 storage cho whitelist**: global (`whitelist` collection), group (`groups.whitelist` inline), profile (`whitelist_profiles.domains` inline). `WhitelistService` handle cả 3 - cùng method có code path khác nhau.
 - **Pseudo-ID `group::<gid>::<type>::<value>`** (line 404): convention để định danh group entry trong UI/API. Parse ngược lại bằng split `"::"` hoặc `"|"` (legacy). Update/delete dùng path khác nhau cho group vs global.
 - **Re-activate on duplicate add** (line 105-114): nếu add entry trùng `value` (đã inactive), service re-activate thay vì raise. Khá hữu ích nhưng có thể bất ngờ cho user.
 - **`_merge_whitelists` group thắng global** (line 432): policy decision. Đảo logic = đổi semantic.
@@ -284,8 +284,8 @@ Wrap `APIKeyModel`, add socket events.
 
 ### Policy
 - **`ESSENTIAL_DNS_IPS` hardcoded** (line 123): Google + Cloudflare. Nếu blacklist các DNS này ở mạng nội bộ → agent stuck. Đáng configurable.
-- **`get_effective_mode` auto-reset expired** (xem [models.md](models.md) `AgentPolicyModel.get_effective_mode`): side effect ẩn. Caller (`apply_policy_to_sync` line 164) gọi qua method này nên consistent — agent đang isolated mà expired → tự reset về none → agent sync nhận group base.
+- **`get_effective_mode` auto-reset expired** (xem [models.md](models.md) `AgentPolicyModel.get_effective_mode`): side effect ẩn. Caller (`apply_policy_to_sync` line 164) gọi qua method này nên consistent - agent đang isolated mà expired → tự reset về none → agent sync nhận group base.
 
 ### Audit
-- **Auto-detect IP qua `flask.request.remote_addr`** (audit_service.py:42-45) — nếu gọi service ngoài request context (vd background job) sẽ raise RuntimeError, catch, ip="unknown".
+- **Auto-detect IP qua `flask.request.remote_addr`** (audit_service.py:42-45) - nếu gọi service ngoài request context (vd background job) sẽ raise RuntimeError, catch, ip="unknown".
 - **Never raise** (line 67-69): nếu Mongo audit collection down, business logic vẫn pass. Lost audit. Trade-off.

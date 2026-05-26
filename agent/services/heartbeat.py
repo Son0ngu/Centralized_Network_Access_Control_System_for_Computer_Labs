@@ -8,6 +8,7 @@ import requests
 
 from shared.time_utils import now, now_iso, sleep
 from shared.os_info import get_os_details
+from shared.server_urls import collect_server_urls
 from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("services.heartbeat")
@@ -44,17 +45,8 @@ class HeartbeatSender:
         self.get_whitelist_versions = None  # Set by caller: fn() -> dict
     
     def _get_server_urls(self) -> list:
-        urls = []
-        
-        if isinstance(self.server_config.get("urls"), list):
-            urls.extend(self.server_config["urls"])
-        
-        if self.server_config.get("url"):
-            main_url = self.server_config["url"]
-            if main_url not in urls:
-                urls.append(main_url)
-        
-        return urls or ["http://localhost:5000"]
+        """Use the shared resolver — empty list means offline (no fallback to localhost)."""
+        return collect_server_urls(self.config, allow_dev_default=False)
     
     def set_agent_credentials(self, agent_id: str, token: str) -> None:
         self.agent_id = agent_id
@@ -117,6 +109,11 @@ class HeartbeatSender:
                 sleep(self.retry_interval)
     
     def _send_heartbeat(self) -> bool:
+        # Offline mode: no server URL configured. Skip silently — counting
+        # this as a failure would spam max_failures and drown the logs.
+        if not self.server_urls:
+            return True
+
         metrics = self._collect_metrics()
         os_details = get_os_details()
         

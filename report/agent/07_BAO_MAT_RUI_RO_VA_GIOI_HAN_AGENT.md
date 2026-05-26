@@ -23,6 +23,7 @@
 
 - `create_self_allow_rules()` allow chương trình Agent.
 - `_resolve_server_urls()` resolve và allow Server URL trước khi bật policy.
+- `shared/server_urls.py::collect_server_urls(config, allow_dev_default=False)` là resolver URL Server chung; khi chưa cấu hình Server, Agent ở first-run offline mode thay vì tự fallback về `http://localhost:5000`.
 - `PolicyManager.backup_current_policy()` và restore policy.
 - `RulesManager.clear_all_rules()` dọn rule theo prefix.
 - Settings view có thao tác restore/clear rule thủ công.

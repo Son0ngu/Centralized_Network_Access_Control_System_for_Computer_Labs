@@ -14,7 +14,7 @@ class AgentStatus(Enum):
     STARTING = auto()
     RUNNING = auto()
     # Agent is running but some non-critical components failed to come up
-    # (e.g. log_sender / heartbeat / whitelist_sync — usually offline mode).
+    # (e.g. log_sender / heartbeat / whitelist_sync - usually offline mode).
     DEGRADED = auto()
     STOPPING = auto()
     ERROR = auto()
@@ -74,31 +74,23 @@ class AgentSignals:
     # (under one display frame at 60Hz = ~16ms; 50ms is the snappy threshold
     # the human eye still perceives as "immediate"). The previous 500ms made
     # the UI jank as events piled up then released in bursts.
+    #
+    # These constants remain on AgentSignals so QtSignalBridge can mirror the
+    # same values when it sets up its QTimer. Don't change one without the
+    # other.
     DRAIN_INTERVAL_MS = 50
     # Soft cap so a flood of events (e.g. packet bursts) can't block the GUI
     # thread by draining the entire queue in one shot. Remaining events get
     # processed on the next tick.
     MAX_EVENTS_PER_TICK = 100
 
-    def process_events(self, root) -> None:
-        try:
-            processed = 0
-            while processed < self.MAX_EVENTS_PER_TICK:
-                try:
-                    event = self._event_queue.get_nowait()
-                except queue.Empty:
-                    break
-                self._dispatch_event(event)
-                processed += 1
-        except Exception as e:
-            logger.error(f"Error processing events: {e}")
+    # process_events(root) and the Tk-style ``root.after(...)`` reschedule
+    # used to live here. They are gone. The Qt frontend drains the queue
+    # via ``agent.gui_qt.signal_bridge.QtSignalBridge`` (QTimer-backed); no
+    # other consumer existed. If a non-Qt frontend ever needs to drain
+    # events, build it on top of ``_event_queue.get`` directly rather than
+    # reviving the Tk path.
 
-        # Reschedule. If we hit the per-tick cap, drain again on the next
-        # idle slot instead of waiting the full interval.
-        if root and root.winfo_exists():
-            delay = 0 if processed >= self.MAX_EVENTS_PER_TICK else self.DRAIN_INTERVAL_MS
-            root.after(delay, lambda: self.process_events(root))
-    
     def _dispatch_event(self, event: AgentEvent):
         """Dispatch event to registered callbacks."""
         with self._lock:
@@ -121,24 +113,65 @@ class AgentSignals:
 
 
 class AgentController:
+    """Controller wrapping the agent worker thread + Qt-facing signals.
+
+    Singleton via ``__new__`` because the GUI, lifecycle, and several
+    standalone scripts all assume "the controller" rather than passing one
+    around. That contract is fine for production but hostile to tests —
+    use :meth:`reset_for_test` between test cases when isolation matters.
+    Long-term migration is towards constructor injection (an ``AgentRuntime``
+    instance the GUI receives), but that's a much bigger surgery.
+    """
 
     _instance: Optional['AgentController'] = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
+
+    @classmethod
+    def reset_for_test(cls) -> None:
+        """Drop the singleton so the next constructor returns a fresh one.
+
+        Production code never calls this. Tests use it instead of monkey-
+        patching ``_instance`` and ``_initialized`` from outside. Pair with
+        :meth:`DeviceIdentityProvider.reset` if the test also mocked device
+        identity.
+        """
+        if cls._instance is not None:
+            try:
+                cls._instance.stop_agent()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        cls._instance = None
     
-    def __init__(self):
+    def __init__(self, runtime=None):
+        # ``runtime`` is an optional injected :class:`agent.core.AgentRuntime`.
+        # Production code instantiates ``AgentController()`` with no args and
+        # picks up the singleton via lazy import (avoids circular import at
+        # module-load time). Tests can pass a fresh runtime via
+        # ``make_runtime()`` to avoid touching the process singleton.
         if self._initialized:
+            # Honour late-bound runtime if the singleton was already
+            # initialised once but a test re-uses it with an injected one.
+            if runtime is not None:
+                self._runtime = runtime
             return
-        
+
         self._initialized = True
-        
+
+        # Resolve the agent runtime. Lazy import keeps controllers loadable
+        # in headless contexts where agent.core isn't fully wired yet.
+        if runtime is None:
+            from core.agent import get_agent
+            runtime = get_agent()
+        self._runtime = runtime
+
         # Signals for GUI communication
         self.signals = AgentSignals()
-        
+
         # Agent state
         self._status = AgentStatus.STOPPED
         self._agent = None
@@ -162,8 +195,9 @@ class AgentController:
         # worker the user has already started. Bumped on every start_agent().
         self._worker_id = 0
 
-        self._root = None  # Legacy Tk-compatible root for after()
-        
+        # Tk legacy field removed. Qt callers wire QtSignalBridge against
+        # ``self.signals`` directly; no per-instance "root" handle to track.
+
         logger.info("AgentController initialized")
     
     @property
@@ -172,7 +206,7 @@ class AgentController:
     
     @property
     def is_running(self) -> bool:
-        # DEGRADED still counts as "running" — the agent is alive, just with
+        # DEGRADED still counts as "running" - the agent is alive, just with
         # some optional components disabled. Callers that want strict OK status
         # should compare to AgentStatus.RUNNING directly.
         return self._status in (AgentStatus.RUNNING, AgentStatus.DEGRADED)
@@ -181,12 +215,12 @@ class AgentController:
     def stats(self) -> Dict:
         return self._stats.copy()
     
-    def set_root(self, root) -> None:
-        """Set a Tk-compatible root and start event processing."""
-        self._root = root
-        # Start processing events in GUI thread
-        self.signals.process_events(root)
-    
+    # ``set_root(root)`` removed. Qt frontends construct
+    # ``QtSignalBridge(self.signals)`` instead; the previous Tk hook had no
+    # remaining callers. Don't reintroduce: a controller that knows about a
+    # specific UI toolkit is the exact entanglement this refactor was
+    # designed to remove.
+
     def start_agent(self) -> bool:
         """
         Start agent in background thread.
@@ -199,12 +233,12 @@ class AgentController:
         # Reject Start while a previous Stop is still tearing down. Two
         # workers sharing the `Agent` singleton would race on firewall /
         # whitelist state and the old worker's `finally` block would later
-        # overwrite our RUNNING status with STOPPED — looking to the user
+        # overwrite our RUNNING status with STOPPED - looking to the user
         # like "Start doesn't work".
         if self._status == AgentStatus.STOPPING:
-            logger.warning("Agent is still stopping — wait for cleanup to finish")
+            logger.warning("Agent is still stopping - wait for cleanup to finish")
             self.signals.emit('error_occurred', {
-                'error': 'Agent is stopping — wait a few seconds before clicking Start again',
+                'error': 'Agent is stopping - wait a few seconds before clicking Start again',
                 'message': 'Previous session is still cleaning up',
             })
             return False
@@ -268,7 +302,7 @@ class AgentController:
     
     def _agent_worker(self, worker_id: int = 0):
         """Run the agent. `worker_id` is the generation counter recorded at
-        spawn time — used to detect when a newer worker has superseded us
+        spawn time - used to detect when a newer worker has superseded us
         (so our `finally` block doesn't clobber the new worker's status)."""
 
         def is_current() -> bool:
@@ -276,15 +310,18 @@ class AgentController:
 
         try:
             logger.info(f"Agent worker #{worker_id} starting...")
-            
+
             # Import agent components
             from config import reload_config
-            from core import get_agent, initialize_components, cleanup
+            from core import initialize_components, cleanup
             from shared.time_utils import sleep, uptime_string
             from utils import check_admin_privileges
-            
-            # Get agent instance
-            self._agent = get_agent()
+
+            # Use the runtime that was injected (or auto-resolved) at
+            # construction time. We no longer reach for ``get_agent()``
+            # here — the controller already holds a reference; preserving
+            # that referential identity is what makes DI-style tests work.
+            self._agent = self._runtime
             
             # Load configuration
             logger.info("Reloading configuration from disk...")
@@ -302,16 +339,19 @@ class AgentController:
             self._config["firewall"]["mode"] = "whitelist_only"
             self._config["firewall"]["enabled"] = bool(admin_status)
             if admin_status:
-                logger.info("Admin privileges detected — firewall enforcement enabled")
+                logger.info("Admin privileges detected - firewall enforcement enabled")
             else:
                 logger.warning(
-                    "No admin privileges — firewall enforcement disabled. "
+                    "No admin privileges - firewall enforcement disabled. "
                     "Relaunch SAINT as administrator to apply rules."
                 )
             
             # Initialize components
             logger.info("Initializing components...")
-            init_result = initialize_components(self._config)
+            # Pass the controller's runtime down explicitly so a test
+            # using ``AgentController(runtime=my_runtime)`` doesn't have
+            # its component handles attached to the singleton.
+            init_result = initialize_components(self._config, runtime=self._runtime)
             if init_result.has_failure():
                 failed = [c.name for c in init_result.components if c.status == 'failed']
                 raise RuntimeError(
@@ -347,7 +387,7 @@ class AgentController:
                 self.signals.emit('status_changed', {
                     'status': 'degraded',
                     'message': (
-                        f"Agent running in degraded mode — {len(issues)} component(s) "
+                        f"Agent running in degraded mode - {len(issues)} component(s) "
                         "failed to initialize. Check Server configuration."
                     ),
                     'issues': issues,
@@ -379,7 +419,7 @@ class AgentController:
                 # Update stats every second
                 self._update_stats()
 
-                # Emit each tick — but only if values actually changed, so the
+                # Emit each tick - but only if values actually changed, so the
                 # GUI thread doesn't relayout 8 cards when nothing moved.
                 with self._stats_lock:
                     stats_snapshot = self._stats.copy()
@@ -415,22 +455,22 @@ class AgentController:
                 })
 
         finally:
-            # Cleanup runs unconditionally — we always want to release this
+            # Cleanup runs unconditionally - we always want to release this
             # worker's firewall rules / sockets even if a newer worker has
             # already taken over the controller status. (The two workers
             # share the Agent singleton, so this could clobber state owned
             # by the newer worker; the start_agent() join above is the
-            # primary defence — this is just a belt-and-braces release.)
+            # primary defence - this is just a belt-and-braces release.)
             try:
                 from core import cleanup
-                cleanup(self._config)
+                cleanup(self._config, runtime=self._runtime)
             except Exception as e:
                 logger.error(f"Cleanup error in worker #{worker_id}: {e}")
 
             # Only the *current* worker is allowed to publish STOPPED.
             # Without this guard, a slow cleanup from an old worker would
             # overwrite the RUNNING status of the new worker the user just
-            # started — looking like "Start doesn't work".
+            # started - looking like "Start doesn't work".
             if is_current():
                 self._status = AgentStatus.STOPPED
                 self.signals.emit('status_changed', {

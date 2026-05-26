@@ -286,6 +286,45 @@ class WhitelistModel:
         except Exception as e:
             self.logger.error(f"Error finding entry by value: {e}")
             return None
+
+    def reactivate_entry(self, entry_id: str) -> Optional[Dict]:
+        """Re-activate an inactive entry and return the updated document."""
+        try:
+            result = self.collection.update_one(
+                {"_id": ObjectId(entry_id)},
+                {"$set": {"is_active": True, "updated_at": now_vietnam()}},
+            )
+            if result.modified_count > 0:
+                self.bump_global_version()
+            return self.find_entry_by_id(entry_id)
+        except Exception as e:
+            self.logger.error(f"Error reactivating entry {entry_id}: {e}")
+            return None
+
+    def find_raw_entries(self, query: Dict, projection: Dict = None,
+                         sort_field: str = None, sort_order: int = DESCENDING) -> List[Dict]:
+        """Return raw whitelist documents for service-level sync logic."""
+        try:
+            cursor = self.collection.find(query or {}, projection)
+            if sort_field:
+                cursor = cursor.sort(sort_field, sort_order)
+            return list(cursor)
+        except Exception as e:
+            self.logger.error(f"Error finding raw whitelist entries: {e}")
+            return []
+
+    def find_entry_access_info(self, entry_id: str) -> Optional[Dict]:
+        """Return minimal scope/group data for RBAC checks."""
+        try:
+            entry = self.collection.find_one(
+                {"_id": ObjectId(entry_id)},
+                {"group_id": 1, "scope": 1},
+            )
+            if entry and entry.get("_id"):
+                entry["_id"] = str(entry["_id"])
+            return entry
+        except Exception:
+            return None
     
     def cleanup_expired_entries(self) -> int:
         """Remove expired entries - vietnam ONLY"""

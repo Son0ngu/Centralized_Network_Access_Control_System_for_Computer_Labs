@@ -1,7 +1,7 @@
 """Reusable Qt table = model + view.
 
 Replaces the CTk `DataTable` (which manually created `CTkFrame`+`CTkLabel` per
-cell and choked on hundreds of rows). `QTableView` is virtualized natively —
+cell and choked on hundreds of rows). `QTableView` is virtualized natively -
 only the rows currently scrolled into view are painted, so a 10,000-row table
 renders in tens of milliseconds.
 
@@ -54,7 +54,7 @@ class DictTableModel(QAbstractTableModel):
     # -----------------------------------------------------------------------
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        # `parent.isValid()` filters out child rows (we don't have any —
+        # `parent.isValid()` filters out child rows (we don't have any -
         # this is a flat table, not a tree).
         return 0 if parent.isValid() else len(self._rows)
 
@@ -166,7 +166,7 @@ class DataTable(QWidget):
         # column auto-stretches to fill remaining table width. That keeps
         # narrow-content columns (IP, type, status) at a sensible size and
         # lets the wide-content tail column (rule name, source) absorb the
-        # extra space — matches typical data-table conventions and avoids
+        # extra space - matches typical data-table conventions and avoids
         # the bug where setting one column to Stretch made it eat the entire
         # available width regardless of how short its content was.
         header.setStretchLastSection(True)

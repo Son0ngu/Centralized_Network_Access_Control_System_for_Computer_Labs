@@ -4,9 +4,12 @@ Whitelist Service - Business logic for whitelist operations
 """
 
 import logging
+import warnings
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+
 from bson import ObjectId
+
 from models.whitelist_model import WhitelistModel
 
 # Import time utilities - vietnam ONLY
@@ -17,7 +20,51 @@ from time_utils import (
     to_vietnam,
 )
 
+# Pseudo-ID format for embedded group entries is centralised so we have one
+# place to swap when the unified ``whitelist_entries`` collection lands.
+from services.whitelist_entry_id import (
+    GroupEntryRef,
+    is_group_pseudo_id,
+    make_group_pseudo_id,
+    parse_group_pseudo_id,
+)
+
 logger = logging.getLogger(__name__)
+
+
+def _apply_entry_update(entry: Dict, update_data: Dict) -> None:
+    """Mutate an embedded whitelist entry in place with ``update_data``.
+
+    Centralised so both pseudo-ID and ObjectId update paths apply the same
+    field-coercion rules. ``is_active`` is coerced to a real bool because
+    JSON deserialisation has historically delivered strings here.
+    """
+    for k, v in update_data.items():
+        if k in ("updated_at",):
+            continue
+        if k == "is_active":
+            entry[k] = bool(v)
+        else:
+            entry[k] = v
+
+
+def _warn_legacy_domain_api(method_name: str) -> None:
+    """Emit a single DeprecationWarning when a legacy domain API is called.
+
+    The five ``*_domain[s]`` methods predate the unified entry API
+    (``add_entry``/``delete_entry``/``bulk_*``). They still ship because
+    older callers (some CLI scripts, integration tests) import them by
+    name, but new code MUST use the entry API — the next phase removes
+    these methods and replaces them with a thin compat shim, then drops
+    that shim too.
+    """
+    warnings.warn(
+        f"WhitelistService.{method_name}() is deprecated — use the entry API "
+        f"(add_entry / delete_entry / bulk_*). This wrapper will be removed "
+        f"after the unified whitelist_entries migration lands.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 class WhitelistService:
     """Service class for whitelist business logic - vietnam ONLY"""
@@ -32,8 +79,49 @@ class WhitelistService:
         self.policy_service = policy_service
         self.profile_service = profile_service
         self.logger = logging.getLogger(self.__class__.__name__)
-        
-        self.logger.info("WhitelistService initialized with vietnam timezone support")
+
+    def validate_teacher_entry_access(self, item_id: str, teacher_group_ids: List[str],
+                                      action: str) -> tuple:
+        """Validate teacher access to a global/group whitelist entry.
+
+        Returns (allowed, error_message). Missing/malformed entries are left to
+        the operation itself so existing 404/validation behavior is preserved.
+        """
+        teacher_groups = {str(group_id) for group_id in (teacher_group_ids or [])}
+        action = action or "edit"
+
+        # Pseudo-ID path: ``group::<group_id>::<type>::<value>``. The parsing
+        # used to be inline here (and in four other places). Now we go
+        # through whitelist_entry_id so the format has one owner.
+        ref = parse_group_pseudo_id(item_id)
+        if ref is not None:
+            if str(ref.group_id) not in teacher_groups:
+                return False, f"No permission to {action} this entry"
+            return True, None
+
+        entry = self.model.find_entry_access_info(item_id)
+        if not entry:
+            try:
+                group = self.group_model.find_group_with_embedded_entry(ObjectId(item_id))
+            except Exception:
+                return True, None
+
+            if not group:
+                return True, None
+            if str(group.get("_id")) not in teacher_groups:
+                return False, f"No permission to {action} this entry"
+            return True, None
+
+        if entry.get("scope") == "global" and not entry.get("group_id"):
+            if action == "delete":
+                return False, "Teachers cannot delete from global whitelist"
+            return False, "Teachers cannot edit global whitelist"
+
+        entry_group = entry.get("group_id")
+        if entry_group and str(entry_group) not in teacher_groups:
+            return False, f"No permission to {action} this entry"
+
+        return True, None
     
     def get_all_entries(self, filters: Dict = None) -> Dict:
         """Get all whitelist entries with optional filtering - vietnam ONLY"""
@@ -106,12 +194,7 @@ class WhitelistService:
                 raise ValueError("Entry already exists in global whitelist")
             else:
                 # Re-activate the existing inactive entry instead of creating duplicate
-                self.model.collection.update_one(
-                    {"_id": ObjectId(existing["_id"])},
-                    {"$set": {"is_active": True, "updated_at": now_vietnam()}}
-                )
-                self.model.bump_global_version()
-                return self.model.find_entry_by_id(existing["_id"])
+                return self.model.reactivate_entry(existing["_id"])
         
         # Use vietnam time for timestamps
         current_time = now_vietnam()
@@ -119,7 +202,7 @@ class WhitelistService:
         
         # Create processed entry.
         # Frontend may send the categorical label as either `category` or
-        # `description` (legacy form field) — accept both.
+        # `description` (legacy form field) - accept both.
         category_value = (
             entry_data.get("category")
             or entry_data.get("description")
@@ -311,7 +394,7 @@ class WhitelistService:
             
             # Get ALL currently active domains
             all_active_query = {"is_active": True}
-            all_active_entries = list(self.model.collection.find(all_active_query))
+            all_active_entries = self.model.find_raw_entries(all_active_query)
             changes["active_domains"] = [entry.get("value") for entry in all_active_entries]
             
             #  ADD: Debug logging
@@ -323,7 +406,7 @@ class WhitelistService:
                 "is_active": True,
                 "added_date": {"$gte": since_dt}
             }
-            added_entries = list(self.model.collection.find(added_query))
+            added_entries = self.model.find_raw_entries(added_query)
             
             #  ADD: Debug logging
             self.logger.debug(f"Newly added since {since_dt}: {len(added_entries)}")
@@ -343,7 +426,7 @@ class WhitelistService:
                 "is_active": False,
                 "updated_at": {"$gte": since_dt}
             }
-            deactivated_entries = list(self.model.collection.find(deactivated_query))
+            deactivated_entries = self.model.find_raw_entries(deactivated_query)
             
             #  ADD: Debug logging
             self.logger.debug(f"Deactivated since {since_dt}: {len(deactivated_entries)}")
@@ -388,24 +471,35 @@ class WhitelistService:
                 priority = entry.get("priority", "normal")
                 category = entry.get("category", "uncategorized")
                 is_active = entry.get("is_active", True)
+                # The migration script
+                # ``2026_backfill_group_whitelist_entry_ids.py`` stamps each
+                # embedded entry with a real ObjectId. Prefer it when
+                # present so the frontend sees a stable identifier across
+                # rename/value changes; fall back to the pseudo-ID for
+                # entries that pre-date the migration.
+                real_oid = entry.get("_id")
             else:
                 value = entry
                 entry_type = "domain"
                 priority = "normal"
                 category = "uncategorized"
                 is_active = True
+                real_oid = None
 
             if not include_inactive and not is_active:
                 continue
 
-            # Create a pseudo-ID for group items so they can be selected/manipulated on frontend
-            # format: group::<group_id>::<type>::<value>
-            # Using :: as separator to avoid conflicts with | in URLs
-            pseudo_id = f"group::{group_id}::{entry_type}::{value}"
+            # Frontend identifier. Real ObjectId wins; pseudo-ID is the
+            # backwards-compat path for un-migrated rows. Format details
+            # live in services.whitelist_entry_id.
+            if real_oid is not None:
+                entry_id = str(real_oid)
+            else:
+                entry_id = make_group_pseudo_id(group_id, entry_type, value)
 
             entries.append({
-                "_id": pseudo_id,
-                "id": pseudo_id,
+                "_id": entry_id,
+                "id": entry_id,
                 "value": value,
                 "type": entry_type,
                 "priority": priority,
@@ -608,9 +702,23 @@ class WhitelistService:
             }
     
     def delete_entry(self, entry_id: str) -> bool:
-        """Delete an entry from global or group scope"""
-        
-        # Try finding in global whitelist first
+        """Delete an entry from global or group scope by id.
+
+        Resolution order:
+          1. ``db.whitelist`` collection — global rows AND scope-tagged
+             group rows that live in the collection (with real ObjectIds).
+          2. Embedded ``groups.whitelist[]`` rows that carry a real
+             ``_id`` (post-migration, or new via ``bulk_add_entries``).
+             We probe by ObjectId via ``find_group_with_embedded_entry``.
+          3. Pseudo-ID path (``group::<gid>::<type>::<value>``) — handled
+             by callers BEFORE reaching this method; see
+             :meth:`bulk_delete_entries` and the controller. We don't
+             accept pseudo-IDs here so the contract stays "real id only".
+
+        Raises ``ValueError("Entry not found")`` if neither lookup hits —
+        controllers translate that to a 404.
+        """
+        # 1) Global collection row.
         entry = self.model.find_entry_by_id(entry_id)
         if entry:
             success = self.model.delete_entry(entry_id)
@@ -622,16 +730,25 @@ class WhitelistService:
                     "timestamp": now_iso()
                 })
             return success
-        
-        # If not, it might be inside a group document?
-        # But wait, group entries don't have unique IDs in whitelist list usually unless we assign them.
-        # Front end sends IDs for deletion?
-        # The frontend code sends `itemId` which for groups is usually missing in current impl unless normalized.
-        
-        # If the ID fails, we can't delete it easily here.
-        # The controller needs to handle group item deletion separately or we need to search groups.
-        # But this method signature takes an ID string.
-        
+
+        # 2) Embedded row by real ObjectId. Only attempt if the id is a
+        # valid ObjectId hex string — otherwise it's clearly something
+        # else (e.g. a UUID or a malformed string).
+        try:
+            oid = ObjectId(entry_id)
+        except Exception:
+            raise ValueError("Entry not found")
+
+        success = self._delete_group_entry_by_oid(oid)
+        if success:
+            if self.socketio:
+                self.socketio.emit("whitelist_deleted", {
+                    "id": entry_id,
+                    "scope": "group",
+                    "timestamp": now_iso(),
+                })
+            return True
+
         raise ValueError("Entry not found")
 
     def bulk_delete_entries(self, item_ids: List[str]) -> Dict:
@@ -644,20 +761,17 @@ class WhitelistService:
         
         for item_id in item_ids:
             try:
-                if item_id.startswith("group::") or item_id.startswith("group|"):
-                    # Parse group item ID: group::<group_id>::<type>::<value>
-                    # Also support legacy separator | for backwards compat
-                    sep = "::" if "::" in item_id else "|"
-                    parts = item_id.split(sep, 3)
-                    if len(parts) == 4:
-                        _, gid, gtype, gvalue = parts
-                        if gid not in group_deletes:
-                            group_deletes[gid] = []
-                        group_deletes[gid].append((gvalue, gtype))
-                    else:
-                        errors.append(f"Invalid group item ID: {item_id}")
+                ref = parse_group_pseudo_id(item_id)
+                if ref is not None:
+                    group_deletes.setdefault(ref.group_id, []).append(
+                        (ref.value, ref.entry_type)
+                    )
+                elif is_group_pseudo_id(item_id):
+                    # Prefix matched but parse failed → malformed pseudo-ID.
+                    errors.append(f"Invalid group item ID: {item_id}")
                 else:
-                    # Global item
+                    # Global collection entry, or new-style real ObjectId
+                    # for migrated embedded entries.
                     if self.delete_entry(item_id):
                         deleted_count += 1
                     else:
@@ -748,8 +862,12 @@ class WhitelistService:
                         errors.append(f"Entry {i+1}: Duplicate value in batch (global)")
                         continue
                 
-                # Process entry
+                # Process entry. Stamp a real ObjectId so the embedded
+                # group whitelist entry has a stable, server-canonical id
+                # — frontend can reference it as ``_id`` without falling
+                # back to the legacy pseudo-ID format.
                 processed_entry = {
+                    "_id": ObjectId(),
                     "type": entry_type,
                     "value": value,
                     "category": entry_data.get("category", "uncategorized"),
@@ -795,7 +913,12 @@ class WhitelistService:
                 # Filter out duplicates
                 new_unique = []
                 for ne in entries:
-                    if not any(curr.get("value") == ne["value"] and curr.get("type") == ne["type"] for curr in current_whitelist):
+                    def _matches_current(curr):
+                        curr_value = curr.get("value") if isinstance(curr, dict) else str(curr)
+                        curr_type = curr.get("type", "domain") if isinstance(curr, dict) else "domain"
+                        return curr_value == ne["value"] and curr_type == ne["type"]
+
+                    if not any(_matches_current(curr) for curr in current_whitelist):
                         new_unique.append(ne)
                     else:
                         errors.append(f"Entry {ne['value']} already exists in group {group.get('name')}")
@@ -847,10 +970,13 @@ class WhitelistService:
             }
     
     def update_entry(self, entry_id: str, update_data: Dict) -> bool:
-        """Update an entry - supports both global ObjectIds and group pseudo-IDs"""
+        """Update an entry — supports global ObjectIds AND group pseudo-IDs.
 
-        # Check if this is a group pseudo-ID (group::<gid>::<type>::<value>)
-        if entry_id.startswith("group::") or entry_id.startswith("group|"):
+        Pseudo-ID format is owned by ``services.whitelist_entry_id``; keep
+        the prefix check there so a future "drop pseudo-IDs entirely"
+        migration is a one-line change.
+        """
+        if is_group_pseudo_id(entry_id):
             return self._update_group_entry(entry_id, update_data)
 
         entry = self.model.find_entry_by_id(entry_id)
@@ -883,19 +1009,45 @@ class WhitelistService:
 
         return success
 
-    def _update_group_entry(self, pseudo_id: str, update_data: Dict) -> bool:
-        """Update a group whitelist entry identified by pseudo-ID.
+    def _update_group_entry(self, entry_id: str, update_data: Dict) -> bool:
+        """Update a group whitelist entry by pseudo-ID OR real ObjectId.
 
-        Supports toggling `is_active` (used to soft-disable entries without
-        removing them). Legacy string entries are upgraded to dict so the
-        toggle persists.
+        Two identifier shapes are accepted because we're in the middle of
+        migrating embedded entries from pseudo-IDs (synthesised on every
+        list) to real ObjectIds (stamped at insert time):
+
+          - Pseudo-ID ``group::<gid>::<type>::<value>`` — legacy rows that
+            haven't been touched by the backfill script, or callers built
+            against the old contract. Resolved via ``parse_group_pseudo_id``.
+          - Real ObjectId hex string — new rows that went through
+            ``bulk_add_entries`` (which stamps ``_id``) or that were touched
+            by the backfill migration. We scan every group's embedded
+            whitelist for a matching ``_id``.
+
+        Returns True if exactly one matching entry was updated. Legacy
+        string entries (bare-value strings, predate the dict schema) are
+        upgraded to dict so the update can persist.
         """
-        sep = "::" if "::" in pseudo_id else "|"
-        parts = pseudo_id.split(sep, 3)
-        if len(parts) != 4:
-            raise ValueError(f"Invalid group entry ID: {pseudo_id}")
+        ref = parse_group_pseudo_id(entry_id)
+        if ref is not None:
+            return self._update_group_entry_by_match(
+                ref.group_id, value=ref.value, entry_type=ref.entry_type,
+                update_data=update_data,
+            )
+        if is_group_pseudo_id(entry_id):
+            raise ValueError(f"Invalid group entry ID: {entry_id}")
 
-        _, gid, gtype, gvalue = parts
+        # Real ObjectId path. We don't know which group the entry lives in,
+        # so we scan groups that have a non-empty whitelist. This is O(N
+        # groups) but acceptable: edit traffic is admin-only and rare.
+        try:
+            oid = ObjectId(entry_id)
+        except Exception:
+            raise ValueError(f"Invalid entry id: {entry_id}")
+        return self._update_group_entry_by_oid(oid, update_data)
+
+    def _update_group_entry_by_match(self, gid: str, *, value: str,
+                                     entry_type: str, update_data: Dict) -> bool:
         group = self.group_model.find_by_id(gid)
         if not group:
             raise ValueError(f"Group {gid} not found")
@@ -905,26 +1057,15 @@ class WhitelistService:
         for i, entry in enumerate(whitelist):
             e_val = entry.get("value") if isinstance(entry, dict) else entry
             e_type = entry.get("type", "domain") if isinstance(entry, dict) else "domain"
-            if e_val == gvalue and e_type == gtype:
-                # Upgrade legacy string entry to dict so updates can persist.
+            if e_val == value and e_type == entry_type:
                 if not isinstance(entry, dict):
                     entry = {
-                        "value": e_val,
-                        "type": e_type,
-                        "category": "uncategorized",
-                        "priority": "normal",
+                        "value": e_val, "type": e_type,
+                        "category": "uncategorized", "priority": "normal",
                         "is_active": True,
                     }
                     whitelist[i] = entry
-
-                for k, v in update_data.items():
-                    if k in ("updated_at",):
-                        continue
-                    # Coerce is_active to bool to avoid string "false" being truthy.
-                    if k == "is_active":
-                        entry[k] = bool(v)
-                    else:
-                        entry[k] = v
+                _apply_entry_update(entry, update_data)
                 updated = True
                 break
 
@@ -932,8 +1073,29 @@ class WhitelistService:
             self.group_model.update_group(gid, {"whitelist": whitelist})
         return updated
 
+    def _update_group_entry_by_oid(self, oid: ObjectId, update_data: Dict) -> bool:
+        # We use the group_model's repo method to find the group that owns
+        # this embedded entry. ``find_group_with_embedded_entry`` is a thin
+        # query that filters on ``whitelist._id`` — the dotted-path Mongo
+        # query mongodb supports natively for arrays of subdocuments.
+        group = self.group_model.find_group_with_embedded_entry(oid)
+        if not group:
+            return False
+        whitelist = group.get("whitelist", [])
+        for entry in whitelist:
+            if isinstance(entry, dict) and entry.get("_id") == oid:
+                _apply_entry_update(entry, update_data)
+                self.group_model.update_group(str(group["_id"]),
+                                              {"whitelist": whitelist})
+                return True
+        return False
+
     def _delete_group_entry(self, group_id: str, value: str, entry_type: str = "domain") -> bool:
-        """Delete an entry from a group's whitelist by value and type."""
+        """Delete an entry from a group's whitelist by (value, type).
+
+        Used by the pseudo-ID delete path. Real-ObjectId deletes go through
+        :meth:`_delete_group_entry_by_oid` instead.
+        """
         group = self.group_model.find_by_id(group_id)
         if not group:
             return False
@@ -953,10 +1115,36 @@ class WhitelistService:
             return True
         return False
 
+    def _delete_group_entry_by_oid(self, oid: ObjectId) -> bool:
+        """Delete an embedded whitelist entry by its real ObjectId.
+
+        Companion to :meth:`_delete_group_entry`; called when the caller
+        passes a real ``_id`` (from the new canonical id contract) rather
+        than the legacy pseudo-ID. Returns True on success, False if no
+        group owns that id (treated as 404 by the controller).
+        """
+        group = self.group_model.find_group_with_embedded_entry(oid)
+        if not group:
+            return False
+        whitelist = group.get("whitelist", [])
+        original_len = len(whitelist)
+        whitelist = [e for e in whitelist
+                     if not (isinstance(e, dict) and e.get("_id") == oid)]
+        if len(whitelist) < original_len:
+            self.group_model.update_group(str(group["_id"]),
+                                          {"whitelist": whitelist})
+            return True
+        return False
+
     # sync_for_agent removed - dead code, replaced by get_agent_sync_data()
 
     def get_all_domains(self, limit: int = 100, offset: int = 0, search: str = None) -> Dict:
-        """Get all domains with pagination - vietnam ONLY"""
+        """Get all domains with pagination — vietnam ONLY.
+
+        Deprecated: prefer :meth:`list_entries` which honours scope/group/type
+        filters and returns the unified entry shape.
+        """
+        _warn_legacy_domain_api("get_all_domains")
         try:
             # Build query
             query = {}
@@ -993,7 +1181,12 @@ class WhitelistService:
             }
     
     def add_domain(self, domain_value: str, category: str = "general") -> Dict:
-        """Add new domain to whitelist - vietnam ONLY"""
+        """Add new domain to whitelist — vietnam ONLY.
+
+        Deprecated: prefer :meth:`add_entry` which handles scope/group_id and
+        all entry types (domain, ip, ip_range) through one path.
+        """
+        _warn_legacy_domain_api("add_domain")
         try:
             # Check if domain already exists
             existing = self.model.find_entry_by_value(domain_value)
@@ -1044,36 +1237,52 @@ class WhitelistService:
             }
     
     def delete_domain(self, domain_id: str) -> Dict:
-        """Delete domain from whitelist - supports both global entries and group pseudo-IDs"""
-        try:
-            # Handle group pseudo-IDs: group::<gid>::<type>::<value>
-            if domain_id.startswith("group::") or domain_id.startswith("group|"):
-                sep = "::" if "::" in domain_id else "|"
-                parts = domain_id.split(sep, 3)
-                if len(parts) == 4:
-                    _, gid, gtype, gvalue = parts
-                    result = self._delete_group_entry(gid, gvalue, gtype)
-                    if result:
-                        return {"success": True, "domain_id": domain_id, "domain_value": gvalue, "server_time": now_iso()}
-                    return {"success": False, "error": "Entry not found in group", "server_time": now_iso()}
-                return {"success": False, "error": "Invalid group pseudo-ID format", "server_time": now_iso()}
+        """Delete domain from whitelist — supports global entries AND group pseudo-IDs.
 
-            # Global entry: check if domain exists
+        Deprecated: prefer :meth:`delete_entry` / :meth:`bulk_delete_entries`.
+        """
+        _warn_legacy_domain_api("delete_domain")
+        try:
+            ref = parse_group_pseudo_id(domain_id)
+            if ref is not None:
+                if self._delete_group_entry(ref.group_id, ref.value, ref.entry_type):
+                    return {
+                        "success": True,
+                        "domain_id": domain_id,
+                        "domain_value": ref.value,
+                        "server_time": now_iso(),
+                    }
+                return {
+                    "success": False,
+                    "error": "Entry not found in group",
+                    "server_time": now_iso(),
+                }
+            if is_group_pseudo_id(domain_id):
+                # Prefix matched but parsing failed → bad ID shape.
+                return {
+                    "success": False,
+                    "error": "Invalid group pseudo-ID format",
+                    "server_time": now_iso(),
+                }
+
+            # Global entry or real embedded ObjectId. Route through the
+            # canonical unified delete path so legacy callers are not stuck
+            # on pseudo-IDs during the rollout.
             existing = self.model.find_entry_by_id(domain_id)
-            if not existing:
+            try:
+                success = self.delete_entry(domain_id)
+            except ValueError:
                 return {
                     "success": False,
                     "error": "Domain not found",
                     "server_time": now_iso()
                 }
 
-            success = self.model.delete_entry(domain_id)
-
             if success:
                 return {
                     "success": True,
                     "domain_id": domain_id,
-                    "domain_value": existing.get("value"),
+                    "domain_value": existing.get("value") if existing else None,
                     "server_time": now_iso()
                 }
             else:
@@ -1092,7 +1301,12 @@ class WhitelistService:
             }
     
     def import_domains(self, domains: List[str], category: str = "imported") -> Dict:
-        """Import multiple domains - vietnam ONLY"""
+        """Import multiple domains — vietnam ONLY.
+
+        Deprecated: prefer :meth:`bulk_add_entries`, which accepts the unified
+        entry shape (type, value, scope, group_id) and reports per-row errors.
+        """
+        _warn_legacy_domain_api("import_domains")
         try:
             added_count = 0
             duplicate_count = 0
@@ -1153,7 +1367,12 @@ class WhitelistService:
             }
     
     def export_domains(self, format: str = "json", category: str = None) -> Dict:
-        """Export domains in specified format - vietnam ONLY"""
+        """Export domains in specified format — vietnam ONLY.
+
+        Deprecated: prefer :meth:`export_entries` (returns unified entry rows
+        including scope/group_id, suitable for re-import via the entry API).
+        """
+        _warn_legacy_domain_api("export_domains")
         try:
             # Build query
             query = {}

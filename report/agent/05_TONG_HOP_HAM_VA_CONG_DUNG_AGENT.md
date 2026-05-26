@@ -209,18 +209,18 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | --- | --- | --- |
 | `ComponentStatus` (dataclass) | Bản ghi 1 component sau khi init: `name`, `status` (ok/skipped/degraded/failed), `detail`. | `agent/core/lifecycle.py` |
 | `InitResult` (dataclass) | Kết quả tổng hợp của `initialize_components`. Có `overall`, `issues`, `__bool__` (truthy nếu không có critical failure). | `agent/core/lifecycle.py` |
-| `initialize_components(config)` | Khởi tạo các component theo thứ tự, ghi `ComponentStatus` cho từng bước, in summary, trả về `InitResult`. | `agent/core/lifecycle.py` |
+| `initialize_components(config, runtime=None)` | Khởi tạo các component theo thứ tự trên runtime được inject hoặc singleton mặc định, ghi `ComponentStatus` cho từng bước, in summary, trả về `InitResult`. Heartbeat lấy `device_id` từ runtime thay vì module-level identity. | `agent/core/lifecycle.py` |
 | `_missing_server_creds(server_url, agent_id)` | Trả về danh sách thiếu (`server_url` / `agent_id`) để LogSender/Heartbeat biết lý do degrade. | `agent/core/lifecycle.py` |
 | `_log_init_summary(result)` | In bảng tóm tắt sau init (headline theo `overall`, mỗi component 1 dòng với icon). | `agent/core/lifecycle.py` |
-| `cleanup(config)` | Cleanup all agent resources. | `agent/core/lifecycle.py` |
-| `build_lifecycle_log(config, event_type, action, message)` | Build a lifecycle log entry with proper field values. | `agent/core/lifecycle.py` |
+| `cleanup(config, runtime=None)` | Cleanup all agent resources trên runtime được inject hoặc singleton mặc định. | `agent/core/lifecycle.py` |
+| `build_lifecycle_log(config, event_type, action, message)` | Build a lifecycle log entry with proper field values; device_id/hostname resolve lazy qua `DeviceIdentityProvider` khi build log, không khi import module. | `agent/core/lifecycle.py` |
 
 
 ### `agent/core/registry.py`
 
 | Function | Công dụng | Vị trí |
 | --- | --- | --- |
-| `_collect_server_urls(config)` | Return a deduplicated, non-empty list of server URLs to try. | `agent/core/registry.py:17` |
+| `_collect_server_urls(config)` | Wrapper compatibility gọi `shared.server_urls.collect_server_urls(..., allow_dev_default=False)`; có thể trả list rỗng để Agent ở first-run offline mode. | `agent/core/registry.py:19` |
 | `register_agent(config)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `agent/core/registry.py:29` |
 | `try_register_with_server(server_url, agent_info, config)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `agent/core/registry.py:79` |
 
@@ -376,7 +376,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `AgentStatus` | Agent status enum (`STOPPED`, `STARTING`, `RUNNING`, **`DEGRADED`**, `STOPPING`, `ERROR`). `DEGRADED` được set khi `InitResult.overall == 'degraded'` — agent vẫn chạy, GUI hiện badge vàng + list issues. `is_running` truthy cho cả `RUNNING` và `DEGRADED`. | `agent/controllers/agent_controller.py` |
+| `AgentStatus` | Agent status enum (`STOPPED`, `STARTING`, `RUNNING`, **`DEGRADED`**, `STOPPING`, `ERROR`). `DEGRADED` được set khi `InitResult.overall == 'degraded'` - agent vẫn chạy, GUI hiện badge vàng + list issues. `is_running` truthy cho cả `RUNNING` và `DEGRADED`. | `agent/controllers/agent_controller.py` |
 | `AgentEvent` | Event data from agent to GUI. | `agent/controllers/agent_controller.py:21` |
 | `AgentSignals` | Event queue thread-safe giữa worker thread và GUI thread. Drain mỗi `DRAIN_INTERVAL_MS=50ms`, soft-cap `MAX_EVENTS_PER_TICK=100` để 1 burst event không block GUI. | `agent/controllers/agent_controller.py` |
 | `AgentController` | Controller trung tâm nối GUI với Agent worker/lifecycle. | `agent/controllers/agent_controller.py:107` |
@@ -395,7 +395,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `AgentController` | `status(self)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `agent/controllers/agent_controller.py:148` |
 | `AgentController` | `is_running(self)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `agent/controllers/agent_controller.py:152` |
 | `AgentController` | `stats(self)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `agent/controllers/agent_controller.py:156` |
-| `AgentController` | `set_root(self, root)` | *(Tkinter-era API; không còn dùng ở Qt port — Qt frontend dùng `QtSignalBridge` để drain queue thay thế.)* | `agent/controllers/agent_controller.py` |
+| `AgentController` | `set_root(self, root)` | *(Tkinter-era API; không còn dùng ở Qt port - Qt frontend dùng `QtSignalBridge` để drain queue thay thế.)* | `agent/controllers/agent_controller.py` |
 | `AgentController` | `start_agent(self)` | Start agent in background thread. | `agent/controllers/agent_controller.py:165` |
 | `AgentController` | `stop_agent(self)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `agent/controllers/agent_controller.py:191` |
 | `AgentController` | `_agent_worker(self)` | Worker thread: gọi `initialize_components(InitResult)`, vào main loop 1s/tick. Mỗi tick gọi `_update_stats` rồi emit `stats_updated` **chỉ khi snapshot khác lần trước** (diff-emit). Payload kèm `is_registered` + `firewall_enabled` để dashboard không phải pull. | `agent/controllers/agent_controller.py` |
@@ -444,14 +444,14 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 
 ## Package `agent/gui_qt`
 
-PySide6 frontend — toàn bộ widget, view, signal bridge.
+PySide6 frontend - toàn bộ widget, view, signal bridge.
 
 
 ### `agent/gui_qt/app.py`
 
 | Function | Công dụng | Vị trí |
 | --- | --- | --- |
-| `run()` | Entry function — khởi tạo `QApplication` (Fusion theme + global QSS), tạo `AgentController` singleton, instantiate `QtSignalBridge(controller.signals)`, show `MainWindow`. Trả về exit code của QApplication. | `agent/gui_qt/app.py` |
+| `run()` | Entry function - khởi tạo `QApplication` (Fusion theme + global QSS), tạo `AgentController` singleton, instantiate `QtSignalBridge(controller.signals)`, show `MainWindow`. Trả về exit code của QApplication. | `agent/gui_qt/app.py` |
 
 
 ### `agent/gui_qt/signal_bridge.py`
@@ -482,12 +482,12 @@ Hằng số palette (`ACCENT_BLUE`, `ACCENT_GREEN`, `ACCENT_RED`, `ACCENT_ORANGE
 
 ### `agent/gui_qt/components/data_table.py`
 
-Reusable bảng dữ liệu — `QTableView` virtualized natively (chỉ paint row đang scroll vào viewport), thay thế CTk DataTable cũ tự destroy/recreate widget mỗi cell.
+Reusable bảng dữ liệu - `QTableView` virtualized natively (chỉ paint row đang scroll vào viewport), thay thế DataTable legacy tự destroy/recreate widget mỗi cell.
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
 | `DictTableModel` | `QAbstractTableModel` nhận list-of-dicts + column config (`key`, `title`, `width`, `type?`). `data()` trả `DisplayRole` + `ForegroundRole` theo cột `status` (xanh active / đỏ blocked / cam pending). `set_rows(rows)` dùng `beginResetModel/endResetModel`. | `agent/gui_qt/components/data_table.py` |
-| `DataTable` | QWidget bọc QTableView + model. Header left-aligned khớp với cell left-aligned. Last column auto-stretches (`setStretchLastSection(True)`); các cột khác fixed `width`. API tương thích DataTable CTk cũ: `set_data`, `get_data`, `clear`, `row_count`. | `agent/gui_qt/components/data_table.py` |
+| `DataTable` | QWidget bọc QTableView + model. Header left-aligned khớp với cell left-aligned. Last column auto-stretches (`setStretchLastSection(True)`); các cột khác fixed `width`. API giữ tương thích với DataTable cũ: `set_data`, `get_data`, `clear`, `row_count`. | `agent/gui_qt/components/data_table.py` |
 
 
 ### `agent/gui_qt/components/log_console.py`
@@ -523,7 +523,7 @@ Layout: Header (title + StatusPill + Sync Now + Start/Stop) → 8 status cards g
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
 | `_LoadSignals` | QObject carrier `finished = Signal(list, str, str)` để rule-load worker thread deliver kết quả về GUI thread. | `agent/gui_qt/views/firewall.py` |
-| `FirewallView` | Header + Policy/Rules/Mode stats panel + DataTable rules + status bar. `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) — không poll netsh khi view ẩn. `_load_rules` chạy trong threading.Thread; nếu `firewall_manager` chưa wire thì fallback `netsh advfirewall firewall show rule`. `set_firewall_manager(mgr)` được MainWindow gọi khi agent running. | `agent/gui_qt/views/firewall.py` |
+| `FirewallView` | Header + Policy/Rules/Mode stats panel + DataTable rules + status bar. `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) - không poll netsh khi view ẩn. `_load_rules` chạy trong threading.Thread; nếu `firewall_manager` chưa wire thì fallback `netsh advfirewall firewall show rule`. `set_firewall_manager(mgr)` được MainWindow gọi khi agent running. | `agent/gui_qt/views/firewall.py` |
 
 
 ### `agent/gui_qt/views/whitelist.py`
@@ -538,14 +538,14 @@ Layout: Header (title + StatusPill + Sync Now + Start/Stop) → 8 status cards g
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `LogsView` | Title + filter controls (level combo + search) + `LogConsole` + status bar. `_setup_logging` attach `GUILogHandler` vào root logger + named loggers (agent / core / firewall / whitelist / capture / heartbeat / controllers / gui_qt). Export CSV qua `QFileDialog`. Search là substring filter trên top của level filter. `cleanup()` detach handler khỏi loggers — gọi từ `MainWindow.closeEvent` để tránh dangling reference. | `agent/gui_qt/views/logs.py` |
+| `LogsView` | Title + filter controls (level combo + search) + `LogConsole` + status bar. `_setup_logging` attach `GUILogHandler` vào root logger + named loggers (agent / core / firewall / whitelist / capture / heartbeat / controllers / gui_qt). Export CSV qua `QFileDialog`. Search là substring filter trên top của level filter. `cleanup()` detach handler khỏi loggers - gọi từ `MainWindow.closeEvent` để tránh dangling reference. | `agent/gui_qt/views/logs.py` |
 
 
 ### `agent/gui_qt/views/settings.py`
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `SettingsView` | `QScrollArea` chứa form chia 4 section: 🔑 Authentication (API key + show/hide toggle 👁), 🌐 Server Connection (URL + heartbeat interval + sync interval với `QIntValidator`), 🤖 Agent Configuration (hostname read-only + log level combo), 🔥 Firewall Backup & Restore (snapshot path + ♻️ Restore button). Save dùng `config.crypto.encrypt_config` (file mã hoá giống CTk path cũ). Restore: admin guard → confirm dialog → fast path qua `agent.firewall.restore_snapshot` khi agent đang chạy / fallback netsh khi không / safety-net cho snapshot toàn-block / clear SAINT rules cuối cùng. | `agent/gui_qt/views/settings.py` |
+| `SettingsView` | `QScrollArea` chứa form chia 4 section: 🔑 Authentication (API key + show/hide toggle 👁), 🌐 Server Connection (URL + heartbeat interval + sync interval với `QIntValidator`), 🤖 Agent Configuration (hostname read-only + log level combo), 🔥 Firewall Backup & Restore (snapshot path + ♻️ Restore button). Save dùng `config.crypto.encrypt_config` theo flow cấu hình mã hoá hiện tại. Restore: admin guard → confirm dialog → fast path qua `agent.firewall.restore_snapshot` khi agent đang chạy / fallback netsh khi không / safety-net cho snapshot toàn-block / clear SAINT rules cuối cùng. | `agent/gui_qt/views/settings.py` |
 
 
 
@@ -653,6 +653,13 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | --- | --- | --- |
 | `_detect_windows_info()` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `agent/shared/os_info.py:12` |
 | `get_os_details()` | Lấy/truy vấn dữ liệu theo tham số hoặc trạng thái hiện tại. | `agent/shared/os_info.py:55` |
+
+
+### `agent/shared/server_urls.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `collect_server_urls(config, allow_dev_default=False)` | Resolver URL Server tập trung cho registration, whitelist sync, heartbeat và log sender; mặc định không fallback localhost khi chưa cấu hình. | `agent/shared/server_urls.py:18` |
 
 
 ### `agent/shared/time_utils.py`

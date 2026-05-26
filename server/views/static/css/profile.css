@@ -82,6 +82,27 @@
     height: 4px;
 }
 
+.profile-change-password-btn {
+    background-color: #FEF3C7 !important;
+    border-color: #FCD34D !important;
+    color: #78350F !important;
+    font-weight: 600;
+}
+
+.profile-change-password-btn:hover,
+.profile-change-password-btn:focus {
+    background-color: #FDE68A !important;
+    border-color: #FBBF24 !important;
+    color: #78350F !important;
+}
+
+.profile-change-password-btn:disabled {
+    background-color: #FEF3C7 !important;
+    border-color: #FCD34D !important;
+    color: #78350F !important;
+    opacity: 0.75;
+}
+
 /* ========================================
    Responsive: Tablet Portrait (max-width: 768px)
    ======================================== */

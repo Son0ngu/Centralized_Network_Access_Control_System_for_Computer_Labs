@@ -80,6 +80,20 @@ def mock_group_model():
     """Mock GroupModel with collection."""
     model = MagicMock()
     model.collection = MagicMock()
+
+    def _find_accessible_group_ids_for_teacher(teacher_id):
+        groups = model.collection.find(
+            {"$or": [
+                {"teacher_ids": teacher_id},
+                {"created_by": teacher_id},
+            ]},
+            {"_id": 1},
+        )
+        return [str(group["_id"]) for group in groups]
+
+    model.find_accessible_group_ids_for_teacher.side_effect = (
+        _find_accessible_group_ids_for_teacher
+    )
     return model
 
 
@@ -88,6 +102,15 @@ def mock_agent_model():
     """Mock AgentModel with collection."""
     model = MagicMock()
     model.collection = MagicMock()
+
+    def _find_agent_ids_by_group_ids(group_ids):
+        agents = model.collection.find(
+            {"group_id": {"$in": group_ids}},
+            {"agent_id": 1},
+        )
+        return [agent["agent_id"] for agent in agents if agent.get("agent_id")]
+
+    model.find_agent_ids_by_group_ids.side_effect = _find_agent_ids_by_group_ids
     return model
 
 
@@ -142,9 +165,12 @@ class TestRBACServiceGetTeacherGroupIds:
         assert "660000000000000000000001" in result
         assert "660000000000000000000002" in result
 
-        # Verify query uses created_by
+        # Verify query uses $or over teacher_ids + created_by (legacy fallback)
         call_args = mock_group_model.collection.find.call_args
-        assert call_args[0][0] == {"created_by": teacher_user["_id"]}
+        assert call_args[0][0] == {"$or": [
+            {"teacher_ids": teacher_user["_id"]},
+            {"created_by": teacher_user["_id"]},
+        ]}
 
     def test_teacher_no_groups_returns_empty(self, mock_group_model, mock_agent_model, teacher_user):
         from services.rbac_service import RBACService
@@ -177,8 +203,12 @@ class TestRBACServiceGetGroupQueryFilter:
         from services.rbac_service import RBACService
         svc = RBACService(mock_group_model)
 
+        # Teacher filter spans teacher_ids (current model) + created_by (legacy)
         result = svc.get_group_query_filter(teacher_user)
-        assert result == {"created_by": teacher_user["_id"]}
+        assert result == {"$or": [
+            {"teacher_ids": teacher_user["_id"]},
+            {"created_by": teacher_user["_id"]},
+        ]}
 
 
 class TestRBACServiceGetLogQueryFilter:
@@ -377,8 +407,10 @@ class TestRBACConfigPermissions:
 
     def test_teacher_allowed_permissions(self):
         from config.rbac_config import check_permission
+        # Teacher: view assigned groups, manage agents inside them, manage own whitelist.
+        # Teacher CANNOT create/delete groups (admin-only lifecycle).
         allowed = [
-            "groups:read", "groups:create", "groups:update", "groups:delete",
+            "groups:read", "groups:update",
             "agents:read", "agents:detail",
             "whitelist:read", "whitelist:create", "whitelist:update", "whitelist:delete",
             "logs:read",
@@ -390,6 +422,7 @@ class TestRBACConfigPermissions:
     def test_teacher_denied_permissions(self):
         from config.rbac_config import check_permission
         denied = [
+            "groups:create", "groups:delete",
             "agents:delete",
             "logs:export",
             "logs:delete",
@@ -420,6 +453,7 @@ class TestGroupControllerTeacherFiltering:
 
     def test_list_groups_admin_no_filter(self, app, admin_user):
         mock_service = MagicMock()
+        mock_service.validate_teacher_entry_access.return_value = (True, None)
         mock_rbac = MagicMock()
         mock_service.list_groups.return_value = [
             {"_id": "g1", "name": "A"}, {"_id": "g2", "name": "B"}
@@ -483,7 +517,8 @@ class TestGroupControllerTeacherFiltering:
     def test_get_group_teacher_own_group(self, app, teacher_user):
         mock_service = MagicMock()
         mock_rbac = MagicMock()
-        own_group = {"_id": "g1", "name": "My Group", "created_by": teacher_user["_id"]}
+        # Service must return JSON-serializable shape (no raw ObjectId)
+        own_group = {"_id": "g1", "name": "My Group", "created_by": str(teacher_user["_id"])}
         mock_service.get_group.return_value = own_group
         mock_rbac.can_access_group.return_value = True
 
@@ -515,8 +550,9 @@ class TestGroupControllerTeacherFiltering:
     def test_create_group_sets_created_by(self, app, teacher_user):
         mock_service = MagicMock()
         mock_rbac = MagicMock()
+        # Service returns serialized payload (str created_by, not ObjectId)
         mock_service.create_group.return_value = {
-            "_id": "new", "name": "New Group", "created_by": teacher_user["_id"]
+            "_id": "new", "name": "New Group", "created_by": str(teacher_user["_id"])
         }
 
         ctrl = self._make_controller(mock_service, mock_rbac)
@@ -634,19 +670,21 @@ class TestAgentControllerTeacherFiltering:
         service.get_agents_with_status.return_value = all_agents
         rbac.get_teacher_group_ids.return_value = ["g1", "g2"]
 
-        with app.test_request_context('/api/agents'):
-            g.current_user = teacher_user
-            g.current_role = "teacher"
+        # Controller resolves RBAC via get_rbac_service() global; patch it.
+        with patch('controllers.agent_controller.get_rbac_service', return_value=rbac):
+            with app.test_request_context('/api/agents'):
+                g.current_user = teacher_user
+                g.current_role = "teacher"
 
-            resp, status = ctrl.list_agents()
-            data = resp.get_json()
+                resp, status = ctrl.list_agents()
+                data = resp.get_json()
 
-            assert status == 200
-            assert data["total"] == 2  # Only a1, a2 (not a3)
-            agent_ids = [a["agent_id"] for a in data["agents"]]
-            assert "a1" in agent_ids
-            assert "a2" in agent_ids
-            assert "a3" not in agent_ids
+                assert status == 200
+                assert data["total"] == 2  # Only a1, a2 (not a3)
+                agent_ids = [a["agent_id"] for a in data["agents"]]
+                assert "a1" in agent_ids
+                assert "a2" in agent_ids
+                assert "a3" not in agent_ids
 
     def test_list_agents_agent_request_no_filter(self, app):
         """Agent/no-cookie request sees all agents."""
@@ -689,12 +727,13 @@ class TestAgentControllerTeacherFiltering:
         model.find_by_agent_id.return_value = {"agent_id": "a3", "group_id": "g99"}
         rbac.can_teacher_access_agent.return_value = False
 
-        with app.test_request_context('/api/agents/a3'):
-            g.current_user = teacher_user
-            g.current_role = "teacher"
+        with patch('controllers.agent_controller.get_rbac_service', return_value=rbac):
+            with app.test_request_context('/api/agents/a3'):
+                g.current_user = teacher_user
+                g.current_role = "teacher"
 
-            resp, status = ctrl.get_agent("a3")
-            assert status == 403
+                resp, status = ctrl.get_agent("a3")
+                assert status == 403
 
     def test_delete_agent_teacher_blocked(self, app, teacher_user):
         """Teacher does NOT have agents:delete permission."""
@@ -749,20 +788,26 @@ class TestAgentControllerTeacherFiltering:
             {"agent_id": "a3", "group_id": "g99", "status": "active"},
         ]
         service.get_agents_with_status.return_value = all_agents
+        service.calculate_statistics.return_value = {
+            "last_calculated": "2026-05-26T10:00:00+07:00",
+            "thresholds": {},
+        }
         rbac.get_teacher_group_ids.return_value = ["g1"]
 
-        with app.test_request_context('/api/agents/statistics'):
-            g.current_user = teacher_user
-            g.current_role = "teacher"
+        with patch('controllers.agent_controller.get_rbac_service', return_value=rbac):
+            with app.test_request_context('/api/agents/statistics'):
+                g.current_user = teacher_user
+                g.current_role = "teacher"
 
-            resp, status = ctrl.get_statistics()
-            data = resp.get_json()
+                resp, status = ctrl.get_statistics()
+                data = resp.get_json()
 
-            assert status == 200
-            stats = data["data"]
-            assert stats["total_agents"] == 2  # Only g1 agents
-            assert stats["active"] == 1
-            assert stats["inactive"] == 1
+                assert status == 200
+                stats = data["data"]
+                # Statistics controller emits {total, active, inactive, ...}
+                assert stats["total"] == 2  # Only g1 agents
+                assert stats["active"] == 1
+                assert stats["inactive"] == 1
 
 
 # ============================================================================
@@ -882,10 +927,10 @@ class TestWhitelistControllerTeacherFiltering:
         """Teacher cannot delete global whitelist entry."""
         ctrl, model, service, rbac = self._make_controller(app)
 
-        model.collection.find_one.return_value = {
-            "_id": ObjectId("660000000000000000000001"),
-            "scope": "global", "group_id": None
-        }
+        service.validate_teacher_entry_access.return_value = (
+            False,
+            "Teachers cannot delete from global whitelist",
+        )
 
         with app.test_request_context('/api/whitelist/660000000000000000000001', method='DELETE'):
             g.current_user = teacher_user
@@ -1111,23 +1156,24 @@ class TestAgentAPIBackwardCompatibility:
     """
 
     def test_register_uses_require_api_key(self):
-        """Verify register_agent route uses require_api_key, not inject_current_user."""
+        """Verify register_agent route exists on the agents blueprint.
+
+        Flask's Blueprint.deferred_functions stores closures (not Rule objects)
+        so we register the blueprint on a throwaway app and inspect url_map.
+        """
         from controllers.agent_controller import AgentController
         mock_model = MagicMock()
         mock_service = MagicMock()
         mock_rbac = MagicMock()
 
         ctrl = AgentController(mock_model, mock_service, mock_rbac, socketio=None)
-
-        # Check blueprint rules
-        rules = {rule.rule: rule for rule in ctrl.blueprint.deferred_functions}
-        # The register route should exist and NOT use inject_current_user
-        # We verify by checking the route is registered with the correct endpoint
-        endpoints = [rule.endpoint for rule in ctrl.blueprint.deferred_functions] \
-            if hasattr(ctrl.blueprint, 'deferred_functions') else []
-
-        # Alternative: just verify the route exists via URL rules
         assert ctrl.blueprint.name == 'agents'
+
+        probe = Flask(__name__)
+        probe.register_blueprint(ctrl.blueprint, url_prefix='/api')
+        registered = {rule.endpoint for rule in probe.url_map.iter_rules()}
+        assert 'agents.register_agent' in registered
+        assert 'agents.heartbeat' in registered
 
     def test_whitelist_agent_sync_uses_require_jwt(self):
         """Verify agent_sync route uses require_jwt, not inject_current_user."""
@@ -1163,12 +1209,17 @@ class TestEdgeCases:
         mock_gm = MagicMock()
         mock_am = MagicMock()
         mock_gm.collection.find.return_value = []
+        mock_gm.find_accessible_group_ids_for_teacher.return_value = []
+        mock_am.find_agent_ids_by_group_ids.return_value = []
 
         svc = RBACService(mock_gm, mock_am)
 
-        # Groups
+        # Groups: $or over teacher_ids + created_by (legacy)
         group_filter = svc.get_group_query_filter(teacher_user)
-        assert group_filter == {"created_by": teacher_user["_id"]}
+        assert group_filter == {"$or": [
+            {"teacher_ids": teacher_user["_id"]},
+            {"created_by": teacher_user["_id"]},
+        ]}
 
         # Logs
         log_filter = svc.get_log_query_filter(teacher_user)
@@ -1220,11 +1271,17 @@ class TestEdgeCases:
 
         # Teacher 1 query
         filter1 = svc.get_group_query_filter(teacher_user)
-        assert filter1 == {"created_by": teacher_user["_id"]}
+        assert filter1 == {"$or": [
+            {"teacher_ids": teacher_user["_id"]},
+            {"created_by": teacher_user["_id"]},
+        ]}
 
         # Teacher 2 query
         filter2 = svc.get_group_query_filter(teacher_user_2)
-        assert filter2 == {"created_by": teacher_user_2["_id"]}
+        assert filter2 == {"$or": [
+            {"teacher_ids": teacher_user_2["_id"]},
+            {"created_by": teacher_user_2["_id"]},
+        ]}
 
         # They should be different
         assert filter1 != filter2
@@ -1354,6 +1411,56 @@ class TestGroupModelWithQueryFilter:
         teacher_id = ObjectId("650000000000000000000002")
         result = model.create_group("Test", "desc", [], created_by=teacher_id)
         assert result["created_by"] == teacher_id
+
+
+# ============================================================================
+# 12. WHITELIST SERVICE ACCESS CHECKS
+# ============================================================================
+
+class TestWhitelistServiceTeacherEntryAccess:
+    """Teacher checks cover real embedded ObjectIds, not only pseudo-IDs."""
+
+    def test_real_embedded_object_id_denied_for_other_group(self):
+        from services.whitelist_service import WhitelistService
+
+        entry_oid = ObjectId("670000000000000000000001")
+        owner_group_id = ObjectId("660000000000000000000001")
+        teacher_group_id = ObjectId("660000000000000000000099")
+        whitelist_model = MagicMock()
+        whitelist_model.find_entry_access_info.return_value = None
+        group_model = MagicMock()
+        group_model.find_group_with_embedded_entry.return_value = {
+            "_id": owner_group_id
+        }
+        service = WhitelistService(whitelist_model, MagicMock(), group_model)
+
+        allowed, error = service.validate_teacher_entry_access(
+            str(entry_oid), [str(teacher_group_id)], "delete"
+        )
+
+        assert allowed is False
+        assert error == "No permission to delete this entry"
+        group_model.find_group_with_embedded_entry.assert_called_once_with(entry_oid)
+
+    def test_real_embedded_object_id_allowed_for_own_group(self):
+        from services.whitelist_service import WhitelistService
+
+        entry_oid = ObjectId("670000000000000000000002")
+        owner_group_id = ObjectId("660000000000000000000001")
+        whitelist_model = MagicMock()
+        whitelist_model.find_entry_access_info.return_value = None
+        group_model = MagicMock()
+        group_model.find_group_with_embedded_entry.return_value = {
+            "_id": owner_group_id
+        }
+        service = WhitelistService(whitelist_model, MagicMock(), group_model)
+
+        allowed, error = service.validate_teacher_entry_access(
+            str(entry_oid), [str(owner_group_id)], "edit"
+        )
+
+        assert allowed is True
+        assert error is None
 
 
 # ============================================================================

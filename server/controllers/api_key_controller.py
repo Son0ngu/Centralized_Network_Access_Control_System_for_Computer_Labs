@@ -4,7 +4,7 @@ API Key Controller - handles API key HTTP requests for admin management.
 """
 
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from typing import Dict, Tuple
 from models.api_key_model import APIKeyModel
 from services.api_key_service import APIKeyService
@@ -175,13 +175,23 @@ class APIKeyController:
                 if invalid:
                     return self._error_response(f"Invalid permissions: {invalid}")
             
-            # Create key
+            # Stamp created_by with the authenticated admin's username so audit
+            # trail and revocation flows show who issued the key. require_login
+            # populates g.current_user; fall back to the raw user_id string if
+            # the user record is missing a username for any reason.
+            creator = getattr(g, "current_user", None) or {}
+            created_by = (
+                creator.get("username")
+                or getattr(g, "current_user_id", None)
+                or "unknown"
+            )
+
             result = self.service.create_api_key(
                 name=name,
                 description=description,
                 expires_in_days=expires_in_days,
                 permissions=permissions,
-                created_by="admin"  # TODO: Get from auth context
+                created_by=created_by,
             )
             
             if result.get('success'):

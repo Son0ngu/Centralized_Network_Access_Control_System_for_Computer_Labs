@@ -12,6 +12,7 @@ from typing import Dict, Tuple
 from models.log_model import LogModel
 from services.log_service import LogService
 from services.rbac_service import RBACService
+from utils.request_ip import get_client_ip
 import logging
 
 # Import time utilities - vietnam ONLY
@@ -39,12 +40,24 @@ class LogController:
         self._register_routes()
 
     def _register_routes(self):
-        """Register all log routes"""
+        """Register all log routes.
+
+        Canonical endpoints:
+          - GET    /api/logs/stats   — statistics
+          - POST   /api/logs         — agents push logs (JWT)
+          - GET    /api/logs         — list logs (web)
+          - DELETE /api/logs/clear   — clear logs (admin)
+          - GET    /api/logs/export  — export (admin)
+
+        Legacy alias ``DELETE /api/logs`` now returns 410 Gone (kept registered
+        only so reverse-proxy logs surface the deprecation cleanly). Drop the
+        route entirely once stale clients are gone.
+        """
 
         # Stats route MUST be before generic /logs route
         self.blueprint.add_url_rule('/logs/stats',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.get_statistics))
+                                   view_func=inject_current_user(self.get_log_statistics))
 
         # POST /api/logs - Receive logs from agents (requires JWT - NOT affected)
         self.blueprint.add_url_rule('/logs',
@@ -62,27 +75,54 @@ class LogController:
                                    endpoint='clear_logs',
                                    view_func=inject_current_user(self.clear_logs))
 
-        # DELETE /api/logs - Clear all logs (legacy, web-facing - teacher blocked)
+        # DELETE /api/logs - DEPRECATED. Returns 410 Gone pointing at /logs/clear.
         self.blueprint.add_url_rule('/logs',
                                    methods=['DELETE'],
                                    endpoint='clear_logs_legacy',
-                                   view_func=inject_current_user(self.clear_logs))
+                                   view_func=self._gone_clear_logs_legacy)
 
         # GET /api/logs/export - Export logs (web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs/export',
                                    methods=['GET'],
                                    view_func=inject_current_user(self.export_logs))
 
+    def _gone_clear_logs_legacy(self):
+        """Deprecated DELETE /api/logs → 410 Gone.
+
+        Old clients hitting this endpoint should be migrated to DELETE /api/logs/clear.
+        We emit a Deprecation hint header so reverse-proxy access logs can surface
+        which client is still calling the old path before it is removed entirely.
+        """
+        self.logger.warning(
+            "Deprecated endpoint hit: DELETE /api/logs (use /api/logs/clear). "
+            "Caller=%s UA=%s",
+            get_client_ip(),
+            request.headers.get("User-Agent", "?"),
+        )
+        resp = jsonify({
+            "success": False,
+            "error": "DELETE /api/logs is deprecated. Use DELETE /api/logs/clear.",
+            "code": "ENDPOINT_GONE",
+            "replacement": "/api/logs/clear",
+            "timestamp": now_iso(),
+        })
+        resp.status_code = 410
+        # RFC 8594 deprecation signalling
+        resp.headers["Deprecation"] = "true"
+        resp.headers["Link"] = '</api/logs/clear>; rel="successor-version"'
+        return resp
+
     # ========================================================================
     # RBAC HELPERS
     # ========================================================================
 
     def _is_teacher(self):
-        """Check if current request is from a teacher via web UI."""
-        user = getattr(g, 'current_user', None)
-        if user and user.get('role') == 'teacher':
-            return True, user
-        return False, user
+        """Thin wrapper — calls ``RBACService.is_teacher_request`` statically.
+
+        Static so a mocked ``rbac_service`` in tests doesn't swallow the call
+        and return a MagicMock instead of the expected ``(bool, user)`` tuple.
+        """
+        return RBACService.is_teacher_request(getattr(g, 'current_user', None))
 
     def _get_teacher_log_filter(self, user):
         """Get log filter for teacher - only logs from agents in teacher's groups."""
@@ -103,7 +143,7 @@ class LogController:
                 return self._error_response("Invalid JSON data", 400)
 
             agent_id = request.headers.get('X-Agent-ID') or data.get('agent_id')
-            client_ip = request.remote_addr
+            client_ip = get_client_ip()
 
             self.logger.info(f"Receiving logs from agent {agent_id} at {client_ip}")
 
@@ -283,13 +323,11 @@ class LogController:
                 "timestamp": now_iso()
             }), 500
 
-    def get_statistics(self):
-        """Get basic log statistics (legacy endpoint)"""
-        try:
-            return self.get_log_statistics()
-        except Exception as e:
-            self.logger.error(f"Error getting basic statistics: {e}")
-            return self._error_response("Failed to get statistics", 500)
+    # Backwards-compat alias. ``get_statistics`` used to be a separate route
+    # wrapper that just delegated to ``get_log_statistics``. The route now
+    # binds directly to ``get_log_statistics`` (see ``_register_routes``), but
+    # tests still call ``ctrl.get_statistics()`` so we keep the method.
+    get_statistics = get_log_statistics
 
     # ========================================================================
     # HELPERS

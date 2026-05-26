@@ -1,29 +1,29 @@
-# `server/middleware` — Auth (API key + JWT) + RBAC decorators
+# `server/middleware` - Auth (API key + JWT) + RBAC decorators
 
 ## Mục đích
 Hai module decorator độc lập:
 - **`auth.py`**: Xác thực **Agent** (API key cho register, JWT cho operations). Caller chỉ định permission. Lưu kết quả vào `flask.g`.
 - **`rbac.py`**: Xác thực **Admin/Teacher** (cookie JWT > Authorization header). Kết hợp permission check (`resource:action`) và ownership check (Teacher chỉ tới Groups được assign).
 
-Hai middleware chạy **song song** — agent endpoints dùng `auth.py`, web/admin endpoints dùng `rbac.py`. Một số endpoint dùng cả 2 (vd `whitelist:GET` accept JWT của agent hoặc admin login).
+Hai middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin endpoints dùng `rbac.py`. Một số endpoint dùng cả 2 (vd `whitelist:GET` accept JWT của agent hoặc admin login).
 
 ## Public API
 
-### `server/middleware/auth.py` — Agent authentication
+### `server/middleware/auth.py` - Agent authentication
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `init_auth_middleware(api_key_service, jwt_service=None)` | | [auth.py:20](../../../server/middleware/auth.py#L20) | One-time wire, đặt globals `_api_key_service`, `_jwt_service`. Gọi từ `app.register_controllers` |
-| `get_api_key_from_request()` | `() -> Optional[str]` | [auth.py:35](../../../server/middleware/auth.py#L35) | Thứ tự: `X-API-Key` header → `Authorization: Bearer/ApiKey ...` → `?api_key=` query |
-| `get_jwt_from_request()` | `() -> Optional[str]` | [auth.py:241](../../../server/middleware/auth.py#L241) | Thứ tự: `Authorization: Bearer ...` → `X-Access-Token` header → `?access_token=` query |
+| `get_api_key_from_request()` | `() -> Optional[str]` | [auth.py:35](../../../server/middleware/auth.py#L35) | Thứ tự: `X-API-Key` header → `Authorization: Bearer/ApiKey ...`. `?api_key=` query chỉ được đọc nếu `Config.DEBUG_AUTH_QUERY_TOKEN=True` (default `False`); khi đó log warning kèm endpoint + IP. |
+| `get_jwt_from_request()` | `() -> Optional[str]` | [auth.py:241](../../../server/middleware/auth.py#L241) | Thứ tự: `Authorization: Bearer ...` → `X-Access-Token` header. `?access_token=` query cũng gate bằng `DEBUG_AUTH_QUERY_TOKEN`. **Không đọc cookie ở đây** — đó là admin/web flow (`middleware/rbac.py`); trộn vào sẽ cho cookie admin xác thực như agent. |
 | `@require_api_key(permission="register")` | decorator factory | [auth.py:71](../../../server/middleware/auth.py#L71) | Set `g.api_key_info`, `g.api_key_id`, `g.api_key_name` on success. 401 nếu thiếu/invalid |
 | `@optional_api_key` | decorator | [auth.py:136](../../../server/middleware/auth.py#L136) | Set `g.api_key_*` nếu có, None nếu không. Không reject |
 | `@require_jwt` | decorator | [auth.py:273](../../../server/middleware/auth.py#L273) | Set `g.jwt_payload`, `g.agent_id`, `g.user_id`, `g.token_jti`. 401. Token expired → `code: TOKEN_EXPIRED` để agent refresh |
 | `@optional_jwt` | decorator | [auth.py:343](../../../server/middleware/auth.py#L343) | Như optional_api_key nhưng cho JWT |
 | `@require_jwt_or_api_key(permission=None)` | decorator factory | [auth.py:381](../../../server/middleware/auth.py#L381) | Thử JWT trước → API key. 401 nếu cả 2 đều fail |
-| `APIKeyMiddleware` class | | [auth.py:172](../../../server/middleware/auth.py#L172) | Alternative `before_request` style — **không dùng** ở `app.py`. Decorator pattern thắng |
+| `APIKeyMiddleware` class | | [auth.py:172](../../../server/middleware/auth.py#L172) | Alternative `before_request` style - **không dùng** ở `app.py`. Decorator pattern thắng |
 
-### `server/middleware/rbac.py` — Admin/Teacher RBAC
+### `server/middleware/rbac.py` - Admin/Teacher RBAC
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -45,7 +45,7 @@ Hai middleware chạy **song song** — agent endpoints dùng `auth.py`, web/adm
 | `g.api_key_id` | ↑ | `str` |
 | `g.api_key_name` | ↑ | `str` |
 | `g.jwt_payload` | `require_jwt`, `optional_jwt`, `require_jwt_or_api_key` | `Dict` (sub, user_id, jti, type, exp, iss, iat, ...) |
-| `g.agent_id` | ↑ | `str` (từ `sub` claim) — KHÔNG phải admin user ID |
+| `g.agent_id` | ↑ | `str` (từ `sub` claim) - KHÔNG phải admin user ID |
 | `g.user_id` | ↑ | `str` (từ `user_id` claim) |
 | `g.token_jti` | ↑ | `str` |
 | `g.current_user` | `require_login`, `inject_current_user` | `Dict` (full user doc) |
@@ -53,8 +53,8 @@ Hai middleware chạy **song song** — agent endpoints dùng `auth.py`, web/adm
 | `g.current_role` | ↑ | `"admin"` hoặc `"teacher"` |
 
 ## Ai gọi module này
-- `server/controllers/*.py` — mọi controller dùng decorators để wrap handler
-- `server/app.py:241,244` — init wires
+- `server/controllers/*.py` - mọi controller dùng decorators để wrap handler
+- `server/app.py:241,244` - init wires
 
 ## Module này gọi ra
 - `flask` (request, g, jsonify, redirect)
@@ -63,35 +63,35 @@ Hai middleware chạy **song song** — agent endpoints dùng `auth.py`, web/adm
 - `config.rbac_config.check_permission, is_admin`
 - `models.user_model.UserModel.find_by_id, is_locked`
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần auth agent? → `@require_api_key("perm")` cho register, `@require_jwt` cho operations
 - Cần auth admin/teacher web? → `@require_login` + `@require_permission("res:action")` (hoặc `@require_admin`)
-- Cần check teacher owns group? → `@require_group_ownership("group_id")` — sau `@require_login`
+- Cần check teacher owns group? → `@require_group_ownership("group_id")` - sau `@require_login`
 - Cần inject user nếu có (non-blocking)? → `@inject_current_user`
 - Cần lấy current user trong handler? → `g.current_user`, `g.current_role`, `g.current_user_id`
 - Cần lấy current agent? → `g.agent_id` (từ JWT) hoặc `g.api_key_id` (từ API key)
-- Cần extract token thủ công cho logic phức tạp? → `get_jwt_from_request()` / `get_api_key_from_request()` (auth.py) hoặc `_extract_token()` (rbac.py — internal nhưng có thể public hoá)
+- Cần extract token thủ công cho logic phức tạp? → `get_jwt_from_request()` / `get_api_key_from_request()` (auth.py) hoặc `_extract_token()` (rbac.py - internal nhưng có thể public hoá)
 
 ## Gotchas
 
 ### Auth (Agent)
 - **`init_auth_middleware` PHẢI gọi trước register routes** (app.py:241). Nếu không, mọi `require_api_key` sẽ return 500 ("Server configuration error").
-- **`Authorization` header parse khác nhau**: `auth.py` chấp nhận cả `Bearer` và `ApiKey` prefix (auth.py:55-59) — endpoint dùng API key có thể nhận token kiểu `Bearer fc_...`. `get_jwt_from_request` chỉ accept `Bearer` (không `ApiKey`).
-- **Query param `?api_key=` & `?access_token=`**: ý là cho debug. Đừng dùng production — log access sẽ chứa key.
+- **`Authorization` header parse khác nhau**: `auth.py` chấp nhận cả `Bearer` và `ApiKey` prefix (auth.py:55-59) - endpoint dùng API key có thể nhận token kiểu `Bearer fc_...`. `get_jwt_from_request` chỉ accept `Bearer` (không `ApiKey`).
+- **Query param `?api_key=` & `?access_token=`**: default **bị từ chối** (P0.1). Phải set env `DEBUG_AUTH_QUERY_TOKEN=true` mới được đọc, và mỗi lần dùng đều log warning. Lý do: token trong URL leak qua proxy log, browser history, Referer header. Production tuyệt đối không bật.
 - **Token expired → status `code: TOKEN_EXPIRED`** (auth.py:316-321): agent dùng key này detect refresh moment. Đừng thay đổi.
 - **`require_jwt_or_api_key` clear lẫn nhau** (auth.py:413, 426): nếu JWT pass, set `api_key_info = None`. Caller phải check `g.agent_id` (JWT path) hoặc `g.api_key_id` (key path) để biết auth source.
 
 ### RBAC (Admin/Teacher)
-- **Cookie name `access_token`** (rbac.py:51): set bởi `AdminAuthController.login`. Nếu sửa name, sync cả 2 chỗ.
+- **Cookie name `access_token`** (rbac.py:51): set bởi `WebAuthController.login` (đổi tên từ `AdminAuthController` ở P1 #10). Nếu sửa name, sync cả 2 chỗ.
 - **`token_for == "admin_user"` check** (rbac.py:76-77): JWT của agent có `sub=<agent_id>` nhưng KHÔNG có `token_for` → reject. Token của admin có `token_for="admin_user"` được set ở `AdminAuthService.login`. Ngăn cross-use.
 - **Order decorator quan trọng**: `@require_login` PHẢI trước `@require_admin`/`@require_permission`/`@require_group_ownership`. Sai thứ tự → `g.current_user` chưa set → KeyError hoặc 401 silent.
-- **API path vs page path** (rbac.py:113-119): `request.path.startswith("/api/")` → JSON, ngược lại → redirect. Đừng dùng `/api/admin/...` cho trang HTML — sẽ trả JSON.
-- **`@inject_current_user` SET `g.current_user = None` trước khi check** (rbac.py:212-214) — caller có thể `if g.current_user:` an toàn. Đừng dựa vào `hasattr`.
+- **API path vs page path** (rbac.py:113-119): `request.path.startswith("/api/")` → JSON, ngược lại → redirect. Đừng dùng `/api/admin/...` cho trang HTML - sẽ trả JSON.
+- **`@inject_current_user` SET `g.current_user = None` trước khi check** (rbac.py:212-214) - caller có thể `if g.current_user:` an toàn. Đừng dựa vào `hasattr`.
 - **`require_group_ownership` lookup group từ DB mỗi request** (rbac.py:267-274): nếu endpoint cũng cần group → query 2 lần. Acceptable cho clarity.
-- **`is_admin(role)` từ `config.rbac_config`** — đừng tự `role == "admin"` rải rác. Tập trung 1 chỗ để dễ đổi.
-- **Token revoked không check trong `_validate_admin_token`** (rbac.py:62-91) — `JWTService.validate_access_token` đã check `_is_token_revoked` qua `revoked_tokens` collection. Logout = revoke = JWT next call 401.
+- **`is_admin(role)` từ `config.rbac_config`** - đừng tự `role == "admin"` rải rác. Tập trung 1 chỗ để dễ đổi.
+- **Token revoked không check trong `_validate_admin_token`** (rbac.py:62-91) - `JWTService.validate_access_token` đã check `_is_token_revoked` qua `revoked_tokens` collection. Logout = revoke = JWT next call 401.
 
 ### Cả hai
 - **`flask.g` per-request scope**: an toàn dùng giữa decorators và handler. Không leak qua request.
 - **Middleware `auth.py` không log username** (chỉ log endpoint + remote_addr). RBAC log username. Đối tượng audit khác nhau.
-- **Không có CSRF check** vì SPA gọi qua `fetch` với `Authorization` header. Cookie-based auth (RBAC) có rủi ro CSRF — hiện chưa có protection. Nếu thêm POST từ form HTML cần CSRF token.
+- **Không có CSRF check** vì SPA gọi qua `fetch` với `Authorization` header. Cookie-based auth (RBAC) có rủi ro CSRF - hiện chưa có protection. Nếu thêm POST từ form HTML cần CSRF token.

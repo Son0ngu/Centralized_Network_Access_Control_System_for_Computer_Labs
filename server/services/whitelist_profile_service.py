@@ -4,7 +4,6 @@ Whitelist Profile Service - Business logic for per-teacher whitelist profiles.
 
 import logging
 from typing import Dict, List, Optional
-from bson import ObjectId
 
 from models.whitelist_profile_model import WhitelistProfileModel
 from models.group_model import GroupModel
@@ -145,13 +144,7 @@ class WhitelistProfileService:
         if not group_ids:
             return []
 
-        oid_groups = [ObjectId(gid) for gid in group_ids]
-        oid_teacher = ObjectId(teacher_id) if isinstance(teacher_id, str) else teacher_id
-
-        profiles = list(self.model.collection.find({
-            "teacher_id": oid_teacher,
-            "group_id": {"$in": oid_groups},
-        }).sort("created_at", -1))
+        profiles = self.model.list_by_teacher_groups(teacher_id, group_ids)
 
         # Attach group_name to each profile
         group_map = {}

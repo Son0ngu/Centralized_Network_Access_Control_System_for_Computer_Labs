@@ -1,4 +1,4 @@
-# `agent/gui_qt` — PySide6 GUI
+# `agent/gui_qt` - PySide6 GUI
 
 ## Mục đích
 View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app bootstrap, main window, Qt signal bridge, views, reusable components, và QSS style. Agent lifecycle/worker thread nằm ở [`agent/controllers`](controllers.md).
@@ -17,7 +17,7 @@ View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app b
 | `MainWindow._show_view(view_id)` | `(str) -> None` | [main_window.py:160](../../../agent/gui_qt/main_window.py#L160) | Switch stacked widget và checked nav button. |
 | `MainWindow.closeEvent(event)` | `(event) -> None` | [main_window.py:173](../../../agent/gui_qt/main_window.py#L173) | Confirm nếu agent đang chạy, stop agent, cleanup logs handler, stop signal bridge. |
 
-### `agent/gui_qt/signal_bridge.py` — Queue → Qt signals
+### `agent/gui_qt/signal_bridge.py` - Queue → Qt signals
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -56,13 +56,13 @@ View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app b
 - `MainWindow` là owner của views; views gọi controller APIs thay vì gọi trực tiếp `core.lifecycle`.
 
 ## Module này gọi ra
-- `agent/controllers` — `AgentController`, `get_whitelist_controller`, `AgentSignals`.
-- `agent/config` — Settings view load/save encrypted config.
-- `agent/firewall` — Settings restore fallback và FirewallView manager/netsh state.
-- `agent/network` — WhitelistView resolve domains khi bật resolved IPs.
-- `PySide6` — Qt widgets/core/gui.
+- `agent/controllers` - `AgentController`, `get_whitelist_controller`, `AgentSignals`.
+- `agent/config` - Settings view load/save encrypted config.
+- `agent/firewall` - Settings restore fallback và FirewallView manager/netsh state.
+- `agent/network` - WhitelistView resolve domains khi bật resolved IPs.
+- `PySide6` - Qt widgets/core/gui.
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần thêm màn hình mới? → thêm view widget vào `agent/gui_qt/views/`, khai báo nav item và `_views` trong `MainWindow`.
 - Cần nhận event từ agent worker? → thêm signal name ở `AgentSignals` và map ở `QtSignalBridge`.
 - Cần table list dict? → dùng `DataTable`/`DictTableModel`.

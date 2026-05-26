@@ -115,7 +115,7 @@ GUI Views ← Signals ← AgentController → Components
 
 | Thành phần | Công nghệ |
 |-----------|-----------|
-| GUI | CustomTkinter |
+| GUI | PySide6/Qt |
 | Packet Capture | Scapy + WinPcap |
 | DNS | dnspython + aiodns |
 | Firewall | netsh (Windows) |

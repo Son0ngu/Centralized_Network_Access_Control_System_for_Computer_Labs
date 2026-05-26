@@ -1,5 +1,5 @@
 @startuml SAINT_Agent_Class_Diagram
-' Generated from source audit of agent/ — verified against report/agent/*.md
+' Generated from source audit of agent/ - verified against report/agent/*.md
 ' Stereotypes:
 '   <<singleton>>  : __new__-based singleton class
 '   <<module>>     : Python module exposing only module-level functions (no class)
@@ -27,9 +27,7 @@ title Class Diagram - SAINT Agent
 ' ============================================================
 package "agent.core" {
 
-  class Agent <<singleton>> {
-    - _instance: Agent
-    - _initialized: bool
+  class AgentRuntime {
     - config: Dict
     - firewall: FirewallManager
     - whitelist: WhitelistManager
@@ -37,8 +35,9 @@ package "agent.core" {
     - sniffer: PacketSniffer
     - heartbeat: HeartbeatSender
     - running: bool
+    - _state: Dict
     --
-    + __new__(): Agent
+    + __init__(state=None)
     + hostname: str <<property>>
     + device_id: str <<property>>
     + state: Dict <<property>>
@@ -49,6 +48,28 @@ package "agent.core" {
     + is_running(): bool
     + stop()
   }
+  note right of AgentRuntime : Injectable runtime container.\nNew code accepts AgentRuntime\nvia constructor injection.
+
+  class Agent <<singleton>> {
+    - _instance: Agent
+    - _initialized: bool
+    --
+    + __new__(): Agent
+    + reset_for_test() <<classmethod>>
+  }
+  Agent --|> AgentRuntime
+  note right of Agent : Singleton wrapper kept for\nlegacy ``get_agent()`` callers.\nAlias state to agent_state dict.
+
+  class DeviceIdentityProvider {
+    - _cached_device_id: Optional[str]
+    - _cached_hostname: Optional[str]
+    - _lock: Lock
+    --
+    + get_device_id(): str <<classmethod>>
+    + get_hostname(): str <<classmethod>>
+    + reset() <<classmethod>>
+  }
+  note right of DeviceIdentityProvider : Lazy hardware id probe.\nReplaces import-time\n``AGENT_DEVICE_ID = generate_device_id()``.
 
   class TokenManager {
     - config: Dict
@@ -445,7 +466,7 @@ package "agent.utils" {
 }
 
 ' ============================================================
-' Config package — pure module functions (no ConfigLoader class)
+' Config package - pure module functions (no ConfigLoader class)
 ' ============================================================
 package "agent.config" {
 
@@ -470,93 +491,110 @@ package "agent.config" {
 }
 
 ' ============================================================
-' GUI package
+' GUI controllers and PySide6 GUI package
 ' ============================================================
-package "agent.gui" {
+package "agent.controllers" {
 
-  class FirewallControllerApp <<singleton>> {
-    - _instance: FirewallControllerApp
-    - _initialized: bool
-    - _root: ctk.CTk
-    - _main_window: MainWindow
-    - _controller: AgentController
+  enum AgentStatus <<enum>> {
+    STOPPED
+    STARTING
+    RUNNING
+    DEGRADED
+    STOPPING
+    ERROR
+  }
+
+  class AgentEvent <<dataclass>> {
+    + event_type: str
+    + data: Dict[str,Any]
+    + timestamp: float
+  }
+
+  class AgentSignals {
+    - _callbacks: Dict[str,List[Callable]]
+    - _event_queue: Queue
+    - _lock: Lock
     --
-    + __new__(): FirewallControllerApp
+    + connect(signal_name, callback): bool
+    + disconnect(signal_name, callback): bool
+    + emit(signal_name, data)
+  }
+  note right of AgentSignals : Tk-style ``process_events(root)``\nremoved. Qt frontends drain queue\nvia ``QtSignalBridge``.
+
+  class AgentController <<singleton>> {
+    - _instance: AgentController
+    - _initialized: bool
+    - _runtime: AgentRuntime
+    - signals: AgentSignals
+    - _status: AgentStatus
+    - _agent: Optional[AgentRuntime]
+    - _config: Optional[Dict]
+    - _worker_thread: Optional[Thread]
+    - _stop_event: Event
+    - _stats_lock: Lock
+    - _stats: Dict
+    --
+    + __new__(): AgentController
+    + __init__(runtime=None)
+    + reset_for_test() <<classmethod>>
+    + status: AgentStatus <<property>>
+    + is_running: bool <<property>>
+    + stats: Dict <<property>>
+    + start_agent(): bool
+    + stop_agent(): bool
+    + get_agent_info(): Dict
+    + get_stats(): Dict
+    + force_whitelist_sync(): bool
+  }
+  note right of AgentController : Singleton wrapper but accepts\ninjected AgentRuntime for tests.\n``set_root(root)`` removed.
+
+  class WhitelistController <<singleton>> {
+    --
+    + set_whitelist_manager(manager)
+    + on_data_changed(callback)
+    + on_error(callback)
+    + on_success(callback)
+    + remove_ip(ip): bool
+    + get_all_ips(): List[Dict]
+    + refresh()
+    + get_stats(): Dict
+  }
+}
+
+package "agent.gui_qt" {
+  class "app" as gui_qt_app <<module>> {
     + run()
-    + quit()
   }
 
-  package "agent.gui.controllers" {
-
-    enum AgentStatus <<enum>> {
-      STOPPED
-      STARTING
-      RUNNING
-      STOPPING
-      ERROR
-    }
-
-    class AgentEvent <<dataclass>> {
-      + event_type: str
-      + data: Dict[str,Any]
-      + timestamp: float
-    }
-
-    class AgentSignals {
-      - _callbacks: Dict[str,List[Callable]]
-      - _event_queue: Queue
-      - _lock: Lock
-      --
-      + connect(signal_name, callback): bool
-      + disconnect(signal_name, callback): bool
-      + emit(signal_name, data)
-      + process_events(root)
-    }
-
-    class AgentController <<singleton>> {
-      - _instance: AgentController
-      - _initialized: bool
-      - signals: AgentSignals
-      - _status: AgentStatus
-      - _agent: Optional[Agent]
-      - _config: Optional[Dict]
-      - _worker_thread: Optional[Thread]
-      - _stop_event: Event
-      - _stats_lock: Lock
-      - _stats: Dict
-      - _root: Optional[ctk.CTk]
-      --
-      + __new__(): AgentController
-      + status: AgentStatus <<property>>
-      + is_running: bool <<property>>
-      + stats: Dict <<property>>
-      + set_root(root)
-      + start_agent(): bool
-      + stop_agent(): bool
-    }
-
-    class WhitelistController <<singleton>> {
-      --
-      + set_whitelist_manager(manager)
-      + on_data_changed(callback)
-      + on_error(callback)
-      + on_success(callback)
-      + remove_ip(ip): bool
-      + get_all_ips(): List[Dict]
-      + refresh()
-      + get_stats(): Dict
-    }
+  class QtSignalBridge {
+    - agent_signals: AgentSignals
+    - _timer: QTimer
+    + status_changed: Signal(dict)
+    + stats_updated: Signal(dict)
+    + packet_captured: Signal(dict)
+    + log_received: Signal(dict)
+    + error_occurred: Signal(dict)
+    + whitelist_synced: Signal(dict)
+    --
+    + stop()
+    + _drain()
+    + _dispatch(event)
   }
 
-  package "agent.gui.views" {
-    class MainWindow {
-      - _theme: Dict
-      - _current_view: Optional[str]
-      - _views: Dict[str, ctk.CTkFrame]
-      - _menu_buttons: Dict[str, ctk.CTkButton]
-      - _sidebar: ctk.CTkFrame
-      - _content_area: ctk.CTkFrame
-    }
+  class MainWindow {
+    - controller: AgentController
+    - bridge: QtSignalBridge
+    - stack: QStackedWidget
+    - nav_buttons: Dict[str,QPushButton]
+    --
+    + _build_ui()
+    + _on_status_changed(data)
+    + _on_whitelist_synced(data)
+    + _show_view(view_id)
+    + closeEvent(event)
+  }
+
+  package "agent.gui_qt.views" {
     class DashboardView
     class FirewallView
     class WhitelistView
@@ -564,11 +602,12 @@ package "agent.gui" {
     class SettingsView
   }
 
-  package "agent.gui.views.components" {
+  package "agent.gui_qt.components" {
     class DataTable
     class SearchableDataTable
     class LogConsole
     class StatusCard
+    class Sparkline
   }
 }
 
@@ -636,8 +675,8 @@ core_registry ..> CriticalErrorHandler : @critical_operation
 core_registry ..> utils_ip_mod : device info
 
 ' --- GUI composition ---
-FirewallControllerApp *-- MainWindow
-FirewallControllerApp *-- AgentController
+gui_qt_app ..> MainWindow : creates
+gui_qt_app ..> AgentController : creates
 AgentController *-- AgentSignals
 AgentSignals ..> AgentEvent : queues
 AgentController ..> Agent : creates / drives
@@ -646,12 +685,14 @@ AgentController -- AgentStatus
 WhitelistController ..> WhitelistManager : remove_ip
 
 ' --- Views ---
+MainWindow *-- QtSignalBridge
+QtSignalBridge ..> AgentSignals : drains queue
+MainWindow ..> AgentController : start/stop/sync
 MainWindow *-- DashboardView : lazy
 MainWindow *-- FirewallView : lazy
 MainWindow *-- WhitelistView : lazy
 MainWindow *-- LogsView : lazy
 MainWindow *-- SettingsView : lazy
-MainWindow ..> AgentSignals : connect()
 DashboardView ..> StatusCard
 DashboardView ..> LogConsole
 FirewallView ..> DataTable

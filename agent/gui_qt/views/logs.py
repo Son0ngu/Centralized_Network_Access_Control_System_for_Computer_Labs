@@ -63,7 +63,7 @@ class LogsView(QWidget):
 
         root.addLayout(self._build_controls())
 
-        # Console (already has its own toolbar — filter combo & pause/line count)
+        # Console (already has its own toolbar - filter combo & pause/line count)
         self._log_console = LogConsole(
             max_lines=2000,
             font_family="Consolas",
@@ -90,7 +90,7 @@ class LogsView(QWidget):
 
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("Search logs…")
-        # Search is purely visual in the CTk port — we honour it the same way:
+        # Search is purely visual in the CTk port - we honour it the same way:
         # filter on substring match against the rendered line.
         self._search_input.textChanged.connect(self._on_search)
         bar.addWidget(self._search_input)
@@ -161,7 +161,7 @@ class LogsView(QWidget):
             self._log_console.set_filter_level(self._level_combo.currentText())
             return
         # When a query is present, build the console contents ourselves so we
-        # can apply substring filtering. (Slow path — only runs while user is
+        # can apply substring filtering. (Slow path - only runs while user is
         # typing in the search box, which already has typing-rate limiting
         # naturally because QPlainTextEdit handles char input cheaply.)
         history = self._log_console.get_history()

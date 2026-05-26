@@ -8,7 +8,7 @@ SAINT là hệ thống quản lý truy cập mạng tập trung cho phòng máy/
 
 | Thành phần | Vai trò | Source chính |
 | --- | --- | --- |
-| Server Flask | REST API, Web Dashboard, SocketIO realtime, auth/RBAC | `server/app.py`, `server/controllers/`, `server/services/` |
+| Server Flask | REST API, Web Dashboard, SocketIO realtime, auth/RBAC | `server/app.py`, `server/bootstrap/`, `server/routes/`, `server/controllers/`, `server/services/` |
 | MongoDB | Lưu agents, users, groups, whitelist, logs, sessions, audit | `server/models/` |
 | Agent Core | Đăng ký Agent, heartbeat, token, lifecycle | `agent/core/`, `agent/services/` |
 | Agent Enforcement | Whitelist sync, DNS resolve, Windows Firewall rules | `agent/whitelist/`, `agent/network/`, `agent/firewall/` |
@@ -30,8 +30,9 @@ flowchart TB
 ## Khác biệt cần lưu ý so với tài liệu cũ
 
 - Source hiện tại có Dockerfile/docker-compose cho Server.
-- Server dùng Flask app factory, SocketIO async mode `gevent`, controller/service/model tách lớp rõ hơn.
-- Agent requirements có `pydivert`, `scapy`, `pywin32`, `netifaces`, `PySide6`, `cryptography`; enforcement chính trong source là `whitelist_only`.
+- Server dùng Flask app factory trong `server/bootstrap/app_factory.py`; `server/app.py` chỉ còn là entrypoint mỏng để import `create_app` và chạy SocketIO.
+- Controller/service/model đã tách lớp rõ hơn; truy cập Mongo `.collection` trực tiếp ngoài `server/models` đã được dọn khỏi `server/controllers` và `server/services`.
+- Agent requirements có `Scapy`, `pywin32`, `netifaces`, `PySide6`, `cryptography`, `dnspython/aiodns`; enforcement chính trong source là Windows Firewall whitelist-only.
 - RBAC chỉ có 2 role chính: `admin` và `teacher`; Teacher bị filter theo group ownership.
 - Agent không expose HTTP API nội bộ; Agent là client gọi Server API.
 

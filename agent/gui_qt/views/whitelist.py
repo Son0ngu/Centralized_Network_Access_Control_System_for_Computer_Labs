@@ -42,12 +42,12 @@ class _ResolveSignals(QObject):
 class WhitelistView(QWidget):
     def __init__(self, controller_get, parent: Optional[QWidget] = None):
         """`controller_get` is the same `get_whitelist_controller` callable used
-        by the CTk port — we accept it as a parameter so this view doesn't
+        by the CTk port - we accept it as a parameter so this view doesn't
         directly import controller modules (cleaner separation, easier to mock
         in tests)."""
         super().__init__(parent)
         self._controller = controller_get()
-        self._dns_resolver = None  # Lazy — only built when "Resolved IPs" is toggled on
+        self._dns_resolver = None  # Lazy - only built when "Resolved IPs" is toggled on
 
         # ----- data caches -------------------------------------------------
         self._last_loaded_data: List[Dict] = []
@@ -77,7 +77,7 @@ class WhitelistView(QWidget):
         self._build_ui()
         self._register_controller_callbacks()
 
-        # Initial load (local cache only — server sync starts when agent is ready).
+        # Initial load (local cache only - server sync starts when agent is ready).
         QTimer.singleShot(0, self._load_data)
 
     # =======================================================================
@@ -142,7 +142,7 @@ class WhitelistView(QWidget):
         #   ip:     "firewall-controller.onrender.com" fits in ~280-300px
         #   type:   "Domain" / "Pattern" / "IP" → 80px is plenty
         #   status: "Active" / "Resolved" / "Pending" → ~100px
-        #   source: "Resolved from gstatic.com" can run long — make this the
+        #   source: "Resolved from gstatic.com" can run long - make this the
         #           stretching column so it absorbs any extra width.
         columns = [
             {"key": "ip", "title": "Domain / IP Address", "width": 320},
@@ -163,7 +163,7 @@ class WhitelistView(QWidget):
     # =======================================================================
 
     def _register_controller_callbacks(self) -> None:
-        # Controller callbacks fire from background threads — wrap each one in
+        # Controller callbacks fire from background threads - wrap each one in
         # a `QTimer.singleShot(0, …)` so the UI work happens on the GUI thread.
         # (Qt would also accept a queued signal connection; singleShot is the
         # simplest way to bounce a plain callable onto the event loop.)
@@ -287,7 +287,7 @@ class WhitelistView(QWidget):
         if self._controller._whitelist_manager is None:
             QMessageBox.warning(
                 self, "Whitelist Sync",
-                "Agent not started — please Start Agent before sync.",
+                "Agent not started - please Start Agent before sync.",
             )
             return
         self._status_label.setText("☁️ Syncing with server...")
@@ -344,7 +344,7 @@ class WhitelistView(QWidget):
         if not domains:
             return []
         if self._dns_resolver is None:
-            # Lazy import — keeps Qt startup snappy when the user never
+            # Lazy import - keeps Qt startup snappy when the user never
             # toggles resolution.
             from network.dns_resolver import OptimizedDNSResolver
             self._dns_resolver = OptimizedDNSResolver()

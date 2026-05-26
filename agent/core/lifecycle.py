@@ -9,7 +9,12 @@ from typing import Dict, List, Optional
 
 from shared.time_utils import now, now_iso
 from utils import check_admin_privileges, get_local_ip
-from .agent import get_agent, agent_state, AGENT_DEVICE_ID, AGENT_HOSTNAME
+from .agent import (
+    AgentRuntime,
+    get_agent,
+    agent_state,
+    DeviceIdentityProvider,
+)
 from .token_manager import init_token_manager, get_token_manager
 
 logger = logging.getLogger("core.lifecycle")
@@ -18,7 +23,7 @@ logger = logging.getLogger("core.lifecycle")
 STATUS_OK = "ok"            # initialized and working
 STATUS_SKIPPED = "skipped"  # intentionally not run (disabled in config / no admin)
 STATUS_DEGRADED = "degraded"  # tried but failed in a non-critical way (offline mode)
-STATUS_FAILED = "failed"    # critical failure — agent cannot operate safely
+STATUS_FAILED = "failed"    # critical failure - agent cannot operate safely
 
 _STATUS_ICON = {
     STATUS_OK: "[+]",
@@ -62,22 +67,29 @@ class InitResult:
 
     @property
     def issues(self) -> List[ComponentStatus]:
-        """Components that are not fully ok — useful for surfacing to the user."""
+        """Components that are not fully ok - useful for surfacing to the user."""
         return [c for c in self.components if c.status != STATUS_OK]
 
     def __bool__(self) -> bool:
         return not self.has_failure()
 
 
-def initialize_components(config: Dict) -> InitResult:
+def initialize_components(config: Dict,
+                          runtime: Optional[AgentRuntime] = None) -> InitResult:
     """
     Initialize all agent components in correct order.
 
     Returns an :class:`InitResult` describing the outcome of each step.
     The result is truthy unless a *critical* component failed, so legacy
     callers using ``if not initialize_components(...)`` keep working.
+
+    ``runtime`` is an optional injected :class:`AgentRuntime`. Production
+    callers omit it and we fall back to :func:`get_agent` (the singleton);
+    tests or harnesses that need isolation construct their own via
+    :func:`agent.core.make_runtime` and pass it in. Either path stores
+    ``config`` on the runtime and attaches the started components to it.
     """
-    agent = get_agent()
+    agent = runtime if runtime is not None else get_agent()
     agent.config = config  # Store config in agent
     result = InitResult()
 
@@ -93,11 +105,11 @@ def initialize_components(config: Dict) -> InitResult:
         configured_urls = _collect_server_urls(config)
         if not configured_urls:
             # First-run state: no server URL set yet. Do NOT attempt to call
-            # any default endpoint — this protects the user from leaking
+            # any default endpoint - this protects the user from leaking
             # device info to an unconfigured server. The GUI should prompt
             # the user to set a URL in Settings.
             logger.warning(
-                "Server URL is empty — agent will start in OFFLINE mode. "
+                "Server URL is empty - agent will start in OFFLINE mode. "
                 "Open Settings → enter a Server URL → Save to enable sync."
             )
             result.record("registration", STATUS_SKIPPED,
@@ -259,7 +271,7 @@ def initialize_components(config: Dict) -> InitResult:
                 whitelist_domains=whitelist_domains,
             ):
                 logger.info(
-                    "Default Deny enabled — non-whitelisted traffic will be blocked"
+                    "Default Deny enabled - non-whitelisted traffic will be blocked"
                 )
                 result.record("firewall", STATUS_OK,
                               f"whitelist_only mode ({len(whitelist_ips)} IPs, "
@@ -274,7 +286,7 @@ def initialize_components(config: Dict) -> InitResult:
                 result.record("firewall", STATUS_SKIPPED, "disabled in config")
             else:
                 logger.warning(
-                    "Step 3: Firewall requires administrator privileges — "
+                    "Step 3: Firewall requires administrator privileges - "
                     "running without enforcement. Relaunch as admin to apply rules."
                 )
                 result.record("firewall", STATUS_SKIPPED,
@@ -326,7 +338,7 @@ def initialize_components(config: Dict) -> InitResult:
                 heartbeat_config = {
                     "server": config.get("server", {}),
                     "heartbeat": config.get("heartbeat", {}),
-                    "device_id": config.get("device_id", AGENT_DEVICE_ID),
+                    "device_id": config.get("device_id") or agent.device_id,
                 }
                 agent.heartbeat = HeartbeatSender(heartbeat_config)
                 agent.heartbeat.set_agent_credentials(agent_id, config.get("agent_token", ""))
@@ -427,14 +439,19 @@ def _log_init_summary(result: InitResult) -> None:
     logger.info("=" * 60)
 
 
-def cleanup(config: Optional[Dict] = None) -> None:
+def cleanup(config: Optional[Dict] = None,
+            runtime: Optional[AgentRuntime] = None) -> None:
     """
     Cleanup all agent resources.
-    
+
     Args:
         config: Optional configuration for shutdown logging
+        runtime: Optional :class:`AgentRuntime` to clean up. Defaults to the
+            singleton so existing callers don't change; tests that
+            constructed their own runtime via :func:`make_runtime` should
+            pass it explicitly to avoid touching the process singleton.
     """
-    agent = get_agent()
+    agent = runtime if runtime is not None else get_agent()
     
     logger.info("=" * 50)
     logger.info("SHUTTING DOWN AGENT")
@@ -523,8 +540,8 @@ def build_lifecycle_log(config: Dict, event_type: str, action: str, message: str
         "message": message,
         "level": "INFO",
         "agent_id": config.get("agent_id", "unknown"),
-        "device_id": AGENT_DEVICE_ID,
-        "hostname": AGENT_HOSTNAME,
+        "device_id": DeviceIdentityProvider.get_device_id(),
+        "hostname": DeviceIdentityProvider.get_hostname(),
         "ip_address": local_ip,
         "uptime": uptime_string(),
         "firewall_mode": config.get("firewall", {}).get("mode", "whitelist_only"),

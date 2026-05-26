@@ -1,6 +1,13 @@
 """
-Auth Controller - handles authentication endpoints (token refresh, logout).
-- Clean and simple
+Agent Auth Controller - JWT token lifecycle endpoints for AGENT clients.
+
+This pairs with controllers/web_auth_controller.py:WebAuthController which
+handles the human admin/teacher cookie session. The naming distinction matters:
+- AgentAuthController → /api/auth/*       (Bearer JWT, no cookies)
+- WebAuthController   → /api/admin/auth/* (httpOnly cookie, web only)
+
+Mixing the two is a known footgun (an admin cookie should never authenticate
+as an agent), so keep them lexically distinct.
 """
 
 import logging
@@ -13,13 +20,13 @@ from time_utils import now_iso
 logger = logging.getLogger(__name__)
 
 
-class AuthController:
-    """Controller for authentication operations"""
-    
+class AgentAuthController:
+    """Controller for agent JWT authentication operations (refresh, logout, verify)."""
+
     def __init__(self, jwt_service: JWTService, agent_model=None, socketio=None):
         """
-        Initialize Auth Controller.
-        
+        Initialize Agent Auth Controller.
+
         Args:
             jwt_service: JWTService instance
             agent_model: AgentModel instance for agent verification
@@ -31,7 +38,7 @@ class AuthController:
         self.socketio = socketio
         self.blueprint = Blueprint('auth', __name__)
         self._register_routes()
-    
+
     def _register_routes(self):
         """Register routes for this controller"""
         # Token operations
@@ -310,3 +317,8 @@ class AuthController:
         except Exception as e:
             self.logger.error(f"Error getting token info: {e}")
             return self._error_response("Failed to get token info", 500)
+
+
+# Backwards-compat alias for callers that still import the old name.
+# Remove once all imports are migrated (see app.py).
+AuthController = AgentAuthController

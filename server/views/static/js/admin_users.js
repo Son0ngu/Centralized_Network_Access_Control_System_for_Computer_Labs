@@ -338,13 +338,13 @@
         return div.innerHTML;
     }
 
+    // ``formatDate`` used to be defined locally with an en-US locale that
+    // disagreed with what other pages rendered. Route through SaintDate so
+    // every page formats timestamps the same way (vi-VN, dd/MM/yyyy HH:mm).
+    // The shim accepts a falsy value and returns "-" to match the legacy
+    // contract used by the renderers in this file.
     function formatDate(dateStr) {
         if (!dateStr) return '-';
-        try {
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        } catch (e) {
-            return dateStr;
-        }
+        return window.SaintDate ? window.SaintDate.formatVN(dateStr) : String(dateStr);
     }
 })();

@@ -127,6 +127,40 @@ class AgentModel:
         except Exception as exc:
             self.logger.error(f"Error counting agents for group {group_id}: {exc}")
             return 0
+
+    def move_agents_to_group(self, source_group_id: str, target_group_id: str) -> int:
+        """Move all agents from one group to another and return modified count."""
+        try:
+            result = self.collection.update_many(
+                {"group_id": source_group_id},
+                {"$set": {"group_id": target_group_id}},
+            )
+            return result.modified_count
+        except Exception as exc:
+            self.logger.error(
+                f"Error moving agents from group {source_group_id} to {target_group_id}: {exc}"
+            )
+            return 0
+
+    def find_agent_ids_by_group_ids(self, group_ids: List[str]) -> List[str]:
+        """Return agent ids for agents whose group_id matches any provided id."""
+        try:
+            group_id_variants = []
+            for group_id in group_ids:
+                group_id_variants.append(group_id)
+                try:
+                    group_id_variants.append(ObjectId(group_id))
+                except Exception:
+                    pass
+
+            agents = self.collection.find(
+                {"group_id": {"$in": group_id_variants}},
+                {"agent_id": 1},
+            )
+            return [agent["agent_id"] for agent in agents if agent.get("agent_id")]
+        except Exception as exc:
+            self.logger.error(f"Error finding agent ids by group ids: {exc}")
+            return []
         
     def find_by_hostname(self, hostname: str) -> List[Dict]:
         """Find agents by hostname"""

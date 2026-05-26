@@ -8,9 +8,8 @@ import logging
 from typing import Dict, List, Optional
 
 from bson import ObjectId
-from flask import request as flask_request
-
 from models.audit_model import AuditModel
+from utils.request_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,7 @@ class AuditService:
         try:
             # Auto-detect IP if not provided
             if ip_address is None:
-                try:
-                    ip_address = flask_request.remote_addr
-                except RuntimeError:
-                    ip_address = "unknown"
+                ip_address = get_client_ip()
 
             audit_data = {
                 "user_id": user.get("_id") if isinstance(user.get("_id"), ObjectId)

@@ -21,3 +21,6 @@ dist/
 *.exe
 *.pkg
 *.pyz
+*.ps1
+*.pytest_cache
+*.understand-anything

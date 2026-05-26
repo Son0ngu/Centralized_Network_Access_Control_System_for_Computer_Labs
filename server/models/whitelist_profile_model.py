@@ -65,6 +65,18 @@ class WhitelistProfileModel:
             query["teacher_id"] = ObjectId(teacher_id) if isinstance(teacher_id, str) else teacher_id
         return list(self.collection.find(query).sort("created_at", DESCENDING))
 
+    def list_by_teacher_groups(self, teacher_id, group_ids: List[str]) -> List[Dict]:
+        """List profiles owned by a teacher across a set of groups."""
+        if not group_ids:
+            return []
+
+        oid_groups = [ObjectId(group_id) for group_id in group_ids]
+        oid_teacher = ObjectId(teacher_id) if isinstance(teacher_id, str) else teacher_id
+        return list(self.collection.find({
+            "teacher_id": oid_teacher,
+            "group_id": {"$in": oid_groups},
+        }).sort("created_at", DESCENDING))
+
     def update_profile(self, profile_id: str, update_data: Dict) -> Optional[Dict]:
         payload = {"updated_at": now_vietnam()}
         if "name" in update_data:

@@ -1,6 +1,6 @@
-# Reference — Index
+# Reference - Index
 
-Bộ tham chiếu API per-module cho agent và server. **Trước khi viết helper mới**, scan section ["Common utilities"](#common-utilities--check-tr%C6%B0%E1%BB%9Bc-khi-t%E1%BB%B1-vi%E1%BB%BFt) ở cuối file này — phần lớn thứ bạn cần đã có.
+Bộ tham chiếu API per-module cho agent và server. **Trước khi viết helper mới**, scan section ["Common utilities"](#common-utilities--check-tr%C6%B0%E1%BB%9Bc-khi-t%E1%BB%B1-vi%E1%BB%BFt) ở cuối file này - phần lớn thứ bạn cần đã có.
 
 Khác biệt với các docs còn lại:
 - [docs/SYSTEM_OVERVIEW.md](../SYSTEM_OVERVIEW.md) → **kiến trúc** (luồng, sơ đồ, vì sao).
@@ -38,12 +38,12 @@ Khác biệt với các docs còn lại:
 | [server/models](server/models.md) | 10 MongoDB collections layer (no ORM, raw pymongo) | ✅ |
 | [server/services](server/services.md) | 12 business logic services | ✅ |
 | [server/controllers](server/controllers.md) | 10 Flask Blueprints + full endpoint map | ✅ |
-| [server/scripts](server/scripts.md) | `seed_rbac.py` — bootstrap admin user | ✅ |
+| [server/scripts](server/scripts.md) | `seed_rbac.py` - bootstrap admin user | ✅ |
 | [server/tests](server/tests.md) | 7 integration test files (~489 cases, real MongoDB) | ✅ |
 
 ---
 
-## Common utilities — check trước khi tự viết
+## Common utilities - check trước khi tự viết
 
 Những helper hay bị **viết lại** vì không biết đã có. Trước khi gõ `def foo(...)`, hỏi: "thứ này có lý do gì để không ở chỗ chung không?"
 
@@ -56,7 +56,7 @@ Những helper hay bị **viết lại** vì không biết đã có. Trước kh
 | TTL cache check | `shared.time_utils.is_cache_valid(ts, ttl)` | `time.time() - ts > ttl` rải rác |
 | Convert Unix → ISO VN | `shared.time_utils.now_server_compatible(ts)` | format thủ công |
 | Uptime đẹp `"2h 30m 15s"` | `shared.time_utils.uptime_string()` | tự tính lại |
-| Server-side | `server/time_utils.py` (riêng) | — |
+| Server-side | `server/time_utils.py` (riêng) | - |
 
 ### IP / Mạng / Hệ điều hành
 | Cần | Dùng |
@@ -104,6 +104,6 @@ Những helper hay bị **viết lại** vì không biết đã có. Trước kh
 - Cột **Signature** đã lược bớt `self` và type hint dài; xem source để chính xác.
 - **Ai gọi module này** ghi theo *package*, không liệt từng file (grep nếu cần chi tiết).
 - **Module này gọi ra**: bỏ qua khi chỉ stdlib.
-- **Đã có sẵn — đừng viết lại**: phần quan trọng nhất; hãy thêm vào đây mỗi khi phát hiện duplication.
+- **Đã có sẵn - đừng viết lại**: phần quan trọng nhất; hãy thêm vào đây mỗi khi phát hiện duplication.
 - Private (`_foo`) **bỏ** trừ khi quan trọng về design.
-- Không copy docstring — đọc code, tóm 1 dòng. Docstring có thể lệch thực tế.
+- Không copy docstring - đọc code, tóm 1 dòng. Docstring có thể lệch thực tế.

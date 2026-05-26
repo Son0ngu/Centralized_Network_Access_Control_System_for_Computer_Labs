@@ -1,10 +1,16 @@
 flowchart LR
+  App["server/app.py entrypoint"] --> Factory["bootstrap/app_factory.py"]
+  Factory --> Container["bootstrap/container.py"]
+  Factory --> Pages["routes/pages.py"]
+  Factory --> Errors["routes/errors.py"]
+  Factory --> SocketRoutes["routes/socketio_events.py"]
+  Container --> Route
   Route["/api/* Blueprints"] --> Controller["Controller layer"]
   Controller --> Middleware["Auth/RBAC middleware"]
   Controller --> Service["Service layer"]
   Service --> Model["Model layer"]
   Model --> DB[("MongoDB collections")]
   Service --> SocketIO["SocketIO emit"]
-  App["create_app()"] --> Route
-  App --> CORS["CORS"]
-  App --> Templates["Server-rendered templates"]
+  Factory --> CORS["CORS"]
+  Pages --> Templates["Server-rendered templates"]
+  SocketRoutes --> SocketIO

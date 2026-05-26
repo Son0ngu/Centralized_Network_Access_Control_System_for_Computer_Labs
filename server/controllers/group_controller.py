@@ -39,14 +39,13 @@ class GroupController:
             inject_current_user(self.set_teachers), methods=['POST'])
 
     def _is_teacher(self):
+        """Thin wrapper around ``RBACService.is_teacher_request`` for backwards-compat.
+
+        Calls the **static** method on the class — not via ``self.rbac_service``
+        — so tests that pass a MagicMock for the service still get the real
+        rule check (the role string compare is stateless anyway).
         """
-        Check if current request is from a teacher via web UI.
-        Returns (is_teacher: bool, user: dict or None)
-        """
-        user = getattr(g, 'current_user', None)
-        if user and user.get('role') == 'teacher':
-            return True, user
-        return False, user
+        return RBACService.is_teacher_request(getattr(g, 'current_user', None))
 
     def list_groups(self):
         try:

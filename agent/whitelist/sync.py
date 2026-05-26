@@ -48,7 +48,7 @@ class WhitelistSyncer:
         """Sync with server, trying fallback servers if needed."""
         last_error = None
 
-        # No server configured — agent is in first-run offline mode.
+        # No server configured - agent is in first-run offline mode.
         # Skip silently so we don't spam logs every sync interval.
         if not self.server_urls:
             return {

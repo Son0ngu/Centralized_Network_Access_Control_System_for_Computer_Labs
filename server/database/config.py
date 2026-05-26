@@ -72,6 +72,11 @@ class Config:
     HOST = get_env('HOST', '0.0.0.0')
     PORT = int(get_env('PORT', 5000))
 
+    # Security toggles (default-deny in production)
+    ADMIN_COOKIE_SECURE = get_env('ADMIN_COOKIE_SECURE', False)
+    ENABLE_DEBUG_ENDPOINTS = get_env('ENABLE_DEBUG_ENDPOINTS', False)
+    DEBUG_AUTH_QUERY_TOKEN = get_env('DEBUG_AUTH_QUERY_TOKEN', False)
+
 def get_mongo_client(config):
     """Get MongoDB client with optimized settings - vietnam logging"""
     global _mongo_client
@@ -140,10 +145,15 @@ class ProductionConfig(Config):
     """Production configuration - vietnam ONLY"""
     DEBUG = False
     LOG_LEVEL = 'WARNING'
-    
+
     # More conservative MongoDB settings for production
     MONGO_MAX_POOL_SIZE = 25
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 3000
+
+    # Production defaults: secure cookies, debug surfaces off
+    ADMIN_COOKIE_SECURE = get_env('ADMIN_COOKIE_SECURE', True)
+    ENABLE_DEBUG_ENDPOINTS = get_env('ENABLE_DEBUG_ENDPOINTS', False)
+    DEBUG_AUTH_QUERY_TOKEN = get_env('DEBUG_AUTH_QUERY_TOKEN', False)
 
 class TestingConfig(Config):
     """Testing configuration - vietnam ONLY"""

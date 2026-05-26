@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from typing import Callable, Dict, List, Optional, Set
 
 from shared.time_utils import now, now_iso, now_server_compatible, sleep, cache_age
+from shared.server_urls import collect_server_urls
 from cache.lru_cache import LRUCache
 from network import OptimizedDNSResolver
 
@@ -81,18 +82,13 @@ class WhitelistManager:
                 logger.error(f"Error in sync callback: {e}")
     
     def _get_server_urls(self) -> List[str]:
-        """Get list of server URLs."""
-        urls = []
-        
-        if isinstance(self.server_config.get("urls"), list):
-            urls.extend(self.server_config["urls"])
-        
-        if self.server_config.get("url"):
-            main_url = self.server_config["url"]
-            if main_url not in urls:
-                urls.append(main_url)
-        
-        return urls or ["http://localhost:5000"]
+        """Resolve server URLs via the shared resolver.
+
+        Empty list means "no URL configured" — caller should treat sync as
+        offline-skipped instead of contacting localhost. See
+        agent/shared/server_urls.py.
+        """
+        return collect_server_urls(self.config, allow_dev_default=False)
     
     def set_firewall_manager(self, firewall_manager) -> None:
         """Set firewall manager for rule updates."""

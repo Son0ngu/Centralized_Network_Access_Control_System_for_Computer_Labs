@@ -5,7 +5,7 @@
 Agent là ứng dụng Windows desktop dùng **PySide6 (Qt for Python)**, có controller trung tâm `AgentController`, event queue `AgentSignals`, và các worker component chạy nền. Agent chịu trách nhiệm đăng ký với Server, duy trì token, đồng bộ whitelist, bật policy Windows Firewall, bắt gói tin bằng Scapy và gửi log về Server.
 
 GUI hoạt động theo mô hình **signal-driven, không polling**: worker thread chỉ
-`emit()` event lên queue; GUI thread drain queue mỗi 50ms và update widget — với
+`emit()` event lên queue; GUI thread drain queue mỗi 50ms và update widget - với
 diff-skip ở cả lớp emit (chỉ emit khi stats thay đổi) lẫn lớp render (skip
 `set_value()` khi giá trị không đổi). Xem `06_LUONG_HOAT_DONG_CHINH_AGENT.md`
 mục "Rendering GUI & hiệu năng" để chi tiết.

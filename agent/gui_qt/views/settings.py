@@ -1,7 +1,7 @@
 """Settings view for the Qt GUI.
 
 Reuses the same config crypto / firewall snapshot / netsh fallback logic as
-the CTk port — only the form widgets change.
+the CTk port - only the form widgets change.
 """
 
 import json
@@ -31,7 +31,7 @@ class SettingsView(QWidget):
         self._config_path = self._find_config_path()
         self._config: Dict = self._load_config()
 
-        # Form widgets — populated by `_build_ui` so save/restore can read them.
+        # Form widgets - populated by `_build_ui` so save/restore can read them.
         self._api_key_input: Optional[QLineEdit] = None
         self._server_url_input: Optional[QLineEdit] = None
         self._heartbeat_input: Optional[QLineEdit] = None
@@ -284,7 +284,7 @@ class SettingsView(QWidget):
 
     def _save_config(self) -> None:
         try:
-            # Validate server URL — required by lifecycle.initialize_components.
+            # Validate server URL - required by lifecycle.initialize_components.
             url_value = (self._server_url_input.text() or "").strip() if self._server_url_input else ""
             if not url_value:
                 self._show_error(
@@ -416,7 +416,7 @@ class SettingsView(QWidget):
                 from firewall.policy import PolicyManager
                 PolicyManager().restore_default_policy()
 
-            # Always clear SAINT rules — matches manager.py behaviour.
+            # Always clear SAINT rules - matches manager.py behaviour.
             rule_prefix = (
                 self._config.get("firewall", {}).get("rule_prefix", "FirewallController")
             )

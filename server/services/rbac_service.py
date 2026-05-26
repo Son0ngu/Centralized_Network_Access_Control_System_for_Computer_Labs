@@ -7,8 +7,6 @@ RBAC Service - Permission check & ownership check.
 import logging
 from typing import Dict, List, Optional
 
-from bson import ObjectId
-
 from config.rbac_config import (
     check_permission,
     get_all_permissions,
@@ -42,6 +40,43 @@ class RBACService:
     def is_admin(self, role: str) -> bool:
         """Check if role is admin"""
         return is_admin(role)
+
+    # ========================================================================
+    # REQUEST CONTEXT HELPERS — single entry-point for controllers
+    # ========================================================================
+
+    @staticmethod
+    def is_teacher_request(user: Optional[Dict]) -> tuple:
+        """Return ``(is_teacher, user)`` for the current ``g.current_user``.
+
+        Centralises the ``role == 'teacher'`` check so controllers don't
+        re-implement it. Pass ``getattr(g, 'current_user', None)`` from the
+        view; tolerates ``None`` (agent/no-cookie requests).
+        """
+        if user and user.get('role') == 'teacher':
+            return True, user
+        return False, user
+
+    def assert_group_access(self, user: Optional[Dict], group_id) -> bool:
+        """Return True if ``user`` may operate on ``group_id``.
+
+        - Admin / agent (no user) → True.
+        - Teacher → True iff ``group_id`` is in their accessible set
+          (``teacher_ids`` assignment or legacy ``created_by``).
+        - Missing ``group_id`` → False (we cannot affirm access).
+
+        Controllers used to re-derive this via local
+        ``_teacher_can_access_group`` helpers. Route through here instead so
+        the rule lives in one place.
+        """
+        if not user or user.get('role') == 'admin':
+            return True
+        if not group_id:
+            return False
+        teacher_group_ids = self.get_teacher_group_ids(user)
+        if teacher_group_ids is None:  # safety: admin shortcut
+            return True
+        return str(group_id) in set(teacher_group_ids)
 
     # ========================================================================
     # OWNERSHIP CHECK (core logic for Teacher)
@@ -106,14 +141,7 @@ class RBACService:
 
         if self.group_model:
             user_id = user.get("_id")
-            groups = list(self.group_model.collection.find(
-                {"$or": [
-                    {"teacher_ids": user_id},
-                    {"created_by": user_id},  # legacy fallback
-                ]},
-                {"_id": 1}
-            ))
-            return [str(g["_id"]) for g in groups]
+            return self.group_model.find_accessible_group_ids_for_teacher(user_id)
 
         return []
 
@@ -170,21 +198,7 @@ class RBACService:
 
         # Step 2: Get agent_ids in those groups
         if self.agent_model:
-            # agent_model stores group_id as string or ObjectId
-            # Need to match both formats
-            group_id_variants = []
-            for gid in group_ids:
-                group_id_variants.append(gid)
-                try:
-                    group_id_variants.append(ObjectId(gid))
-                except Exception:
-                    pass
-
-            agents = list(self.agent_model.collection.find(
-                {"group_id": {"$in": group_id_variants}},
-                {"agent_id": 1}
-            ))
-            agent_ids = [a["agent_id"] for a in agents if a.get("agent_id")]
+            agent_ids = self.agent_model.find_agent_ids_by_group_ids(group_ids)
             return {"agent_id": {"$in": agent_ids}}
 
         return {"agent_id": {"$in": []}}

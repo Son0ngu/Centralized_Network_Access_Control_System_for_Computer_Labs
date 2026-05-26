@@ -105,7 +105,7 @@ class FirewallManager:
             logger.info(f"Total IPs to allow: {len(all_allowed_ips)}")
 
             # Step 0: Whitelist the agent's own exe (see enable_whitelist_mode
-            # for rationale — survives server IP rotation).
+            # for rationale - survives server IP rotation).
             self.rules_manager.create_self_allow_rules(sys.executable)
 
             # Step 1: Enable Default Deny policy
@@ -652,7 +652,7 @@ class FirewallManager:
 
             if file_path.exists() and not force:
                 logger.info(
-                    "Pre-SAINT snapshot already exists at %s — preserving "
+                    "Pre-SAINT snapshot already exists at %s - preserving "
                     "original baseline (use force=True to overwrite).",
                     file_path,
                 )
@@ -721,7 +721,7 @@ class FirewallManager:
                 logger.error(f"Snapshot file not found: {file_path}")
                 return False
 
-            # Admin guard — without elevation, netsh calls silently fail and we
+            # Admin guard - without elevation, netsh calls silently fail and we
             # would otherwise report a false-positive success.
             if not FirewallUtils.has_admin_privileges():
                 logger.error(
@@ -774,7 +774,7 @@ class FirewallManager:
             # 2. Always clear SAINT-managed rules so restore truly reverts to
             #    pre-SAINT. Re-enabling Default Deny (the previous behaviour
             #    when snapshot.whitelist_mode was True) contradicts the user's
-            #    intent — they clicked "Restore" precisely to step out of
+            #    intent - they clicked "Restore" precisely to step out of
             #    SAINT control.
             try:
                 self.rules_manager.clear_all_rules()

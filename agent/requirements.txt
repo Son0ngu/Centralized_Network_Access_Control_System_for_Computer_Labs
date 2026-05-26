@@ -21,7 +21,7 @@ requests
 netifaces>=0.11.0
 distro>=1.6.0
 
-# Qt GUI (PySide6 — LGPL). Only frontend bundled in the .exe build.
+# Qt GUI (PySide6 - LGPL). Only frontend bundled in the .exe build.
 PySide6>=6.6.0
 
 cryptography

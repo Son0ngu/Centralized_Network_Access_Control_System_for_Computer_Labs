@@ -12,17 +12,17 @@
         </mxCell>
 
         <!-- ==================== LEFT SIDE: GUI Application ==================== -->
-        <mxCell id="gui_header" value="&lt;b&gt;GUI: FirewallControllerApp (CustomTkinter)&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giao diện người dùng Agent&lt;/i&gt;" style="text;html=1;align=center;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
+        <mxCell id="gui_header" value="&lt;b&gt;GUI: PySide6 MainWindow + QtSignalBridge&lt;/b&gt;&lt;br&gt;&lt;i&gt;Giao diện người dùng Agent&lt;/i&gt;" style="text;html=1;align=center;fontSize=14;fontFamily=Segoe UI;" vertex="1" parent="1">
           <mxGeometry x="40" y="80" width="440" height="40" as="geometry"/>
         </mxCell>
 
         <!-- G1: Singleton -->
-        <mxCell id="g1" value="&lt;b&gt;Singleton Pattern&lt;/b&gt;&lt;br&gt;&lt;i&gt;FirewallControllerApp.__new__()&lt;br&gt;Chỉ cho phép 1 instance duy nhất&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="g1" value="&lt;b&gt;Application Bootstrap&lt;/b&gt;&lt;br&gt;&lt;i&gt;gui_qt.app.run() tạo QApplication&lt;br&gt;và MainWindow duy nhất&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="80" y="140" width="320" height="60" as="geometry"/>
         </mxCell>
 
-        <!-- G2: Init CTk -->
-        <mxCell id="g2" value="&lt;b&gt;Initialize CTk Root&lt;/b&gt;&lt;br&gt;&lt;i&gt;ctk.CTk() - 1200×800 (min 900×600)&lt;br&gt;Title: &quot;SAINT - Security Agent...&quot;&lt;br&gt;Theme: dark mode, blue color&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
+        <!-- G2: Init QApplication -->
+        <mxCell id="g2" value="&lt;b&gt;Initialize QApplication/MainWindow&lt;/b&gt;&lt;br&gt;&lt;i&gt;PySide6 - 1200×800 (min 900×600)&lt;br&gt;Title: &quot;SAINT - Security Agent...&quot;&lt;br&gt;Theme: Fusion style + GLOBAL_QSS&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Segoe UI;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="80" y="220" width="320" height="80" as="geometry"/>
         </mxCell>
         <mxCell id="eg1g2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="g1" target="g2"><mxGeometry relative="1" as="geometry"/></mxCell>
@@ -189,10 +189,10 @@
         <mxCell id="ar2a" value="Application" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=11;html=1;" vertex="1" parent="ar2">
           <mxGeometry width="160" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="ar2b" value="FirewallControllerApp" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+        <mxCell id="ar2b" value="MainWindow + QtSignalBridge" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
           <mxGeometry x="160" width="160" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="ar2c" value="Singleton, CTk root, 1200×800" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
+        <mxCell id="ar2c" value="QMainWindow, Qt bridge, 1200×800" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Segoe UI;fontSize=10;html=1;" vertex="1" parent="ar2">
           <mxGeometry x="320" width="200" height="36" as="geometry"/>
         </mxCell>
 

@@ -41,6 +41,88 @@ function getAgentDisplayName(log) {
     return log.agent_host || log.hostname || log.host_name || log.agent_id || 'Unknown Agent';
 }
 
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// Server reconstructs a human description from the structured fields the agent
+// already sends (see agent/core/handlers.py::handle_domain_detection). This
+// runs whenever the agent left `message` as the default placeholder "Log
+// entry" - meaning the agent did not attach a custom message but the record
+// still carries action, domain, IPs, protocol/port, firewall_mode and the
+// domain_allowed / ip_allowed booleans.
+function buildLogDescription(log) {
+    if (!log || typeof log !== 'object') return '';
+
+    const hasValue = (v) => v !== null && v !== undefined && v !== '' && v !== 'unknown';
+    const action = (log.action || '').toString().toUpperCase();
+    const domain = hasValue(log.domain) ? log.domain : null;
+    const destIp = hasValue(log.dest_ip) ? log.dest_ip : null;
+    const srcIp = hasValue(log.source_ip) ? log.source_ip : null;
+    const proto = hasValue(log.protocol) ? log.protocol.toString().toUpperCase() : null;
+    const port = hasValue(log.port) ? log.port.toString() : null;
+    const mode = hasValue(log.firewall_mode) ? log.firewall_mode : null;
+
+    const verbs = {
+        BLOCKED: 'Blocked',
+        ALLOWED: 'Allowed',
+        ALLOWED_BY_IP: 'Allowed by IP (domain not whitelisted)',
+        OBSERVED: 'Observed (passive mode)'
+    };
+    const verb = verbs[action] || (action ? action.toLowerCase() : 'Recorded');
+
+    let target;
+    if (proto === 'DNS') {
+        target = `DNS query for ${domain || destIp || 'unknown destination'}`;
+    } else if (proto) {
+        target = `${proto} connection to ${domain || destIp || 'unknown destination'}`;
+    } else {
+        target = `connection to ${domain || destIp || 'unknown destination'}`;
+    }
+
+    const connBits = [];
+    if (destIp && destIp !== domain) {
+        connBits.push(port ? `${destIp}:${port}` : destIp);
+    } else if (port) {
+        connBits.push(`port ${port}`);
+    }
+
+    const parts = [`${verb} ${target}`];
+    if (connBits.length) parts.push(`(${connBits.join(', ')})`);
+    if (srcIp) parts.push(`from ${srcIp}`);
+
+    const reasons = [];
+    if (action === 'BLOCKED') {
+        if (log.domain_allowed === false && log.ip_allowed === false) {
+            reasons.push('neither domain nor IP is in the whitelist');
+        } else if (log.domain_allowed === false) {
+            reasons.push('domain not in whitelist');
+        }
+    } else if (action === 'ALLOWED_BY_IP') {
+        reasons.push('IP whitelisted but SNI/Host is not - possible CDN co-tenant');
+    } else if (action === 'ALLOWED') {
+        if (log.domain_allowed) reasons.push('domain in whitelist');
+        else if (log.ip_allowed) reasons.push('IP in whitelist');
+    }
+    if (mode) reasons.push(`mode: ${mode}`);
+
+    let desc = parts.join(' ');
+    if (reasons.length) desc += ` - ${reasons.join('; ')}`;
+    return desc;
+}
+
+// Returns the message to show in the Details block: prefers a real custom
+// message from the agent, falls back to the reconstructed description when
+// message is the default placeholder.
+function getLogDetailText(log) {
+    const raw = (log && log.message ? String(log.message).trim() : '');
+    if (raw && raw !== 'Log entry') return raw;
+    return buildLogDescription(log);
+}
+
 /**
  *  Load FULL statistics với better error handling
  */
@@ -403,14 +485,14 @@ function renderLogs(logs) {
             const agentHost = getAgentDisplayName(log);
             const protocol = log.protocol || 'N/A';
             const port = log.port ? log.port.toString() : 'N/A';
-            const message = log.message || `${action}: ${domain}`;
+            const detailText = getLogDetailText(log);
             const logId = log._id || log.id || index.toString();
             
             const logElement = document.createElement('div');
             logElement.className = 'p-3 border-bottom log-item';
             logElement.dataset.level = level.toLowerCase();
             logElement.dataset.agent = `${agentId} ${agentHost}`.toLowerCase();
-            logElement.dataset.search = `${source_ip} ${dest_ip} ${domain} ${message}`.toLowerCase();
+            logElement.dataset.search = `${source_ip} ${dest_ip} ${domain} ${detailText}`.toLowerCase();
             
             logElement.innerHTML = `
                 <div class="row align-items-center">
@@ -449,10 +531,10 @@ function renderLogs(logs) {
                                     </div>
                                 </div>
                                 
-                                ${message && message !== `${action}: ${domain}` ? `
+                                ${detailText ? `
                                     <div class="log-details mt-2">
                                         <small class="text-muted">Details:</small>
-                                        <div class="mt-1">${message}</div>
+                                        <div class="mt-1">${escapeHtml(detailText)}</div>
                                     </div>
                                 ` : ''}
                             </div>
@@ -738,14 +820,17 @@ function showLogDetails(logId) {
                 </table>
             </div>
         </div>
-        ${log.message ? `
-            <div class="mt-3">
-                <h6 class="fw-bold">Message</h6>
-                <div class="alert alert-light">
-                    <code>${log.message}</code>
+        ${(() => {
+            const detail = getLogDetailText(log);
+            return detail ? `
+                <div class="mt-3">
+                    <h6 class="fw-bold">Description</h6>
+                    <div class="alert alert-light">
+                        <code>${escapeHtml(detail)}</code>
+                    </div>
                 </div>
-            </div>
-        ` : ''}
+            ` : '';
+        })()}
     `;
     
     modal.show();
@@ -885,6 +970,17 @@ function showError(message) {
 }
 
 function showNotification(type, message) {
+    // Was a hand-rolled top-right alert. Routed through SaintToast so logs.js
+    // matches the rest of the admin UI (same z-index, same close behaviour,
+    // same dismiss timing). Type strings map cleanly:
+    //   'success' / 'warning' / 'info' / 'danger'(→error)
+    if (window.SaintToast) {
+        const mappedType = (type === 'danger') ? 'error' : type;
+        window.SaintToast.show(message, mappedType);
+        return;
+    }
+    // Fallback only fires if base.html didn't load core/toast.js — keep the
+    // legacy alert path so an isolated rendering of this page still works.
     const notification = document.createElement('div');
     notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
     notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -892,14 +988,8 @@ function showNotification(type, message) {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
     document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
+    setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
 }
 
 /**
@@ -1447,19 +1537,17 @@ function renderLifecycleEvent(log, logId) {
     `;
 }
 
-//  ADD: Helper functions
+// Helper. Delegated to SaintDate so every page renders timestamps the same
+// way; the previous in-page impl used the same vi-VN locale already, so
+// behaviour is unchanged. Local fallback covers the (rare) case where the
+// shared script didn't load.
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Unknown';
+    if (window.SaintDate) {
+        return window.SaintDate.formatVNFull(timestamp) || timestamp.toString();
+    }
     try {
-        const date = new Date(timestamp);
-        return date.toLocaleString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+        return new Date(timestamp).toLocaleString('vi-VN');
     } catch (e) {
         return timestamp.toString();
     }

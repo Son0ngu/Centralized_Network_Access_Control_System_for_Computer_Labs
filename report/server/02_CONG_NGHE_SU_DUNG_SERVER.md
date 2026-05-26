@@ -20,7 +20,11 @@
 
 | Thành phần | Source | Vai trò |
 | --- | --- | --- |
-| Flask app factory | `server/app.py` | Khởi tạo app, CORS, SocketIO, DB, route. |
+| Flask app factory | `server/bootstrap/app_factory.py` | Khởi tạo app, CORS, SocketIO, DB, template filter, page/error/socketio routes. |
+| App entrypoint | `server/app.py` | Giữ `gevent.monkey.patch_all()`, export `create_app` và chạy server khi gọi trực tiếp. |
+| Dependency/container wiring | `server/bootstrap/container.py` | Khởi tạo model/service/controller, auth/RBAC middleware, register blueprint và attach runtime services lên Flask app. |
+| Startup tasks | `server/bootstrap/startup_tasks.py` | Seed default admin và default API key như behavior cũ. |
+| Page/error/SocketIO routes | `server/routes/` | Tách web page route, error handler và SocketIO inbound handler khỏi `server/app.py`. |
 | MongoDB config | `server/database/config.py` | Kết nối MongoDB, config theo env. |
 | Docker | `server/Dockerfile`, `server/docker-compose.yml` | Đóng gói/deploy Server. |
 | Server templates | `server/views/templates/` | Dashboard/admin pages server-rendered. |

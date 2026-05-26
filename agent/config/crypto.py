@@ -70,7 +70,7 @@ def decrypt_config(path: Path) -> Optional[Dict[str, Any]]:
 
         return json.loads(plaintext.decode("utf-8"))
     except InvalidToken:
-        logger.error(f"Cannot decrypt {enc_path} — wrong machine or corrupted file")
+        logger.error(f"Cannot decrypt {enc_path} - wrong machine or corrupted file")
         return None
     except Exception as e:
         logger.error(f"Failed to decrypt config: {e}")

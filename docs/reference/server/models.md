@@ -1,7 +1,7 @@
-# `server/models` — MongoDB collections layer
+# `server/models` - MongoDB collections layer
 
 ## Mục đích
-Wrap mỗi MongoDB collection thành một class với CRUD methods + index setup ở `__init__`. **Không có ORM** — pymongo trực tiếp. Datetime → tz VN qua `time_utils`. Pattern chung: `_setup_indexes()` chạy lúc construct, mỗi method try-except + log.
+Wrap mỗi MongoDB collection thành một class với CRUD methods + index setup ở `__init__`. **Không có ORM** - pymongo trực tiếp. Datetime → tz VN qua `time_utils`. Pattern chung: `_setup_indexes()` chạy lúc construct, mỗi method try-except + log.
 
 10 model files, 10 collections tương ứng trong DB `Monitoring`.
 
@@ -22,7 +22,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 
 ## Public API
 
-### `models/agent_model.py` — `AgentModel`
+### `models/agent_model.py` - `AgentModel`
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `delete_agent(agent_id)` | | [agent_model.py:193](../../../server/models/agent_model.py#L193) | |
 | `get_agent_statistics(inactive_threshold_minutes=5)` | `→ Dict` | [agent_model.py:203](../../../server/models/agent_model.py#L203) | Aggregate by computed `actual_status` (active/inactive/offline) qua `$cond` so sánh `last_heartbeat` với threshold |
 
-### `models/whitelist_model.py` — `WhitelistModel` (collections: `whitelist`, `whitelist_meta`)
+### `models/whitelist_model.py` - `WhitelistModel` (collections: `whitelist`, `whitelist_meta`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -55,7 +55,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `cleanup_expired_entries()` | `→ int` | [whitelist_model.py:290](../../../server/models/whitelist_model.py#L290) | Xoá `expiry_date < now`. Bump version |
 | `validate_entry_value(entry_type, value)` | `→ Dict` | [whitelist_model.py:314](../../../server/models/whitelist_model.py#L314) | Cho domain/ip/url. Regex domain, `socket.inet_aton` IP, `urlparse` URL |
 | `delete_entry(entry_id)` | `→ bool` | [whitelist_model.py:364](../../../server/models/whitelist_model.py#L364) | Bump version nếu global |
-| `update_entry(entry_id, update_data)` | `→ bool` | [whitelist_model.py:381](../../../server/models/whitelist_model.py#L381) | Bump version nếu global. **Đừng** dùng cho group entries — group entries lưu trong `groups.whitelist` |
+| `update_entry(entry_id, update_data)` | `→ bool` | [whitelist_model.py:381](../../../server/models/whitelist_model.py#L381) | Bump version nếu global. **Đừng** dùng cho group entries - group entries lưu trong `groups.whitelist` |
 | `bulk_insert_entries(entries)` | `→ List[str]` | [whitelist_model.py:488](../../../server/models/whitelist_model.py#L488) | Set timestamps, defaults |
 | `get_entries_for_sync(since_date=None, scope="global", group_id=None)` | `→ List[Dict]` | [whitelist_model.py:451](../../../server/models/whitelist_model.py#L451) | Format sync: chỉ value/type/priority/category/added_date |
 | `verify_dns(domain)` | `→ Dict` | [whitelist_model.py:542](../../../server/models/whitelist_model.py#L542) | `socket.getaddrinfo` |
@@ -63,7 +63,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `build_query_from_filters(filters)` | | [whitelist_model.py:516](../../../server/models/whitelist_model.py#L516) | Build mongo query từ filters dict (type/category/added_by/search) |
 | `_convert_entry_timezones(entry)` | | [whitelist_model.py:246](../../../server/models/whitelist_model.py#L246) | Inject `*_formatted`, `*_iso` fields |
 
-### `models/log_model.py` — `LogModel` (collection: `logs`)
+### `models/log_model.py` - `LogModel` (collection: `logs`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -78,7 +78,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `get_recent_logs(limit=10)` | | [log_model.py:198](../../../server/models/log_model.py#L198) | Include `time_ago` string |
 | `get_logs_summary(since=None)` | `→ Dict` | [log_model.py:258](../../../server/models/log_model.py#L258) | Default last 24h. Count total/allowed/blocked/error |
 
-### `models/group_model.py` — `GroupModel` (collection: `groups`)
+### `models/group_model.py` - `GroupModel` (collection: `groups`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -94,7 +94,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `delete_group(group_id)` | | [group_model.py:138](../../../server/models/group_model.py#L138) | |
 | `bump_whitelist_version(group_id)` | | [group_model.py:142](../../../server/models/group_model.py#L142) | `$inc whitelist_version` |
 
-### `models/user_model.py` — `UserModel` (collection: `users`)
+### `models/user_model.py` - `UserModel` (collection: `users`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -102,7 +102,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `__init__(db)` | | [user_model.py:26](../../../server/models/user_model.py#L26) | Setup 5 index (username unique, email unique sparse, role+is_active compound, created_by, created_at DESC) |
 | `create(user_data)` | `(Dict) -> Dict` | [user_model.py:48](../../../server/models/user_model.py#L48) | Set defaults: `is_active=True`, `failed_login_attempts=0`, `locked_until=None` |
 | `find_by_id(user_id)` | | [user_model.py:75](../../../server/models/user_model.py#L75) | |
-| `find_by_username(username)` | | [user_model.py:83](../../../server/models/user_model.py#L83) | **Regex case-insensitive với `re.escape`** — safe |
+| `find_by_username(username)` | | [user_model.py:83](../../../server/models/user_model.py#L83) | **Regex case-insensitive với `re.escape`** - safe |
 | `find_by_email(email)` | | [user_model.py:94](../../../server/models/user_model.py#L94) | Tương tự |
 | `get_all_users(query=None, limit=100, skip=0)` | | [user_model.py:105](../../../server/models/user_model.py#L105) | |
 | `count_users(query=None)` | | [user_model.py:120](../../../server/models/user_model.py#L120) | |
@@ -115,30 +115,30 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `delete(user_id)` | | [user_model.py:230](../../../server/models/user_model.py#L230) | |
 | `get_user_statistics()` | `→ Dict` | [user_model.py:244](../../../server/models/user_model.py#L244) | total + by_role + active/inactive |
 
-### `models/session_model.py` — `SessionModel` (collection: `admin_sessions`)
+### `models/session_model.py` - `SessionModel` (collection: `admin_sessions`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
-| `__init__(db)` | | [session_model.py:20](../../../server/models/session_model.py#L20) | Setup 4 index incl **TTL `expires_at` (expireAfterSeconds=0)** — MongoDB auto-delete expired |
+| `__init__(db)` | | [session_model.py:20](../../../server/models/session_model.py#L20) | Setup 4 index incl **TTL `expires_at` (expireAfterSeconds=0)** - MongoDB auto-delete expired |
 | `create(session_data)` | | [session_model.py:49](../../../server/models/session_model.py#L49) | |
 | `find_by_access_jti(jti) / find_by_refresh_jti(jti)` | | [session_model.py:64, 72](../../../server/models/session_model.py#L64) | |
 | `get_user_sessions(user_id)` | `→ List[Dict]` | [session_model.py:80](../../../server/models/session_model.py#L80) | Active only |
 | `revoke(jti)` | `→ bool` | [session_model.py:95](../../../server/models/session_model.py#L95) | Match access_jti hoặc refresh_jti. Set `is_revoked=True, revoked_at=now` |
 | `revoke_all_user(user_id)` | `→ int` | [session_model.py:110](../../../server/models/session_model.py#L110) | |
-| `is_session_revoked(jti)` | `→ bool` | [session_model.py:123](../../../server/models/session_model.py#L123) | **`False` nếu session không tồn tại** (allow — JWT có thể được tạo nhưng session chưa save) |
+| `is_session_revoked(jti)` | `→ bool` | [session_model.py:123](../../../server/models/session_model.py#L123) | **`False` nếu session không tồn tại** (allow - JWT có thể được tạo nhưng session chưa save) |
 | `cleanup_expired()` | `→ int` | [session_model.py:139](../../../server/models/session_model.py#L139) | Manual cleanup. TTL index đã tự làm |
 
-### `models/audit_model.py` — `AuditModel` (collection: `audit_logs`)
+### `models/audit_model.py` - `AuditModel` (collection: `audit_logs`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `__init__(db)` | | [audit_model.py:20](../../../server/models/audit_model.py#L20) | Setup 6 index (timestamp DESC, user_id, action, resource_type, resource_id, compound user_id+timestamp) |
-| `log(audit_data)` | `→ Dict` | [audit_model.py:44](../../../server/models/audit_model.py#L44) | Insert + timestamp. **Swallow exception** (return `{}`) — không block main op |
+| `log(audit_data)` | `→ Dict` | [audit_model.py:44](../../../server/models/audit_model.py#L44) | Insert + timestamp. **Swallow exception** (return `{}`) - không block main op |
 | `get_logs(query=None, limit=100, skip=0)` | | [audit_model.py:60](../../../server/models/audit_model.py#L60) | Sort by timestamp DESC |
 | `get_user_activity(user_id, limit=50)` | | [audit_model.py:75](../../../server/models/audit_model.py#L75) | |
 | `count_logs(query=None)` | | [audit_model.py:87](../../../server/models/audit_model.py#L87) | |
 
-### `models/api_key_model.py` — `APIKeyModel` (collection: `api_keys`)
+### `models/api_key_model.py` - `APIKeyModel` (collection: `api_keys`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -148,7 +148,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `generate_api_key()` | `@staticmethod → str` | [api_key_model.py:57](../../../server/models/api_key_model.py#L57) | `fc_<token_hex(16)>` = 35 chars |
 | `hash_api_key(key)` | `@staticmethod → str` | [api_key_model.py:69](../../../server/models/api_key_model.py#L69) | HMAC-SHA256 với secret |
 | `_hash_api_key_legacy(key)` | `@staticmethod` | [api_key_model.py:86](../../../server/models/api_key_model.py#L86) | Legacy plain SHA-256 (cho backward compat) |
-| `create_api_key(name, description="", expires_in_days=None, permissions=None, created_by="system")` | `→ Dict` | [api_key_model.py:91](../../../server/models/api_key_model.py#L91) | Trả **plaintext key 1 lần** — không lưu trừ hash. Default permissions=["register"] |
+| `create_api_key(name, description="", expires_in_days=None, permissions=None, created_by="system")` | `→ Dict` | [api_key_model.py:91](../../../server/models/api_key_model.py#L91) | Trả **plaintext key 1 lần** - không lưu trừ hash. Default permissions=["register"] |
 | `validate_api_key(api_key, required_permission="register")` | `→ Dict` | [api_key_model.py:164](../../../server/models/api_key_model.py#L164) | Try HMAC hash → fallback legacy → **auto-migrate** sang HMAC. Check active, expired, permission. Update `last_used_at`, `usage_count`. Permission aliases map old↔new |
 | `revoke_api_key(key_id, revoked_by="system")` | | [api_key_model.py:267](../../../server/models/api_key_model.py#L267) | Set `is_active=False, revoked_at, revoked_by` |
 | `list_api_keys(include_revoked=False, page=1, limit=20)` | `→ Dict` | [api_key_model.py:299](../../../server/models/api_key_model.py#L299) | **Exclude `key_hash` field** từ result |
@@ -156,7 +156,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `update_api_key(key_id, name=None, description=None, permissions=None, is_active=None)` | | [api_key_model.py:379](../../../server/models/api_key_model.py#L379) | |
 | `get_stats()` | `→ Dict` | [api_key_model.py:428](../../../server/models/api_key_model.py#L428) | total/active/expired/revoked |
 
-### `models/whitelist_profile_model.py` — `WhitelistProfileModel` (collection: `whitelist_profiles`)
+### `models/whitelist_profile_model.py` - `WhitelistProfileModel` (collection: `whitelist_profiles`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -171,12 +171,12 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `deactivate_all_in_group(group_id)` | `→ int` | [whitelist_profile_model.py:108](../../../server/models/whitelist_profile_model.py#L108) | Bulk deactivate. Caller phải đảm bảo chỉ 1 active per group |
 | `get_active_profile(group_id)` | `→ Optional[Dict]` | [whitelist_profile_model.py:116](../../../server/models/whitelist_profile_model.py#L116) | Cho agent sync |
 
-### `models/agent_policy_model.py` — `AgentPolicyModel` (collection: `agent_policies`)
+### `models/agent_policy_model.py` - `AgentPolicyModel` (collection: `agent_policies`)
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `VALID_MODES = ("none", "isolate", "custom_whitelist")` | const | [agent_policy_model.py:40](../../../server/models/agent_policy_model.py#L40) | |
-| `__init__(db)` | | [agent_policy_model.py:42](../../../server/models/agent_policy_model.py#L42) | Setup 3 index (agent_id unique, override_mode, expires_at) — **TTL không dùng**, expire check runtime để giữ audit |
+| `__init__(db)` | | [agent_policy_model.py:42](../../../server/models/agent_policy_model.py#L42) | Setup 3 index (agent_id unique, override_mode, expires_at) - **TTL không dùng**, expire check runtime để giữ audit |
 | `get_policy(agent_id)` | `→ Optional[Dict]` | [agent_policy_model.py:65](../../../server/models/agent_policy_model.py#L65) | None nếu chưa set (= mode "none") |
 | `get_effective_mode(agent_id)` | `→ str` | [agent_policy_model.py:74](../../../server/models/agent_policy_model.py#L74) | **Auto-reset to "none" khi expired** (mutation side effect). Khác `get_policy` |
 | `set_policy(agent_id, mode, applied_by_user, reason="", custom_whitelist=None, expires_at=None)` | `→ Dict` | [agent_policy_model.py:103](../../../server/models/agent_policy_model.py#L103) | Upsert. `$inc override_version`. Validate `mode in VALID_MODES` |
@@ -187,7 +187,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `count_by_mode()` | `→ Dict[str, int]` | [agent_policy_model.py:179](../../../server/models/agent_policy_model.py#L179) | Aggregate |
 
 ## Ai gọi module này
-Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi inject vào service tương ứng. Controllers KHÔNG gọi model trực tiếp (luôn qua service) — trừ vài edge case như `agent_controller._check_agent_ownership` đọc `agent_model.find_by_agent_id` cho ownership check trước khi delegate sang service.
+Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi inject vào service tương ứng. Controllers KHÔNG gọi model trực tiếp (luôn qua service) - trừ vài edge case như `agent_controller._check_agent_ownership` đọc `agent_model.find_by_agent_id` cho ownership check trước khi delegate sang service.
 
 | Model | Caller chính |
 |---|---|
@@ -205,15 +205,15 @@ Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi i
 ## Module này gọi ra
 - `pymongo`, `bson.ObjectId`
 - `time_utils.now_vietnam / parse_agent_timestamp / to_vietnam`
-- `bcrypt` (gián tiếp qua service — model chỉ lưu hash)
+- `bcrypt` (gián tiếp qua service - model chỉ lưu hash)
 - `hmac`, `hashlib`, `secrets` (api_key_model)
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần CRUD collection? → tạo `XModel(db)` mới + setup indexes. **Đừng** insert trực tiếp `db.x.insert_one` ở service
 - Cần version cho whitelist? → `WhitelistModel.bump_global_version()` cho global, `GroupModel.bump_whitelist_version(gid)` cho group, `WhitelistProfileModel.bump_version(pid)` cho profile
 - Cần hash API key? → `APIKeyModel.hash_api_key(key)` (HMAC-SHA256)
 - Cần validate domain/IP/URL? → `WhitelistModel.validate_entry_value(type, value)`
-- Cần ensure pending group? → `GroupModel.ensure_pending_group()` — idempotent atomic upsert
+- Cần ensure pending group? → `GroupModel.ensure_pending_group()` - idempotent atomic upsert
 - Cần check user locked? → `UserModel.is_locked(user)`
 - Cần `now_vietnam` aware datetime? → `time_utils.now_vietnam()` (xem [app.md](app.md))
 - Cần TTL index để auto-cleanup? → ví dụ ở `SessionModel._setup_indexes` (line 37)
@@ -221,43 +221,43 @@ Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi i
 ## Gotchas
 
 ### Indexes
-- **Index creation idempotent** — `create_index` không raise nếu đã có. WhitelistModel có logic detect existing để tránh conflict (line 76-130).
+- **Index creation idempotent** - `create_index` không raise nếu đã có. WhitelistModel có logic detect existing để tránh conflict (line 76-130).
 - **TTL index `expireAfterSeconds=0`** cần `expires_at` là field aware datetime. Mongo native TTL chỉ chạy mỗi 60s nên có lag.
-- **Compound `(value, type, is_active)` ở whitelist** không unique — cho phép trùng nếu khác `scope`. Nếu cần unique global value, phải compound thêm `scope`.
+- **Compound `(value, type, is_active)` ở whitelist** không unique - cho phép trùng nếu khác `scope`. Nếu cần unique global value, phải compound thêm `scope`.
 
 ### Datetime
 - **Mọi datetime lưu vào Mongo phải aware** (codec options strict). Naive → pymongo raise. Helpers `now_vietnam()` luôn aware.
-- **`parse_agent_timestamp` rất khoan dung** (xem [app.md](app.md)) — fallback `now_vietnam()` cho bất kỳ input lỗi. Model dùng để parse `last_heartbeat` từ agent.
+- **`parse_agent_timestamp` rất khoan dung** (xem [app.md](app.md)) - fallback `now_vietnam()` cho bất kỳ input lỗi. Model dùng để parse `last_heartbeat` từ agent.
 
 ### Whitelist storage 2 nơi
 - **Global entries** lưu ở collection `whitelist` (mỗi entry 1 document)
 - **Group entries** lưu **inline** trong `groups.whitelist` array (mỗi group 1 doc, whitelist là list)
 - **Profile entries** lưu inline trong `whitelist_profiles.domains` array
-- `WhitelistModel` CHỈ thao tác trên collection `whitelist` (global). Group/profile entries phải qua `GroupModel.update_group` hoặc `WhitelistProfileModel.update_profile`. **Đừng** dùng `WhitelistModel.delete_entry` cho group items — sẽ không tìm thấy.
+- `WhitelistModel` CHỈ thao tác trên collection `whitelist` (global). Group/profile entries phải qua `GroupModel.update_group` hoặc `WhitelistProfileModel.update_profile`. **Đừng** dùng `WhitelistModel.delete_entry` cho group items - sẽ không tìm thấy.
 - WhitelistService có pseudo-ID `group::<gid>::<type>::<value>` để định danh group items trong UI (xem [services.md](services.md)).
 
 ### API key migration
 - **Lazy migration HMAC** (api_key_model.py:191-197): legacy keys hash bằng plain SHA-256. Khi validate fail HMAC, fallback legacy. Match → update hash sang HMAC. Sau migration full, có thể xoá `_hash_api_key_legacy`.
-- **`API_KEY_HMAC_SECRET` default ở line 27** — chỉ warning log. Production phải set env → đổi secret = invalidate tất cả keys (kể cả đang dùng). Migration phải re-issue keys.
+- **`API_KEY_HMAC_SECRET` default ở line 27** - chỉ warning log. Production phải set env → đổi secret = invalidate tất cả keys (kể cả đang dùng). Migration phải re-issue keys.
 
 ### User/session
 - **Brute-force lock 5 lần / 15 phút** (user_model.py:19-20). Reset sau login success. Acceptable cho web admin, hơi quá lỏng cho exposure cao.
-- **`find_by_username` regex case-insensitive** (line 86-89) — dùng `re.escape` chống regex injection. Đừng đổi sang query thường (mất CI).
+- **`find_by_username` regex case-insensitive** (line 86-89) - dùng `re.escape` chống regex injection. Đừng đổi sang query thường (mất CI).
 - **`is_session_revoked` return `False` khi không tìm thấy** (session_model.py:133): nghĩa là JWT mà không có session record (vd test gen token trực tiếp) sẽ được allow. Đảm bảo mọi login real tạo session.
 
 ### Agent policy
-- **`get_effective_mode` mutate state** (line 89-99): nếu policy expired, set lại `override_mode="none"` ngay khi đọc. Side effect ẩn — nếu dashboard list nhiều agent, hàng loạt write. Acceptable vì lazy invalidation.
+- **`get_effective_mode` mutate state** (line 89-99): nếu policy expired, set lại `override_mode="none"` ngay khi đọc. Side effect ẩn - nếu dashboard list nhiều agent, hàng loạt write. Acceptable vì lazy invalidation.
 - **`override_version` được agent dùng để detect change** (line 137 `$inc`). Đừng tự reset.
-- **Schema có sẵn ở docstring** (line 21-37) — đọc khi cần thêm field.
+- **Schema có sẵn ở docstring** (line 21-37) - đọc khi cần thêm field.
 
 ### Group
 - **`ensure_pending_group` atomic upsert** (line 32-50): thread-safe. Default cho mọi agent mới register.
-- **`update_group` auto-bump `whitelist_version`** khi `whitelist` field trong payload (line 122-129) — read-modify-write race nếu 2 admin sửa cùng lúc. Acceptable cho admin path low-traffic.
-- **Legacy `created_by` field** — vẫn check trong RBAC. Migration kế hoạch chuyển sang `teacher_ids` list.
+- **`update_group` auto-bump `whitelist_version`** khi `whitelist` field trong payload (line 122-129) - read-modify-write race nếu 2 admin sửa cùng lúc. Acceptable cho admin path low-traffic.
+- **Legacy `created_by` field** - vẫn check trong RBAC. Migration kế hoạch chuyển sang `teacher_ids` list.
 
 ### Audit
-- **`AuditModel.log` swallow exception** (line 47-54): nếu DB fail, action chính vẫn pass. Cố ý — audit không được block business logic. Hậu quả: có thể mất audit nếu Mongo lỗi. Acceptable trade-off.
-- **Không có read API qua service** — controller gọi `audit_service.get_logs/get_user_activity/count_logs`.
+- **`AuditModel.log` swallow exception** (line 47-54): nếu DB fail, action chính vẫn pass. Cố ý - audit không được block business logic. Hậu quả: có thể mất audit nếu Mongo lỗi. Acceptable trade-off.
+- **Không có read API qua service** - controller gọi `audit_service.get_logs/get_user_activity/count_logs`.
 
 ### Indexes có thể bị stale
 - Setup indexes ở `__init__` mỗi lần app boot. Đổi schema (vd thêm field unique) → restart đủ. Drop index thủ công nếu sửa direction/sparse: `db.<coll>.dropIndex(name)`.

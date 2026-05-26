@@ -8,6 +8,44 @@ from pymongo.database import Database
 from time_utils import now_vietnam
 
 
+def _normalise_embedded_whitelist(entries: List) -> List[Dict]:
+    """Ensure every entry in a group's embedded whitelist is a dict with ``_id``.
+
+    Called by ``create_group`` so new groups never carry the legacy bare-string
+    or id-less dict forms. The format already exists in the wild for older
+    groups; the backfill migration ``2026_backfill_group_whitelist_entry_ids.py``
+    upgrades them in place. Keep this helper module-private — the unified
+    contract is owned by ``server.services.whitelist_entry_id``.
+    """
+    out: List[Dict] = []
+    for entry in entries or []:
+        if isinstance(entry, dict):
+            entry = {**entry}
+            entry_id = entry.get("_id")
+            if not entry_id:
+                entry["_id"] = ObjectId()
+            elif isinstance(entry_id, ObjectId):
+                pass
+            elif ObjectId.is_valid(str(entry_id)):
+                entry["_id"] = ObjectId(str(entry_id))
+            else:
+                entry["_id"] = ObjectId()
+            out.append(entry)
+        else:
+            # Bare string (legacy callers): promote to dict so the schema
+            # is uniform. Default category/priority match what the bulk
+            # path uses, so listing rendering is consistent.
+            out.append({
+                "_id": ObjectId(),
+                "value": str(entry),
+                "type": "domain",
+                "category": "uncategorized",
+                "priority": "normal",
+                "is_active": True,
+            })
+    return out
+
+
 class GroupModel:
     """Model for managing agent groups and their whitelists."""
 
@@ -56,15 +94,28 @@ class GroupModel:
                 return existing
             raise
 
+    def find_pending_group(self) -> Optional[Dict]:
+        """Return the system pending group if it exists."""
+        return self.collection.find_one({"is_system": True, "name": "pending"})
+
     def create_group(self, name: str, description: str = "", whitelist: Optional[List[Dict]] = None, is_system: bool = False, created_by=None) -> Dict:
         now = now_vietnam()
+
+        # Stamp a real ObjectId on every embedded whitelist entry up front so
+        # frontend never sees a pseudo-ID for groups created after this
+        # change. Backwards-compat: bare-string entries (legacy callers that
+        # pass ``["example.com"]``) are promoted to dict form here too, since
+        # the unified id contract needs entries to be subdocuments. See the
+        # cleanup plan (Phase 3, P1 #8) for the wider context.
+        normalised = _normalise_embedded_whitelist(whitelist or [])
+
         group = {
             "name": name,
             "description": description,
             "created_at": now,
             "updated_at": now,
             "is_system": is_system,
-            "whitelist": whitelist or [],
+            "whitelist": normalised,
             "whitelist_version": 1,
             "created_by": created_by,
             "teacher_ids": [],  # RBAC: list of assigned teacher ObjectIds
@@ -101,6 +152,33 @@ class GroupModel:
         """List groups, optionally filtered (e.g. by created_by for teacher)."""
         return list(self.collection.find(query_filter or {}))
 
+    def find_accessible_group_ids_for_teacher(self, teacher_id) -> List[str]:
+        """Return group ids assigned to or legacy-created by a teacher."""
+        groups = self.collection.find(
+            {"$or": [
+                {"teacher_ids": teacher_id},
+                {"created_by": teacher_id},
+            ]},
+            {"_id": 1},
+        )
+        return [str(group["_id"]) for group in groups]
+
+    def find_group_with_embedded_entry(self, entry_oid) -> Optional[Dict]:
+        """Return the group document that owns an embedded whitelist entry.
+
+        Used by ``WhitelistService`` to resolve a real ObjectId back to its
+        parent group when the caller passes ``whitelist._id`` (the new
+        canonical identifier for embedded entries). Falls back to ``None``
+        if no group has a matching embedded entry — caller treats that as
+        "not found" and surfaces a 404.
+
+        The query is a dotted-path match (``whitelist._id``), which MongoDB
+        supports natively against arrays of subdocuments. We project only
+        the fields the service actually needs so the network round-trip
+        stays small even for groups with thousands of embedded entries.
+        """
+        return self.collection.find_one({"whitelist._id": entry_oid})
+
     def find_by_id(self, group_id: str) -> Optional[Dict]:
         try:
             return self.collection.find_one({"_id": ObjectId(group_id)})
@@ -117,7 +195,9 @@ class GroupModel:
         if "layout" in update_data:
             update_payload["layout"] = update_data["layout"]
         if "whitelist" in update_data:
-            update_payload["whitelist"] = update_data.get("whitelist") or []
+            update_payload["whitelist"] = _normalise_embedded_whitelist(
+                update_data.get("whitelist") or []
+            )
             # Always bump whitelist_version when whitelist changes
             if "whitelist_version" in update_data:
                 update_payload["whitelist_version"] = update_data["whitelist_version"]

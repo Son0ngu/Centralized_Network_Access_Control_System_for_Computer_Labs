@@ -4,6 +4,8 @@
 
 Tài liệu này được sinh từ phân tích AST source code, không import module và không chạy runtime.
 
+> Cập nhật thủ công 2026-05-26: phần bootstrap/routes bên dưới phản ánh refactor mới nhất. `server/app.py` không còn chứa app factory implementation, controller composition, page route, error handler hoặc SocketIO handler; các phần đó đã tách sang `server/bootstrap/` và `server/routes/`.
+
 
 ## Package `server`
 
@@ -12,12 +14,52 @@ Tài liệu này được sinh từ phân tích AST source code, không import m
 
 | Function | Công dụng | Vị trí |
 | --- | --- | --- |
-| `create_app()` | Tạo mới hoặc thêm dữ liệu vào bộ nhớ/DB/cấu hình. | `server/app.py:69` |
-| `initialize_database_indexes(app, db)` | Initialize database indexes safely with proper parameters | `server/app.py:170` |
-| `register_controllers(app, socketio, db)` | Register all controllers with proper parameters | `server/app.py:195` |
-| `register_main_routes(app, log_service, agent_service)` | Register main web routes - vietnam ONLY | `server/app.py:319` |
-| `register_error_handlers(app)` | Register error handlers - vietnam ONLY | `server/app.py:448` |
-| `register_socketio_events(socketio)` | Register Socket.IO events - vietnam ONLY | `server/app.py:470` |
+| `create_app` | Imported/exported từ `bootstrap.app_factory` để giữ tương thích `from app import create_app`. | `server/app.py:12` |
+
+`server/app.py` hiện chỉ làm entrypoint: chạy `gevent.monkey.patch_all()` ở đầu file, cấu hình logging, import `create_app`, và trong nhánh `if __name__ == "__main__"` gọi `socketio.run(...)`.
+
+
+### `server/bootstrap/app_factory.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `create_app()` | Tạo Flask app đầy đủ: load config, template filter, validate config, CORS, SocketIO, DB, indexes, container, page routes, error handlers, SocketIO events. | `server/bootstrap/app_factory.py:19` |
+
+
+### `server/bootstrap/container.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `initialize_database_indexes(app, db)` | Khởi tạo index cho các model chính và log warning nếu index setup gặp vấn đề không chặn startup. | `server/bootstrap/container.py:46` |
+| `initialize_container(app, socketio, db)` | Tạo model/service/controller, init auth/RBAC middleware, chạy startup tasks, đăng ký blueprint `/api`, attach các service runtime lên Flask app. | `server/bootstrap/container.py:60` |
+
+
+### `server/bootstrap/startup_tasks.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `run_startup_tasks(user_service, api_key_service)` | Seed default admin và tạo default API key nếu chưa có, giữ behavior startup cũ nhưng tách khỏi app factory. | `server/bootstrap/startup_tasks.py:8` |
+
+
+### `server/routes/pages.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `register_page_routes(app)` | Đăng ký dashboard/page routes, redirect `/admin/change-password` về `/profile`, và các endpoint metadata `/api/health`, `/api/config`. | `server/routes/pages.py:10` |
+
+
+### `server/routes/errors.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `register_error_handlers(app)` | Đăng ký 404/500 handler, trả JSON cho `/api/*` và HTML template cho page route. | `server/routes/errors.py:8` |
+
+
+### `server/routes/socketio_events.py`
+
+| Function | Công dụng | Vị trí |
+| --- | --- | --- |
+| `register_socketio_events(socketio)` | Đăng ký inbound SocketIO events `connect`, `disconnect`, `ping` và emit `server_message`/`pong`. | `server/routes/socketio_events.py:12` |
 
 
 ### `server/time_utils.py`
@@ -56,24 +98,26 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 ## Package `server/controllers`
 
 
-### `server/controllers/admin_auth_controller.py`
+### `server/controllers/web_auth_controller.py`
+
+> Đổi tên từ `AdminAuthController` → `WebAuthController` (P1 #10 — tách rõ agent auth vs web auth). Module `admin_auth_controller.py` cũ trở thành shim re-export `WebAuthController` + alias `AdminAuthController = WebAuthController` để không vỡ import legacy. Xóa alias khi tất cả call site migrate.
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `AdminAuthController` | Controller for admin/teacher authentication | `server/controllers/admin_auth_controller.py:28` |
+| `WebAuthController` | Controller for admin/teacher web-UI authentication (login/logout/refresh/profile, httpOnly cookie) | `server/controllers/web_auth_controller.py:52` |
 
 | Class | Method | Công dụng | Vị trí |
 | --- | --- | --- | --- |
-| `AdminAuthController` | `__init__(self, admin_auth_service, jwt_service, socketio)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `server/controllers/admin_auth_controller.py:31` |
-| `AdminAuthController` | `_register_routes(self)` | Register routes | `server/controllers/admin_auth_controller.py:40` |
-| `AdminAuthController` | `_success(self, data, message, status_code)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `server/controllers/admin_auth_controller.py:65` |
-| `AdminAuthController` | `_error(self, message, status_code, code)` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `server/controllers/admin_auth_controller.py:71` |
-| `AdminAuthController` | `login(self)` | POST /api/admin/auth/login | `server/controllers/admin_auth_controller.py:81` |
-| `AdminAuthController` | `get_profile(self)` | GET /api/admin/auth/me | `server/controllers/admin_auth_controller.py:150` |
-| `AdminAuthController` | `refresh_token(self)` | POST /api/admin/auth/refresh | `server/controllers/admin_auth_controller.py:172` |
-| `AdminAuthController` | `logout(self)` | POST /api/admin/auth/logout | `server/controllers/admin_auth_controller.py:218` |
-| `AdminAuthController` | `change_password(self)` | PUT /api/admin/auth/change-password | `server/controllers/admin_auth_controller.py:249` |
-| `AdminAuthController` | `update_profile(self)` | PUT /api/admin/auth/profile | `server/controllers/admin_auth_controller.py:279` |
+| `WebAuthController` | `__init__(self, admin_auth_service, jwt_service, socketio)` | Khởi tạo controller, gắn blueprint `admin_auth`. | `server/controllers/web_auth_controller.py:55` |
+| `WebAuthController` | `_register_routes(self)` | Register routes `/admin/auth/*` (login/me/refresh/logout/change-password/profile). | `server/controllers/web_auth_controller.py:64` |
+| `WebAuthController` | `_success(self, data, message, status_code)` | Helper response thành công (JSON `{success: true, ...}`). | `server/controllers/web_auth_controller.py:89` |
+| `WebAuthController` | `_error(self, message, status_code, code)` | Helper response lỗi (`{success: false, error, code}`). | `server/controllers/web_auth_controller.py:95` |
+| `WebAuthController` | `login(self)` | `POST /api/admin/auth/login` — username/password → set httpOnly cookies. | `server/controllers/web_auth_controller.py:105` |
+| `WebAuthController` | `get_profile(self)` | `GET /api/admin/auth/me` — trả profile user hiện tại. | `server/controllers/web_auth_controller.py:174` |
+| `WebAuthController` | `refresh_token(self)` | `POST /api/admin/auth/refresh` — issue access token mới. | `server/controllers/web_auth_controller.py:196` |
+| `WebAuthController` | `logout(self)` | `POST /api/admin/auth/logout` — revoke session, clear cookies. | `server/controllers/web_auth_controller.py:242` |
+| `WebAuthController` | `change_password(self)` | `PUT /api/admin/auth/change-password`. | `server/controllers/web_auth_controller.py:273` |
+| `WebAuthController` | `update_profile(self)` | `PUT /api/admin/auth/profile` — cập nhật email, audit `profile.update` qua `audit_service.log_action(...)`. | `server/controllers/web_auth_controller.py:303` |
 
 
 ### `server/controllers/agent_controller.py`
@@ -148,20 +192,22 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 
 ### `server/controllers/auth_controller.py`
 
+> **Tên class chính: `AgentAuthController`** (đổi tên ở Quick Wins phase). Alias `AuthController = AgentAuthController` được giữ để không vỡ import cũ; sẽ gỡ khi tất cả call site migrate. Cặp với `WebAuthController` (file `controllers/web_auth_controller.py`, đổi tên từ `AdminAuthController`) — agent dùng Bearer JWT qua header, web dùng httpOnly cookie qua `/api/admin/auth/*`.
+
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `AuthController` | Controller for authentication operations | `server/controllers/auth_controller.py:16` |
+| `AgentAuthController` | Controller cho JWT auth của AGENT (refresh, logout, verify, token-info). | `server/controllers/auth_controller.py:16` |
 
 | Class | Method | Công dụng | Vị trí |
 | --- | --- | --- | --- |
-| `AuthController` | `__init__(self, jwt_service, agent_model, socketio)` | Initialize Auth Controller. | `server/controllers/auth_controller.py:19` |
-| `AuthController` | `_register_routes(self)` | Register routes for this controller | `server/controllers/auth_controller.py:35` |
-| `AuthController` | `_success_response(self, data, message, status_code)` | Helper method for success responses | `server/controllers/auth_controller.py:63` |
-| `AuthController` | `_error_response(self, message, status_code, code)` | Helper method for error responses | `server/controllers/auth_controller.py:70` |
-| `AuthController` | `refresh_token(self)` | Refresh access token using refresh token. | `server/controllers/auth_controller.py:77` |
-| `AuthController` | `logout(self)` | Logout agent by revoking tokens. | `server/controllers/auth_controller.py:152` |
-| `AuthController` | `verify_token(self)` | Verify if a token is valid. | `server/controllers/auth_controller.py:220` |
-| `AuthController` | `token_info(self)` | Get information about a token without full validation. | `server/controllers/auth_controller.py:275` |
+| `AgentAuthController` | `__init__(self, jwt_service, agent_model, socketio)` | Initialize Agent Auth Controller. | `server/controllers/auth_controller.py:19` |
+| `AgentAuthController` | `_register_routes(self)` | Register routes for this controller | `server/controllers/auth_controller.py:35` |
+| `AgentAuthController` | `_success_response(self, data, message, status_code)` | Helper method for success responses | `server/controllers/auth_controller.py:63` |
+| `AgentAuthController` | `_error_response(self, message, status_code, code)` | Helper method for error responses | `server/controllers/auth_controller.py:70` |
+| `AgentAuthController` | `refresh_token(self)` | Refresh access token using refresh token. | `server/controllers/auth_controller.py:77` |
+| `AgentAuthController` | `logout(self)` | Logout agent by revoking tokens. | `server/controllers/auth_controller.py:152` |
+| `AgentAuthController` | `verify_token(self)` | Verify if a token is valid. | `server/controllers/auth_controller.py:220` |
+| `AgentAuthController` | `token_info(self)` | Get information about a token without full validation. | `server/controllers/auth_controller.py:275` |
 
 
 ### `server/controllers/group_controller.py`
@@ -361,6 +407,8 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `AgentModel` | `update_heartbeat(self, agent_id, update_data)` | Update agent heartbeat - vietnam ONLY | `server/models/agent_model.py:93` |
 | `AgentModel` | `find_by_agent_id(self, agent_id)` | Find agent by agent_id | `server/models/agent_model.py:116` |
 | `AgentModel` | `count_by_group(self, group_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/agent_model.py:124` |
+| `AgentModel` | `move_agents_to_group(self, source_group_id, target_group_id)` | Bulk move agents sang group khác, dùng khi xóa group và cần chuyển agent về Pending. | `server/models/agent_model.py:131` |
+| `AgentModel` | `find_agent_ids_by_group_ids(self, group_ids)` | Trả danh sách `agent_id` thuộc các group, phục vụ RBAC log filter mà không để service query collection trực tiếp. | `server/models/agent_model.py:145` |
 | `AgentModel` | `find_by_hostname(self, hostname)` | Find agents by hostname | `server/models/agent_model.py:131` |
 | `AgentModel` | `find_by_device_id(self, device_id)` | Find agent by device ID | `server/models/agent_model.py:139` |
 | `AgentModel` | `get_all_agents(self, query, limit, skip)` | Get all agents with optional filtering | `server/models/agent_model.py:147` |
@@ -440,12 +488,14 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `GroupModel` | `__init__(self, db)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:14` |
 | `GroupModel` | `_setup_indexes(self)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:20` |
 | `GroupModel` | `ensure_pending_group(self)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:30` |
+| `GroupModel` | `find_pending_group(self)` | Tìm system group Pending hiện có, phục vụ `GroupService.delete_group()` mà không truy cập `.collection` trong service. | `server/models/group_model.py:59` |
 | `GroupModel` | `create_group(self, name, description, whitelist, is_system, created_by)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:59` |
 | `GroupModel` | `add_teacher(self, group_id, teacher_id)` | Add a teacher to the group's teacher_ids list. | `server/models/group_model.py:76` |
 | `GroupModel` | `remove_teacher(self, group_id, teacher_id)` | Remove a teacher from the group's teacher_ids list. | `server/models/group_model.py:84` |
 | `GroupModel` | `set_teachers(self, group_id, teacher_ids)` | Set the full teacher_ids list for a group. | `server/models/group_model.py:92` |
 | `GroupModel` | `list_groups(self, query_filter)` | List groups, optionally filtered (e.g. by created_by for teacher). | `server/models/group_model.py:100` |
 | `GroupModel` | `find_by_id(self, group_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:104` |
+| `GroupModel` | `find_accessible_group_ids_for_teacher(self, teacher_id)` | Trả group IDs mà teacher được gán hoặc tạo, giữ legacy `created_by` fallback cho RBAC. | `server/models/group_model.py:108` |
 | `GroupModel` | `update_group(self, group_id, update_data)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:110` |
 | `GroupModel` | `delete_group(self, group_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:138` |
 | `GroupModel` | `bump_whitelist_version(self, group_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/group_model.py:142` |
@@ -536,6 +586,9 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `WhitelistModel` | `find_all_entries(self, query, sort_field, sort_order)` | Find all whitelist entries with proper sorting - vietnam ONLY | `server/models/whitelist_model.py:207` |
 | `WhitelistModel` | `_convert_entry_timezones(self, entry)` | Convert entry datetime fields for display - vietnam ONLY | `server/models/whitelist_model.py:246` |
 | `WhitelistModel` | `find_entry_by_value(self, value, active_only)` | Find entry by value (case-insensitive) | `server/models/whitelist_model.py:272` |
+| `WhitelistModel` | `reactivate_entry(self, entry_id)` | Reactivate entry đã tồn tại khi add trùng inactive entry. | `server/models/whitelist_model.py:290` |
+| `WhitelistModel` | `find_raw_entries(self, query, projection, sort_field, sort_order)` | Trả raw whitelist documents cho service change tracking, giữ query trực tiếp trong model layer. | `server/models/whitelist_model.py:304` |
+| `WhitelistModel` | `find_entry_access_info(self, entry_id)` | Lookup tối thiểu `_id`, `scope`, `group_id`, `is_active` để service kiểm tra quyền teacher trên entry thật. | `server/models/whitelist_model.py:316` |
 | `WhitelistModel` | `cleanup_expired_entries(self)` | Remove expired entries - vietnam ONLY | `server/models/whitelist_model.py:290` |
 | `WhitelistModel` | `validate_entry_value(self, entry_type, value)` | Validate entry value based on type | `server/models/whitelist_model.py:314` |
 | `WhitelistModel` | `_validate_domain(self, domain)` | Validate domain format | `server/models/whitelist_model.py:334` |
@@ -564,6 +617,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `WhitelistProfileModel` | `create_profile(self, group_id, teacher_id, teacher_username, name, domains)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/whitelist_profile_model.py:36` |
 | `WhitelistProfileModel` | `find_by_id(self, profile_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/whitelist_profile_model.py:55` |
 | `WhitelistProfileModel` | `list_by_group(self, group_id, teacher_id)` | List profiles for a group, optionally filtered by teacher. | `server/models/whitelist_profile_model.py:61` |
+| `WhitelistProfileModel` | `list_by_teacher_groups(self, teacher_id, group_ids)` | List profile theo teacher và danh sách group được phép, thay cho direct `.collection` ở service. | `server/models/whitelist_profile_model.py:68` |
 | `WhitelistProfileModel` | `update_profile(self, profile_id, update_data)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/whitelist_profile_model.py:68` |
 | `WhitelistProfileModel` | `bump_version(self, profile_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/whitelist_profile_model.py:82` |
 | `WhitelistProfileModel` | `delete_profile(self, profile_id)` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/models/whitelist_profile_model.py:89` |
@@ -699,7 +753,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `GroupService` | `list_groups(self, query_filter)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:40` |
 | `GroupService` | `create_group(self, name, description, whitelist, created_by)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:44` |
 | `GroupService` | `update_group(self, group_id, payload)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:48` |
-| `GroupService` | `delete_group(self, group_id)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:63` |
+| `GroupService` | `delete_group(self, group_id)` | Xóa group an toàn: không xóa system group, tìm Pending qua `GroupModel.find_pending_group`, chuyển agent qua `AgentModel.move_agents_to_group`, rồi xóa group. | `server/services/group_service.py:63` |
 | `GroupService` | `bump_group_whitelist_version(self, group_id)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:89` |
 | `GroupService` | `get_pending_group_id(self)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:95` |
 | `GroupService` | `get_group(self, group_id)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/group_service.py:98` |
@@ -768,11 +822,11 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `RBACService` | `is_owner(self, user_id, resource)` | Check if user is the owner of a resource. | `server/services/rbac_service.py:50` |
 | `RBACService` | `can_access_group(self, user, group)` | Check if user can access a specific group. | `server/services/rbac_service.py:60` |
 | `RBACService` | `filter_groups_for_user(self, user, groups)` | Filter groups list based on user access. | `server/services/rbac_service.py:75` |
-| `RBACService` | `get_teacher_group_ids(self, user)` | Return list of group_id strings that the teacher is assigned to. | `server/services/rbac_service.py:98` |
+| `RBACService` | `get_teacher_group_ids(self, user)` | Return list of group_id strings that the teacher is assigned to; dùng `GroupModel.find_accessible_group_ids_for_teacher`. | `server/services/rbac_service.py:96` |
 | `RBACService` | `get_group_query_filter(self, user)` | Get MongoDB query filter for groups based on user role. | `server/services/rbac_service.py:124` |
 | `RBACService` | `get_agent_query_filter(self, user)` | Get MongoDB query filter for agents based on user role. | `server/services/rbac_service.py:139` |
-| `RBACService` | `get_log_query_filter(self, user)` | Get MongoDB query filter for logs based on user role. | `server/services/rbac_service.py:155` |
-| `RBACService` | `get_whitelist_query_filter(self, user)` | Get query filter for whitelist based on user role. | `server/services/rbac_service.py:192` |
+| `RBACService` | `get_log_query_filter(self, user)` | Get MongoDB query filter for logs based on user role; lấy agent ids qua `AgentModel.find_agent_ids_by_group_ids`. | `server/services/rbac_service.py:146` |
+| `RBACService` | `get_whitelist_query_filter(self, user)` | Get query filter for whitelist based on user role; không query collection trực tiếp trong service. | `server/services/rbac_service.py:169` |
 | `RBACService` | `validate_group_ids_ownership(self, user, group_ids)` | Validate that ALL group_ids belong to the current user. | `server/services/rbac_service.py:214` |
 | `RBACService` | `can_teacher_access_agent(self, user, agent)` | Check if teacher can access a specific agent. | `server/services/rbac_service.py:243` |
 
@@ -814,7 +868,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `WhitelistProfileService` | `activate_profile(self, profile_id, user)` | Activate a profile. Returns dict with profile + deactivated_profile info. | `server/services/whitelist_profile_service.py:91` |
 | `WhitelistProfileService` | `deactivate_profile(self, profile_id, user)` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/services/whitelist_profile_service.py:120` |
 | `WhitelistProfileService` | `get_active_profile(self, group_id)` | Get the active profile for a group (used by agent sync). | `server/services/whitelist_profile_service.py:137` |
-| `WhitelistProfileService` | `get_teacher_profiles(self, teacher_id, group_ids)` | Get all profiles owned by this teacher across specified groups. | `server/services/whitelist_profile_service.py:142` |
+| `WhitelistProfileService` | `get_teacher_profiles(self, teacher_id, group_ids)` | Get all profiles owned by this teacher across specified groups qua `WhitelistProfileModel.list_by_teacher_groups`. | `server/services/whitelist_profile_service.py:141` |
 | `WhitelistProfileService` | `_notify_group_update(self, group_id)` | Notify agents in this group to re-sync whitelist. | `server/services/whitelist_profile_service.py:171` |
 
 
@@ -827,6 +881,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | Class | Method | Công dụng | Vị trí |
 | --- | --- | --- | --- |
 | `WhitelistService` | `__init__(self, whitelist_model, agent_model, group_model, socketio, policy_service, profile_service)` | Initialize WhitelistService with model and socketio | `server/services/whitelist_service.py:25` |
+| `WhitelistService` | `validate_teacher_entry_access(self, item_id, teacher_group_ids, action)` | Kiểm tra quyền teacher trên global/group whitelist entry và pseudo-ID `group::<group_id>::<type>::<value>`; controller không query Mongo trực tiếp. | `server/services/whitelist_service.py:35` |
 | `WhitelistService` | `get_all_entries(self, filters)` | Get all whitelist entries with optional filtering - vietnam ONLY | `server/services/whitelist_service.py:38` |
 | `WhitelistService` | `add_entry(self, entry_data, client_ip)` | Add new entry to whitelist - vietnam ONLY | `server/services/whitelist_service.py:89` |
 | `WhitelistService` | `test_entry(self, entry_data)` | Test an entry before adding it - vietnam ONLY | `server/services/whitelist_service.py:196` |
@@ -1325,7 +1380,7 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `TestSessionModel` | Lớp truy cập MongoDB collection, query/index/CRUD cho tài nguyên tương ứng. | `server/tests/test_users_auth.py:426` |
 | `TestAdminAuthService` | Business logic chính, nối controller với model/component và phát event nếu cần. | `server/tests/test_users_auth.py:547` |
 | `TestUserController` | Xử lý request/UI action, validate input và điều phối service/component tương ứng. | `server/tests/test_users_auth.py:655` |
-| `TestAdminAuthController` | AdminAuthController uses @require_login as method decorators. | `server/tests/test_users_auth.py:772` |
+| `TestAdminAuthController` | Tên class test giữ nguyên cho backwards-compat khi chọn test theo class name; nội dung test target `WebAuthController` (file `controllers/web_auth_controller.py`). | `server/tests/test_users_auth.py:772` |
 
 | Class | Method | Công dụng | Vị trí |
 | --- | --- | --- | --- |
@@ -1414,7 +1469,10 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `TestAdminAuthController` | `test_login_not_json(self, app)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `server/tests/test_users_auth.py:821` |
 | `TestAdminAuthController` | `test_get_profile(self, app, user_model)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `server/tests/test_users_auth.py:826` |
 | `TestAdminAuthController` | `test_logout_endpoint(self, app, user_model)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `server/tests/test_users_auth.py:835` |
-| `TestAdminAuthController` | `test_refresh_endpoint(self, app, user_model, auth_service)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `server/tests/test_users_auth.py:844` |
+| `TestAdminAuthController` | `test_refresh_endpoint(self, app, user_model, auth_service)` | Refresh access token bằng refresh token hợp lệ. | `server/tests/test_users_auth.py:844` |
+| `TestAdminAuthController` | `test_update_profile_writes_audit_entry(self, app, user_model, audit_model)` | P0.4 verification: `PUT /api/admin/auth/profile` đổi email → ghi audit `profile.update` với `details.updated_fields=["email"]`. | `server/tests/test_users_auth.py:866` |
+| `TestAdminAuthController` | `test_update_profile_no_change_skips_audit(self, app, user_model, audit_model)` | Body rỗng → 200 "No changes", không ghi audit. | `server/tests/test_users_auth.py:894` |
+| `TestAdminAuthController` | `test_update_profile_duplicate_email_rejected(self, app, user_model, audit_model)` | Email trùng user khác → 400, không ghi audit. | `server/tests/test_users_auth.py:911` |
 
 | Function | Công dụng | Vị trí |
 | --- | --- | --- |

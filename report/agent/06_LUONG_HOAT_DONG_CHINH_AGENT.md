@@ -18,7 +18,7 @@ sequenceDiagram
   Controller-->>GUI: status_changed (running | degraded)
 ```
 
-`initialize_components()` trả về `InitResult` — một bản ghi cho mỗi component với
+`initialize_components()` trả về `InitResult` - một bản ghi cho mỗi component với
 status `ok | skipped | degraded | failed`. Cuối hàm in summary thật theo trạng
 thái từng phần thay vì luôn luôn báo "ALL COMPONENTS INITIALIZED SUCCESSFULLY":
 
@@ -90,30 +90,30 @@ flowchart LR
 | --- | --- |
 | `QtSignalBridge._drain` | QTimer tick 50ms. Tối đa 100 event/tick; nếu chạm cap thì `QTimer.singleShot(0, _drain)` để xả tiếp ngay, không chờ tick sau. |
 | Worker emit `stats_updated` | Mỗi 1s, **chỉ khi snapshot khác lần trước** (`!=` so sánh dict). Payload bundle `is_registered` + `firewall_enabled` để dashboard không cần pull. |
-| `DashboardView` cards | Cache `_last_card_values` — skip `set_value()` / `set_color()` nếu giá trị giống lần trước. Tránh re-paint widget không cần thiết. |
-| `DataTable` (Qt) | `QTableView` + `DictTableModel(QAbstractTableModel)` — **virtualized natively**: Qt chỉ paint row đang scroll vào viewport. 5k+ rows render <50ms không cần chunked render thủ công. `set_rows()` dùng `beginResetModel/endResetModel`. |
+| `DashboardView` cards | Cache `_last_card_values` - skip `set_value()` / `set_color()` nếu giá trị giống lần trước. Tránh re-paint widget không cần thiết. |
+| `DataTable` (Qt) | `QTableView` + `DictTableModel(QAbstractTableModel)` - **virtualized natively**: Qt chỉ paint row đang scroll vào viewport. 5k+ rows render <50ms không cần chunked render thủ công. `set_rows()` dùng `beginResetModel/endResetModel`. |
 | `WhitelistView._on_search` | Debounce 200ms qua `QTimer.singleShot(True)`. In-memory filter qua cache `_last_loaded_data`, không gọi controller mỗi keystroke. |
-| `FirewallView` refresh | `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) — Qt API gọn, view ẩn = timer dừng, không poll netsh. |
-| `LogConsole` (Logs view) | `QPlainTextEdit.setMaximumBlockCount(2000)` — auto-trim O(1) per insert. Thread-safe append qua `Signal` với `QueuedConnection` để `GUILogHandler.emit()` (thread bất kỳ) deliver lên GUI thread. |
+| `FirewallView` refresh | `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) - Qt API gọn, view ẩn = timer dừng, không poll netsh. |
+| `LogConsole` (Logs view) | `QPlainTextEdit.setMaximumBlockCount(2000)` - auto-trim O(1) per insert. Thread-safe append qua `Signal` với `QueuedConnection` để `GUILogHandler.emit()` (thread bất kỳ) deliver lên GUI thread. |
 | Dashboard activity log | `setMaximumBlockCount(500)`. HTML badge cho mỗi tag (INFO/STATUS/SYNC/WARN/ERROR/BLOCK/ALLOW). |
 | `DashboardView._on_packet_captured` | Token bucket 20 lines/giây từ packet events (`PACKET_LOG_MAX_PER_WINDOW`). `BLOCKED` không drop. Khi bị drop, đầu window kế tiếp emit dòng tổng kết. |
 
-### Bài học so với phiên bản CTk cũ
+### Bài học từ GUI legacy
 
-Phiên bản đầu dùng CustomTkinter. CTk widget mỗi cell wrap 1 canvas riêng để
-vẽ rounded corner → 1 row table = 4-6 widget internal × số cột. Với 200 row
-là ~1600 widget cần construct ở 1 nhịp main thread → freeze 1-2s. Các
-workaround đã thử (đều vô tác dụng tới một mức):
+Phiên bản GUI đầu dùng stack Tk-based. Mỗi cell của bảng wrap nhiều widget
+phụ để vẽ rounded corner, nên 1 row có thể tạo 4-6 widget internal trên mỗi
+cột. Với 200 row là khoảng 1600 widget cần construct trong một nhịp main
+thread, gây freeze 1-2s. Các workaround đã thử đều chỉ giảm triệu chứng:
 
-1. **Diff-skip stats emit + render** — giảm noise nhưng không giải quyết
+1. **Diff-skip stats emit + render** - giảm noise nhưng không giải quyết
    render đầu (vẫn N widget mới)
-2. **Fingerprint + skip rebuild** — chỉ giúp khi data trùng lần trước
-3. **Chunked render 50 row/tick** — UI mượt hơn nhưng vẫn nhiều widget
-4. **Đổi `CTkLabel` → `tk.Label`** — ~5x nhanh hơn nhưng vẫn ~800 widget cho
+2. **Fingerprint + skip rebuild** - chỉ giúp khi data trùng lần trước
+3. **Chunked render 50 row/tick** - UI mượt hơn nhưng vẫn nhiều widget
+4. **Đổi widget label nhẹ hơn** - ~5x nhanh hơn nhưng vẫn ~800 widget cho
    200 row
 
 Cuối cùng port toàn bộ sang **PySide6**: `QTableView` virtualized natively
-(chỉ paint visible rows), CTk được xoá hoàn toàn. 5000 rows giờ render
+(chỉ paint visible rows), bỏ hoàn toàn stack GUI legacy. 5000 rows giờ render
 <50ms không cần chunked / fingerprint / cheap widget tricks gì cả.
 
 ## Dừng Agent

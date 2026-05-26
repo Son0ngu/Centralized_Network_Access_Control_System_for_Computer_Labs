@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from shared.time_utils import now, now_iso, sleep
+from shared.server_urls import collect_server_urls
 from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("logging.sender")
@@ -38,20 +39,14 @@ class LogSender:
         self._send_lock = threading.Lock()
         
         logger.info(f"LogSender initialized with agent_id: {self.agent_id}")
-        logger.info(f"Will send logs to: {', '.join(self.server_urls)}")
-    
+        if self.server_urls:
+            logger.info(f"Will send logs to: {', '.join(self.server_urls)}")
+        else:
+            logger.warning("LogSender starting in OFFLINE mode (no server URL configured)")
+
     def _get_server_urls(self, config: Dict) -> List[str]:
-        server_config = config.get("server", {})
-        
-        if "urls" in server_config and server_config["urls"]:
-            return server_config["urls"]
-        
-        primary_url = (
-            config.get("server_url") or
-            server_config.get("url", "https://firewall-controller.onrender.com")
-        )
-        
-        return [primary_url, "http://localhost:5000"]
+        """Use the shared resolver — empty list means offline (no localhost fallback)."""
+        return collect_server_urls(config, allow_dev_default=False)
     
     def start(self) -> None:
         if self.running:
@@ -204,7 +199,9 @@ class LogSender:
     
     def _send_batch(self, logs: List[Dict]) -> bool:
         if not self.server_urls:
-            logger.error("Server URL not configured")
+            # Offline mode: drop the batch silently. The caller already
+            # logged the OFFLINE state once at startup.
+            logger.debug("Skipping log batch — agent in OFFLINE mode")
             return False
         
         serialized_logs = []

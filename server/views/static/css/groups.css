@@ -179,7 +179,7 @@
 }
 
 /* ============================================================
-   Group Modal — High-Contrast Enterprise (no color picker)
+   Group Modal - High-Contrast Enterprise (no color picker)
    ============================================================ */
 
 .group-modal .modal-content {
@@ -298,7 +298,7 @@
     line-height: 1.4;
 }
 
-/* Quick Whitelist section — subtle indigo card inside modal */
+/* Quick Whitelist section - subtle indigo card inside modal */
 .quick-whitelist-section {
     margin-top: 1.5rem;
     padding: 1.25rem;
@@ -413,7 +413,7 @@
     font-weight: 500;
 }
 
-/* Responsive — modal */
+/* Responsive - modal */
 @media (max-width: 576px) {
     .group-modal-header {
         padding: 1rem 1.25rem;

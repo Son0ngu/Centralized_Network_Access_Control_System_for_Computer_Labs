@@ -18,7 +18,14 @@ class GroupService:
         self.pending_group = self.model.ensure_pending_group()
 
     def _serialize(self, group: Dict) -> Dict:
-        """Convert ObjectIds to strings for JSON response."""
+        """Convert ObjectIds to strings for JSON response.
+
+        Also stringifies the new ``_id`` we stamp onto embedded whitelist
+        entries in :func:`models.group_model._normalise_embedded_whitelist`
+        (Phase 3 unified id rollout — see whitelist_entry_id.py for the
+        wider contract). Without this step Flask's ``jsonify`` chokes on
+        the raw ObjectIds and the controller returns a 500.
+        """
         if not group:
             return group
         group["_id"] = str(group.get("_id", ""))
@@ -26,6 +33,11 @@ class GroupService:
             group["created_by"] = str(group["created_by"])
         if group.get("teacher_ids"):
             group["teacher_ids"] = [str(tid) for tid in group["teacher_ids"]]
+        whitelist = group.get("whitelist")
+        if isinstance(whitelist, list):
+            for entry in whitelist:
+                if isinstance(entry, dict) and entry.get("_id") is not None:
+                    entry["_id"] = str(entry["_id"])
         return group
 
     def _enrich_owner(self, group: Dict) -> Dict:
@@ -72,14 +84,11 @@ class GroupService:
         agent_count = self.agent_model.count_by_group(group_id)
         if agent_count > 0:
             # Get the pending group to reassign
-            pending = self.model.collection.find_one({"is_system": True, "name": "pending"})
+            pending = self.model.find_pending_group()
             if pending:
                 pending_id = str(pending["_id"])
                 # Bulk move all agents from this group to pending
-                self.agent_model.collection.update_many(
-                    {"group_id": group_id},
-                    {"$set": {"group_id": pending_id}}
-                )
+                self.agent_model.move_agents_to_group(group_id, pending_id)
                 self.logger.info(f"Moved {agent_count} agents to pending before group deletion")
             else:
                 raise ValueError("Cannot delete group with assigned agents (pending group not found)")

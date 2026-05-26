@@ -98,7 +98,13 @@ function parseTimestampCorrectly(timestamp) {
  */
 function formatTimestamp(isoString) {
     if (!isoString) return 'Never';
-    
+    // Prefer SaintDate so every admin page renders the same way. The local
+    // ``parseTimestampCorrectly`` was doing tz handling that SaintDate
+    // already does via Intl.DateTimeFormat(timeZone='Asia/Ho_Chi_Minh').
+    if (window.SaintDate) {
+        const formatted = window.SaintDate.formatVN(isoString);
+        return formatted || 'Invalid Date';
+    }
     try {
         const date = parseTimestampCorrectly(isoString);
         return date.toLocaleString();
@@ -1045,32 +1051,32 @@ async function removeAgent(agentId) {
  * Show notification
  */
 function showNotification(type, message) {
+    // Was a hand-rolled bootstrap.Toast renderer. Now goes through
+    // SaintToast for consistency with the rest of the admin UI.
+    // ``type`` values used by callers: 'success', 'warning', 'info',
+    // 'danger'/'error'. Map 'danger' → 'error' for SaintToast.
+    if (window.SaintToast) {
+        const mapped = (type === 'danger') ? 'error' : type;
+        window.SaintToast.show(message, mapped);
+        return;
+    }
+    // Local fallback for the (rare) page rendered without core/toast.js.
     const needsDarkText = (type === 'warning' || type === 'success');
     const textClass = needsDarkText ? 'text-dark' : 'text-white';
     const closeBtnClass = needsDarkText ? 'btn-close me-2 m-auto' : 'btn-close btn-close-white me-2 m-auto';
-
     const toast = document.createElement('div');
     toast.className = `toast align-items-center ${textClass} bg-${type} border-0`;
     toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-
     toast.innerHTML = `
         <div class="d-flex">
             <div class="toast-body">${message}</div>
             <button type="button" class="${closeBtnClass}" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
+        </div>`;
     const container = document.querySelector('.toast-container') || createToastContainer();
     container.appendChild(toast);
-    
     const bsToast = new bootstrap.Toast(toast);
     bsToast.show();
-    
-    toast.addEventListener('hidden.bs.toast', () => {
-        toast.remove();
-    });
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
 }
 
 function createToastContainer() {

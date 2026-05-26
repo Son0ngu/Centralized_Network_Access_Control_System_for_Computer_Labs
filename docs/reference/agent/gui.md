@@ -1,10 +1,10 @@
-# `agent/gui` — Legacy compatibility note
+# `agent/gui` - Legacy compatibility note
 
 ## Mục đích
 `agent/gui` không còn là source GUI hiện tại. Package GUI cũ đã được tách bỏ; runtime hiện tại đi qua:
 
-- [`agent/controllers`](controllers.md) — controller/presenter không phụ thuộc framework, quản lý worker thread, signal queue, whitelist bridge.
-- [`agent/gui_qt`](gui_qt.md) — view layer PySide6, `QApplication`, `MainWindow`, views, components, QSS styles.
+- [`agent/controllers`](controllers.md) - controller/presenter không phụ thuộc framework, quản lý worker thread, signal queue, whitelist bridge.
+- [`agent/gui_qt`](gui_qt.md) - view layer PySide6, `QApplication`, `MainWindow`, views, components, QSS styles.
 
 Giữ file reference này để người đọc tài liệu cũ có điểm chuyển tiếp. Không thêm code mới vào package `agent/gui`.
 

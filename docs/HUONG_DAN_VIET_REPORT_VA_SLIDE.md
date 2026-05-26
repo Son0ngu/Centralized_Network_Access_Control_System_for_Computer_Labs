@@ -155,7 +155,7 @@ thông qua REST API và phân quyền RBAC.
 
 (iii) Giải pháp: Đồ án xây dựng hệ thống SAINT gồm Server (Flask +
 MongoDB) cung cấp API và Web Dashboard, và Agent (Python +
-CustomTkinter) cài trên máy tính Windows để giám sát mạng, đồng bộ
+PySide6/Qt) cài trên máy tính Windows để giám sát mạng, đồng bộ
 whitelist, và tự động áp dụng firewall rules.
 
 (iv) Đóng góp & kết quả: Hệ thống hoạt động ổn định với ~50 API
@@ -257,7 +257,7 @@ Nội dung cần viết (thành đoạn văn):
 
 ```
 (i) Hướng: Kiến trúc Client-Server phân tán, sử dụng Flask
-(Python) cho Server, CustomTkinter cho Agent GUI, MongoDB cho
+(Python) cho Server, PySide6/Qt cho Agent GUI, MongoDB cho
 database, JWT + API Key cho authentication.
 
 (ii) Giải pháp: SAINT gồm 2 thành phần chính:
@@ -456,7 +456,7 @@ UC5: Giám sát hoạt động mạng (Network Monitoring)
    - Retry logic với exponential backoff
 
 4. Tính dễ dùng:
-   - Agent GUI trực quan (CustomTkinter)
+   - Agent GUI trực quan (PySide6/Qt)
    - Web Dashboard responsive
    - Teacher không cần kiến thức IT
 
@@ -517,10 +517,10 @@ UC5: Giám sát hoạt động mạng (Network Monitoring)
 - So sánh: Wireshark (GUI only), tcpdump (Linux only)
 - Mô tả: Python-based, cross-protocol
 
-3.8 CustomTkinter
+3.8 PySide6 (Qt for Python)
 - Giải quyết: GUI Agent trên Windows
-- So sánh: PyQt (nặng, GPL), Electron (quá lớn)
-- Mô tả: modern Tkinter, lightweight
+- So sánh: PyQt (license thương mại/GPL), Electron (bundle lớn)
+- Mô tả: Qt bindings chính thức cho Python, native widgets, signal/slot thread-safe
 
 3.9 dnspython + aiodns
 - Giải quyết: phân giải domain → IP cho whitelist
@@ -554,7 +554,7 @@ Server: MVC Pattern
 
 Agent: MVP + Observer (Signals)
 - Model: Agent core components (Firewall, Whitelist, Sniffer)
-- View: CustomTkinter GUI views
+- View: PySide6 GUI views (`agent/gui_qt`)
 - Presenter: AgentController (singleton, background thread)
 - Observer: AgentSignals (event queue, callbacks)
 → Giải thích: MVP tách biệt GUI thread và worker thread,
@@ -628,7 +628,7 @@ Package Core:
 ```
 Mô tả:
 - Độ phân giải: 1280x720 (tối thiểu)
-- Theme: Dark mode (CustomTkinter)
+- Theme: Dark Fusion style + QSS (`agent/gui_qt/styles.py`)
 - Navigation: Sidebar với icons
 
 Screenshots thiết kế (mockup hoặc thật) cho:
@@ -699,7 +699,7 @@ Lập bảng:
 | MongoDB Driver     | PyMongo             | 4.x       | ... |
 | JWT                | PyJWT               | 2.x       | ... |
 | Password Hash      | bcrypt              | 4.x       | ... |
-| GUI Framework      | CustomTkinter       | 5.x       | ... |
+| GUI Framework      | PySide6             | >=6.6     | ... |
 | Packet Capture     | Scapy               | 2.5+      | ... |
 | DNS Resolution     | dnspython           | 2.x       | ... |
 | System Monitor     | psutil              | 5.9+      | ... |
@@ -895,21 +895,21 @@ Nâng cấp:
 
 ### 5 loại tài liệu tham khảo theo IEEE
 
-**Loại 1 — Bài báo tạp chí khoa học:** *Tên tác giả, "tên bài báo", tên tạp chí, vol., no., pp. trang–trang, NXB, năm.*
+**Loại 1 - Bài báo tạp chí khoa học:** *Tên tác giả, "tên bài báo", tên tạp chí, vol., no., pp. trang–trang, NXB, năm.*
 ```
 [1] E. H. Hovy, "Automated discourse generation using discourse
     structure relations," Artificial Intelligence, vol. 63,
     no. 1-2, pp. 341–385, 1993.
 ```
 
-**Loại 2 — Sách:** *Tên tác giả, tên sách, edition. NXB, năm.*
+**Loại 2 - Sách:** *Tên tác giả, tên sách, edition. NXB, năm.*
 ```
 [2] L. L. Peterson and B. S. Davie, Computer Networks: A Systems
     Approach. Elsevier, 2007.
 [3] M. Grinberg, Flask Web Development, 2nd ed. O'Reilly, 2018.
 ```
 
-**Loại 3 — Báo cáo hội nghị:** *Tên tác giả, "tên báo cáo", in tên hội nghị, địa điểm, năm, pp. trang–trang.*
+**Loại 3 - Báo cáo hội nghị:** *Tên tác giả, "tên báo cáo", in tên hội nghị, địa điểm, năm, pp. trang–trang.*
 ```
 [4] M. Poesio and B. Di Eugenio, "Discourse structure and
     anaphoric accessibility," in ESSLLI workshop on information
@@ -920,14 +920,14 @@ Nâng cấp:
     Baltimore, USA, 1992, pp. 554–563.
 ```
 
-**Loại 4 — Luận văn/Đồ án/Luận án:** *Tên tác giả, "tên luận văn", loại luận văn, tên trường, địa điểm, năm.*
+**Loại 4 - Luận văn/Đồ án/Luận án:** *Tên tác giả, "tên luận văn", loại luận văn, tên trường, địa điểm, năm.*
 ```
 [6] A. Knott, "A data-driven methodology for motivating a set
     of coherence relations," Ph.D. dissertation, The University
     of Edinburgh, UK, 1996.
 ```
 
-**Loại 5 — Tài liệu Internet (chính thống):** *Tên tác giả/tổ chức, tên tài liệu. [Online]. Available: URL (visited on dd/mm/yyyy).*
+**Loại 5 - Tài liệu Internet (chính thống):** *Tên tác giả/tổ chức, tên tài liệu. [Online]. Available: URL (visited on dd/mm/yyyy).*
 ```
 [7] M. Jones, JSON Web Token (JWT), RFC 7519, IETF, 2015.
     [Online]. Available: https://datatracker.ietf.org/doc/
@@ -942,8 +942,8 @@ Nâng cấp:
 |---|---|
 | RBAC | Ferraiolo & Kuhn (1992), NIST RBAC standard |
 | JWT | RFC 7519 (IETF) |
-| Flask | "Flask Web Development" — M. Grinberg, O'Reilly |
-| MongoDB | "MongoDB: The Definitive Guide" — K. Chodorow, O'Reilly |
+| Flask | "Flask Web Development" - M. Grinberg, O'Reilly |
+| MongoDB | "MongoDB: The Definitive Guide" - K. Chodorow, O'Reilly |
 | Scapy | P. Biondi, official documentation |
 | TLS SNI | RFC 6066 (IETF) |
 | DNS | RFC 1035 (IETF) |
@@ -986,7 +986,7 @@ Template cung cấp Phụ lục B để chứa đặc tả use case **overflow**
 - (vi) Hậu điều kiện
 - (vii) (Tuỳ chọn) Biểu đồ hoạt động nếu UC phức tạp
 
-**Áp dụng cho SAINT** — các UC có thể đẩy xuống Phụ lục B nếu CH2 hết chỗ:
+**Áp dụng cho SAINT** - các UC có thể đẩy xuống Phụ lục B nếu CH2 hết chỗ:
 
 ```
 B.1 Đặc tả use case "Quản lý API Key"
@@ -1058,7 +1058,7 @@ Slide 7:  [Duplicate slide 4] CÔNG NGHỆ - SERVER
           Bảng: Flask, MongoDB, JWT, SocketIO, Pydantic, bcrypt
 
 Slide 8:  [Duplicate slide 4] CÔNG NGHỆ - AGENT
-          Bảng: CustomTkinter, Scapy, dnspython, netsh, PyInstaller
+          Bảng: PySide6, Scapy, dnspython, netsh, PyInstaller
 
 Slide 9:  [Duplicate slide 4] THIẾT KẾ DATABASE
           Bảng 5-6 collections chính
@@ -1112,26 +1112,26 @@ Slide 18: [Template slide 13] THANK YOU / Q&A
 
 # PHẦN C: CHECKLIST TRƯỚC KHI NỘP
 
-## Report — Nội dung
+## Report - Nội dung
 
 - [ ] Trang bìa + trang phụ đúng format (tên trường, đề tài, GVHD, SVTH, signature)
 - [ ] Acknowledgments **100–150 từ** (đếm thật)
 - [ ] Abstract **200–350 từ**, viết đoạn văn liền mạch theo trình tự (i)(ii)(iii)(iv)
 - [ ] Mục lục, List of Figures, List of Tables, List of Abbreviations cập nhật
-- [ ] Chương 1 — **3–6 trang**, đủ 4 mục: Motivation, Objectives & scope, Tentative solution, Thesis organization
-- [ ] Chương 2 — **9–11 trang**, đủ 4 mục: Status survey, Functional Overview (3 sub), Functional description (4–7 UC), Non-functional requirement
-- [ ] Chương 3 — **≤ 10 trang**, mỗi công nghệ có (i) giải quyết vấn đề gì ở CH2, (ii) alternative, (iii) lý do chọn
-- [ ] Chương 4 — đủ Architecture (4.1) + Detailed design (4.2) + App Building (4.3) + Testing (4.4) + Deployment (4.5)
-- [ ] Chương 5 — **≥ 5 trang**, mỗi đóng góp có 3 mục con (dẫn dắt / giải pháp / kết quả). Nếu < 5 trang → gộp CH6.
-- [ ] Chương 6 — đủ Conclusion + Future work
+- [ ] Chương 1 - **3–6 trang**, đủ 4 mục: Motivation, Objectives & scope, Tentative solution, Thesis organization
+- [ ] Chương 2 - **9–11 trang**, đủ 4 mục: Status survey, Functional Overview (3 sub), Functional description (4–7 UC), Non-functional requirement
+- [ ] Chương 3 - **≤ 10 trang**, mỗi công nghệ có (i) giải quyết vấn đề gì ở CH2, (ii) alternative, (iii) lý do chọn
+- [ ] Chương 4 - đủ Architecture (4.1) + Detailed design (4.2) + App Building (4.3) + Testing (4.4) + Deployment (4.5)
+- [ ] Chương 5 - **≥ 5 trang**, mỗi đóng góp có 3 mục con (dẫn dắt / giải pháp / kết quả). Nếu < 5 trang → gộp CH6.
+- [ ] Chương 6 - đủ Conclusion + Future work
 - [ ] Tài liệu tham khảo ≥ 10 mục, đúng IEEE format, **đủ ít nhất 3 trong 5 loại** (sách / tạp chí / hội nghị / luận văn / internet chính thống)
 - [ ] Phụ lục A (template tự viết, không sửa)
-- [ ] Phụ lục B (Use Case Descriptions) — nếu CH2 không đủ chỗ
+- [ ] Phụ lục B (Use Case Descriptions) - nếu CH2 không đủ chỗ
 
-## Report — Quy định format (Phần 0)
+## Report - Quy định format (Phần 0)
 
 - [ ] **KHÔNG** gạch đầu dòng / viết ý. Phải viết đoạn văn.
-- [ ] Khi liệt kê: dùng (i), (ii), (iii), (iv) — không dùng "•", "*", "-"
+- [ ] Khi liệt kê: dùng (i), (ii), (iii), (iv) - không dùng "•", "*", "-"
 - [ ] **KHÔNG** từ phóng đại: "tuyệt vời", "cực hay", "cực kỳ", "rất ấn tượng"...
 - [ ] Mỗi đoạn có **một ý chính** + câu phân tích. Đoạn không quá dài.
 - [ ] **Mỗi chương CH2–CH5 có Tổng quan đầu chương + Kết chương** (Normal text, không in đậm/khung)
@@ -1141,7 +1141,7 @@ Slide 18: [Template slide 13] THANK YOU / Q&A
 - [ ] Citation IEEE `[n]` xuất hiện trong văn bản trước khi vào REFERENCE
 - [ ] Format thống nhất toàn báo cáo (font, margin, page numbering từ template)
 
-## Report — Đóng quyển
+## Report - Đóng quyển
 
 - [ ] Bìa trước + bìa sau giấy liền khổ, chế bản theo template
 - [ ] Dùng **keo nhiệt** dán gáy (không băng dính/dập ghim)

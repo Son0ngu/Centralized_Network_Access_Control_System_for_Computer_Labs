@@ -1,18 +1,29 @@
 import logging
 import threading
-from typing import Set
+from typing import Optional, Set
 
 from shared.time_utils import now, now_iso, sleep
+from .provider import FirewallProvider, get_default_provider
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.rules")
 
 class RulesManager:
-    
-    def __init__(self, rule_prefix: str = "FirewallController"):
+
+    def __init__(
+        self,
+        rule_prefix: str = "FirewallController",
+        provider: Optional[FirewallProvider] = None,
+    ):
         self.rule_prefix = rule_prefix
         self.allowed_ips: Set[str] = set()
         self._rule_lock = threading.Lock()
+        # The provider is the *read* side — listing/counting rules. Writes
+        # still go through netsh below because they need elevation and
+        # idempotent name semantics we already debugged. Injected for tests
+        # and to let the agent prefer NetSecurity when available.
+        self._provider: FirewallProvider = provider or get_default_provider()
+        logger.info("RulesManager using firewall provider: %s", self._provider.name)
     
     def create_self_allow_rules(self, program_path: str) -> bool:
         """Create allow rules for the agent's own exe.
@@ -41,7 +52,7 @@ class RulesManager:
             rule_name = f"{self.rule_prefix}_SelfAllow_{tag}"
 
             # Idempotent: remove any stale rule with the same name first.
-            # netsh returns non-zero if no match — that's expected on first run.
+            # netsh returns non-zero if no match - that's expected on first run.
             FirewallUtils.run_netsh_command([
                 "advfirewall", "firewall", "delete", "rule",
                 f"name={rule_name}",
@@ -238,73 +249,24 @@ class RulesManager:
             return False
     
     def load_existing_rules(self):
+        """Re-hydrate ``allowed_ips`` from rules already present on the OS.
+
+        Backend-agnostic now: delegates to the firewall provider's
+        ``list_outbound_allow_ips`` rather than parsing ``netsh`` text inline.
+        Behaviour is unchanged for English-locale Windows; non-English locales
+        now also work (the netsh text parser was English-only).
+        """
         try:
-            logger.debug("Loading existing firewall rules...")
-            
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "show", "rule", "name=all"
-            ], timeout=60)
-            
-            if result.returncode != 0:
-                logger.warning(f"Could not list rules: {result.stderr.strip()}")
-                return
-            
-            current_rule = None
-            current_action = None
-            current_direction = None
-            lines = result.stdout.split('\n')
-            
-            for line in lines:
-                line = line.strip()
-                
-                if line.startswith("Rule Name:"):
-                    current_rule = line[10:].strip()
-                    current_action = None
-                    current_direction = None
-                    
-                    if not current_rule.startswith(self.rule_prefix):
-                        current_rule = None
-                        continue
-                
-                elif current_rule:
-                    if line.startswith("Direction:"):
-                        current_direction = line[10:].strip().lower()
-                    
-                    elif line.startswith("Action:"):
-                        current_action = line[7:].strip().lower()
-                    
-                    elif line.startswith("RemoteIP:") and current_action == "allow" and current_direction == "out":
-                        ip_part = line[9:].strip()
-                        
-                        if ip_part and ip_part.lower() != "any":
-                            ip_parts = ip_part.split(',')
-                            for part in ip_parts:
-                                part = part.strip()
-                                if FirewallUtils.is_valid_ip(part):
-                                    self.allowed_ips.add(part)
-            
-            logger.info(f"Loaded {len(self.allowed_ips)} existing allow rules")
-            
+            logger.debug("Loading existing firewall rules via provider %s",
+                         self._provider.name)
+            ips = self._provider.list_outbound_allow_ips(rule_prefix=self.rule_prefix)
+            self.allowed_ips.update(ips)
+            logger.info("Loaded %d existing allow rules", len(self.allowed_ips))
         except Exception as e:
-            logger.warning(f"Could not load existing firewall rules: {e}")
-    
+            logger.warning("Could not load existing firewall rules: %s", e)
+
     def get_rule_count(self) -> int:
         try:
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "show", "rule", "name=all"
-            ])
-            
-            if result.returncode != 0:
-                return 0
-            
-            count = 0
-            for line in result.stdout.split('\n'):
-                if line.strip().startswith("Rule Name:"):
-                    rule_name = line.strip()[10:].strip()
-                    if rule_name.startswith(self.rule_prefix):
-                        count += 1
-            
-            return count
-            
+            return self._provider.count_rules(rule_prefix=self.rule_prefix)
         except Exception:
             return 0

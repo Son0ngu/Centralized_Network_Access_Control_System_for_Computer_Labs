@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     # Server connection configuration.
-    # By default the URL is empty — the agent will NOT try to contact any
+    # By default the URL is empty - the agent will NOT try to contact any
     # server until the user explicitly sets one in Settings. This avoids
     # leaking hostname/IP/MAC/OS to an unconfigured endpoint on first run.
     "server": {

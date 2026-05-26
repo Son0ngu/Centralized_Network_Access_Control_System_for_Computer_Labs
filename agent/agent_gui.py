@@ -1,4 +1,4 @@
-"""SAINT agent entry point — launches the PySide6 GUI.
+"""SAINT agent entry point - launches the PySide6 GUI.
 
 Used both for running from source and as the script frozen into the
 PyInstaller bundle (see `saint_agent.spec`).
@@ -22,7 +22,7 @@ def main() -> int:
         from gui_qt.app import run
     except ImportError as exc:
         # In dev, this usually means PySide6 isn't installed yet.
-        # In the frozen .exe this should never happen — if it does the
+        # In the frozen .exe this should never happen - if it does the
         # bundle is broken.
         print(
             f"Failed to import the Qt GUI module: {exc}\n"

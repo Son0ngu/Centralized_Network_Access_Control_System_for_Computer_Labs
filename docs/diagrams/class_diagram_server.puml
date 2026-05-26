@@ -1,12 +1,12 @@
 @startuml SAINT_Server_Class_Diagram
-' Generated from source audit of server/ — verified against report/server/*.md
+' Generated from source audit of server/ - verified against report/server/*.md
 ' Stereotypes:
 '   <<module>>     : Python module exposing only module-level functions (no class)
 '   <<decorator>>  : function returning a decorator
 '   <<C>>          : Flask Blueprint-bound controller
 '   <<M>>          : Middleware class
 ' Controllers inject services via __init__; services inject models the same way.
-' RBAC and Auth are decorators, not classes — only APIKeyMiddleware is a class.
+' RBAC and Auth are decorators, not classes - only APIKeyMiddleware is a class.
 
 skinparam classAttributeIconSize 0
 skinparam class {
@@ -50,7 +50,7 @@ package "server.database" {
 }
 
 ' ============================================================
-' Models — one per MongoDB collection
+' Models - one per MongoDB collection
 ' ============================================================
 package "server.models" {
 
@@ -208,7 +208,7 @@ package "server.models" {
 }
 
 ' ============================================================
-' Services — business logic, inject models + socketio
+' Services - business logic, inject models + socketio
 ' ============================================================
 package "server.services" {
 
@@ -384,11 +384,11 @@ package "server.services" {
 }
 
 ' ============================================================
-' Controllers — Flask Blueprint per controller
+' Controllers - Flask Blueprint per controller
 ' ============================================================
 package "server.controllers" {
 
-  class AdminAuthController <<C>> {
+  class WebAuthController <<C>> {
     - admin_auth_service: AdminAuthService
     - jwt_service: JWTService
     - socketio: SocketIO
@@ -401,8 +401,9 @@ package "server.controllers" {
     + change_password()
     + update_profile()
   }
+  note right of WebAuthController : Renamed from AdminAuthController.\nAlias kept for backwards-compat.
 
-  class AuthController <<C>> {
+  class AgentAuthController <<C>> {
     - jwt_service: JWTService
     - blueprint: Blueprint
     --
@@ -411,6 +412,7 @@ package "server.controllers" {
     + verify_token()
     + token_info()
   }
+  note right of AgentAuthController : Renamed from AuthController.\nAlias kept for backwards-compat.
 
   class UserController <<C>> {
     - user_service: UserService
@@ -532,7 +534,7 @@ package "server.controllers" {
 }
 
 ' ============================================================
-' Middleware — module functions + 1 class (APIKeyMiddleware)
+' Middleware - module functions + 1 class (APIKeyMiddleware)
 ' ============================================================
 package "server.middleware" {
 
@@ -566,7 +568,7 @@ package "server.middleware" {
 }
 
 ' ============================================================
-' Config — RBAC role/permission map
+' Config - RBAC role/permission map
 ' ============================================================
 package "server.config" {
   class "rbac_config" as rbac_config <<module>> {
@@ -634,9 +636,9 @@ AgentPolicyService o-- AgentPolicyModel
 svc_jwt_mod ..> JWTService : factory
 
 ' --- Controllers -> Services ---
-AdminAuthController o-- AdminAuthService
-AdminAuthController o-- JWTService
-AuthController o-- JWTService
+WebAuthController o-- AdminAuthService
+WebAuthController o-- JWTService
+AgentAuthController o-- JWTService
 UserController o-- UserService
 AgentController o-- AgentService
 AgentController o-- AgentModel
@@ -666,7 +668,7 @@ mw_rbac ..> UserModel
 RBACService ..> rbac_config : permissions lookup
 
 ' --- Controllers use middleware decorators ---
-AdminAuthController ..> mw_rbac : @require_login
+WebAuthController ..> mw_rbac : @require_login
 UserController ..> mw_rbac : @require_admin
 AgentController ..> mw_auth : @require_api_key/@require_jwt
 AgentController ..> mw_rbac : @require_login
@@ -678,13 +680,13 @@ LogController ..> mw_auth : @require_jwt (receive_logs)
 LogController ..> mw_rbac : @require_login (admin pages)
 APIKeyController ..> mw_rbac : @require_admin
 AuditController ..> mw_rbac : @require_permission("audit:read")
-AuthController ..> mw_auth : @require_jwt
+AgentAuthController ..> mw_auth : @require_jwt
 
 ' --- App factory wires everything ---
 app_factory ..> db_cfg_module : load config + Mongo
 app_factory ..> svc_jwt_mod : init_jwt_service(db)
-app_factory ..> AdminAuthController : register blueprint
-app_factory ..> AuthController : register blueprint
+app_factory ..> WebAuthController : register blueprint
+app_factory ..> AgentAuthController : register blueprint
 app_factory ..> UserController : register blueprint
 app_factory ..> AgentController : register blueprint
 app_factory ..> GroupController : register blueprint

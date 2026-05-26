@@ -1,17 +1,17 @@
-"""Qt log console — `QPlainTextEdit` wrapper with toolbar + filter + history.
+"""Qt log console - `QPlainTextEdit` wrapper with toolbar + filter + history.
 
 Replaces the CTk `LogConsole` (which used `CTkTextbox` and a Python queue
 drained by `self.after(200, …)`). Three things change in the Qt port:
 
-1. **Thread-safety** — Python logging emits from arbitrary threads. The CTk
+1. **Thread-safety** - Python logging emits from arbitrary threads. The CTk
    port used a `queue.Queue` and a periodic drain. Here we use a Qt signal
-   carried by `_LogSignals` — Qt signals are thread-safe and auto-marshall
+   carried by `_LogSignals` - Qt signals are thread-safe and auto-marshall
    to the receiver's (GUI) thread, so the queue + timer go away.
 
-2. **Auto-trim** — `QPlainTextEdit.setMaximumBlockCount(N)` does the trim
+2. **Auto-trim** - `QPlainTextEdit.setMaximumBlockCount(N)` does the trim
    natively in O(1) per insert. No need to manually `delete("1.0", "2.0")`.
 
-3. **Filter / history** — same model as CTk: keep a full history list for
+3. **Filter / history** - same model as CTk: keep a full history list for
    export, redraw the visible textbox from history when the filter level
    changes.
 """
@@ -58,7 +58,7 @@ class LogConsole(QFrame):
         self._max_lines = max_lines
         self._paused = False
         self._filter_level = "ALL"
-        # Full history retained for export — independent of the visible filter.
+        # Full history retained for export - independent of the visible filter.
         self._history: List[Dict[str, str]] = []
 
         # Signal bridge so handlers from worker threads can deliver records
@@ -147,7 +147,7 @@ class LogConsole(QFrame):
         """Re-render the textbox from `_history` under the current filter."""
         self._console.clear()
         # Build the whole block of text in Python first, then `setPlainText`
-        # once — much cheaper than N appendPlainText calls.
+        # once - much cheaper than N appendPlainText calls.
         lines = []
         for entry in self._history:
             if self._passes_filter(entry.get("level", "INFO")):
@@ -160,7 +160,7 @@ class LogConsole(QFrame):
         )
 
     # =======================================================================
-    # Public API — log delivery
+    # Public API - log delivery
     # =======================================================================
 
     def append_log(
@@ -169,7 +169,7 @@ class LogConsole(QFrame):
         level: str = "INFO",
         timestamp: Optional[str] = None,
     ) -> None:
-        """Thread-safe entry point. May be called from worker threads —
+        """Thread-safe entry point. May be called from worker threads -
         the signal connection above ensures the actual widget update runs
         on the GUI thread."""
         if timestamp is None:
@@ -181,7 +181,7 @@ class LogConsole(QFrame):
         })
 
     def _append_entry(self, entry: Dict[str, str]) -> None:
-        """Slot — runs on the GUI thread. Updates history + textbox."""
+        """Slot - runs on the GUI thread. Updates history + textbox."""
         # Always retain history for export, even while paused.
         self._history.append(entry)
         if len(self._history) > self._max_lines:
@@ -218,7 +218,7 @@ class GUILogHandler(logging.Handler):
     """`logging.Handler` that forwards records to a `LogConsole`.
 
     Same role as the CTk `GUILogHandler`. Thread-safe because `LogConsole.
-    append_log` posts to a Qt signal with `QueuedConnection` — the actual
+    append_log` posts to a Qt signal with `QueuedConnection` - the actual
     widget update is hopped onto the GUI thread by Qt.
     """
 

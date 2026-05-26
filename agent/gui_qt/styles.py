@@ -24,7 +24,7 @@ ACCENT_PURPLE = "#9966ff"
 
 BORDER_LIGHT = "#d0d0d8"
 
-# Status colour helpers — used by status cards / log banners
+# Status colour helpers - used by status cards / log banners
 STATUS_COLORS = {
     "ok": ACCENT_GREEN,
     "running": ACCENT_GREEN,
@@ -53,7 +53,7 @@ QWidget {{
 }}
 
 /* QLabel inherits the QWidget rule above by default, which paints a window-
- * coloured rectangle behind every label — including labels sitting INSIDE a
+ * coloured rectangle behind every label - including labels sitting INSIDE a
  * coloured card frame, producing an ugly "tiled" look. Make labels transparent
  * so they pick up their parent panel's background instead. */
 QLabel {{

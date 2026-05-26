@@ -7,6 +7,8 @@ import logging
 from functools import wraps
 from typing import Callable, Optional
 from flask import request, jsonify, g
+from utils.request_ip import get_client_ip
+from database.config import get_config_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,14 @@ _api_key_service = None
 
 # Global reference to JWT Service (set during init)
 _jwt_service = None
+
+
+def _allow_query_string_token() -> bool:
+    """Whether to accept tokens via query string (debug-only escape hatch)."""
+    try:
+        return bool(get_config_by_name().DEBUG_AUTH_QUERY_TOKEN)
+    except Exception:
+        return False
 
 
 def init_auth_middleware(api_key_service, jwt_service=None):
@@ -35,12 +45,12 @@ def init_auth_middleware(api_key_service, jwt_service=None):
 def get_api_key_from_request() -> Optional[str]:
     """
     Extract API key from request.
-    
+
     Checks in order:
     1. X-API-Key header
     2. Authorization header (Bearer token)
-    3. api_key query parameter
-    
+    3. api_key query parameter (only if DEBUG_AUTH_QUERY_TOKEN is enabled)
+
     Returns:
         API key string or None
     """
@@ -48,7 +58,7 @@ def get_api_key_from_request() -> Optional[str]:
     api_key = request.headers.get("X-API-Key")
     if api_key:
         return api_key.strip()
-    
+
     # Check Authorization header
     auth_header = request.headers.get("Authorization")
     if auth_header:
@@ -59,12 +69,16 @@ def get_api_key_from_request() -> Optional[str]:
             return auth_header[7:].strip()
         else:
             return auth_header.strip()
-    
-    # Check query parameter (least preferred, for debugging)
-    api_key = request.args.get("api_key")
-    if api_key:
-        return api_key.strip()
-    
+
+    if _allow_query_string_token():
+        api_key = request.args.get("api_key")
+        if api_key:
+            logger.warning(
+                "API key supplied via query string for %s from %s (DEBUG_AUTH_QUERY_TOKEN=on)",
+                request.endpoint, get_client_ip()
+            )
+            return api_key.strip()
+
     return None
 
 
@@ -97,7 +111,7 @@ def require_api_key(permission: str = "register"):
             api_key = get_api_key_from_request()
             
             if not api_key:
-                logger.warning(f"Missing API key for {request.endpoint} from {request.remote_addr}")
+                logger.warning(f"Missing API key for {request.endpoint} from {get_client_ip()}")
                 return jsonify({
                     "success": False,
                     "error": "API key required",
@@ -110,7 +124,7 @@ def require_api_key(permission: str = "register"):
             if not validation.get("valid"):
                 error_msg = validation.get("error", "Invalid API key")
                 logger.warning(
-                    f"Invalid API key for {request.endpoint} from {request.remote_addr}: {error_msg}"
+                    f"Invalid API key for {request.endpoint} from {get_client_ip()}: {error_msg}"
                 )
                 return jsonify({
                     "success": False,
@@ -240,13 +254,16 @@ class APIKeyMiddleware:
 
 def get_jwt_from_request() -> Optional[str]:
     """
-    Extract JWT token from request.
-    
+    Extract JWT token from request (agent JWT flow).
+
     Checks in order:
     1. Authorization header (Bearer token)
     2. X-Access-Token header
-    3. access_token query parameter
-    
+    3. access_token query parameter (only if DEBUG_AUTH_QUERY_TOKEN is enabled)
+
+    NOTE: Admin web cookie-based auth is handled separately in middleware/rbac.py;
+    do NOT read cookies here or admin tokens could authenticate as agents.
+
     Returns:
         JWT token string or None
     """
@@ -256,17 +273,21 @@ def get_jwt_from_request() -> Optional[str]:
         if auth_header.startswith("Bearer "):
             return auth_header[7:].strip()
         # Don't return non-Bearer auth headers (might be API key)
-    
+
     # Check X-Access-Token header
     token = request.headers.get("X-Access-Token")
     if token:
         return token.strip()
-    
-    # Check query parameter (for debugging only)
-    token = request.args.get("access_token")
-    if token:
-        return token.strip()
-    
+
+    if _allow_query_string_token():
+        token = request.args.get("access_token")
+        if token:
+            logger.warning(
+                "JWT supplied via query string for %s from %s (DEBUG_AUTH_QUERY_TOKEN=on)",
+                request.endpoint, get_client_ip()
+            )
+            return token.strip()
+
     return None
 
 
@@ -296,7 +317,7 @@ def require_jwt(f: Callable) -> Callable:
         token = get_jwt_from_request()
         
         if not token:
-            logger.warning(f"Missing JWT token for {request.endpoint} from {request.remote_addr}")
+            logger.warning(f"Missing JWT token for {request.endpoint} from {get_client_ip()}")
             return jsonify({
                 "success": False,
                 "error": "Authentication required",
@@ -308,7 +329,7 @@ def require_jwt(f: Callable) -> Callable:
         
         if not is_valid:
             logger.warning(
-                f"Invalid JWT for {request.endpoint} from {request.remote_addr}: {error}"
+                f"Invalid JWT for {request.endpoint} from {get_client_ip()}: {error}"
             )
             
             # Check if token is expired for special handling
@@ -429,7 +450,7 @@ def require_jwt_or_api_key(permission: str = None):
             
             # Neither valid
             logger.warning(
-                f"No valid auth for {request.endpoint} from {request.remote_addr}"
+                f"No valid auth for {request.endpoint} from {get_client_ip()}"
             )
             return jsonify({
                 "success": False,

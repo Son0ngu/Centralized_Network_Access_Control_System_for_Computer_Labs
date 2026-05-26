@@ -1,11 +1,11 @@
-# `agent/core` — Singleton, Lifecycle, Registry, Handlers, Token
+# `agent/core` - Singleton, Lifecycle, Registry, Handlers, Token
 
 ## Mục đích
 Trung tâm điều phối agent: identity (hostname + device_id), trạng thái runtime (Singleton), tuần tự khởi động/dọn dẹp components, đăng ký với server, xử lý packet → log, và quản lý JWT auto-refresh. Mọi component khác (firewall/whitelist/sniffer/heartbeat/log_sender) đều được **gắn vào `Agent` singleton** trong `lifecycle.initialize_components`.
 
 ## Public API
 
-### `agent/core/agent.py` — Singleton + identity
+### `agent/core/agent.py` - Singleton + identity
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -27,7 +27,7 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | `Agent.stop()` | `() -> None` | [agent.py:129](../../../agent/core/agent.py#L129) | Set `running=False` (cooperative shutdown) |
 | `get_agent()` | `() -> Agent` | [agent.py:132](../../../agent/core/agent.py#L132) | Cách *duy nhất* nên dùng để lấy singleton |
 
-### `agent/core/lifecycle.py` — Khởi tạo / Dọn dẹp
+### `agent/core/lifecycle.py` - Khởi tạo / Dọn dẹp
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -35,15 +35,15 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | `cleanup(config=None)` | `(Optional[Dict]) -> None` | [lifecycle.py:288](../../../agent/core/lifecycle.py#L288) | Dừng theo thứ tự ngược: token → sniffer → whitelist → heartbeat → log_sender (flush shutdown log) → firewall.cleanup → winpcap nếu auto-installed |
 | `build_lifecycle_log(config, event_type, action, message)` | `(Dict, str, str, str) -> Dict` | [lifecycle.py:371](../../../agent/core/lifecycle.py#L371) | Build log entry chuẩn cho lifecycle events. Có `source/dest = "agent"/"N/A"` để tương thích schema log thường. |
 
-### `agent/core/registry.py` — Đăng ký với Server
+### `agent/core/registry.py` - Đăng ký với Server
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
-| `register_agent(config)` | `(Dict) -> bool` | [registry.py:29](../../../agent/core/registry.py#L29) | Decorated `@CriticalErrorHandler.critical_operation`. Loop qua tất cả URL trong `server.urls + server.url`. Trả `False` khi không có URL nào — agent vào offline mode. |
+| `register_agent(config)` | `(Dict) -> bool` | [registry.py:29](../../../agent/core/registry.py#L29) | Decorated `@CriticalErrorHandler.critical_operation`. Loop qua tất cả URL trong `server.urls + server.url`. Trả `False` khi không có URL nào - agent vào offline mode. |
 | `try_register_with_server(server_url, agent_info, config)` | `(str, Dict, Dict) -> bool` | [registry.py:79](../../../agent/core/registry.py#L79) | POST `/api/agents/register` với `X-API-Key` header. Lưu vào `config`: `agent_id`, `agent_token`, `user_id`, `server_url`, `jwt` dict. |
-| `_collect_server_urls(config)` | `(Dict) -> List[str]` | [registry.py:17](../../../agent/core/registry.py#L17) | Gom `server.urls + server.url`, dedupe, strip empty. **Cũng được lifecycle.py gọi** để check offline mode. |
+| `_collect_server_urls(config)` | `(Dict) -> List[str]` | [registry.py:17](../../../agent/core/registry.py#L17) | Wrapper backwards-compat — delegate sang `shared.server_urls.collect_server_urls(config, allow_dev_default=False)`. Code mới nên import resolver chung trực tiếp (xem [shared.md](shared.md)). |
 
-### `agent/core/handlers.py` — Xử lý packet → log
+### `agent/core/handlers.py` - Xử lý packet → log
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -55,12 +55,12 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | Action | Khi nào | Level |
 |---|---|---|
 | `ALLOWED` | Firewall enabled, domain whitelisted | INFO |
-| `ALLOWED_BY_IP` | IP allowed nhưng domain (SNI/Host) không — dấu hiệu CDN bleed-through | **WARNING** |
+| `ALLOWED_BY_IP` | IP allowed nhưng domain (SNI/Host) không - dấu hiệu CDN bleed-through | **WARNING** |
 | `ALLOWED` (no domain) | IP allowed, packet không có SNI/Host | INFO |
 | `BLOCKED` | Không match cả domain lẫn IP | BLOCKED |
 | `OBSERVED` | Passive mode (không admin / firewall disabled) | INFO/WARNING tuỳ whitelisted |
 
-### `agent/core/token_manager.py` — JWT auto-refresh
+### `agent/core/token_manager.py` - JWT auto-refresh
 
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
@@ -88,20 +88,20 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 - `AGENT_HOSTNAME / AGENT_DEVICE_ID` được dùng trong logs (handlers, lifecycle), heartbeat, registry.
 
 ## Module này gọi ra
-- `agent/shared` — time, OS info
-- `agent/utils` — admin check, ip detector, error handler
-- `agent/whitelist`, `agent/firewall`, `agent/capture`, `agent/logging_module`, `agent/services` — khởi tạo lazy import trong `lifecycle` (tránh circular)
-- `requests` — registry + token refresh
+- `agent/shared` - time, OS info
+- `agent/utils` - admin check, ip detector, error handler
+- `agent/whitelist`, `agent/firewall`, `agent/capture`, `agent/logging_module`, `agent/services` - khởi tạo lazy import trong `lifecycle` (tránh circular)
+- `requests` - registry + token refresh
 
-## Đã có sẵn — đừng viết lại
+## Đã có sẵn - đừng viết lại
 - Cần auth header để gọi server? → `core.token_manager.get_auth_headers(config)` (đã handle JWT → legacy fallback)
-- Cần singleton agent? → `core.get_agent()` — **đừng** `Agent()` trực tiếp
-- Cần hostname/device id? → `core.AGENT_HOSTNAME / AGENT_DEVICE_ID` — **đừng** gọi lại `socket.gethostname()` / WMI
-- Cần build lifecycle log? → `lifecycle.build_lifecycle_log(...)` — schema chuẩn để server parse
+- Cần singleton agent? → `core.get_agent()` - **đừng** `Agent()` trực tiếp
+- Cần hostname/device id? → `core.AGENT_HOSTNAME / AGENT_DEVICE_ID` - **đừng** gọi lại `socket.gethostname()` / WMI
+- Cần build lifecycle log? → `lifecycle.build_lifecycle_log(...)` - schema chuẩn để server parse
 - Cần wrap operation chống crash? → `utils.error_handler.CriticalErrorHandler.safe_execute` (xem cách handlers.py:58 dùng)
 
 ## Gotchas
-- **Singleton `Agent`**: `_initialized` flag (line 75, 79) đảm bảo `__init__` chỉ chạy 1 lần. Cẩn thận khi mock trong test — phải reset `Agent._instance = None`.
+- **Singleton `Agent`**: `_initialized` flag (line 75, 79) đảm bảo `__init__` chỉ chạy 1 lần. Cẩn thận khi mock trong test - phải reset `Agent._instance = None`.
 - **`AGENT_DEVICE_ID` tính ở import time** (line 57). Gọi PowerShell 3 lần, mỗi lần timeout 5s ⇒ delay up to 15s khi import `core.agent` lần đầu. Đang OK vì import sớm trong startup, nhưng test cần ý thức.
 - **Lifecycle có 2 alias cho cùng component** (lifecycle.py xem `agent.sniffer` & `agent.packet_sniffer`, cleanup chỉ kiểm `agent.sniffer`). Khi tạo component mới, đặt cả 2 hoặc thống nhất tên.
 - **Whitelist sync phải chạy TRƯỚC firewall init** (lifecycle Step 2.5 trước Step 3). Lý do: cần có whitelist data để `enable_whitelist_mode` tạo allow rules trước khi bật Default Deny. Đảo thứ tự = agent tự khoá mình.
@@ -109,4 +109,4 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 - **JWT refresh callback chain**: `on_token_expired` trong lifecycle.py:61 gọi lại `register_agent` → reset flag → reload tokens. Nếu sửa, đảm bảo `_load_tokens_from_config` chạy *sau* khi config đã có jwt mới.
 - **`needs_reregistration` không tự reset**: phải gọi `reset_reregistration_flag()` sau khi re-register thành công (đã làm ở lifecycle.py:67).
 - **`_handle_refresh_error` consume HTTP 401**: nếu server đổi error codes, update `('REFRESH_TOKEN_EXPIRED', 'TOKEN_REVOKED', 'INVALID_TOKEN')` ở token_manager.py:285.
-- **`try_register_with_server` mutate config in-place** (registry.py:108-122) — caller phải share cùng dict reference, không copy.
+- **`try_register_with_server` mutate config in-place** (registry.py:108-122) - caller phải share cùng dict reference, không copy.

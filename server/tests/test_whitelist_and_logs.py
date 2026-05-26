@@ -426,6 +426,54 @@ class TestWhitelistService:
         result = whitelist_service.bulk_delete_entries([pseudo_id])
         assert result["deleted_count"] == 1
 
+    def test_delete_domain_accepts_real_embedded_object_id(self, whitelist_service, group_model):
+        group = create_group(group_model, "RealOid Delete Group", whitelist=[
+            {"value": "real-oid-delete.com", "type": "domain"},
+        ])
+        entry_id = str(group["whitelist"][0]["_id"])
+
+        result = whitelist_service.delete_domain(entry_id)
+        assert result["success"] is True
+
+        updated_group = group_model.find_by_id(str(group["_id"]))
+        values = [
+            entry.get("value") if isinstance(entry, dict) else entry
+            for entry in updated_group["whitelist"]
+        ]
+        assert "real-oid-delete.com" not in values
+
+    def test_bulk_add_entries_tolerates_legacy_string_group_whitelist(self, whitelist_service, group_model):
+        group = create_group(group_model, "Legacy String Group", whitelist=[])
+        group_model.collection.update_one(
+            {"_id": group["_id"]},
+            {"$set": {"whitelist": ["legacy-string.com"]}},
+        )
+
+        result = whitelist_service.bulk_add_entries([
+            {
+                "value": "legacy-string.com",
+                "type": "domain",
+                "scope": "group",
+                "group_id": str(group["_id"]),
+            },
+            {
+                "value": "fresh-string.com",
+                "type": "domain",
+                "scope": "group",
+                "group_id": str(group["_id"]),
+            },
+        ], "127.0.0.1")
+
+        assert result["success"] is True
+        assert result["inserted_count"] == 1
+        updated_group = group_model.find_by_id(str(group["_id"]))
+        values = [
+            entry.get("value") if isinstance(entry, dict) else entry
+            for entry in updated_group["whitelist"]
+        ]
+        assert values.count("legacy-string.com") == 1
+        assert "fresh-string.com" in values
+
     def test_agent_sync_data_full(self, whitelist_service, group_model, agent_model):
         # Setup: global entry + group with whitelist + agent
         whitelist_service.add_entry({"value": "sync-global.com", "type": "domain"}, "127.0.0.1")
@@ -1002,7 +1050,7 @@ class TestRBACLogTeacher:
                 resp = client.delete('/api/logs/clear')
                 assert resp.status_code == 403
                 data = resp.get_json()
-                assert "Khong du quyen" in data.get("error", "")
+                assert "Insufficient permissions to delete logs" in data.get("error", "")
 
     def test_teacher_cannot_export_logs(self, app):
         teacher = make_teacher()

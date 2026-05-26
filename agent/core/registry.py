@@ -7,6 +7,7 @@ import requests
 
 from shared.time_utils import now, now_iso
 from shared.os_info import get_os_details
+from shared.server_urls import collect_server_urls
 
 from .agent import agent_state, AGENT_DEVICE_ID
 from utils.ip_detector import get_local_ip, check_admin_privileges
@@ -14,15 +15,14 @@ from utils.error_handler import CriticalErrorHandler
 
 logger = logging.getLogger("core.registry")
 
+
 def _collect_server_urls(config: Dict) -> list:
-    """Return a deduplicated, non-empty list of server URLs to try."""
-    server_cfg = config.get('server') or {}
-    urls = list(server_cfg.get('urls') or [])
-    primary = server_cfg.get('url')
-    if primary and primary not in urls:
-        urls.insert(0, primary)
-    # Drop empty / whitespace-only entries
-    return [u.strip() for u in urls if u and str(u).strip()]
+    """Backwards-compatible wrapper — delegates to shared resolver.
+
+    Kept so existing callers (lifecycle.py and any monkeypatches in tests)
+    continue to work. New code should import collect_server_urls directly.
+    """
+    return collect_server_urls(config, allow_dev_default=False)
 
 
 @CriticalErrorHandler.critical_operation("Agent Registration")
@@ -30,13 +30,13 @@ def register_agent(config: Dict) -> bool:
     try:
         server_urls = _collect_server_urls(config)
 
-        # No server URL configured — do not contact anything. This is the
+        # No server URL configured - do not contact anything. This is the
         # first-run default (see DEFAULT_CONFIG in agent/config/defaults.py).
         # Surfaced clearly to the user via the GUI status panel; the agent
         # continues to start in offline mode.
         if not server_urls:
             logger.warning(
-                "Server URL not configured — open Settings to set one. "
+                "Server URL not configured - open Settings to set one. "
                 "Skipping registration; agent will run offline until then."
             )
             return False

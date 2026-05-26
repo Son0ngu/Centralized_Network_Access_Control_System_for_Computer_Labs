@@ -36,7 +36,7 @@ agent/
 │   └── utils.py
 ├── gui_qt/                            # PySide6 frontend (toàn bộ view)
 │   ├── __init__.py
-│   ├── app.py                         # `run()` — khởi tạo QApplication, MainWindow
+│   ├── app.py                         # `run()` - khởi tạo QApplication, MainWindow
 │   ├── main_window.py                 # QMainWindow + sidebar + QStackedWidget
 │   ├── signal_bridge.py               # AgentSignals queue → Qt signals
 │   ├── styles.py                      # QSS global + palette constants
@@ -65,6 +65,7 @@ agent/
 ├── shared/
 │   ├── __init__.py
 │   ├── os_info.py
+│   ├── server_urls.py
 │   └── time_utils.py
 ├── utils/
 │   ├── __init__.py
@@ -97,4 +98,5 @@ agent/
 | `agent/config` | Default config, load env/file, validate, encrypt/decrypt. |
 | `agent/services` | Heartbeat sender. |
 | `agent/logging_module` | Queue và gửi logs batch về Server. |
+| `agent/shared` | Helper dùng chung như OS info, time utils và resolver URL Server tập trung (`collect_server_urls`). |
 
