@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 
 from models.whitelist_model import WhitelistModel
+try:
+    from models.whitelist_entry_model import WhitelistEntryModel
+except Exception:  # pragma: no cover - keeps legacy isolated tests importable
+    WhitelistEntryModel = None
 
 # Import time utilities - vietnam ONLY
 from time_utils import (
@@ -20,8 +24,9 @@ from time_utils import (
     to_vietnam,
 )
 
-# Pseudo-ID format for embedded group entries is centralised so we have one
-# place to swap when the unified ``whitelist_entries`` collection lands.
+# Pseudo-ID format for legacy embedded group entries is centralised. New
+# group entries use real ObjectIds from ``whitelist_entries``; pseudo-ID
+# remains only as a compatibility fallback during the migration window.
 from services.whitelist_entry_id import (
     GroupEntryRef,
     is_group_pseudo_id,
@@ -53,6 +58,7 @@ def _apply_entry_update(entry: Dict, update_data: Dict) -> None:
 # you are reading this past that date, grep for callers and delete the five
 # ``*_domain[s]`` methods + this helper.
 LEGACY_DOMAIN_API_REMOVAL = "2026-Q4"
+LEGACY_GROUP_PSEUDO_ID_REMOVAL = "after whitelist_entries production cutover"
 
 
 def _warn_legacy_domain_api(method_name: str) -> None:
@@ -74,15 +80,36 @@ def _warn_legacy_domain_api(method_name: str) -> None:
         stacklevel=3,
     )
 
+
+def _log_legacy_group_pseudo_id_usage(
+    operation: str,
+    ref: Optional[GroupEntryRef],
+    raw_id: str,
+) -> None:
+    """Emit a grep-friendly marker while legacy pseudo-IDs are still accepted."""
+    group_id = ref.group_id if ref else "unknown"
+    entry_type = ref.entry_type if ref else "unknown"
+    logger.warning(
+        "legacy_group_pseudo_id_used operation=%s group_id=%s "
+        "entry_type=%s removal=%s raw_id=%s",
+        operation,
+        group_id,
+        entry_type,
+        LEGACY_GROUP_PSEUDO_ID_REMOVAL,
+        raw_id,
+    )
+
 class WhitelistService:
     """Service class for whitelist business logic - vietnam ONLY"""
     
     def __init__(self, whitelist_model: WhitelistModel, agent_model, group_model, socketio=None,
+                 entry_model: Optional["WhitelistEntryModel"] = None,
                  policy_service=None, profile_service=None):
         """Initialize WhitelistService with model and socketio"""
         self.model = whitelist_model
         self.agent_model = agent_model
         self.group_model = group_model
+        self.entry_model = entry_model
         self.socketio = socketio
         self.policy_service = policy_service
         self.profile_service = profile_service
@@ -103,7 +130,21 @@ class WhitelistService:
         # through whitelist_entry_id so the format has one owner.
         ref = parse_group_pseudo_id(item_id)
         if ref is not None:
+            _log_legacy_group_pseudo_id_usage(
+                f"teacher_{action}", ref, item_id
+            )
             if str(ref.group_id) not in teacher_groups:
+                return False, f"No permission to {action} this entry"
+            return True, None
+
+        entry = self.entry_model.find_entry_access_info(item_id) if self.entry_model else None
+        if entry:
+            entry_group = entry.get("group_id")
+            if entry.get("scope") == "global" and not entry_group:
+                if action == "delete":
+                    return False, "Teachers cannot delete from global whitelist"
+                return False, "Teachers cannot edit global whitelist"
+            if not entry_group or str(entry_group) not in teacher_groups:
                 return False, f"No permission to {action} this entry"
             return True, None
 
@@ -194,6 +235,77 @@ class WhitelistService:
         validation_result = self.model.validate_entry_value(entry_type, value)
         if not validation_result["valid"]:
             raise ValueError(validation_result["message"])
+
+        scope = entry_data.get("scope", "global")
+        group_id = entry_data.get("group_id")
+        if scope == "group" and group_id:
+            group = self.group_model.find_by_id(group_id)
+            if not group:
+                raise ValueError("Group not found")
+
+            existing_collection = (
+                self.entry_model.find_group_entry_by_value(group_id, value, entry_type)
+                if self.entry_model else None
+            )
+            existing_embedded = any(
+                (
+                    (entry.get("value") if isinstance(entry, dict) else str(entry)) == value
+                    and (entry.get("type", "domain") if isinstance(entry, dict) else "domain") == entry_type
+                )
+                for entry in group.get("whitelist", [])
+            )
+            if existing_collection or existing_embedded:
+                raise ValueError("Entry already exists in group whitelist")
+
+            current_time = now_vietnam()
+            category_value = (
+                entry_data.get("category")
+                or entry_data.get("description")
+                or "uncategorized"
+            )
+            processed_entry = {
+                "_id": ObjectId(),
+                "scope": "group",
+                "group_id": str(group_id),
+                "type": entry_type,
+                "value": value,
+                "category": category_value,
+                "priority": entry_data.get("priority", "normal"),
+                "added_by": client_ip,
+                "added_date": current_time,
+                "is_active": True,
+            }
+            if entry_data.get("notes"):
+                processed_entry["notes"] = entry_data.get("notes")
+
+            if self.entry_model:
+                entry_id = self.entry_model.insert_entry(processed_entry)
+                self.group_model.bump_whitelist_version(str(group_id))
+            else:
+                current_whitelist = group.get("whitelist", [])
+                self.group_model.update_group(str(group_id), {
+                    "whitelist": current_whitelist + [processed_entry],
+                    "whitelist_version": group.get("whitelist_version", 1) + 1,
+                })
+                entry_id = str(processed_entry["_id"])
+
+            if self.socketio:
+                self.socketio.emit("whitelist_added", {
+                    "type": entry_type,
+                    "value": value,
+                    "category": processed_entry["category"],
+                    "scope": "group",
+                    "group_id": str(group_id),
+                    "added_by": client_ip,
+                    "timestamp": now_iso(),
+                })
+
+            return {
+                "id": entry_id,
+                "message": f"{entry_type.capitalize()} added to group whitelist",
+                "timestamp": now_iso(),
+                "server_time": now_iso(),
+            }
         
         # Check for duplicates in global whitelist (both active and inactive)
         existing = self.model.find_entry_by_value(value, active_only=False)
@@ -519,6 +631,63 @@ class WhitelistService:
             })
         return entries
 
+    def _normalize_collection_group_entries(self, entries: List[Dict],
+                                            group: Dict) -> List[Dict]:
+        """Normalize first-class ``whitelist_entries`` rows for UI/sync."""
+        group_id = str(group.get("_id")) if group else None
+        group_name = group.get("name") if group else None
+        normalised = []
+        for entry in entries or []:
+            entry_id = str(entry.get("_id") or entry.get("id"))
+            normalised.append({
+                "_id": entry_id,
+                "id": entry_id,
+                "value": entry.get("value", ""),
+                "type": entry.get("type", "domain"),
+                "priority": entry.get("priority", "normal"),
+                "category": entry.get("category", "uncategorized"),
+                "is_active": entry.get("is_active", True),
+                "scope": "group",
+                "group_id": str(entry.get("group_id") or group_id),
+                "group_name": group_name,
+                "added_by": entry.get("added_by", "unknown"),
+                "added_date": entry.get("added_date"),
+                "notes": entry.get("notes"),
+                "legacy_embedded_id": entry.get("legacy_embedded_id"),
+            })
+        return normalised
+
+    def _get_group_entries(self, group: Dict,
+                           include_inactive: bool = True) -> List[Dict]:
+        """Read group whitelist from collection first, embedded array fallback.
+
+        During the migration window a group can legitimately have both new
+        ``whitelist_entries`` rows and legacy ``groups.whitelist[]`` rows.
+        Merge both sources so partially migrated groups do not lose old
+        embedded entries; collection rows win when they describe the same
+        type/value pair.
+        """
+        if not group:
+            return []
+        embedded_entries = self._normalize_group_entries(
+            group, include_inactive=include_inactive
+        )
+        group_id = str(group.get("_id"))
+        if self.entry_model:
+            entries = self.entry_model.list_group_entries(
+                group_id, include_inactive=include_inactive
+            )
+            if entries:
+                merged = {}
+                for entry in embedded_entries:
+                    key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
+                    merged[key] = entry
+                for entry in self._normalize_collection_group_entries(entries, group):
+                    key = f"{entry.get('type', 'domain')}:{entry.get('value')}"
+                    merged[key] = entry
+                return list(merged.values())
+        return embedded_entries
+
     def _merge_whitelists(self, global_entries: List[Dict], group_entries: List[Dict]) -> List[Dict]:
         """Merge global and group whitelists.
         When the same type:value exists in both scopes, group entry wins
@@ -572,7 +741,7 @@ class WhitelistService:
             for entry in global_entries:
                 entry.setdefault("scope", "global")
 
-            group_entries = self._normalize_group_entries(group)
+            group_entries = self._get_group_entries(group)
             combined = self._merge_whitelists(global_entries, group_entries)
 
             return {
@@ -658,7 +827,7 @@ class WhitelistService:
                 group_entries = self._normalize_group_entries(profile_group, include_inactive=False)
             else:
                 # Use group.whitelist as base
-                group_entries = self._normalize_group_entries(group, include_inactive=False)
+                group_entries = self._get_group_entries(group, include_inactive=False)
 
             combined = self._merge_whitelists(global_entries, group_entries)
 
@@ -739,7 +908,25 @@ class WhitelistService:
                 })
             return success
 
-        # 2) Embedded row by real ObjectId. Only attempt if the id is a
+        # 2) First-class group entry row in whitelist_entries.
+        collection_entry = self.entry_model.find_entry_by_id(entry_id) if self.entry_model else None
+        if collection_entry:
+            success = self.entry_model.delete_entry(entry_id)
+            if success:
+                group_id = collection_entry.get("group_id")
+                if group_id:
+                    self.group_model.bump_whitelist_version(str(group_id))
+                if self.socketio:
+                    self.socketio.emit("whitelist_deleted", {
+                        "id": entry_id,
+                        "value": collection_entry.get("value"),
+                        "type": collection_entry.get("type", "domain"),
+                        "scope": "group",
+                        "timestamp": now_iso()
+                    })
+            return success
+
+        # 3) Embedded row by real ObjectId. Only attempt if the id is a
         # valid ObjectId hex string — otherwise it's clearly something
         # else (e.g. a UUID or a malformed string).
         try:
@@ -771,6 +958,9 @@ class WhitelistService:
             try:
                 ref = parse_group_pseudo_id(item_id)
                 if ref is not None:
+                    _log_legacy_group_pseudo_id_usage(
+                        "bulk_delete", ref, item_id
+                    )
                     group_deletes.setdefault(ref.group_id, []).append(
                         (ref.value, ref.entry_type)
                     )
@@ -910,14 +1100,17 @@ class WhitelistService:
         group_success_count = 0
         for grp_id, entries in group_entries_map.items():
             try:
-                # Need to update group document
                 group = self.group_model.find_by_id(grp_id)
                 if not group:
                     errors.append(f"Group {grp_id} not found for bulk import")
                     continue
-                
+
                 current_whitelist = group.get("whitelist", [])
-                
+                existing_collection_entries = (
+                    self.entry_model.list_group_entries(grp_id)
+                    if self.entry_model else []
+                )
+
                 # Filter out duplicates
                 new_unique = []
                 for ne in entries:
@@ -926,18 +1119,36 @@ class WhitelistService:
                         curr_type = curr.get("type", "domain") if isinstance(curr, dict) else "domain"
                         return curr_value == ne["value"] and curr_type == ne["type"]
 
-                    if not any(_matches_current(curr) for curr in current_whitelist):
+                    collection_duplicate = any(
+                        e.get("value") == ne["value"] and e.get("type", "domain") == ne["type"]
+                        for e in existing_collection_entries
+                    )
+                    embedded_duplicate = any(_matches_current(curr) for curr in current_whitelist)
+
+                    if not collection_duplicate and not embedded_duplicate:
                         new_unique.append(ne)
                     else:
                         errors.append(f"Entry {ne['value']} already exists in group {group.get('name')}")
 
                 if new_unique:
-                    updated_whitelist = current_whitelist + new_unique
-                    self.group_model.update_group(grp_id, {
-                        "whitelist": updated_whitelist,
-                        "whitelist_version": (group.get("whitelist_version", 1) + 1)
-                    })
-                    group_success_count += len(new_unique)
+                    if self.entry_model:
+                        collection_rows = []
+                        for entry in new_unique:
+                            row = {**entry}
+                            row["scope"] = "group"
+                            row["group_id"] = str(grp_id)
+                            collection_rows.append(row)
+                        inserted_group_ids = self.entry_model.bulk_insert_entries(collection_rows)
+                        if inserted_group_ids:
+                            self.group_model.bump_whitelist_version(str(grp_id))
+                            group_success_count += len(inserted_group_ids)
+                    else:
+                        updated_whitelist = current_whitelist + new_unique
+                        self.group_model.update_group(grp_id, {
+                            "whitelist": updated_whitelist,
+                            "whitelist_version": (group.get("whitelist_version", 1) + 1)
+                        })
+                        group_success_count += len(new_unique)
                     
             except Exception as e:
                 errors.append(f"Failed to update group {grp_id}: {str(e)}")
@@ -986,6 +1197,31 @@ class WhitelistService:
         """
         if is_group_pseudo_id(entry_id):
             return self._update_group_entry(entry_id, update_data)
+
+        collection_entry = self.entry_model.find_entry_by_id(entry_id) if self.entry_model else None
+        if collection_entry:
+            if 'value' in update_data:
+                value = update_data['value'].strip().lower()
+                entry_type = update_data.get('type', collection_entry.get('type', 'domain'))
+                validation_result = self.model.validate_entry_value(entry_type, value)
+                if not validation_result["valid"]:
+                    raise ValueError(validation_result["message"])
+                update_data['value'] = value
+
+            success = self.entry_model.update_entry(entry_id, update_data)
+            if success:
+                group_id = collection_entry.get("group_id")
+                if group_id:
+                    self.group_model.bump_whitelist_version(str(group_id))
+                if self.socketio:
+                    self.socketio.emit("whitelist_updated", {
+                        "id": entry_id,
+                        "value": update_data.get('value', collection_entry.get('value')),
+                        "type": update_data.get('type', collection_entry.get('type', 'domain')),
+                        "scope": "group",
+                        "timestamp": now_iso()
+                    })
+            return success
 
         entry = self.model.find_entry_by_id(entry_id)
         if not entry:
@@ -1038,6 +1274,7 @@ class WhitelistService:
         """
         ref = parse_group_pseudo_id(entry_id)
         if ref is not None:
+            _log_legacy_group_pseudo_id_usage("update", ref, entry_id)
             return self._update_group_entry_by_match(
                 ref.group_id, value=ref.value, entry_type=ref.entry_type,
                 update_data=update_data,
@@ -1253,6 +1490,9 @@ class WhitelistService:
         try:
             ref = parse_group_pseudo_id(domain_id)
             if ref is not None:
+                _log_legacy_group_pseudo_id_usage(
+                    "delete_domain", ref, domain_id
+                )
                 if self._delete_group_entry(ref.group_id, ref.value, ref.entry_type):
                     return {
                         "success": True,

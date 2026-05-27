@@ -1,5 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
 
 # ---------------------------------------------------------------------------
 # Paths

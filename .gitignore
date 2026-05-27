@@ -1,4 +1,7 @@
 .venv
+node_modules/
+playwright-report/
+test-results/
 .idea
 .idea/
 .vscode/
@@ -8,6 +11,8 @@
 __pycache__
 **.__pycache__
 *.json
+!package.json
+!package-lock.json
 .vscode
 .claude
 .claude_cache
@@ -22,5 +27,6 @@ dist/
 *.pkg
 *.pyz
 *.ps1
+!tools/agent-admin-smoke.ps1
 *.pytest_cache
 *.understand-anything

@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Set
 
 from shared.time_utils import now_iso
 from .policy import PolicyManager
+from .provider import FirewallProvider, get_default_provider, get_write_provider
 from .rules import RulesManager
 from .utils import FirewallUtils
 
@@ -50,12 +51,23 @@ def _resolve_snapshot_path(path: str) -> Path:
 
 
 class FirewallManager:
-    def __init__(self, rule_prefix: str = "FirewallController"):
+    def __init__(
+        self,
+        rule_prefix: str = "FirewallController",
+        provider: Optional[FirewallProvider] = None,
+        write_provider: Optional[FirewallProvider] = None,
+    ):
         self.rule_prefix = rule_prefix
+        self._provider = provider or get_default_provider()
+        self._write_provider = write_provider or get_write_provider()
         
         # Initialize sub-managers
-        self.policy_manager = PolicyManager()
-        self.rules_manager = RulesManager(rule_prefix)
+        self.policy_manager = PolicyManager(write_provider=self._write_provider)
+        self.rules_manager = RulesManager(
+            rule_prefix,
+            provider=self._provider,
+            write_provider=self._write_provider,
+        )
         
         # State tracking
         self.essential_ips: Set[str] = set()
@@ -752,25 +764,8 @@ class FirewallManager:
 
             # 1. Restore Windows Firewall profile policies.
             policies = snapshot.get("policies", {})
-            for profile, action in policies.items():
-                if action not in ("allow", "block"):
-                    continue
-                policy_arg = (
-                    "blockinbound,blockoutbound"
-                    if action == "block"
-                    else "blockinbound,allowoutbound"
-                )
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", policy_arg,
-                ])
-                if result.returncode == 0:
-                    logger.debug("Restored %s profile to %s", profile, action)
-                else:
-                    logger.warning(
-                        "Failed to restore %s profile: %s",
-                        profile, result.stderr,
-                    )
+            if policies and not self.policy_manager.restore_policies(policies):
+                logger.warning("No firewall profile policy was restored from snapshot")
 
             # Safety net: if every profile is block, force the Windows default
             # allow-outbound policy so the device doesn't lose connectivity.

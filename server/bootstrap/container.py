@@ -24,6 +24,7 @@ from models.log_model import LogModel
 from models.session_model import SessionModel
 from models.user_model import UserModel
 from models.whitelist_model import WhitelistModel
+from models.whitelist_entry_model import WhitelistEntryModel
 from models.whitelist_profile_model import WhitelistProfileModel
 from services.admin_auth_service import AdminAuthService
 from services.agent_policy_service import AgentPolicyService
@@ -48,6 +49,7 @@ def initialize_database_indexes(app, db) -> None:
     try:
         app.logger.info(" Initializing database indexes...")
         WhitelistModel(db)
+        WhitelistEntryModel(db)
         LogModel(db)
         AgentModel(db)
         GroupModel(db)
@@ -62,6 +64,7 @@ def initialize_container(app, socketio, db):
     logger.info(" Initializing MVC components...")
 
     whitelist_model = WhitelistModel(db)
+    whitelist_entry_model = WhitelistEntryModel(db)
     agent_model = AgentModel(db)
     log_model = LogModel(db)
     group_model = GroupModel(db)
@@ -86,6 +89,7 @@ def initialize_container(app, socketio, db):
         agent_model,
         group_model,
         socketio,
+        entry_model=whitelist_entry_model,
         policy_service=agent_policy_service,
         profile_service=whitelist_profile_service,
     )

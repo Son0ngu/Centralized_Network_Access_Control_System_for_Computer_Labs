@@ -5,7 +5,7 @@ Lifecycle management - Agent initialization and cleanup.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from shared.time_utils import now, now_iso
 from utils import check_admin_privileges, get_local_ip
@@ -74,6 +74,209 @@ class InitResult:
         return not self.has_failure()
 
 
+@dataclass
+class LifecycleContext:
+    """Mutable context passed to each lifecycle component."""
+
+    runtime: AgentRuntime
+    config: Dict
+    result: InitResult
+    started_components: List["AgentComponent"] = field(default_factory=list)
+
+    @property
+    def agent(self) -> AgentRuntime:
+        return self.runtime
+
+
+class AgentComponent:
+    """Minimal lifecycle component contract.
+
+    Components own their start/stop behavior and expose a small health
+    snapshot. The orchestrator only knows the contract, not component
+    internals.
+    """
+
+    name = "component"
+
+    def start(self, context: LifecycleContext) -> None:
+        raise NotImplementedError
+
+    def stop(self, context: LifecycleContext) -> None:
+        return None
+
+    def health(self, context: LifecycleContext) -> Dict:
+        return {"name": self.name, "status": STATUS_OK}
+
+
+class RegistrationComponent(AgentComponent):
+    name = "registration"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_registration(context.agent, context.config, context.result)
+
+
+class TokenManagerComponent(AgentComponent):
+    name = "token_manager"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_token_manager(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        token_manager = get_token_manager()
+        if token_manager:
+            logger.info("Stopping token manager...")
+            token_manager.stop_auto_refresh()
+
+
+class WhitelistComponent(AgentComponent):
+    name = "whitelist"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_whitelist_manager(context.agent, context.config, context.result)
+        _init_whitelist_sync(context.agent, context.config, context.result)
+        _init_periodic_whitelist_sync(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        agent = context.agent
+        if hasattr(agent, "whitelist") and agent.whitelist:
+            logger.info("Stopping whitelist sync...")
+            try:
+                agent.whitelist.cleanup()
+            except Exception as e:
+                logger.warning(f"Whitelist cleanup failed: {e}")
+            agent.whitelist = None
+
+
+class FirewallComponent(AgentComponent):
+    name = "firewall"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_firewall(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        agent = context.agent
+        if hasattr(agent, "firewall") and agent.firewall:
+            logger.info("Cleaning up firewall...")
+            if hasattr(agent.firewall, "cleanup"):
+                agent.firewall.cleanup()
+            elif hasattr(agent.firewall, "cleanup_whitelist_firewall"):
+                agent.firewall.cleanup_whitelist_firewall()
+            agent.firewall = None
+
+        try:
+            from capture.winpcap_installer import cleanup_winpcap, was_installed_by_us
+            if was_installed_by_us():
+                logger.info("Cleaning up WinPcap (auto-installed)...")
+                cleanup_winpcap()
+        except Exception as e:
+            logger.warning(f"WinPcap cleanup failed: {e}")
+
+
+class LogSenderComponent(AgentComponent):
+    name = "log_sender"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_log_sender(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        agent = context.agent
+        if hasattr(agent, "log_sender") and agent.log_sender:
+            logger.info("Flushing and stopping log sender...")
+
+            if context.config and context.config.get("agent_id"):
+                shutdown_log = build_lifecycle_log(
+                    context.config,
+                    event_type="agent_shutdown",
+                    action="SHUTDOWN",
+                    message="Agent shutdown",
+                )
+                agent.log_sender.queue_log(shutdown_log)
+
+            agent.log_sender.stop()
+            agent.log_sender = None
+
+
+class HeartbeatComponent(AgentComponent):
+    name = "heartbeat_sender"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_heartbeat(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        agent = context.agent
+        if hasattr(agent, "heartbeat") and agent.heartbeat:
+            logger.info("Stopping heartbeat sender...")
+            agent.heartbeat.stop()
+            agent.heartbeat = None
+
+
+class PacketSnifferComponent(AgentComponent):
+    name = "packet_sniffer"
+
+    def start(self, context: LifecycleContext) -> None:
+        _init_packet_sniffer(context.agent, context.config, context.result)
+
+    def stop(self, context: LifecycleContext) -> None:
+        agent = context.agent
+        if hasattr(agent, "sniffer") and agent.sniffer:
+            logger.info("Stopping packet sniffer...")
+            agent.sniffer.stop()
+            agent.sniffer = None
+
+
+def build_default_components() -> List[AgentComponent]:
+    """Return production lifecycle components in startup order."""
+    return [
+        RegistrationComponent(),
+        TokenManagerComponent(),
+        WhitelistComponent(),
+        FirewallComponent(),
+        LogSenderComponent(),
+        HeartbeatComponent(),
+        PacketSnifferComponent(),
+    ]
+
+
+def start_components(context: LifecycleContext,
+                     components: Sequence[AgentComponent]) -> None:
+    """Start components in order and cleanup already-started ones on failure."""
+    for component in components:
+        try:
+            logger.debug("Starting component: %s", component.name)
+            context.started_components.append(component)
+            context.runtime.components = list(context.started_components)
+            component.start(context)
+            if context.result.has_failure():
+                raise RuntimeError(f"Component {component.name} reported failure")
+        except Exception as exc:
+            if not any(
+                status.name == component.name and status.status == STATUS_FAILED
+                for status in context.result.components
+            ):
+                context.result.record(component.name, STATUS_FAILED, str(exc))
+            logger.error(
+                "Component %s failed during start: %s",
+                component.name, exc, exc_info=True,
+            )
+            stop_components(context)
+            raise
+
+
+def stop_components(context: LifecycleContext) -> None:
+    """Stop started components in reverse order."""
+    for component in reversed(context.started_components):
+        try:
+            logger.debug("Stopping component: %s", component.name)
+            component.stop(context)
+        except Exception as exc:
+            logger.warning(
+                "Component %s failed during stop: %s",
+                component.name, exc,
+            )
+    context.started_components.clear()
+    context.runtime.components = []
+
+
 def initialize_components(config: Dict,
                           runtime: Optional[AgentRuntime] = None) -> InitResult:
     """
@@ -98,21 +301,14 @@ def initialize_components(config: Dict,
     agent = runtime if runtime is not None else get_agent()
     agent.config = config  # Store config in agent
     result = InitResult()
+    context = LifecycleContext(runtime=agent, config=config, result=result)
 
     try:
         logger.info("=" * 50)
         logger.info("INITIALIZING AGENT COMPONENTS")
         logger.info("=" * 50)
 
-        _init_registration(agent, config, result)
-        _init_token_manager(agent, config, result)
-        _init_whitelist_manager(agent, config, result)  # may raise (critical)
-        _init_whitelist_sync(agent, config, result)
-        _init_firewall(agent, config, result)
-        _init_periodic_whitelist_sync(agent, config, result)
-        _init_log_sender(agent, config, result)
-        _init_heartbeat(agent, config, result)
-        _init_packet_sniffer(agent, config, result)
+        start_components(context, build_default_components())
 
         # Mark agent as running
         agent.running = True
@@ -124,7 +320,8 @@ def initialize_components(config: Dict,
 
     except Exception as e:
         logger.error(f"Error during component initialization: {e}", exc_info=True)
-        result.record("initialization", STATUS_FAILED, str(e))
+        if not result.has_failure():
+            result.record("initialization", STATUS_FAILED, str(e))
         _log_init_summary(result)
         return result
 
@@ -525,76 +722,26 @@ def cleanup(config: Optional[Dict] = None,
             pass it explicitly to avoid touching the process singleton.
     """
     agent = runtime if runtime is not None else get_agent()
+    config = config or agent.config or {}
+    context = LifecycleContext(
+        runtime=agent,
+        config=config,
+        result=InitResult(),
+        started_components=list(getattr(agent, "components", []) or []),
+    )
     
     logger.info("=" * 50)
     logger.info("SHUTTING DOWN AGENT")
     logger.info("=" * 50)
     
     try:
-        # Stop token manager auto-refresh
-        token_manager = get_token_manager()
-        if token_manager:
-            logger.info("Stopping token manager...")
-            token_manager.stop_auto_refresh()
-        
-        # Stop packet sniffer
-        if hasattr(agent, 'sniffer') and agent.sniffer:
-            logger.info("Stopping packet sniffer...")
-            agent.sniffer.stop()
-            agent.sniffer = None
-        
-        # Stop whitelist sync and tear down its resources (DNS resolver
-        # thread pool, cached state). Calling `cleanup()` instead of just
-        # `stop_sync()` ensures the OptimizedDNSResolver executor shuts
-        # down here rather than relying on the atexit handler.
-        if hasattr(agent, 'whitelist') and agent.whitelist:
-            logger.info("Stopping whitelist sync...")
-            try:
-                agent.whitelist.cleanup()
-            except Exception as e:
-                logger.warning(f"Whitelist cleanup failed: {e}")
-            agent.whitelist = None
-        
-        # Stop heartbeat sender
-        if hasattr(agent, 'heartbeat') and agent.heartbeat:
-            logger.info("Stopping heartbeat sender...")
-            agent.heartbeat.stop()
-            agent.heartbeat = None
-        
-        # Flush and stop log sender
-        if hasattr(agent, 'log_sender') and agent.log_sender:
-            logger.info("Flushing and stopping log sender...")
-            
-            # Send shutdown log
-            if config and config.get("agent_id"):
-                shutdown_log = build_lifecycle_log(
-                    config,
-                    event_type="agent_shutdown",
-                    action="SHUTDOWN",
-                    message="Agent shutdown"
-                )
-                agent.log_sender.queue_log(shutdown_log)
-            
-            agent.log_sender.stop()
-            agent.log_sender = None
-        
-        # Cleanup firewall (if needed)
-        if hasattr(agent, 'firewall') and agent.firewall:
-            logger.info("Cleaning up firewall...")
-            if hasattr(agent.firewall, 'cleanup'):
-                agent.firewall.cleanup()
-            elif hasattr(agent.firewall, 'cleanup_whitelist_firewall'):
-                agent.firewall.cleanup_whitelist_firewall()
-            agent.firewall = None
-        
-        # Cleanup WinPcap if we installed it
-        try:
-            from capture.winpcap_installer import cleanup_winpcap, was_installed_by_us
-            if was_installed_by_us():
-                logger.info("Cleaning up WinPcap (auto-installed)...")
-                cleanup_winpcap()
-        except Exception as e:
-            logger.warning(f"WinPcap cleanup failed: {e}")
+        if context.started_components:
+            stop_components(context)
+        else:
+            # Defensive fallback for runtimes created before component stack
+            # tracking existed, or for tests that attach handles directly.
+            context.started_components = build_default_components()
+            stop_components(context)
         
         agent.running = False
         

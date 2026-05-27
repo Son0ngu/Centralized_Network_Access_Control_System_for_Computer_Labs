@@ -2,15 +2,17 @@ import logging
 import subprocess
 from typing import Dict, Optional
 
+from .provider import FirewallProvider, get_write_provider
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.policy")
 
 class PolicyManager:
     
-    def __init__(self):
+    def __init__(self, write_provider: Optional[FirewallProvider] = None):
         self._original_policies: Dict[str, str] = {}
         self.default_deny_enabled = False
+        self._write_provider = write_provider or get_write_provider()
     
     def get_current_policy(self) -> Dict[str, str]:
         # Get current firewall policy for all profiles.
@@ -69,16 +71,11 @@ class PolicyManager:
                     success_count += 1
                     continue
                 
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", "blockinbound,blockoutbound"
-                ])
-                
-                if result.returncode == 0:
+                if self._write_provider.set_profile_outbound_policy(profile, "block"):
                     logger.info(f"{profile.title()} profile set to Default Deny")
                     success_count += 1
                 else:
-                    logger.error(f"Failed to set {profile.title()} profile: {result.stderr}")
+                    logger.error(f"Failed to set {profile.title()} profile")
             
             if success_count >= 1:
                 if self.verify_default_deny():
@@ -145,14 +142,7 @@ class PolicyManager:
             success_count = 0
             
             for profile, action in self._original_policies.items():
-                policy = f"blockinbound,{action}outbound"
-                
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", policy
-                ])
-                
-                if result.returncode == 0:
+                if self._write_provider.set_profile_outbound_policy(profile, action):
                     logger.info(f"{profile.title()} profile restored to {action} outbound")
                     success_count += 1
                 else:
@@ -175,16 +165,11 @@ class PolicyManager:
             success_count = 0
             
             for profile in profiles:
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", "blockinbound,allowoutbound"
-                ])
-                
-                if result.returncode == 0:
+                if self._write_provider.set_profile_outbound_policy(profile, "allow"):
                     logger.info(f"{profile.title()} profile restored to default")
                     success_count += 1
                 else:
-                    logger.error(f"Failed to restore {profile.title()} profile: {result.stderr}")
+                    logger.error(f"Failed to restore {profile.title()} profile")
             
             if success_count > 0:
                 self.default_deny_enabled = False
@@ -193,4 +178,23 @@ class PolicyManager:
             
         except Exception as e:
             logger.error(f"Error restoring default policy: {e}")
+            return False
+
+    def restore_policies(self, policies: Dict[str, str]) -> bool:
+        """Restore explicit profile outbound policies from a snapshot."""
+        try:
+            success_count = 0
+            for profile, action in (policies or {}).items():
+                if action not in ("allow", "block"):
+                    continue
+                if self._write_provider.set_profile_outbound_policy(profile, action):
+                    logger.debug("Restored %s profile to %s", profile, action)
+                    success_count += 1
+                else:
+                    logger.warning("Failed to restore %s profile", profile)
+            if success_count > 0:
+                self.default_deny_enabled = False
+            return success_count > 0
+        except Exception as e:
+            logger.error(f"Error restoring explicit policies: {e}")
             return False

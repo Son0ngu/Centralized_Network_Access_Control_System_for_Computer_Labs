@@ -11,6 +11,7 @@
 | admin_sessions | Phiên đăng nhập admin/teacher, JTI access/refresh. | server/models/session_model.py |
 | users | Tài khoản Admin/Teacher, role, password hash, lock state. | server/bootstrap/container.py, server/models/user_model.py, server/controllers/audit_controller.py, server/controllers/user_controller.py |
 | whitelist | Whitelist global/group: domain, IP, URL, category, active. | server/bootstrap/container.py, server/models/whitelist_model.py, server/controllers/agent_controller.py, server/controllers/group_controller.py |
+| whitelist_entries | First-class group whitelist entries. New group writes go here; `groups.whitelist[]` is read fallback during migration. | server/models/whitelist_entry_model.py, server/services/whitelist_service.py, server/scripts/migrations/2026_migrate_group_whitelist_to_entries.py |
 | whitelist_meta | Global whitelist version metadata. | server/models/whitelist_model.py |
 | whitelist_profiles | Profile whitelist theo giáo viên/nhóm/bài học. | server/controllers/whitelist_profile_controller.py, server/models/whitelist_profile_model.py |
 | revoked_tokens | Token đã revoke, TTL cleanup. | server/services/jwt_service.py |
@@ -20,7 +21,8 @@
 - Sau refactor 2026-05-26, controller/service không còn gọi Mongo qua `.collection` trực tiếp. Các truy vấn/update trực tiếp đã được gom vào model methods như `GroupModel.find_accessible_group_ids_for_teacher`, `AgentModel.find_agent_ids_by_group_ids`, `WhitelistModel.find_entry_access_info`, `WhitelistProfileModel.list_by_teacher_groups`.
 - `agents.group_id` liên kết Agent với `groups`.
 - `groups.teacher_ids` xác định Teacher nào được quản lý group.
-- `groups.whitelist[]` vẫn là whitelist nhúng trong group ở giai đoạn rollout, nhưng `GroupModel.create_group` và `GroupModel.update_group` luôn normalize entry thành subdocument có `_id: ObjectId`. Nếu frontend gửi `_id` dạng string, model convert lại thành `ObjectId`; nếu entry thiếu `_id`, model stamp mới. Điều này giữ dotted-path query `whitelist._id` hoạt động ổn định cho update/delete/RBAC.
+- `whitelist_entries` là storage mới cho group whitelist. New group writes go to this collection and bump `groups.whitelist_version`; read path merge collection rows with legacy `groups.whitelist[]` for one release, collection row wins on duplicate `type:value`.
+- `groups.whitelist[]` vẫn được giữ làm rollback/read fallback trong giai đoạn migration. `GroupModel.create_group` và `GroupModel.update_group` vẫn normalize embedded entry thành subdocument có `_id: ObjectId` để legacy ObjectId path tiếp tục an toàn.
 - `whitelist` chứa entries global hoặc theo group; `whitelist_meta` lưu version global.
 - `whitelist_profiles` cho phép Teacher tạo profile whitelist riêng theo group/bài học.
 - `logs.agent_id` liên kết log truy cập với Agent.

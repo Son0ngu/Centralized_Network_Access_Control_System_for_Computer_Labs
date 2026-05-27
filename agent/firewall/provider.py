@@ -66,13 +66,11 @@ class FirewallPolicyStatus(TypedDict, total=False):
 
 
 class FirewallProvider(ABC):
-    """Backend-agnostic facade for read-side firewall introspection.
+    """Backend-agnostic facade for firewall read/write operations.
 
-    Write-side operations (create/delete rules) still live in
-    :class:`agent.firewall.rules.RulesManager` for now — splitting writes is a
-    larger change because they need elevation/audit guarantees. Reads,
-    however, are easy to abstract and that's where the text-parsing pain
-    lived.
+    Reads isolate the old English-only ``netsh`` text parsing. Writes preserve
+    the existing netsh behavior by default, while allowing an opt-in
+    NetSecurity backend for Windows-admin smoke testing.
     """
 
     name: str = "abstract"
@@ -144,12 +142,53 @@ class FirewallProvider(ABC):
         (Domain / Private / Public) rather than aggregating across all three.
         """
 
+    # ------------------------------------------------------------------
+    # Write APIs
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def create_or_replace_rule(
+        self,
+        rule_name: str,
+        *,
+        direction: str = "out",
+        action: str = "allow",
+        protocol: str = "any",
+        remote_addresses: Optional[Iterable[str]] = None,
+        remote_ports: Optional[Iterable[str]] = None,
+        program: Optional[str] = None,
+        profile: str = "any",
+        description: Optional[str] = None,
+    ) -> bool:
+        """Create a managed firewall rule, replacing an exact-name match."""
+
+    @abstractmethod
+    def update_rule_remote_addresses(
+        self,
+        rule_name: str,
+        remote_addresses: Iterable[str],
+    ) -> bool:
+        """Update RemoteAddress on an existing rule."""
+
+    @abstractmethod
+    def delete_rule(self, rule_name: str) -> bool:
+        """Delete rules matching an exact display name."""
+
+    @abstractmethod
+    def delete_rules_by_prefix(self, rule_prefix: str) -> int:
+        """Delete all rules whose display name starts with ``rule_prefix``."""
+
+    @abstractmethod
+    def set_profile_outbound_policy(self, profile: str, action: str) -> bool:
+        """Set profile outbound policy to ``allow`` or ``block``."""
+
 
 # ----------------------------------------------------------------------
 # Factory
 # ----------------------------------------------------------------------
 
 _PROVIDER_ENV = "SAINT_FIREWALL_PROVIDER"
+_WRITE_PROVIDER_ENV = "FIREWALL_WRITE_BACKEND"
 
 
 def get_default_provider() -> FirewallProvider:
@@ -176,6 +215,34 @@ def get_default_provider() -> FirewallProvider:
 
     if NetSecurityFirewallProvider.available():
         return NetSecurityFirewallProvider()
+    return NetshFirewallProvider()
+
+
+def get_write_provider() -> FirewallProvider:
+    """Return the firewall write backend.
+
+    Default is netsh for behavior compatibility. Operators can opt in to the
+    PowerShell NetSecurity write path with ``FIREWALL_WRITE_BACKEND=powershell``
+    after Windows-admin smoke testing.
+    """
+    forced = (os.environ.get(_WRITE_PROVIDER_ENV) or "netsh").strip().lower()
+
+    from .netsh_provider import NetshFirewallProvider
+    from .netsecurity_provider import NetSecurityFirewallProvider
+
+    if forced in ("powershell", "netsecurity"):
+        if NetSecurityFirewallProvider.available():
+            return NetSecurityFirewallProvider()
+        logger.warning(
+            "%s=%s requested but NetSecurity is unavailable; falling back to netsh",
+            _WRITE_PROVIDER_ENV, forced,
+        )
+        return NetshFirewallProvider()
+    if forced != "netsh":
+        logger.warning(
+            "Unsupported %s=%s; falling back to netsh",
+            _WRITE_PROVIDER_ENV, forced,
+        )
     return NetshFirewallProvider()
 
 
@@ -218,6 +285,7 @@ __all__ = [
     "FirewallRule",
     "FirewallPolicyStatus",
     "get_default_provider",
+    "get_write_provider",
     "_normalize_direction",
     "_normalize_action",
     "_split_csv",

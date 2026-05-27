@@ -60,6 +60,7 @@ Tầng controller không phụ thuộc framework UI. Package này giữ lifecycl
 ## Module này gọi ra
 - `agent/config` - `reload_config()` lúc start worker.
 - `agent/core` - `get_agent()` (singleton), `make_runtime()` (test/multi-tenant), `initialize_components(config, runtime=None)`, `cleanup(config, runtime=None)`, `DeviceIdentityProvider.get_device_id()`.
+- Lifecycle component contract details live in [lifecycle_components.md](lifecycle_components.md); controller callers keep using `initialize_components`/`cleanup`.
 - `agent/utils` - `check_admin_privileges()`.
 - `agent/shared` - time helpers cho timestamp/uptime/sleep.
 - `agent/whitelist` - qua `Agent.whitelist` manager instance.

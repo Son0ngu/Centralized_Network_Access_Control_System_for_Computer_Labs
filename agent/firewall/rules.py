@@ -3,7 +3,7 @@ import threading
 from typing import Optional, Set
 
 from shared.time_utils import now, now_iso, sleep
-from .provider import FirewallProvider, get_default_provider
+from .provider import FirewallProvider, get_default_provider, get_write_provider
 from .utils import FirewallUtils
 
 logger = logging.getLogger("firewall.rules")
@@ -14,16 +14,18 @@ class RulesManager:
         self,
         rule_prefix: str = "FirewallController",
         provider: Optional[FirewallProvider] = None,
+        write_provider: Optional[FirewallProvider] = None,
     ):
         self.rule_prefix = rule_prefix
         self.allowed_ips: Set[str] = set()
         self._rule_lock = threading.Lock()
-        # The provider is the *read* side — listing/counting rules. Writes
-        # still go through netsh below because they need elevation and
-        # idempotent name semantics we already debugged. Injected for tests
-        # and to let the agent prefer NetSecurity when available.
+        # Read and write sides are injectable for tests and backend rollout.
+        # Writes default to netsh through the provider, with PowerShell
+        # NetSecurity available behind FIREWALL_WRITE_BACKEND=powershell.
         self._provider: FirewallProvider = provider or get_default_provider()
+        self._write_provider: FirewallProvider = write_provider or get_write_provider()
         logger.info("RulesManager using firewall provider: %s", self._provider.name)
+        logger.info("RulesManager using firewall write provider: %s", self._write_provider.name)
     
     def create_self_allow_rules(self, program_path: str) -> bool:
         """Create allow rules for the agent's own exe.
@@ -51,33 +53,19 @@ class RulesManager:
         for tag, protocol, remoteport in rules:
             rule_name = f"{self.rule_prefix}_SelfAllow_{tag}"
 
-            # Idempotent: remove any stale rule with the same name first.
-            # netsh returns non-zero if no match - that's expected on first run.
-            FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "delete", "rule",
-                f"name={rule_name}",
-            ])
-
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "add", "rule",
-                f"name={rule_name}",
-                "dir=out",
-                "action=allow",
-                f"program={program_path}",
-                f"protocol={protocol}",
-                f"remoteport={remoteport}",
-                "enable=yes",
-                "profile=any",
-                f"description=Allow SAINT agent outbound {tag} ({now_iso()})",
-            ])
-
-            if result.returncode == 0:
+            if self._write_provider.create_or_replace_rule(
+                rule_name,
+                direction="out",
+                action="allow",
+                program=program_path,
+                protocol=protocol,
+                remote_ports=[remoteport],
+                profile="any",
+                description=f"Allow SAINT agent outbound {tag} ({now_iso()})",
+            ):
                 logger.info(f"Self-allow rule created: {rule_name} ({protocol}/{remoteport})")
             else:
-                logger.error(
-                    f"Failed to create self-allow rule {rule_name}: "
-                    f"{result.stderr.strip() or '(no stderr)'}"
-                )
+                logger.error(f"Failed to create self-allow rule {rule_name}")
                 success = False
 
         return success
@@ -96,24 +84,20 @@ class RulesManager:
             sanitized_ip = ip.replace('.', '_')
             rule_name = f"{self.rule_prefix}_Allow_{sanitized_ip}_{timestamp}"
             
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "add", "rule",
-                f"name={rule_name}",
-                "dir=out",
-                "action=allow",
-                f"remoteip={ip}",
-                "protocol=any",
-                "enable=yes",
-                "profile=any",
-                f"description=ALLOW rule for whitelisted IP {ip} (Created: {now_iso()})"
-            ])
-            
-            if result.returncode == 0:
+            if self._write_provider.create_or_replace_rule(
+                rule_name,
+                direction="out",
+                action="allow",
+                remote_addresses=[ip],
+                protocol="any",
+                profile="any",
+                description=f"ALLOW rule for whitelisted IP {ip} (Created: {now_iso()})",
+            ):
                 self.allowed_ips.add(ip)
                 logger.debug(f"Created allow rule for {ip}")
                 return True
             else:
-                logger.error(f"Failed to create allow rule for {ip}: {result.stderr}")
+                logger.error(f"Failed to create allow rule for {ip}")
                 return False
                 
         except Exception as e:
@@ -126,39 +110,37 @@ class RulesManager:
                 logger.debug(f"No allow rule exists for {ip}")
                 return True
             
-            rule_pattern = f"_{ip.replace('.', '_')}_"
-            
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "show", "rule",
-                "name=all", "verbose"
-            ])
-            
-            if result.returncode != 0:
-                logger.error("Failed to list rules")
-                return False
-            
+            sanitized_ip = ip.replace('.', '_')
+            rule_pattern = f"_{sanitized_ip}_"
+
             rule_names_to_delete = []
-            lines = result.stdout.split('\n')
-            
-            for line in lines:
-                if line.strip().startswith("Rule Name:"):
-                    rule_name = line.strip()[10:].strip()
-                    if (rule_name.startswith(self.rule_prefix) and
-                        "_Allow_" in rule_name and
-                        rule_pattern in rule_name):
-                        rule_names_to_delete.append(rule_name)
+            for rule in self._provider.list_rules(
+                rule_prefix=self.rule_prefix,
+                direction="out",
+                action="allow",
+                enabled_only=False,
+            ):
+                rule_name = rule.get("rule_name", "")
+                remote_addresses = set(rule.get("remote_addresses") or [])
+                if (
+                    ip in remote_addresses
+                    or (
+                        rule_name.startswith(self.rule_prefix)
+                        and "_Allow_" in rule_name
+                        and (
+                            rule_pattern in rule_name
+                            or rule_name.endswith(f"_Allow_{sanitized_ip}")
+                        )
+                    )
+                ):
+                    rule_names_to_delete.append(rule_name)
             
             success = True
             for rule_name in rule_names_to_delete:
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "firewall", "delete", "rule",
-                    f"name={rule_name}"
-                ])
-                
-                if result.returncode == 0:
+                if self._write_provider.delete_rule(rule_name):
                     logger.debug(f"Removed allow rule: {rule_name}")
                 else:
-                    logger.warning(f"Failed to remove rule {rule_name}: {result.stderr}")
+                    logger.warning(f"Failed to remove rule {rule_name}")
                     success = False
             
             if success:
@@ -201,48 +183,13 @@ class RulesManager:
     
     def clear_all_rules(self) -> bool:
         try:
-            result = FirewallUtils.run_netsh_command([
-                "advfirewall", "firewall", "show", "rule", "name=all"
-            ], timeout=60)
-            
-            if result.returncode != 0:
-                logger.error(f"Failed to list rules: {result.stderr.strip()}")
-                return False
-            
-            # Find our rules
-            rule_names = []
-            lines = result.stdout.split('\n')
-            
-            for line in lines:
-                if line.strip().startswith("Rule Name:"):
-                    rule_name = line.strip()[10:].strip()
-                    if rule_name.startswith(self.rule_prefix):
-                        rule_names.append(rule_name)
-            
-            if not rule_names:
+            removed = self._write_provider.delete_rules_by_prefix(self.rule_prefix)
+            self.allowed_ips.clear()
+            if removed:
+                logger.info(f"Cleared {removed} rules successfully")
+            else:
                 logger.info(f"No rules with prefix '{self.rule_prefix}' to clear")
-                return True
-            
-            logger.info(f"Found {len(rule_names)} rules to clear")
-            
-            success = True
-            for rule_name in rule_names:
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "firewall", "delete", "rule",
-                    f"name={rule_name}"
-                ])
-                
-                if result.returncode == 0:
-                    logger.debug(f"Removed rule: {rule_name}")
-                else:
-                    logger.warning(f"Failed to remove rule {rule_name}: {result.stderr.strip()}")
-                    success = False
-            
-            if success:
-                self.allowed_ips.clear()
-                logger.info(f"Cleared {len(rule_names)} rules successfully")
-            
-            return success
+            return True
             
         except Exception as e:
             logger.error(f"Error clearing firewall rules: {e}")

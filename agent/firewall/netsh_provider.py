@@ -18,7 +18,7 @@ Caveats:
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 from .provider import (
     FirewallPolicyStatus,
@@ -232,6 +232,114 @@ class NetshFirewallProvider(FirewallProvider):
             elif "outbound" in lower and "allow" in lower:
                 status["outbound_default_block"] = False
         return status
+
+    # ------------------------------------------------------------------
+    # Writes
+    # ------------------------------------------------------------------
+
+    def create_or_replace_rule(
+        self,
+        rule_name: str,
+        *,
+        direction: str = "out",
+        action: str = "allow",
+        protocol: str = "any",
+        remote_addresses: Optional[Iterable[str]] = None,
+        remote_ports: Optional[Iterable[str]] = None,
+        program: Optional[str] = None,
+        profile: str = "any",
+        description: Optional[str] = None,
+    ) -> bool:
+        self.delete_rule(rule_name)
+        ndir = _normalize_direction(direction) or "out"
+        nact = _normalize_action(action) or "allow"
+        args = [
+            "advfirewall", "firewall", "add", "rule",
+            f"name={rule_name}",
+            f"dir={ndir}",
+            f"action={nact}",
+            f"protocol={protocol or 'any'}",
+            "enable=yes",
+            f"profile={profile or 'any'}",
+        ]
+        if remote_addresses:
+            args.append(f"remoteip={','.join(str(a) for a in remote_addresses)}")
+        if remote_ports:
+            args.append(f"remoteport={','.join(str(p) for p in remote_ports)}")
+        if program:
+            args.append(f"program={program}")
+        if description:
+            args.append(f"description={description}")
+
+        result = FirewallUtils.run_netsh_command(args)
+        if result.returncode != 0:
+            logger.warning("netsh create rule failed for %s: %s", rule_name, result.stderr)
+            return False
+        return True
+
+    def update_rule_remote_addresses(
+        self,
+        rule_name: str,
+        remote_addresses: Iterable[str],
+    ) -> bool:
+        addresses = ",".join(str(a) for a in remote_addresses)
+        result = FirewallUtils.run_netsh_command([
+            "advfirewall", "firewall", "set", "rule",
+            f"name={rule_name}",
+            "new",
+            f"remoteip={addresses}",
+        ])
+        if result.returncode != 0:
+            logger.warning("netsh update remoteip failed for %s: %s", rule_name, result.stderr)
+            return False
+        return True
+
+    def delete_rule(self, rule_name: str) -> bool:
+        result = FirewallUtils.run_netsh_command([
+            "advfirewall", "firewall", "delete", "rule",
+            f"name={rule_name}",
+        ])
+        if result.returncode == 0:
+            return True
+        combined = f"{result.stdout}\n{result.stderr}".lower()
+        if "no rules match" in combined or "no rule" in combined:
+            return True
+        logger.debug("netsh delete rule failed for %s: %s", rule_name, result.stderr)
+        return False
+
+    def delete_rules_by_prefix(self, rule_prefix: str) -> int:
+        removed = 0
+        for rule in self.list_rules(rule_prefix=rule_prefix, enabled_only=False):
+            name = rule.get("rule_name")
+            if name and self.delete_rule(name):
+                removed += 1
+        return removed
+
+    def set_profile_outbound_policy(self, profile: str, action: str) -> bool:
+        profile_name = (profile or "").strip().lower()
+        if profile_name not in ("domain", "private", "public"):
+            logger.warning("Unsupported firewall profile: %s", profile)
+            return False
+        desired = (action or "").strip().lower()
+        if desired not in ("allow", "block"):
+            logger.warning("Unsupported outbound action: %s", action)
+            return False
+        policy_arg = (
+            "blockinbound,blockoutbound"
+            if desired == "block"
+            else "blockinbound,allowoutbound"
+        )
+        result = FirewallUtils.run_netsh_command([
+            "advfirewall", "set", f"{profile_name}profile",
+            "firewallpolicy", policy_arg,
+        ])
+        if result.returncode != 0:
+            logger.warning(
+                "netsh set outbound policy failed for %s/%s: %s",
+                profile_name, desired, result.stderr,
+            )
+            return False
+        return True
 
 
 def _accepts(

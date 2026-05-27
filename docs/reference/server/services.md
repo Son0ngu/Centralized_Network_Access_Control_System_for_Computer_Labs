@@ -122,9 +122,11 @@ Agent register + heartbeat + status calculation (active/inactive/offline based o
 
 Lớn nhất. Manage global + group + per-teacher profile whitelists. Build sync response cho agent.
 
+Cap nhat 2026-05-27: `WhitelistService` nhan them `entry_model` (`WhitelistEntryModel`) va group-scope write moi ghi vao `whitelist_entries`. Read path merge `whitelist_entries` + legacy `groups.whitelist[]` trong compatibility window. Chi tiet: [whitelist_entries.md](whitelist_entries.md).
+
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
-| `__init__(whitelist_model, agent_model, group_model, socketio=None, policy_service=None, profile_service=None)` | | [whitelist_service.py:25](../../../server/services/whitelist_service.py#L25) | |
+| `__init__(whitelist_model, agent_model, group_model, socketio=None, entry_model=None, policy_service=None, profile_service=None)` | | [whitelist_service.py](../../../server/services/whitelist_service.py) | `entry_model` la collection-first repo cho group whitelist entries. |
 | `.get_all_entries(filters=None)` | `→ Dict` | [whitelist_service.py:38](../../../server/services/whitelist_service.py#L38) | Format `{domains, success, server_time}` |
 | `.add_entry(entry_data, client_ip)` | `→ Dict` | [whitelist_service.py:89](../../../server/services/whitelist_service.py#L89) | **Re-activate inactive entry** nếu trùng value (re-add behavior). Auto-bump version. Emit `whitelist_added` |
 | `.test_entry(entry_data)` | `→ Dict` | [whitelist_service.py:196](../../../server/services/whitelist_service.py#L196) | Validate + DNS test |
@@ -270,8 +272,9 @@ Wrap `APIKeyModel`, add socket events.
 - **`active_threshold / inactive_threshold` instance attr** (line 42-43) - hard-coded không từ config. Sửa giá trị cần code change + restart.
 
 ### Whitelist service complexity
-- **3 storage cho whitelist**: global (`whitelist` collection), group (`groups.whitelist` inline), profile (`whitelist_profiles.domains` inline). `WhitelistService` handle cả 3 - cùng method có code path khác nhau.
-- **Pseudo-ID `group::<gid>::<type>::<value>`** (line 404): convention để định danh group entry trong UI/API. Parse ngược lại bằng split `"::"` hoặc `"|"` (legacy). Update/delete dùng path khác nhau cho group vs global.
+- **Whitelist storage đang migrate**: global vẫn ở `whitelist`, group write mới ở `whitelist_entries`, legacy `groups.whitelist[]` chỉ còn read fallback/rollback trong compatibility window, profile vẫn ở `whitelist_profiles.domains`.
+- **Pseudo-ID `group::<gid>::<type>::<value>`** hiện chỉ là fallback cho legacy embedded row chưa migrate/backfill. New group entries trả `_id` thật từ `whitelist_entries`.
+- **Pseudo-ID usage marker**: mọi public path còn nhận pseudo-ID log `legacy_group_pseudo_id_used`. Trước khi xoá fallback, production logs phải không còn marker này trong một release window.
 - **Re-activate on duplicate add** (line 105-114): nếu add entry trùng `value` (đã inactive), service re-activate thay vì raise. Khá hữu ích nhưng có thể bất ngờ cho user.
 - **`_merge_whitelists` group thắng global** (line 432): policy decision. Đảo logic = đổi semantic.
 - **Active profile override group base** (line 547-559): nếu group có active profile, agent sync nhận `profile.domains` chứ KHÔNG nhận `group.whitelist`. Inactive profile fallback group.whitelist.

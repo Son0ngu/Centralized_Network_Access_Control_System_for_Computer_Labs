@@ -26,6 +26,7 @@ import os
 import uuid
 import json
 import secrets
+import logging
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
@@ -33,6 +34,7 @@ from bson import ObjectId
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from models.whitelist_model import WhitelistModel
+from models.whitelist_entry_model import WhitelistEntryModel
 from models.log_model import LogModel
 from models.agent_model import AgentModel
 from models.group_model import GroupModel
@@ -83,6 +85,11 @@ def whitelist_model(db):
 
 
 @pytest.fixture
+def whitelist_entry_model(db):
+    return WhitelistEntryModel(db)
+
+
+@pytest.fixture
 def log_model(db):
     return LogModel(db)
 
@@ -105,6 +112,17 @@ def rbac_service(group_model, agent_model):
 @pytest.fixture
 def whitelist_service(whitelist_model, agent_model, group_model):
     return WhitelistService(whitelist_model, agent_model, group_model, socketio=None)
+
+
+@pytest.fixture
+def whitelist_service_with_entries(whitelist_model, whitelist_entry_model, agent_model, group_model):
+    return WhitelistService(
+        whitelist_model,
+        agent_model,
+        group_model,
+        socketio=None,
+        entry_model=whitelist_entry_model,
+    )
 
 
 @pytest.fixture
@@ -426,6 +444,39 @@ class TestWhitelistService:
         result = whitelist_service.bulk_delete_entries([pseudo_id])
         assert result["deleted_count"] == 1
 
+    def test_legacy_group_pseudo_id_usage_is_logged_for_bulk_delete(
+        self, whitelist_service, group_model, caplog
+    ):
+        group = create_group(group_model, "Pseudo Log Group", whitelist=[
+            {"value": "pseudo-log.com", "type": "domain"},
+        ])
+        gid = str(group["_id"])
+        pseudo_id = f"group::{gid}::domain::pseudo-log.com"
+
+        caplog.set_level(logging.WARNING, logger="services.whitelist_service")
+        result = whitelist_service.bulk_delete_entries([pseudo_id])
+
+        assert result["deleted_count"] == 1
+        assert "legacy_group_pseudo_id_used" in caplog.text
+        assert "operation=bulk_delete" in caplog.text
+        assert f"group_id={gid}" in caplog.text
+
+    def test_legacy_group_pseudo_id_usage_is_logged_for_update(
+        self, whitelist_service, group_model, caplog
+    ):
+        group = create_group(group_model, "Pseudo Update Log Group", whitelist=[
+            {"value": "pseudo-update-log.com", "type": "domain"},
+        ])
+        gid = str(group["_id"])
+        pseudo_id = f"group::{gid}::domain::pseudo-update-log.com"
+
+        caplog.set_level(logging.WARNING, logger="services.whitelist_service")
+        assert whitelist_service.update_entry(pseudo_id, {"is_active": False}) is True
+
+        assert "legacy_group_pseudo_id_used" in caplog.text
+        assert "operation=update" in caplog.text
+        assert f"group_id={gid}" in caplog.text
+
     def test_delete_domain_accepts_real_embedded_object_id(self, whitelist_service, group_model):
         group = create_group(group_model, "RealOid Delete Group", whitelist=[
             {"value": "real-oid-delete.com", "type": "domain"},
@@ -510,6 +561,107 @@ class TestWhitelistService:
     def test_agent_sync_no_agent_id_raises(self, whitelist_service):
         result = whitelist_service.get_agent_sync_data(agent_id=None)
         assert result["success"] is False
+
+    def test_group_bulk_add_writes_to_whitelist_entries_first(
+        self, whitelist_service_with_entries, whitelist_entry_model, group_model
+    ):
+        group = create_group(group_model, "Collection First Group", whitelist=[])
+        gid = str(group["_id"])
+
+        result = whitelist_service_with_entries.bulk_add_entries([{
+            "value": "collection-first.com",
+            "type": "domain",
+            "scope": "group",
+            "group_id": gid,
+        }], "127.0.0.1")
+
+        assert result["success"] is True
+        entries = whitelist_entry_model.list_group_entries(gid)
+        assert len(entries) == 1
+        assert entries[0]["value"] == "collection-first.com"
+        assert not entries[0]["_id"].startswith("group::")
+
+        updated_group = group_model.find_by_id(gid)
+        assert updated_group.get("whitelist") == []
+
+        scoped = whitelist_service_with_entries.get_scoped_whitelist(group_id=gid)
+        assert scoped["success"] is True
+        assert scoped["group"][0]["value"] == "collection-first.com"
+        assert not scoped["group"][0]["_id"].startswith("group::")
+
+    def test_group_collection_read_falls_back_to_embedded_for_unmigrated_group(
+        self, whitelist_service_with_entries, group_model
+    ):
+        group = create_group(group_model, "Embedded Fallback Group", whitelist=[{
+            "value": "embedded-fallback.com",
+            "type": "domain",
+        }])
+        gid = str(group["_id"])
+
+        scoped = whitelist_service_with_entries.get_scoped_whitelist(group_id=gid)
+
+        assert scoped["success"] is True
+        values = [entry["value"] for entry in scoped["group"]]
+        assert "embedded-fallback.com" in values
+
+    def test_group_collection_read_merges_partially_migrated_group(
+        self, whitelist_service_with_entries, whitelist_entry_model, group_model
+    ):
+        group = create_group(group_model, "Partial Migration Group", whitelist=[
+            {"value": "embedded-only.com", "type": "domain"},
+            {"value": "shared-value.com", "type": "domain", "category": "legacy"},
+        ])
+        gid = str(group["_id"])
+        shared_collection_id = whitelist_entry_model.insert_entry({
+            "value": "shared-value.com",
+            "type": "domain",
+            "category": "collection",
+            "scope": "group",
+            "group_id": gid,
+        })
+        whitelist_entry_model.insert_entry({
+            "value": "collection-only.com",
+            "type": "domain",
+            "scope": "group",
+            "group_id": gid,
+        })
+
+        scoped = whitelist_service_with_entries.get_scoped_whitelist(group_id=gid)
+
+        assert scoped["success"] is True
+        values = [entry["value"] for entry in scoped["group"]]
+        assert "embedded-only.com" in values
+        assert "collection-only.com" in values
+        assert values.count("shared-value.com") == 1
+        shared = next(entry for entry in scoped["group"] if entry["value"] == "shared-value.com")
+        assert shared["_id"] == shared_collection_id
+        assert shared["category"] == "collection"
+
+    def test_group_collection_entry_update_and_delete_by_real_id(
+        self, whitelist_service_with_entries, whitelist_entry_model, group_model
+    ):
+        group = create_group(group_model, "Collection Edit Group", whitelist=[])
+        gid = str(group["_id"])
+        before_version = group["whitelist_version"]
+
+        add_result = whitelist_service_with_entries.add_entry({
+            "value": "collection-edit.com",
+            "type": "domain",
+            "scope": "group",
+            "group_id": gid,
+        }, "127.0.0.1")
+        entry_id = add_result["id"]
+
+        assert whitelist_service_with_entries.update_entry(
+            entry_id, {"category": "updated"}
+        ) is True
+        updated = whitelist_entry_model.find_entry_by_id(entry_id)
+        assert updated["category"] == "updated"
+
+        assert whitelist_service_with_entries.delete_entry(entry_id) is True
+        assert whitelist_entry_model.find_entry_by_id(entry_id) is None
+        updated_group = group_model.find_by_id(gid)
+        assert updated_group["whitelist_version"] > before_version
 
 
 # ============================================================================

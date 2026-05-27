@@ -5,7 +5,7 @@ import socket
 import subprocess
 import threading
 import uuid
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("core.agent")
 
@@ -185,6 +185,7 @@ class AgentRuntime:
         self.sniffer = None
         self.heartbeat = None
         self.packet_sniffer = None
+        self.components: List[Any] = []
         self.heartbeat_sender = None
         self.running = True
         # Tests can inject a pre-populated state dict; production gets a

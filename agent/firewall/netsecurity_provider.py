@@ -37,7 +37,7 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import List, Optional, Set
+from typing import Iterable, List, Optional, Set
 
 from .provider import (
     FirewallPolicyStatus,
@@ -48,6 +48,41 @@ from .provider import (
 )
 
 logger = logging.getLogger("firewall.netsecurity_provider")
+
+
+def _ps_quote(value) -> str:
+    """Single-quote a PowerShell literal."""
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _ps_array(values: Iterable) -> str:
+    items = [str(v) for v in values or [] if str(v)]
+    if not items:
+        return "@()"
+    return "@(" + ",".join(_ps_quote(item) for item in items) + ")"
+
+
+def _ps_direction(value: str) -> str:
+    return "Inbound" if _normalize_direction(value) == "in" else "Outbound"
+
+
+def _ps_action(value: str) -> str:
+    return "Block" if _normalize_action(value) == "block" else "Allow"
+
+
+def _ps_profile(value: str) -> str:
+    v = (value or "any").strip().lower()
+    if v == "any":
+        return "Any"
+    mapping = {"domain": "Domain", "private": "Private", "public": "Public"}
+    return mapping.get(v, value)
+
+
+def _ps_protocol(value: str) -> str:
+    v = (value or "any").strip().lower()
+    if v == "any":
+        return "Any"
+    return v.upper()
 
 
 # PowerShell script that emits one JSON document per call. We combine the
@@ -256,6 +291,103 @@ class NetSecurityFirewallProvider(FirewallProvider):
             status["outbound_default_block"] = bool(data.get("outbound_default_block"))
             status["profile_name"] = str(data.get("profile_name") or "")
         return status
+
+    # ------------------------------------------------------------------
+    # Writes
+    # ------------------------------------------------------------------
+
+    def create_or_replace_rule(
+        self,
+        rule_name: str,
+        *,
+        direction: str = "out",
+        action: str = "allow",
+        protocol: str = "any",
+        remote_addresses: Optional[Iterable[str]] = None,
+        remote_ports: Optional[Iterable[str]] = None,
+        program: Optional[str] = None,
+        profile: str = "any",
+        description: Optional[str] = None,
+    ) -> bool:
+        self.delete_rule(rule_name)
+        lines = [
+            "$ErrorActionPreference = 'Stop'",
+            "$params = @{",
+            f"  DisplayName = {_ps_quote(rule_name)}",
+            f"  Direction = {_ps_quote(_ps_direction(direction))}",
+            f"  Action = {_ps_quote(_ps_action(action))}",
+            "  Enabled = 'True'",
+            f"  Profile = {_ps_quote(_ps_profile(profile))}",
+            f"  Protocol = {_ps_quote(_ps_protocol(protocol))}",
+        ]
+        if remote_addresses:
+            lines.append(f"  RemoteAddress = {_ps_array(remote_addresses)}")
+        if remote_ports:
+            lines.append(f"  RemotePort = {_ps_array(remote_ports)}")
+        if program:
+            lines.append(f"  Program = {_ps_quote(program)}")
+        if description:
+            lines.append(f"  Description = {_ps_quote(description)}")
+        lines.extend([
+            "}",
+            "New-NetFirewallRule @params | Out-Null",
+        ])
+        return _run_ps("\n".join(lines)) is not None
+
+    def update_rule_remote_addresses(
+        self,
+        rule_name: str,
+        remote_addresses: Iterable[str],
+    ) -> bool:
+        script = "\n".join([
+            "$ErrorActionPreference = 'Stop'",
+            f"$rule = Get-NetFirewallRule -DisplayName {_ps_quote(rule_name)} -ErrorAction Stop",
+            f"$rule | Get-NetFirewallAddressFilter | Set-NetFirewallAddressFilter -RemoteAddress {_ps_array(remote_addresses)}",
+        ])
+        return _run_ps(script) is not None
+
+    def delete_rule(self, rule_name: str) -> bool:
+        script = "\n".join([
+            "$ErrorActionPreference = 'Stop'",
+            f"$rules = Get-NetFirewallRule -DisplayName {_ps_quote(rule_name)} -ErrorAction SilentlyContinue",
+            "if ($rules) { $rules | Remove-NetFirewallRule -ErrorAction Stop }",
+        ])
+        return _run_ps(script) is not None
+
+    def delete_rules_by_prefix(self, rule_prefix: str) -> int:
+        script = "\n".join([
+            "$ErrorActionPreference = 'Stop'",
+            f"$rules = Get-NetFirewallRule -DisplayName {_ps_quote(rule_prefix + '*')} -ErrorAction SilentlyContinue",
+            "$count = @($rules).Count",
+            "if ($count -gt 0) { $rules | Remove-NetFirewallRule -ErrorAction Stop }",
+            "Write-Output $count",
+        ])
+        raw = _run_ps(script)
+        if raw is None:
+            return 0
+        try:
+            return int(str(raw).strip().splitlines()[-1])
+        except (TypeError, ValueError, IndexError):
+            return 0
+
+    def set_profile_outbound_policy(self, profile: str, action: str) -> bool:
+        profile_name = _ps_profile(profile)
+        if profile_name not in ("Domain", "Private", "Public"):
+            logger.warning("Unsupported firewall profile: %s", profile)
+            return False
+        desired = (action or "").strip().lower()
+        if desired not in ("allow", "block"):
+            logger.warning("Unsupported outbound action: %s", action)
+            return False
+        outbound = "Block" if desired == "block" else "Allow"
+        script = "\n".join([
+            "$ErrorActionPreference = 'Stop'",
+            "Set-NetFirewallProfile "
+            f"-Profile {_ps_quote(profile_name)} "
+            "-DefaultInboundAction Block "
+            f"-DefaultOutboundAction {_ps_quote(outbound)}",
+        ])
+        return _run_ps(script) is not None
 
 
 __all__ = ["NetSecurityFirewallProvider"]

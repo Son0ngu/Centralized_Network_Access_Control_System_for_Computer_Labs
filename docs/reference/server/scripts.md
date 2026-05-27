@@ -1,7 +1,7 @@
 # `server/scripts` - Maintenance scripts
 
 ## Mục đích
-Standalone scripts chạy thủ công cho setup/migration. Hiện chỉ có 1 script: `seed_rbac.py` (tạo default admin).
+Standalone scripts chạy thủ công cho setup/migration. Ngoài `seed_rbac.py`, repo có migration scripts cho whitelist/profile cleanup và `2026_migrate_group_whitelist_to_entries.py` để copy `groups.whitelist[]` sang `whitelist_entries`.
 
 App bootstrap (`app.py`) cũng tự gọi `user_service.ensure_default_admin()` lần đầu chạy - script này dùng khi cần force tạo với username/password tuỳ chỉnh, hoặc CI/CD bootstrap database fresh.
 
@@ -21,6 +21,20 @@ cd server
 python scripts/seed_rbac.py                                 # default admin/admin123456
 python scripts/seed_rbac.py --username myadmin --password mypassword123
 ```
+
+Whitelist entries migration:
+
+```powershell
+.venv\Scripts\python.exe server\scripts\migrations\2026_migrate_group_whitelist_to_entries.py
+.venv\Scripts\python.exe server\scripts\migrations\2026_migrate_group_whitelist_to_entries.py --json --fail-on-invalid
+.venv\Scripts\python.exe server\scripts\migrations\2026_migrate_group_whitelist_to_entries.py --write
+```
+
+Default là dry-run. `--json` in stats cho CI/runbook, `--fail-on-invalid`
+thoát code 2 nếu có embedded row không migrate được. Xem
+[whitelist_entries.md](whitelist_entries.md) và
+[runbook cutover](../../runbooks/whitelist-firewall-cutover.md) trước khi chạy
+`--write`.
 
 Output (tham khảo):
 ```

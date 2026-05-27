@@ -32,13 +32,20 @@ if __name__ == "__main__":
         logger.info(f" Database: {config.MONGO_DBNAME}")
         logger.info(" Timezone: vietnam")
 
-        socketio.run(
-            app,
-            host=config.HOST,
-            port=config.PORT,
-            debug=config.DEBUG,
-            use_reloader=False,
+        run_options = {
+            "host": config.HOST,
+            "port": config.PORT,
+            "debug": config.DEBUG,
+            "use_reloader": False,
+        }
+        async_mode = app.config.get(
+            "SOCKETIO_ASYNC_MODE",
+            getattr(config, "SOCKETIO_ASYNC_MODE", None),
         )
+        if async_mode == "threading" and config.DEBUG:
+            run_options["allow_unsafe_werkzeug"] = True
+
+        socketio.run(app, **run_options)
     except KeyboardInterrupt:
         logger.info(" Server stopped by user")
         close_mongo_client()

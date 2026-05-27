@@ -5,6 +5,8 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 
 ## Public API
 
+Cap nhat 2026-05-27: lifecycle da co contract `AgentComponent.start/stop/health`, `LifecycleContext`, `start_components(...)`, `stop_components(...)` va fake-component tests. Chi tiet xem [lifecycle_components.md](lifecycle_components.md).
+
 ### `agent/core/agent.py` - Singleton + identity
 
 | Symbol | Signature | Vị trí | Mô tả |
@@ -26,6 +28,9 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | `Agent.is_running()` | `() -> bool` | [agent.py:126](../../../agent/core/agent.py#L126) | `running and startup_completed` |
 | `Agent.stop()` | `() -> None` | [agent.py:129](../../../agent/core/agent.py#L129) | Set `running=False` (cooperative shutdown) |
 | `get_agent()` | `() -> Agent` | [agent.py:132](../../../agent/core/agent.py#L132) | Cách *duy nhất* nên dùng để lấy singleton |
+| `AgentRuntime` | `class` | [agent.py](../../../agent/core/agent.py) | Runtime injectable cho tests/harness; `Agent` singleton kế thừa class này. |
+| `make_runtime(state=None)` | `(Optional[Dict]) -> AgentRuntime` | [agent.py](../../../agent/core/agent.py) | Tạo runtime độc lập, không chạm singleton production. |
+| `DeviceIdentityProvider` | `class` | [agent.py](../../../agent/core/agent.py) | Lazy/cached hostname và device_id; `reset()` hỗ trợ tests. |
 
 ### `agent/core/lifecycle.py` - Khởi tạo / Dọn dẹp
 
@@ -34,6 +39,11 @@ Trung tâm điều phối agent: identity (hostname + device_id), trạng thái 
 | `initialize_components(config)` | `(Dict) -> bool` | [lifecycle.py:17](../../../agent/core/lifecycle.py#L17) | 7 bước: register → TokenManager → WhitelistManager → sync **trước** → FirewallManager (nếu admin) → LogSender → HeartbeatSender → PacketSniffer. Lỗi giữa chừng vẫn cố chạy offline. |
 | `cleanup(config=None)` | `(Optional[Dict]) -> None` | [lifecycle.py:288](../../../agent/core/lifecycle.py#L288) | Dừng theo thứ tự ngược: token → sniffer → whitelist → heartbeat → log_sender (flush shutdown log) → firewall.cleanup → winpcap nếu auto-installed |
 | `build_lifecycle_log(config, event_type, action, message)` | `(Dict, str, str, str) -> Dict` | [lifecycle.py:371](../../../agent/core/lifecycle.py#L371) | Build log entry chuẩn cho lifecycle events. Có `source/dest = "agent"/"N/A"` để tương thích schema log thường. |
+| `LifecycleContext` | `@dataclass` | [lifecycle.py](../../../agent/core/lifecycle.py) | Context runtime/config/result/started_components cho mỗi component. |
+| `AgentComponent` | `class` | [lifecycle.py](../../../agent/core/lifecycle.py) | Contract `start(context)`, `stop(context)`, `health(context)`. |
+| `build_default_components()` | `() -> List[AgentComponent]` | [lifecycle.py](../../../agent/core/lifecycle.py) | Production order: registration, token, whitelist, firewall, log sender, heartbeat, packet sniffer. |
+| `start_components(context, components)` | `(LifecycleContext, Sequence[AgentComponent]) -> None` | [lifecycle.py](../../../agent/core/lifecycle.py) | Start theo thứ tự; cleanup các component đã start nếu có failure. |
+| `stop_components(context)` | `(LifecycleContext) -> None` | [lifecycle.py](../../../agent/core/lifecycle.py) | Stop ngược thứ tự và clear runtime component stack. |
 
 ### `agent/core/registry.py` - Đăng ký với Server
 

@@ -33,10 +33,10 @@ View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app b
 | View | Vị trí | Trách nhiệm | Notes |
 |---|---|---|---|
 | `DashboardView` | [dashboard.py:165](../../../agent/gui_qt/views/dashboard.py#L165) | Dashboard signal-driven: status pill, metric cards, server/firewall panels, activity log, Start/Stop, Sync Now. | Nhận `AgentController` + `QtSignalBridge`; không poll controller mỗi giây như GUI cũ. |
-| `FirewallView` | [firewall.py:40](../../../agent/gui_qt/views/firewall.py#L40) | Hiển thị policy/mode/rule count + table rules. | `set_firewall_manager()` khi agent running; fallback đọc `netsh` khi chưa có manager. |
+| `FirewallView` | [firewall.py:40](../../../agent/gui_qt/views/firewall.py#L40) | Hiển thị policy/mode/rule count + table rules. | `set_firewall_manager()` khi agent running; fallback đọc qua `FirewallProvider` khi chưa có manager. |
 | `WhitelistView` | [whitelist.py:42](../../../agent/gui_qt/views/whitelist.py#L42) | Table whitelist, search, toggle resolved IPs, Refresh/Sync. | Nhận `controller_get`; đăng ký callback với `WhitelistController`; auto-sync sau `set_agent_ready(True)`. |
 | `LogsView` | [logs.py:39](../../../agent/gui_qt/views/logs.py#L39) | Log console, level filter, search, export CSV, clear. | Mount `GUILogHandler` vào root logger; `cleanup()` gỡ handler khi đóng app. |
-| `SettingsView` | [settings.py:28](../../../agent/gui_qt/views/settings.py#L28) | Form API key/server/firewall/logging, encrypted save, manual restore snapshot, clear rules. | Save bằng `config.crypto.encrypt_config`; restore ưu tiên `FirewallManager.restore_snapshot`, có fallback netsh thủ công. |
+| `SettingsView` | [settings.py:28](../../../agent/gui_qt/views/settings.py#L28) | Form API key/server/firewall/logging, encrypted save, manual restore snapshot, clear rules. | Save bằng `config.crypto.encrypt_config`; restore/clear delegate qua `FirewallApplicationService`, không gọi netsh inline trong view. |
 
 ### Components
 
@@ -58,7 +58,7 @@ View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app b
 ## Module này gọi ra
 - `agent/controllers` - `AgentController`, `get_whitelist_controller`, `AgentSignals`.
 - `agent/config` - Settings view load/save encrypted config.
-- `agent/firewall` - Settings restore fallback và FirewallView manager/netsh state.
+- `agent/firewall` - Settings restore service và FirewallView manager/provider state.
 - `agent/network` - WhitelistView resolve domains khi bật resolved IPs.
 - `PySide6` - Qt widgets/core/gui.
 
@@ -73,5 +73,5 @@ View layer hiện tại của agent. Package này chỉ chứa UI PySide6: app b
 - `QtSignalBridge` đọc trực tiếp `_event_queue` của `AgentSignals`. Không chạy thêm legacy queue drain đồng thời.
 - `MainWindow` instantiate tất cả views ngay trong `_build_ui()`. Nếu view mới nặng hoặc cần network, hãy defer work tới `showEvent`/button action.
 - `LogsView.cleanup()` quan trọng: root logger giữ handler global, nếu không gỡ trước khi Qt destroy widget thì log sau đó có thể đụng object đã bị xoá.
-- `FirewallView` có hai nguồn dữ liệu: live `FirewallManager` sau khi agent running, và `netsh` fallback trước đó. Khi sửa rule display, test cả hai path.
+- `FirewallView` có hai nguồn dữ liệu: live `FirewallManager` sau khi agent running, và `FirewallProvider` fallback trước đó. Khi sửa rule display, test cả hai path.
 - `SettingsView` tự tìm config path và encrypt khi save. Không ghi plaintext config từ view khác.

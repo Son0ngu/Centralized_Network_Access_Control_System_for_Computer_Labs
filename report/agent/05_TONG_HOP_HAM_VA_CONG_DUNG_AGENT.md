@@ -361,6 +361,8 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `FirewallUtils` | `get_essential_ips()` | Lấy/truy vấn dữ liệu theo tham số hoặc trạng thái hiện tại. | `agent/firewall/utils.py:30` |
 | `FirewallUtils` | `has_admin_privileges()` | Check if the application is running with administrator privileges. | `agent/firewall/utils.py:67` |
 | `FirewallUtils` | `run_netsh_command(args, timeout)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `agent/firewall/utils.py:76` |
+| `FirewallApplicationService` | Facade cho GUI/manual restore: restore snapshot và clear SAINT rules qua `FirewallManager`/`RulesManager`, không để view gọi netsh trực tiếp. | `agent/firewall/application_service.py` |
+| `FirewallProvider` | Contract backend cho read/write firewall operations; default read ưu tiên NetSecurity, write default `netsh`, opt-in PowerShell bằng `FIREWALL_WRITE_BACKEND=powershell`. | `agent/firewall/provider.py` |
 | `FirewallUtils` | `test_ip_connectivity(ip, ports, timeout)` | Hàm hỗ trợ nghiệp vụ trong module tương ứng. | `agent/firewall/utils.py:88` |
 
 
@@ -523,7 +525,7 @@ Layout: Header (title + StatusPill + Sync Now + Start/Stop) → 8 status cards g
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
 | `_LoadSignals` | QObject carrier `finished = Signal(list, str, str)` để rule-load worker thread deliver kết quả về GUI thread. | `agent/gui_qt/views/firewall.py` |
-| `FirewallView` | Header + Policy/Rules/Mode stats panel + DataTable rules + status bar. `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) - không poll netsh khi view ẩn. `_load_rules` chạy trong threading.Thread; nếu `firewall_manager` chưa wire thì fallback `netsh advfirewall firewall show rule`. `set_firewall_manager(mgr)` được MainWindow gọi khi agent running. | `agent/gui_qt/views/firewall.py` |
+| `FirewallView` | Header + Policy/Rules/Mode stats panel + DataTable rules + status bar. `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s). `_load_rules` chạy trong threading.Thread; nếu `firewall_manager` chưa wire thì fallback qua `FirewallProvider` thay vì parse netsh trong view. `set_firewall_manager(mgr)` được MainWindow gọi khi agent running. | `agent/gui_qt/views/firewall.py` |
 
 
 ### `agent/gui_qt/views/whitelist.py`
@@ -545,7 +547,7 @@ Layout: Header (title + StatusPill + Sync Now + Start/Stop) → 8 status cards g
 
 | Class | Công dụng | Vị trí |
 | --- | --- | --- |
-| `SettingsView` | `QScrollArea` chứa form chia 4 section: 🔑 Authentication (API key + show/hide toggle 👁), 🌐 Server Connection (URL + heartbeat interval + sync interval với `QIntValidator`), 🤖 Agent Configuration (hostname read-only + log level combo), 🔥 Firewall Backup & Restore (snapshot path + ♻️ Restore button). Save dùng `config.crypto.encrypt_config` theo flow cấu hình mã hoá hiện tại. Restore: admin guard → confirm dialog → fast path qua `agent.firewall.restore_snapshot` khi agent đang chạy / fallback netsh khi không / safety-net cho snapshot toàn-block / clear SAINT rules cuối cùng. | `agent/gui_qt/views/settings.py` |
+| `SettingsView` | `QScrollArea` chứa form chia 4 section: 🔑 Authentication (API key + show/hide toggle 👁), 🌐 Server Connection (URL + heartbeat interval + sync interval với `QIntValidator`), 🤖 Agent Configuration (hostname read-only + log level combo), 🔥 Firewall Backup & Restore (snapshot path + ♻️ Restore button). Save dùng `config.crypto.encrypt_config` theo flow cấu hình mã hoá hiện tại. Restore: admin guard → confirm dialog → `FirewallApplicationService.restore_firewall_snapshot(...)`, ưu tiên running `FirewallManager` khi agent đang chạy và dùng backend firewall package khi không. | `agent/gui_qt/views/settings.py` |
 
 
 
@@ -821,4 +823,18 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `WhitelistSyncer` | `_get_headers(self)` | Get request headers with authentication. | `agent/whitelist/sync.py:40` |
 | `WhitelistSyncer` | `sync_with_server(self, params)` | Sync with server, trying fallback servers if needed. | `agent/whitelist/sync.py:47` |
 | `WhitelistSyncer` | `extract_domain_value(self, domain_data)` | Extract domain value from server response. | `agent/whitelist/sync.py:138` |
+
+## Cap nhat 2026-05-27 - Agent lifecycle component contract
+
+`agent/core/lifecycle.py` da them cac public/internal symbols can ghi nho:
+
+| Symbol | Cong dung | Vi tri |
+| --- | --- | --- |
+| `LifecycleContext` | Context runtime/config/result/started_components duoc truyen vao component. | `agent/core/lifecycle.py` |
+| `AgentComponent` | Contract `start(context)`, `stop(context)`, `health(context)`. | `agent/core/lifecycle.py` |
+| `build_default_components()` | Tao production component stack theo thu tu registration, token, whitelist, firewall, log sender, heartbeat, packet sniffer. | `agent/core/lifecycle.py` |
+| `start_components(context, components)` | Start theo thu tu; neu component fail thi cleanup cac component da start. | `agent/core/lifecycle.py` |
+| `stop_components(context)` | Stop nguoc thu tu va clear runtime stack. | `agent/core/lifecycle.py` |
+
+Test moi: `agent/tests/test_lifecycle_components.py` cover start order, stop order, start failure cleanup va component-reported failure cleanup. Reference chi tiet: `docs/reference/agent/lifecycle_components.md`.
 

@@ -1638,3 +1638,18 @@ Module chỉ chứa khai báo package/import hoặc hằng số.
 | `create_group(group_model, name, created_by, whitelist)` | Insert a group and return it. | `server/tests/test_whitelist_and_logs.py:127` |
 | `insert_agent(agent_model, group_id, hostname, agent_id)` | Register an agent in a group. | `server/tests/test_whitelist_and_logs.py:132` |
 | `_mock_auth(user)` | Patch RBAC middleware to simulate authenticated user. | `server/tests/test_whitelist_and_logs.py:148` |
+
+## Cap nhat 2026-05-27 - Whitelist entries collection
+
+Group whitelist da co model/collection moi cho migration tu embedded array sang first-class documents:
+
+| Symbol | Cong dung | Vi tri |
+| --- | --- | --- |
+| `WhitelistEntryModel` | Repository cho collection `whitelist_entries`. | `server/models/whitelist_entry_model.py` |
+| `WhitelistEntryModel.insert_entry(...)` | Insert group whitelist row va tra `_id` that. | `server/models/whitelist_entry_model.py` |
+| `WhitelistEntryModel.list_group_entries(...)` | List group rows tu collection moi. | `server/models/whitelist_entry_model.py` |
+| `WhitelistEntryModel.find_entry_access_info(...)` | Lookup toi thieu `scope/group_id` cho RBAC. | `server/models/whitelist_entry_model.py` |
+| `WhitelistService._get_group_entries(...)` | Merge `whitelist_entries` voi legacy `groups.whitelist[]`; collection row thang neu trung `type:value`. | `server/services/whitelist_service.py` |
+| `2026_migrate_group_whitelist_to_entries.py` | Dry-run/write migration copy embedded rows sang `whitelist_entries`, giu `legacy_embedded_id`. | `server/scripts/migrations/2026_migrate_group_whitelist_to_entries.py` |
+
+Test moi trong `server/tests/test_whitelist_and_logs.py`: collection-first bulk add, embedded fallback, partial migration merge, update/delete bang real `_id`. Reference chi tiet: `docs/reference/server/whitelist_entries.md`.

@@ -1,9 +1,9 @@
 # `agent/firewall` - Windows Firewall (Default Deny + Whitelist)
 
 ## Mục đích
-Quản lý Windows Firewall qua `netsh advfirewall`. Bật **Default Deny outbound** + tạo allow rules cho whitelist (IPs + domains resolved). Có snapshot/restore để hoàn nguyên về trạng thái pre-SAINT. IPv4-only.
+Quản lý Windows Firewall qua `FirewallProvider` abstraction. Read side ưu tiên PowerShell NetSecurity khi khả dụng và fallback `netsh`; write side mặc định vẫn dùng `netsh` để giữ behavior cũ, có opt-in `FIREWALL_WRITE_BACKEND=powershell` cho NetSecurity sau Windows-admin smoke. Bật **Default Deny outbound** + tạo allow rules cho whitelist (IPs + domains resolved). Có snapshot/restore để hoàn nguyên về trạng thái pre-SAINT. IPv4-only.
 
-Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chính sách 3 profile) + `RulesManager` (CRUD rules) + `FirewallUtils` (netsh wrapper, validate, essential IPs).
+Kiến trúc chính: `FirewallManager` (orchestrator) → `PolicyManager` (chính sách 3 profile) + `RulesManager` (CRUD rules) → `FirewallProvider` (`NetSecurityFirewallProvider` hoặc `NetshFirewallProvider`) + `FirewallUtils` (validate, essential IPs, legacy netsh runner).
 
 ## Public API
 
@@ -12,7 +12,7 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `FirewallManager` | `class` | [manager.py:52](../../../agent/firewall/manager.py#L52) | Composes Policy + Rules + state |
-| `FirewallManager.__init__(rule_prefix="FirewallController")` | `(str)` | [manager.py:53](../../../agent/firewall/manager.py#L53) | Load existing rules, backup current policy, detect mode đang chạy |
+| `FirewallManager.__init__(rule_prefix="FirewallController", provider=None, write_provider=None)` | `(str, Optional[FirewallProvider], Optional[FirewallProvider])` | [manager.py:53](../../../agent/firewall/manager.py#L53) | Wire read/write providers, load existing rules, backup current policy, detect mode đang chạy |
 | `.allowed_ips` | `@property -> Set[str]` | [manager.py:273](../../../agent/firewall/manager.py#L273) | Delegate sang `rules_manager.allowed_ips` |
 | `.default_deny_enabled` | `@property -> bool` | [manager.py:278](../../../agent/firewall/manager.py#L278) | Delegate sang `policy_manager` |
 | `.enable_whitelist_mode(server_urls=None, whitelist_ips=None, whitelist_domains=None)` | `(List[str], Set[str], Set[str]) -> bool` | [manager.py:517](../../../agent/firewall/manager.py#L517) | **Entry point khi startup**. Tạo self-allow rules → essential IPs → resolve server URLs → whitelist IPs → resolve domains → tạo allow rules → **rồi mới** enable Default Deny |
@@ -54,7 +54,7 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 | Symbol | Signature | Vị trí | Mô tả |
 |---|---|---|---|
 | `RulesManager` | `class` | [rules.py:10](../../../agent/firewall/rules.py#L10) | Threadsafe (`_rule_lock` cho batch) |
-| `.create_self_allow_rules(program_path)` | `(str) -> bool` | [rules.py:17](../../../agent/firewall/rules.py#L17) | Tạo 3 rule cho exe agent: TCP 443, UDP 53, TCP 53. **Idempotent** (delete-then-add). Bằng `program=` không `remoteip=` ⇒ bền với DNS rotation. |
+| `.create_self_allow_rules(program_path)` | `(str) -> bool` | [rules.py:17](../../../agent/firewall/rules.py#L17) | Tạo 3 rule cho exe agent: TCP 443, UDP 53, TCP 53. **Idempotent** qua write provider (delete-then-add). Bằng `program=` không `remoteip=` ⇒ bền với DNS rotation. |
 | `.create_allow_rule(ip)` | `(str) -> bool` | [rules.py:74](../../../agent/firewall/rules.py#L74) | Tên rule: `{prefix}_Allow_{ip_underscored}_{unix_ts}`. Skip nếu đã có. |
 | `.remove_allow_rule(ip)` | `(str) -> bool` | [rules.py:112](../../../agent/firewall/rules.py#L112) | List all → match theo pattern `_<ip>_` → delete từng cái |
 | `.create_allow_rules_batch(ips)` | `(Set[str]) -> bool` | [rules.py:162](../../../agent/firewall/rules.py#L162) | Sorted iteration với `sleep(0.02)` giữa các netsh để giữ stability |
@@ -62,6 +62,25 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 | `.load_existing_rules()` | `() -> None` | [rules.py:240](../../../agent/firewall/rules.py#L240) | Đọc state hiện có vào `allowed_ips` lúc init (cho recovery sau crash) |
 | `.get_rule_count()` | `() -> int` | [rules.py:291](../../../agent/firewall/rules.py#L291) | Đếm rules có prefix |
 | `.allowed_ips` | `Set[str]` | [rules.py:14](../../../agent/firewall/rules.py#L14) | In-memory cache |
+
+### `agent/firewall/provider.py` - Backend abstraction
+
+| Symbol | Signature | Vị trí | Mô tả |
+|---|---|---|---|
+| `FirewallProvider` | `ABC` | [provider.py](../../../agent/firewall/provider.py) | Contract chung cho read + write firewall operations. |
+| `get_default_provider()` | `() -> FirewallProvider` | [provider.py](../../../agent/firewall/provider.py) | Read backend: env `SAINT_FIREWALL_PROVIDER`, rồi NetSecurity nếu available, fallback netsh. |
+| `get_write_provider()` | `() -> FirewallProvider` | [provider.py](../../../agent/firewall/provider.py) | Write backend: default `netsh`; opt-in PowerShell/NetSecurity bằng `FIREWALL_WRITE_BACKEND=powershell` hoặc `netsecurity`. |
+| `FirewallProvider.create_or_replace_rule(...)` | `(...) -> bool` | [provider.py](../../../agent/firewall/provider.py) | Create managed rule with exact-name replacement semantics. |
+| `FirewallProvider.delete_rules_by_prefix(rule_prefix)` | `(str) -> int` | [provider.py](../../../agent/firewall/provider.py) | Clear all SAINT-managed rules for a prefix. |
+| `FirewallProvider.set_profile_outbound_policy(profile, action)` | `(str, str) -> bool` | [provider.py](../../../agent/firewall/provider.py) | Set outbound policy to `allow` or `block`. |
+
+### `agent/firewall/application_service.py` - GUI facade
+
+| Symbol | Signature | Vị trí | Mô tả |
+|---|---|---|---|
+| `FirewallApplicationService` | `class` | [application_service.py](../../../agent/firewall/application_service.py) | UI-safe facade for manual restore/clear operations. |
+| `.restore_firewall_snapshot(path=DEFAULT_SNAPSHOT_FILENAME)` | `(str) -> bool` | [application_service.py](../../../agent/firewall/application_service.py) | Delegate to running `FirewallManager` when supplied, otherwise create one. |
+| `.clear_saint_rules()` | `() -> bool` | [application_service.py](../../../agent/firewall/application_service.py) | Clear SAINT rules via manager/rules backend; GUI does not call netsh directly. |
 
 ### `agent/firewall/utils.py` - Helpers
 
@@ -77,17 +96,17 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 ## Ai gọi module này
 - `agent/core/lifecycle.py` - khởi tạo `FirewallManager`, gọi `save_snapshot`, `enable_whitelist_mode`, `cleanup`
 - `agent/whitelist/manager.py` - gọi `update_whitelist(domains, ips)` sau mỗi sync
-- `agent/gui_qt/views/settings.py` - gọi `restore_snapshot` từ nút Restore
+- `agent/gui_qt/views/settings.py` - gọi `FirewallApplicationService.restore_firewall_snapshot` từ nút Restore
 
 ## Module này gọi ra
 - `agent/shared/time_utils` - timestamp cho rule descriptions
 - `agent/utils/ip_detector` - `check_admin_privileges`, `get_local_ip`
 - `agent/network` - `OptimizedDNSResolver` (lazy import, fallback `socket.getaddrinfo`)
 - `dns.resolver` - detect system DNS
-- `subprocess` - chạy `netsh`
+- `subprocess` - chạy `netsh` hoặc PowerShell backend qua provider
 
 ## Đã có sẵn - đừng viết lại
-- Cần chạy `netsh`? → `FirewallUtils.run_netsh_command(args)` - đã set `CREATE_NO_WINDOW`, **đừng** `subprocess.run(["netsh", ...])` trực tiếp (sẽ nháy console khi chạy GUI)
+- Cần thao tác firewall read/write? → đi qua `FirewallProvider` / `RulesManager` / `PolicyManager`. Chỉ dùng `FirewallUtils.run_netsh_command(args)` khi đang implement hoặc maintain `NetshFirewallProvider`.
 - Cần validate IPv4? → `FirewallUtils.is_valid_ip(ip)`
 - Cần list IP "phải allow để máy còn dùng được"? → `FirewallUtils.get_essential_ips()`
 - Cần test TCP tới IP? → `FirewallUtils.test_ip_connectivity(ip)`
@@ -101,7 +120,8 @@ Kiến trúc 3 lớp: `FirewallManager` (orchestrator) → `PolicyManager` (chí
 - **`restore_snapshot` cần admin** (line 726). Nếu không có admin, `netsh` silent fail mà returncode vẫn 0 ⇒ ta đã thêm guard explicit.
 - **Snapshot lockout safety net** (manager.py:764): nếu mọi profile đều `block` trong snapshot, restore sẽ force về `allowoutbound` mặc định để không cô lập máy.
 - **`remove_allow_rule` dùng pattern match `_<ip>_`** (rules.py:118): nếu một IP được tạo nhiều rule khác nhau (e.g. dynamic add nhiều lần), tất cả sẽ bị xoá - đó là design.
-- **`load_existing_rules`** parse `netsh show rule name=all` (rules.py:240). `netsh` localize output theo Windows language ⇒ keyword `"Rule Name:"`, `"Direction:"`, `"Action:"`, `"RemoteIP:"` chỉ đúng trên Windows English. Trên Windows tiếng Việt sẽ không parse được - hiện chấp nhận.
+- **Write backend default vẫn là netsh**: `FIREWALL_WRITE_BACKEND=powershell` đã có nhưng là opt-in. Chỉ đổi default sau Windows-admin smoke vì rule write sai có thể làm agent không tạo allow rules hoặc khóa traffic.
+- **`load_existing_rules`** không parse text trong `RulesManager` nữa; nó gọi `FirewallProvider.list_outbound_allow_ips`. Non-English Windows nên dùng NetSecurity read provider khi available.
 - **`_resolve_domains_to_ips` lazy import `agent.network.OptimizedDNSResolver`** (manager.py:485). Nếu module bị rename/move, fallback sang `socket.getaddrinfo` - đừng vì thấy ImportError mà sửa ngay, có thể đúng đường fallback.
 - **Rule prefix trùng = collision**: nếu chạy 2 instance agent (vd dev + prod) cùng `rule_prefix`, `clear_all_rules` sẽ xoá lẫn nhau. Config validator phải đảm bảo prefix unique nếu cần coexistence.
 - **`get_essential_ips` cố detect gateway bằng heuristic `x.x.x.1`** (utils.py:58). Sai trong mạng có gateway custom (e.g. `192.168.0.254`). Hiện coi như edge case acceptable; nếu sửa, tránh `netsh interface ip show config` vì chậm.

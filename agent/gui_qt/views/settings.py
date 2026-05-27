@@ -1,7 +1,8 @@
 """Settings view for the Qt GUI.
 
-Reuses the same config crypto / firewall snapshot / netsh fallback logic as
-the CTk port - only the form widgets change.
+Reuses the same config crypto and firewall application service as the agent.
+The view owns UI confirmation/status only; firewall writes stay in
+``agent.firewall``.
 """
 
 import json
@@ -337,12 +338,11 @@ class SettingsView(QWidget):
             self._show_error(str(e))
 
     def _manual_restore(self) -> None:
-        """Restore firewall to pre-SAINT state from snapshot. Mirrors the CTk
-        implementation including: admin guard, agent-aware fast path,
-        standalone netsh fallback, SAINT-rule cleanup."""
+        """Restore firewall to pre-SAINT state from snapshot."""
         try:
             from firewall.manager import _resolve_snapshot_path
             from firewall.utils import FirewallUtils
+            from firewall.application_service import FirewallApplicationService
 
             backup_path = self._config.get(
                 "firewall", {}
@@ -356,7 +356,8 @@ class SettingsView(QWidget):
                 )
                 return
 
-            # Without admin, netsh fails silently and we'd lie to the user.
+            # Without admin, firewall writes can fail silently and we'd lie to
+            # the user.
             if not FirewallUtils.has_admin_privileges():
                 self._show_error(
                     "Restore requires administrator privileges. "
@@ -379,81 +380,31 @@ class SettingsView(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
+            rule_prefix = (
+                self._config.get("firewall", {}).get("rule_prefix", "FirewallController")
+            )
+
             # Fast path: if the agent is running, delegate to its FirewallManager
             # so its in-memory state stays consistent with disk.
             from controllers.agent_controller import AgentController
             ctrl = AgentController()
+            manager = None
             if ctrl.is_running and getattr(ctrl, "_agent", None) and getattr(ctrl._agent, "firewall", None):
-                if ctrl._agent.firewall.restore_snapshot(backup_path):
-                    self._show_success("Firewall restored to pre-SAINT state")
-                else:
-                    self._show_error(
-                        "Restore via running agent failed. See agent.log for details."
-                    )
-                return
+                manager = ctrl._agent.firewall
 
-            # Standalone path: agent is not running, drive netsh directly.
-            policies = snapshot.get("policies", {})
-            netsh_failures = 0
-            for profile, action in policies.items():
-                if action not in ("allow", "block"):
-                    continue
-                policy_arg = (
-                    "blockinbound,blockoutbound"
-                    if action == "block"
-                    else "blockinbound,allowoutbound"
-                )
-                result = FirewallUtils.run_netsh_command([
-                    "advfirewall", "set", f"{profile}profile",
-                    "firewallpolicy", policy_arg,
-                ])
-                if result.returncode != 0:
-                    netsh_failures += 1
-
-            # Safety net: pure-block snapshot would lock the box off the network.
-            restored_actions = {a for a in policies.values() if a in {"allow", "block"}}
-            if restored_actions == {"block"}:
-                from firewall.policy import PolicyManager
-                PolicyManager().restore_default_policy()
-
-            # Always clear SAINT rules - matches manager.py behaviour.
-            rule_prefix = (
-                self._config.get("firewall", {}).get("rule_prefix", "FirewallController")
+            service = FirewallApplicationService(
+                rule_prefix=rule_prefix,
+                manager=manager,
             )
-            self._clear_saint_rules(rule_prefix)
-
-            if netsh_failures:
-                self._show_error(
-                    f"Restore completed with {netsh_failures} netsh error(s). "
-                    "Verify firewall state in wf.msc."
-                )
-            else:
+            if service.restore_firewall_snapshot(backup_path):
                 self._show_success("Firewall restored to pre-SAINT state")
+            else:
+                self._show_error(
+                    "Restore failed. See agent.log for details and verify firewall state in wf.msc."
+                )
 
         except Exception as e:
             self._show_error(f"Restore failed: {e}")
-
-    @staticmethod
-    def _clear_saint_rules(rule_prefix: str) -> int:
-        """Remove all SAINT firewall rules. Returns count removed."""
-        from firewall.utils import FirewallUtils
-
-        result = FirewallUtils.run_netsh_command([
-            "advfirewall", "firewall", "show", "rule", "name=all",
-        ], timeout=60)
-        removed = 0
-        if result.returncode == 0:
-            for line in result.stdout.split("\n"):
-                if line.strip().startswith("Rule Name:"):
-                    rule_name = line.strip()[10:].strip()
-                    if rule_name.startswith(rule_prefix):
-                        del_r = FirewallUtils.run_netsh_command([
-                            "advfirewall", "firewall", "delete", "rule",
-                            f"name={rule_name}",
-                        ])
-                        if del_r.returncode == 0:
-                            removed += 1
-        return removed
 
     # =======================================================================
     # Status helpers

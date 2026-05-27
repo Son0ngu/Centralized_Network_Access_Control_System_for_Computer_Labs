@@ -3,7 +3,7 @@
 ## Mục đích
 Wrap mỗi MongoDB collection thành một class với CRUD methods + index setup ở `__init__`. **Không có ORM** - pymongo trực tiếp. Datetime → tz VN qua `time_utils`. Pattern chung: `_setup_indexes()` chạy lúc construct, mỗi method try-except + log.
 
-10 model files, 10 collections tương ứng trong DB `Monitoring`.
+11 model files. Group-scoped whitelist entries now have first-class storage in `whitelist_entries`; legacy `groups.whitelist[]` remains a one-release read fallback.
 
 ## Collections map
 
@@ -11,6 +11,7 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 |---|---|---|---|
 | `AgentModel` | `agents` | Thông tin agent (host, IP, status, heartbeat) | `agent_id` unique, `device_id` unique sparse |
 | `WhitelistModel` | `whitelist` + `whitelist_meta` | Whitelist entries + global version metadata | `value` lower, `scope`, `group_id` |
+| `WhitelistEntryModel` | `whitelist_entries` | First-class group whitelist entries during migration away from `groups.whitelist[]` | `_id`, `scope`, `group_id`, `type`, `value`, `legacy_embedded_id` |
 | `LogModel` | `logs` | Network logs từ agent | `timestamp` DESC, `agent_id`, `action` |
 | `GroupModel` | `groups` | Groups + per-group whitelist + assigned teachers | `name` unique, `teacher_ids` |
 | `UserModel` | `users` | Admin/teacher accounts (bcrypt password) | `username` unique, `email` unique sparse |
@@ -55,13 +56,27 @@ Wrap mỗi MongoDB collection thành một class với CRUD methods + index setu
 | `cleanup_expired_entries()` | `→ int` | [whitelist_model.py:290](../../../server/models/whitelist_model.py#L290) | Xoá `expiry_date < now`. Bump version |
 | `validate_entry_value(entry_type, value)` | `→ Dict` | [whitelist_model.py:314](../../../server/models/whitelist_model.py#L314) | Cho domain/ip/url. Regex domain, `socket.inet_aton` IP, `urlparse` URL |
 | `delete_entry(entry_id)` | `→ bool` | [whitelist_model.py:364](../../../server/models/whitelist_model.py#L364) | Bump version nếu global |
-| `update_entry(entry_id, update_data)` | `→ bool` | [whitelist_model.py:381](../../../server/models/whitelist_model.py#L381) | Bump version nếu global. **Đừng** dùng cho group entries - group entries lưu trong `groups.whitelist` |
+| `update_entry(entry_id, update_data)` | `→ bool` | [whitelist_model.py:381](../../../server/models/whitelist_model.py#L381) | Bump version nếu global. **Đừng** dùng cho group entries - group entries đi qua `WhitelistEntryModel`/`WhitelistService`. |
 | `bulk_insert_entries(entries)` | `→ List[str]` | [whitelist_model.py:488](../../../server/models/whitelist_model.py#L488) | Set timestamps, defaults |
 | `get_entries_for_sync(since_date=None, scope="global", group_id=None)` | `→ List[Dict]` | [whitelist_model.py:451](../../../server/models/whitelist_model.py#L451) | Format sync: chỉ value/type/priority/category/added_date |
 | `verify_dns(domain)` | `→ Dict` | [whitelist_model.py:542](../../../server/models/whitelist_model.py#L542) | `socket.getaddrinfo` |
 | `get_statistics()` | | [whitelist_model.py:406](../../../server/models/whitelist_model.py#L406) | total/active/inactive + by_type aggregate |
 | `build_query_from_filters(filters)` | | [whitelist_model.py:516](../../../server/models/whitelist_model.py#L516) | Build mongo query từ filters dict (type/category/added_by/search) |
 | `_convert_entry_timezones(entry)` | | [whitelist_model.py:246](../../../server/models/whitelist_model.py#L246) | Inject `*_formatted`, `*_iso` fields |
+
+### `models/whitelist_entry_model.py` - `WhitelistEntryModel` (collection: `whitelist_entries`)
+
+First-class storage for group whitelist entries during migration away from `groups.whitelist[]`.
+
+| Symbol | Signature | Vị trí | Mô tả |
+|---|---|---|---|
+| `__init__(db)` | | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Setup indexes for `scope`, `group_id`, `is_active`, `legacy_embedded_id`, and `(scope, group_id, type, value, is_active)`. |
+| `insert_entry(entry_data)` | `(Dict) -> str` | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Normalize group entry and return real ObjectId string. |
+| `bulk_insert_entries(entries)` | `(List[Dict]) -> List[str]` | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Bulk insert normalized entries. |
+| `list_group_entries(group_id, include_inactive=True)` | `-> List[Dict]` | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | List collection rows for one group. |
+| `find_entry_by_id(entry_id, active_only=False)` | `-> Optional[Dict]` | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Lookup by real ObjectId string. |
+| `find_entry_access_info(entry_id)` | `-> Optional[Dict]` | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Minimal RBAC access lookup: `scope`, `group_id`. |
+| `update_entry(entry_id, update_data)` / `delete_entry(entry_id)` | | [whitelist_entry_model.py](../../../server/models/whitelist_entry_model.py) | Mutate real collection rows; caller bumps group whitelist version. |
 
 ### `models/log_model.py` - `LogModel` (collection: `logs`)
 
@@ -193,6 +208,7 @@ Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi i
 |---|---|
 | `AgentModel` | `AgentService` + `AgentPolicyService` + `RBACService.can_teacher_access_agent` |
 | `WhitelistModel` | `WhitelistService` |
+| `WhitelistEntryModel` | `WhitelistService` |
 | `LogModel` | `LogService` |
 | `GroupModel` | `GroupService` + `WhitelistProfileService` + `AgentService` (init pending group) + `RBACService` |
 | `UserModel` | `UserService` + `AdminAuthService` + `rbac middleware` (lookup user by jti) |
@@ -229,12 +245,16 @@ Mỗi model được khởi tạo 1 lần ở `app.register_controllers` rồi i
 - **Mọi datetime lưu vào Mongo phải aware** (codec options strict). Naive → pymongo raise. Helpers `now_vietnam()` luôn aware.
 - **`parse_agent_timestamp` rất khoan dung** (xem [app.md](app.md)) - fallback `now_vietnam()` cho bất kỳ input lỗi. Model dùng để parse `last_heartbeat` từ agent.
 
+### Whitelist storage migration
+
+Cap nhat 2026-05-27: group entries are collection-first through `WhitelistEntryModel` / `whitelist_entries`. New group writes go to `whitelist_entries`; reads merge collection rows with legacy embedded `groups.whitelist[]`; collection rows win on duplicate `type:value`. Details: [whitelist_entries.md](whitelist_entries.md).
+
 ### Whitelist storage 2 nơi
 - **Global entries** lưu ở collection `whitelist` (mỗi entry 1 document)
-- **Group entries** lưu **inline** trong `groups.whitelist` array (mỗi group 1 doc, whitelist là list)
+- **Group entries mới** lưu trong `whitelist_entries`. `groups.whitelist[]` chỉ còn legacy read fallback/rollback trong compatibility window.
 - **Profile entries** lưu inline trong `whitelist_profiles.domains` array
-- `WhitelistModel` CHỈ thao tác trên collection `whitelist` (global). Group/profile entries phải qua `GroupModel.update_group` hoặc `WhitelistProfileModel.update_profile`. **Đừng** dùng `WhitelistModel.delete_entry` cho group items - sẽ không tìm thấy.
-- WhitelistService có pseudo-ID `group::<gid>::<type>::<value>` để định danh group items trong UI (xem [services.md](services.md)).
+- `WhitelistModel` CHỈ thao tác trên collection `whitelist` (global). Group entries phải qua `WhitelistEntryModel`/`WhitelistService`; profile entries qua `WhitelistProfileModel`.
+- WhitelistService chỉ giữ pseudo-ID `group::<gid>::<type>::<value>` cho legacy embedded fallback; new group entries trả `_id` thật từ `whitelist_entries`.
 
 ### API key migration
 - **Lazy migration HMAC** (api_key_model.py:191-197): legacy keys hash bằng plain SHA-256. Khi validate fail HMAC, fallback legacy. Match → update hash sang HMAC. Sau migration full, có thể xoá `_hash_api_key_legacy`.

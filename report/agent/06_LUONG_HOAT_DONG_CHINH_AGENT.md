@@ -22,6 +22,12 @@ sequenceDiagram
 status `ok | skipped | degraded | failed`. Cuối hàm in summary thật theo trạng
 thái từng phần thay vì luôn luôn báo "ALL COMPONENTS INITIALIZED SUCCESSFULLY":
 
+Cap nhat 2026-05-27: lifecycle da duoc boc bang `AgentComponent.start/stop/health`.
+`initialize_components()` tao `LifecycleContext` va goi `start_components(...)`;
+`cleanup()` goi `stop_components(...)` theo thu tu nguoc. Test fake component nam o
+`agent/tests/test_lifecycle_components.py`. Reference chi tiet:
+`docs/reference/agent/lifecycle_components.md`.
+
 ```
 ============================================================
 AGENT INITIALIZED (DEGRADED) - 3 issue(s)
@@ -93,7 +99,7 @@ flowchart LR
 | `DashboardView` cards | Cache `_last_card_values` - skip `set_value()` / `set_color()` nếu giá trị giống lần trước. Tránh re-paint widget không cần thiết. |
 | `DataTable` (Qt) | `QTableView` + `DictTableModel(QAbstractTableModel)` - **virtualized natively**: Qt chỉ paint row đang scroll vào viewport. 5k+ rows render <50ms không cần chunked render thủ công. `set_rows()` dùng `beginResetModel/endResetModel`. |
 | `WhitelistView._on_search` | Debounce 200ms qua `QTimer.singleShot(True)`. In-memory filter qua cache `_last_loaded_data`, không gọi controller mỗi keystroke. |
-| `FirewallView` refresh | `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) - Qt API gọn, view ẩn = timer dừng, không poll netsh. |
+| `FirewallView` refresh | `showEvent`/`hideEvent` start/stop `_refresh_timer` (5s) - Qt API gọn, view ẩn = timer dừng; fallback read đi qua `FirewallProvider`, không parse netsh trong view. |
 | `LogConsole` (Logs view) | `QPlainTextEdit.setMaximumBlockCount(2000)` - auto-trim O(1) per insert. Thread-safe append qua `Signal` với `QueuedConnection` để `GUILogHandler.emit()` (thread bất kỳ) deliver lên GUI thread. |
 | Dashboard activity log | `setMaximumBlockCount(500)`. HTML badge cho mỗi tag (INFO/STATUS/SYNC/WARN/ERROR/BLOCK/ALLOW). |
 | `DashboardView._on_packet_captured` | Token bucket 20 lines/giây từ packet events (`PACKET_LOG_MAX_PER_WINDOW`). `BLOCKED` không drop. Khi bị drop, đầu window kế tiếp emit dòng tổng kết. |
@@ -118,4 +124,4 @@ Cuối cùng port toàn bộ sang **PySide6**: `QTableView` virtualized natively
 
 ## Dừng Agent
 
-`cleanup()` dừng token manager, packet sniffer, whitelist sync, heartbeat sender, log sender và thực hiện cleanup firewall theo cấu hình.
+`cleanup()` dùng component stack đã lưu trên runtime và stop ngược thứ tự start. Nếu runtime cũ không có stack, cleanup fallback sang default component list để giữ backward compatibility.
