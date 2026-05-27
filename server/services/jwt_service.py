@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple, Any
 
 import jwt
-from time_utils import now_vietnam, now_iso
+from time_utils import VIETNAM_TZ, now_vietnam, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -348,9 +348,9 @@ class JWTService:
             # Get expiry for TTL
             exp = payload.get("exp")
             if isinstance(exp, (int, float)):
-                expires_at = datetime.fromtimestamp(exp)
+                expires_at = datetime.fromtimestamp(exp, tz=VIETNAM_TZ)
             else:
-                expires_at = datetime.now() + timedelta(days=7)
+                expires_at = now_vietnam() + timedelta(days=7)
             
             # Add to revoked tokens collection
             if self.revoked_tokens is not None:
@@ -454,7 +454,7 @@ class JWTService:
         # Get expiry time
         exp = payload.get("exp")
         if isinstance(exp, (int, float)):
-            expires_at = datetime.fromtimestamp(exp)
+            expires_at = datetime.fromtimestamp(exp, tz=VIETNAM_TZ)
             is_expired = now > expires_at
         else:
             expires_at = None

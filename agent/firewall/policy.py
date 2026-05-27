@@ -37,9 +37,19 @@ class PolicyManager:
                     current_profile = "private"
                 elif "Public Profile Settings:" in line:
                     current_profile = "public"
-                elif current_profile and "Outbound connections:" in line:
-                    action = "block" if "block" in line.lower() else "allow"
-                    policies[current_profile] = action
+                elif current_profile:
+                    lower = line.lower()
+                    # Windows versions/local netsh formats differ here. Some
+                    # print "Outbound connections: Block", while others print
+                    # "Firewall Policy BlockInbound,BlockOutbound".
+                    if "blockoutbound" in lower:
+                        policies[current_profile] = "block"
+                    elif "allowoutbound" in lower:
+                        policies[current_profile] = "allow"
+                    elif "outbound" in lower and "block" in lower:
+                        policies[current_profile] = "block"
+                    elif "outbound" in lower and "allow" in lower:
+                        policies[current_profile] = "allow"
             
             return policies
             

@@ -764,8 +764,15 @@ class FirewallManager:
 
             # 1. Restore Windows Firewall profile policies.
             policies = snapshot.get("policies", {})
-            if policies and not self.policy_manager.restore_policies(policies):
-                logger.warning("No firewall profile policy was restored from snapshot")
+            if policies:
+                if not self.policy_manager.restore_policies(policies):
+                    logger.warning("No firewall profile policy was restored from snapshot")
+            else:
+                logger.warning(
+                    "Firewall snapshot contains no profile policies. "
+                    "Restoring default allow-outbound policy to avoid lockout."
+                )
+                self.policy_manager.restore_default_policy()
 
             # Safety net: if every profile is block, force the Windows default
             # allow-outbound policy so the device doesn't lose connectivity.

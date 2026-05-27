@@ -28,5 +28,6 @@ dist/
 *.pyz
 *.ps1
 !tools/agent-admin-smoke.ps1
+!tools/saint-full-system-e2e.ps1
 *.pytest_cache
 *.understand-anything

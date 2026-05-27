@@ -139,6 +139,38 @@ def test_policy_manager_delegates_profile_writes_to_provider():
     assert provider.policies == [("domain", "allow"), ("public", "block")]
 
 
+def test_policy_manager_parses_firewall_policy_line(monkeypatch):
+    class Result:
+        returncode = 0
+        stderr = ""
+        stdout = """
+Domain Profile Settings:
+----------------------------------------------------------------------
+Firewall Policy                       BlockInbound,AllowOutbound
+
+Private Profile Settings:
+----------------------------------------------------------------------
+Firewall Policy                       BlockInbound,BlockOutbound
+
+Public Profile Settings:
+----------------------------------------------------------------------
+Firewall Policy                       BlockInbound,AllowOutbound
+"""
+
+    monkeypatch.setattr(
+        "firewall.policy.FirewallUtils.run_netsh_command",
+        lambda args: Result(),
+    )
+
+    manager = PolicyManager(write_provider=FakeFirewallProvider())
+
+    assert manager.get_current_policy() == {
+        "domain": "allow",
+        "private": "block",
+        "public": "allow",
+    }
+
+
 def test_firewall_application_service_uses_running_manager_when_supplied():
     manager = FakeManager()
     service = FirewallApplicationService(rule_prefix="SAINT", manager=manager)

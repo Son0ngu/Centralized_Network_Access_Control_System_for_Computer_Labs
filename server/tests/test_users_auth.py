@@ -132,6 +132,18 @@ def _mock_auth(user):
     )
 
 
+def test_jwt_token_info_handles_timezone_aware_expiry():
+    jwt_service = JWTService(db=None)
+    tokens = jwt_service.generate_tokens("agent-1", "user-1")
+
+    info = jwt_service.get_token_info(tokens["access_token"])
+
+    assert info["agent_id"] == "agent-1"
+    assert info["token_type"] == "access"
+    assert info["is_expired"] is False
+    assert info["expires_at"].endswith("+07:00")
+
+
 # ============================================================================
 # 1. USER MODEL TESTS
 # ============================================================================

@@ -614,8 +614,8 @@ class AgentService:
             if not updated:
                 raise ValueError("Agent not found or not updated")
             return True
-        except ValueError as e:
-            raise e
+        except (TypeError, ValueError) as e:
+            raise ValueError("position must be an integer or null") from e
         except Exception as e:
             self.logger.error(f"Error updating position for agent {agent_id}: {e}")
             raise

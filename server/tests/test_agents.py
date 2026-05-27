@@ -764,6 +764,13 @@ class TestAgentEdgeCases:
         found = agent_model.find_by_agent_id(agent["agent_id"])
         assert found["position"] == 5
 
+    def test_update_position_invalid_type_fails(self, agent_service, agent_model, group_model):
+        gid = str(group_model.create_group("PosGrpInvalid", "")["_id"])
+        agent = insert_agent(agent_model, gid, "PosPCInvalid")
+
+        with pytest.raises(ValueError, match="position must be an integer or null"):
+            agent_service.update_position(agent["agent_id"], {"row": 1})
+
     def test_delete_agent(self, agent_service, agent_model, group_model):
         """Delete agent - xóa khỏi DB."""
         gid = str(group_model.create_group("DelGrp", "")["_id"])
