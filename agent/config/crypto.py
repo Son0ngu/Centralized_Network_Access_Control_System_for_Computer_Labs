@@ -8,7 +8,11 @@ import base64
 import hashlib
 import json
 import logging
+import os
 import socket
+import stat
+import subprocess
+import sys
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -19,6 +23,56 @@ logger = logging.getLogger("config.crypto")
 
 # Encrypted config uses .enc extension
 ENCRYPTED_EXT = ".enc"
+
+
+def restrict_to_owner(path: Path) -> None:
+    """Tighten ACL on ``path`` so only the current user (and SYSTEM/Admins
+    on Windows) can read it.
+
+    Defense in depth even though the file is Fernet-encrypted: an attacker
+    on the same machine without the user's session shouldn't be able to
+    exfiltrate the ciphertext + machine key (hostname + MAC are both
+    derivable for any local user) and decrypt offline.
+
+    Platform behaviour:
+      - POSIX: ``chmod 0o600`` (owner read/write only).
+      - Windows: ``icacls /inheritance:r`` to drop the inherited "Users"
+        group, then ``/grant`` Full control to the current user. SYSTEM
+        and Administrators retain access via their own explicit ACEs
+        (icacls preserves them when ``/inheritance:r`` runs after the
+        default ACL has SYSTEM + Administrators on it).
+
+    Best-effort: never raise. If icacls is missing, antivirus blocks the
+    subprocess, or the path was deleted between write and chmod, we log
+    and move on — the encrypted file is still better than a plaintext
+    one with world-readable permissions.
+    """
+    try:
+        if sys.platform == "win32":
+            user = os.environ.get("USERNAME") or os.environ.get("USER")
+            if not user:
+                logger.debug("restrict_to_owner: no USERNAME in env, skipping icacls")
+                return
+            # /inheritance:r — remove inherited entries (e.g. "Users").
+            # /grant:r "<user>:F" — replace/set Full control for current user.
+            # We don't strip SYSTEM / Administrators; service managers and
+            # admin recovery need them.
+            result = subprocess.run(
+                ["icacls", str(path), "/inheritance:r",
+                 "/grant:r", f"{user}:F"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode != 0:
+                logger.debug(
+                    f"icacls failed for {path}: rc={result.returncode} "
+                    f"stderr={result.stderr.strip()!r}"
+                )
+        else:
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except (FileNotFoundError, OSError) as e:
+        logger.debug(f"restrict_to_owner({path}) skipped: {e}")
+    except subprocess.TimeoutExpired:
+        logger.debug(f"restrict_to_owner({path}) icacls timed out")
 
 
 def _get_machine_key() -> bytes:
@@ -43,6 +97,11 @@ def encrypt_config(config: Dict[str, Any], path: Path) -> bool:
         enc_path = path.with_suffix(path.suffix + ENCRYPTED_EXT)
         enc_path.parent.mkdir(parents=True, exist_ok=True)
         enc_path.write_bytes(encrypted)
+        # Tighten ACL immediately after write. The ciphertext alone is fine
+        # at rest, but the machine-key derivation (hostname + MAC) is
+        # trivially reproducible by any local account, so we don't want a
+        # world-readable .enc file lying around.
+        restrict_to_owner(enc_path)
 
         # Remove plaintext file if it exists
         if path.exists():

@@ -395,4 +395,15 @@ class WhitelistManager:
     def cleanup(self) -> None:
         self.stop_sync()
         self._state.clear()
+        # Shutdown DNS resolver thread pool so its worker threads do not
+        # outlive the agent process. Otherwise the ThreadPoolExecutor created
+        # in OptimizedDNSResolver.__init__ relies solely on atexit, which can
+        # delay or block clean process shutdown.
+        resolver = getattr(self, "resolver", None)
+        if resolver is not None:
+            try:
+                resolver.shutdown()
+            except Exception as e:
+                logger.warning(f"DNS resolver shutdown failed: {e}")
+            self.resolver = None
         logger.info("WhitelistManager cleaned up")

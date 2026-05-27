@@ -415,4 +415,13 @@ class WhitelistView(QWidget):
     def closeEvent(self, event) -> None:
         self._auto_sync_timer.stop()
         self._search_debounce.stop()
+        # If "Resolved IPs" was ever toggled on we built a private resolver
+        # for this view. Shut its thread pool down here so the view can be
+        # destroyed without leaving DNS worker threads behind.
+        if self._dns_resolver is not None:
+            try:
+                self._dns_resolver.shutdown()
+            except Exception as e:
+                logger.debug(f"DNS resolver shutdown failed: {e}")
+            self._dns_resolver = None
         super().closeEvent(event)

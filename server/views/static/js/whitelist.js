@@ -41,9 +41,7 @@ const typeConfigs = {
 
 async function loadGroups() {
     try {
-        const response = await fetch('/api/groups');
-        if (!response.ok) throw new Error('Failed to load groups');
-        const data = await response.json();
+        const data = await SaintAPI.get('/api/groups');
         groupsData = data.data || [];
         populateGroupSelects();
     } catch (error) {
@@ -90,19 +88,16 @@ function populateGroupSelects() {
 }
 
 /**
- * Enhanced error handling for API responses
+ * Surface ``data.error`` (server logical-failure wrapper) as a throw so
+ * call sites can ``try/catch`` uniformly. Used as a post-processing step on
+ * data returned by ``SaintAPI`` — HTTP-level errors are already thrown by
+ * SaintAPI itself.
  */
-function handleApiResponse(response) {
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+function assertNoServerError(data) {
+    if (data && data.error) {
+        throw new Error(data.error);
     }
-    return response.json().then(data => {
-        //  FIX: Handle different response formats
-        if (data.error) {
-            throw new Error(data.error);
-        }
-        return data;
-    });
+    return data;
 }
 
 /**
@@ -116,7 +111,7 @@ function notify(type, message) {
     } else if (type === 'warning') {
         console.warn(message);
     } else {
-        console.log(message);
+        SaintLog.debug(message);
     }
 }
 
@@ -173,15 +168,11 @@ async function bulkDeleteItems() {
     actionButtons.forEach(btn => btn.disabled = true);
 
     try {
-        const response = await fetch('/api/whitelist/bulk-delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                item_ids: Array.from(selectedItems)
+        const result = assertNoServerError(
+            await SaintAPI.post('/api/whitelist/bulk-delete', {
+                item_ids: Array.from(selectedItems),
             })
-        });
-
-        const result = await handleApiResponse(response);
+        );
         const deleted = result.deleted_count ?? selectedItems.size;
 
         showSuccess(`${deleted} item(s) removed successfully.`);
@@ -200,42 +191,34 @@ async function bulkDeleteItems() {
  */
 async function loadItems() {
     try {
-        console.log(' Loading whitelist items...');
+        SaintLog.debug(' Loading whitelist items...');
         const query = selectedGroupId ? `?group_id=${selectedGroupId}` : '';
-        const response = await fetch(`/api/whitelist${query}`).catch(err => ({ ok: false, statusText: err.message }));
-        if (response.ok) {
-            const data = await handleApiResponse(response);
-            
-            //  FIX: Handle different response formats
-            if (selectedGroupId && data.merged && Array.isArray(data.merged)) {
-                itemsData = data.merged;
-            } else if (data.domains && Array.isArray(data.domains)) {
-                itemsData = data.domains;
-            } else if (data.items && Array.isArray(data.items)) {
-                itemsData = data.items;
-            } else if (data.whitelist && Array.isArray(data.whitelist)) {
-                itemsData = data.whitelist;
-            } else if (Array.isArray(data)) {
-                itemsData = data;
-            } else {
-                console.warn(' Unexpected data format:', data);
-                itemsData = [];
-            }
-            
-            console.log(' Loaded items:', itemsData.length);
-            renderItems(itemsData);
-            updateStatistics();
-            selectedItems.clear();
-            refreshBulkActionsUI();
+        const data = assertNoServerError(await SaintAPI.get(`/api/whitelist${query}`));
+
+        // Server hands back several response shapes depending on the
+        // endpoint variant — merge/domains/items/whitelist or a bare array.
+        // Keep the same tolerance as the previous hand-rolled fetch.
+        if (selectedGroupId && data.merged && Array.isArray(data.merged)) {
+            itemsData = data.merged;
+        } else if (data.domains && Array.isArray(data.domains)) {
+            itemsData = data.domains;
+        } else if (data.items && Array.isArray(data.items)) {
+            itemsData = data.items;
+        } else if (data.whitelist && Array.isArray(data.whitelist)) {
+            itemsData = data.whitelist;
+        } else if (Array.isArray(data)) {
+            itemsData = data;
         } else {
-            console.error(' Failed to load items:', response.statusText);
-            showError('Failed to load whitelist items');
-            renderItems([]);
-            updateStatistics();
-            selectedItems.clear();
-            refreshBulkActionsUI();
+            console.warn(' Unexpected data format:', data);
+            itemsData = [];
         }
-        
+
+        SaintLog.debug(' Loaded items:', itemsData.length);
+        renderItems(itemsData);
+        updateStatistics();
+        selectedItems.clear();
+        refreshBulkActionsUI();
+
     } catch (error) {
         console.error(' Error loading items:', error);
         showError('Error loading whitelist items: ' + error.message);
@@ -441,13 +424,8 @@ function renderItems(items) {
     });
 }
 
-// ADD: escapeHtml function if not exists
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Delegate to the shared helper (see server/views/static/js/core/utils.js).
+const escapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 /**
  * Handle item actions - FIX: Properly handle scope
@@ -461,7 +439,7 @@ async function handleItemAction(event) {
     const itemType = btn.dataset.itemType;
     const itemValue = btn.dataset.itemValue;
     
-    console.log('Item action:', { action, itemId, groupId, scope, itemType, itemValue });
+    SaintLog.debug('Item action:', { action, itemId, groupId, scope, itemType, itemValue });
 
     if (action === 'remove') {
         await removeItem(itemId, groupId, scope, itemType, itemValue);
@@ -477,7 +455,7 @@ async function removeItem(itemId, groupId = '', scope = 'global', itemType = '',
     // FIX: If scope is 'group', remove from group whitelist
     if (scope === 'group' && groupId) {
         try {
-            console.log('Removing group item:', { groupId, itemType, itemValue });
+            SaintLog.debug('Removing group item:', { groupId, itemType, itemValue });
             await removeGroupItem(groupId, itemType, itemValue);
             showSuccess('Item removed from group whitelist');
             await Promise.all([loadGroups(), loadItems()]);
@@ -495,27 +473,24 @@ async function removeItem(itemId, groupId = '', scope = 'global', itemType = '',
     }
 
     try {
-        console.log('Removing global item:', itemId);
-        
-        const response = await fetch(`/api/whitelist/${itemId}`, {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}`);
+        SaintLog.debug('Removing global item:', itemId);
+
+        let result;
+        try {
+            result = await SaintAPI.del(`/api/whitelist/${itemId}`);
+        } catch (apiErr) {
+            const body = apiErr.body || {};
+            throw new Error(body.error || apiErr.message || `HTTP ${apiErr.status || '?'}`);
         }
-        
-        const result = await response.json();
-        console.log('Remove result:', result);
-        
-        if (result.success) {
+        SaintLog.debug('Remove result:', result);
+
+        if (result && result.success) {
             showSuccess(result.message || 'Item removed successfully');
             await loadItems();
         } else {
-            throw new Error(result.error || 'Failed to remove item');
+            throw new Error((result && result.error) || 'Failed to remove item');
         }
-        
+
     } catch (error) {
         console.error('Error removing item:', error);
         showError('Failed to remove item: ' + error.message);
@@ -557,15 +532,15 @@ async function removeGroupItem(groupId, itemType, itemValue) {
 }
 
 async function updateGroupWhitelist(groupId, whitelist) {
-    const response = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whitelist })
-    });
-
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to update group whitelist');
+    let result;
+    try {
+        result = await SaintAPI.patch(`/api/groups/${groupId}`, { whitelist });
+    } catch (apiErr) {
+        const body = apiErr.body || {};
+        throw new Error(body.error || apiErr.message || 'Failed to update group whitelist');
+    }
+    if (!result || !result.success) {
+        throw new Error((result && result.error) || 'Failed to update group whitelist');
     }
 }
 
@@ -591,7 +566,7 @@ async function addItem() {
             active: formData.get('active') === 'on'
         };
 
-        console.log('Sending item data:', itemData);
+        SaintLog.debug('Sending item data:', itemData);
 
         // === PROFILE EDIT MODE: save to profile instead ===
         if (isProfileEditMode && selectedProfileData) {
@@ -622,16 +597,10 @@ async function addItem() {
 
             await Promise.all([loadGroups(), loadItems()]);
         } else {
-            const response = await fetch('/api/whitelist', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(itemData)
-            });
-
-            const result = await handleApiResponse(response);
-            console.log('API response:', result);
+            const result = assertNoServerError(
+                await SaintAPI.post('/api/whitelist', itemData)
+            );
+            SaintLog.debug('API response:', result);
 
             showSuccess(result.message || `${itemData.type.toUpperCase()} ${itemData.value} added successfully!`);
 
@@ -704,7 +673,7 @@ function showSuccess(message) {
  */
 async function loadAgentsForSelect() {
     // Placeholder for loading agents
-    console.log('Loading agents for selection...');
+    SaintLog.debug('Loading agents for selection...');
 }
 
 function refreshItems() {
@@ -971,17 +940,20 @@ async function bulkImportItems() {
         for (let i = 0; i < items.length; i += chunkSize) {
             const chunk = items.slice(i, i + chunkSize);
 
-            const response = await fetch('/api/whitelist/bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: chunk })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                successCount += (result.inserted_count || 0);
-            } else {
-                errorCount += chunk.length; // Approximate
+            try {
+                const result = await SaintAPI.post('/api/whitelist/bulk', {
+                    items: chunk,
+                });
+                if (result.success) {
+                    successCount += (result.inserted_count || 0);
+                } else {
+                    errorCount += chunk.length; // Approximate
+                }
+            } catch (apiErr) {
+                // Whole chunk failed — count its size as errors so the
+                // running totals stay meaningful.
+                errorCount += chunk.length;
+                console.error('Bulk import chunk failed:', apiErr);
             }
         }
         
@@ -1025,9 +997,7 @@ function readFileContent(file) {
  */
 async function loadTeacherProfiles() {
     try {
-        const response = await fetch('/api/my-profiles');
-        if (!response.ok) throw new Error('Failed to load profiles');
-        const data = await response.json();
+        const data = await SaintAPI.get('/api/my-profiles');
         teacherProfiles = data.data || [];
         populateProfileSelect();
     } catch (error) {
@@ -1241,15 +1211,18 @@ async function saveProfileDomains(domains) {
     const groupId = selectedProfileData.group_id;
     const profileId = selectedProfileData._id;
 
-    const response = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domains: domains })
-    });
-
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to update profile');
+    let result;
+    try {
+        result = await SaintAPI.patch(
+            `/api/groups/${groupId}/profiles/${profileId}`,
+            { domains },
+        );
+    } catch (apiErr) {
+        const body = apiErr.body || {};
+        throw new Error(body.error || apiErr.message || 'Failed to update profile');
+    }
+    if (!result || !result.success) {
+        throw new Error((result && result.error) || 'Failed to update profile');
     }
 
     // Update local state
@@ -1409,5 +1382,5 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isProfileEditMode) loadItems();
     }, 60000);
 
-    console.log('Enhanced whitelist management initialized');
+    SaintLog.debug('Enhanced whitelist management initialized');
 });

@@ -1,6 +1,8 @@
+import atexit
 import json
 import logging
 import queue
+import random
 import socket
 import threading
 import uuid
@@ -37,7 +39,23 @@ class LogSender:
         
         self.last_send_time = now()
         self._send_lock = threading.Lock()
-        
+
+        # Backoff state. ``_consecutive_send_failures`` drives an exponential
+        # backoff with full jitter so a downed server doesn't get hammered
+        # every ``send_interval`` (was: ~every 2 s). Reset to zero on the
+        # next successful batch.
+        self._consecutive_send_failures = 0
+        self._next_send_allowed_at: float = now()
+        self.max_retry_interval = config.get("max_retry_interval", 300)
+
+        # atexit guard. The sender thread is a daemon so the process can
+        # exit cleanly, but daemon threads are *killed* mid-call when the
+        # interpreter shuts down. atexit handlers run *before* daemon
+        # threads are torn down, so registering one here lets us flush the
+        # in-memory queue even if lifecycle.cleanup() didn't run (hard
+        # crash, SIGTERM from a service manager, etc.).
+        self._atexit_registered = False
+
         logger.info(f"LogSender initialized with agent_id: {self.agent_id}")
         if self.server_urls:
             logger.info(f"Will send logs to: {', '.join(self.server_urls)}")
@@ -51,7 +69,7 @@ class LogSender:
     def start(self) -> None:
         if self.running:
             return
-        
+
         self.running = True
         self._sender_thread = threading.Thread(
             target=self._sender_loop,
@@ -59,7 +77,36 @@ class LogSender:
             name="LogSender"
         )
         self._sender_thread.start()
+        # Register once. atexit handlers run in LIFO order before daemon
+        # threads are killed, so this is the last-chance flush.
+        if not self._atexit_registered:
+            atexit.register(self._atexit_flush)
+            self._atexit_registered = True
         logger.info("Log sender started")
+
+    def _atexit_flush(self) -> None:
+        """Safety-net flush on interpreter shutdown.
+
+        Idempotent with ``stop()``: if cleanup already ran (``self.running``
+        is False and the queue is empty) this is a no-op. Otherwise we
+        attempt one last batch send so structured logs (especially the
+        ``agent_shutdown`` lifecycle event) reach the server.
+        """
+        try:
+            if self.running:
+                self.running = False
+            if not self.log_queue.empty():
+                logger.debug("atexit: flushing %d pending log(s)", self.log_queue.qsize())
+                self._flush_queue()
+        except Exception as e:  # noqa: BLE001 — atexit must never raise
+            # We're past the point where the normal logger may still work
+            # (handlers can be torn down before atexit runs). Use stderr
+            # as a best-effort.
+            try:
+                import sys
+                print(f"LogSender atexit flush failed: {e}", file=sys.stderr)
+            except Exception:
+                pass
     
     def stop(self) -> None:
         """Stop sender and flush remaining logs."""
@@ -154,21 +201,55 @@ class LogSender:
             try:
                 current_time = now()
                 queue_size = self.log_queue.qsize()
-                
+
                 should_send = (
                     queue_size >= self.batch_size or
                     (queue_size > 0 and (current_time - self.last_send_time) >= self.send_interval)
                 )
-                
-                if should_send:
+
+                # Backoff gate: if a previous batch failed we delay the next
+                # attempt. ``_next_send_allowed_at`` is bumped by
+                # ``_send_batch`` on failure; ``should_send`` would otherwise
+                # fire on every send_interval and hammer the server.
+                if should_send and current_time >= self._next_send_allowed_at:
                     self._send_logs()
                     self.last_send_time = current_time
-                
+
                 sleep(1)
-                
+
             except Exception as e:
                 logger.error(f"Error in sender loop: {e}")
                 sleep(5)
+
+    def _record_send_failure(self) -> None:
+        """Advance backoff after a failed batch.
+
+        Full-jitter exponential backoff capped at ``max_retry_interval``,
+        same recipe as HeartbeatSender. Implementation note: we set an
+        absolute wall-clock deadline rather than sleeping inside this call
+        so the sender loop stays responsive to ``stop()`` and to new
+        high-priority logs that bypass the gate on the next iteration.
+        """
+        self._consecutive_send_failures += 1
+        attempt = max(0, self._consecutive_send_failures - 1)
+        base = max(1, int(self.send_interval))
+        cap = max(base, int(self.max_retry_interval))
+        exp = min(cap, base * (2 ** attempt))
+        delay = random.uniform(0, exp)
+        self._next_send_allowed_at = now() + delay
+        logger.debug(
+            f"Log send backoff: next attempt in {delay:.1f}s "
+            f"(consecutive failures={self._consecutive_send_failures})"
+        )
+
+    def _record_send_success(self) -> None:
+        """Reset backoff on a successful batch."""
+        if self._consecutive_send_failures:
+            logger.info(
+                f"Log send recovered after {self._consecutive_send_failures} failure(s)"
+            )
+        self._consecutive_send_failures = 0
+        self._next_send_allowed_at = now()
     
     def _flush_queue(self) -> None:
         logs = []
@@ -236,22 +317,28 @@ class LogSender:
             
             if response.status_code in (200, 201, 202):
                 logger.info(f"Sent {len(serialized_logs)} logs to server")
+                self._record_send_success()
                 return True
             elif response.status_code == 401:
                 logger.warning("Log send authentication failed - token may be expired")
+                self._record_send_failure()
                 return False
             else:
                 logger.error(f"Failed to send logs: HTTP {response.status_code}")
+                self._record_send_failure()
                 return False
-                
+
         except requests.exceptions.Timeout:
             logger.error("Timeout sending logs")
+            self._record_send_failure()
             return False
         except requests.exceptions.ConnectionError:
             logger.error("Connection error sending logs")
+            self._record_send_failure()
             return False
         except Exception as e:
             logger.error(f"Error sending logs: {e}")
+            self._record_send_failure()
             return False
     
     def _ensure_serializable(self, obj: Any) -> Any:

@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List, Optional
 from bson import ObjectId
+from bson import errors as bson_errors
 from pymongo import ASCENDING, ReturnDocument
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -182,7 +183,14 @@ class GroupModel:
     def find_by_id(self, group_id: str) -> Optional[Dict]:
         try:
             return self.collection.find_one({"_id": ObjectId(group_id)})
-        except Exception:
+        except (bson_errors.InvalidId, TypeError) as e:
+            # Caller passed something that isn't a valid ObjectId — return
+            # None to keep the existing contract, but log at debug so an
+            # unexpected call site is discoverable.
+            self.logger.debug(
+                f"find_by_id rejected {group_id!r}: "
+                f"{e.__class__.__name__}: {e}"
+            )
             return None
 
     def update_group(self, group_id: str, update_data: Dict) -> Optional[Dict]:

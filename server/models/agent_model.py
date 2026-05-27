@@ -6,6 +6,7 @@ Agent Model - handles agent data operations
 import logging
 from typing import Dict, List, Optional
 from bson import ObjectId
+from bson import errors as bson_errors
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -150,8 +151,15 @@ class AgentModel:
                 group_id_variants.append(group_id)
                 try:
                     group_id_variants.append(ObjectId(group_id))
-                except Exception:
-                    pass
+                except (bson_errors.InvalidId, TypeError):
+                    # Expected when callers pass non-ObjectId group ids
+                    # (e.g. slugs or already-coerced strings); the string
+                    # variant above still matches such documents. Logged
+                    # at debug to surface bad input without spamming.
+                    self.logger.debug(
+                        f"group_id {group_id!r} is not a valid ObjectId; "
+                        f"using string match only"
+                    )
 
             agents = self.collection.find(
                 {"group_id": {"$in": group_id_variants}},

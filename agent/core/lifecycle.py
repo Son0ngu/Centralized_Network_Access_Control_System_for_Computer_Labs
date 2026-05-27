@@ -88,6 +88,12 @@ def initialize_components(config: Dict,
     tests or harnesses that need isolation construct their own via
     :func:`agent.core.make_runtime` and pass it in. Either path stores
     ``config`` on the runtime and attaches the started components to it.
+
+    The orchestrator is intentionally thin — each numbered step lives in
+    its own ``_init_*`` helper below. Ordering still matters (e.g.
+    whitelist must sync before firewall enables Default Deny; logger and
+    heartbeat both depend on agent credentials being set), so the
+    helpers are called in a fixed sequence rather than discovered.
     """
     agent = runtime if runtime is not None else get_agent()
     agent.config = config  # Store config in agent
@@ -98,292 +104,15 @@ def initialize_components(config: Dict,
         logger.info("INITIALIZING AGENT COMPONENTS")
         logger.info("=" * 50)
 
-        # 1. Register with server first
-        logger.info("Step 1: Registering with server...")
-        from .registry import register_agent, _collect_server_urls
-
-        configured_urls = _collect_server_urls(config)
-        if not configured_urls:
-            # First-run state: no server URL set yet. Do NOT attempt to call
-            # any default endpoint - this protects the user from leaking
-            # device info to an unconfigured server. The GUI should prompt
-            # the user to set a URL in Settings.
-            logger.warning(
-                "Server URL is empty - agent will start in OFFLINE mode. "
-                "Open Settings → enter a Server URL → Save to enable sync."
-            )
-            result.record("registration", STATUS_SKIPPED,
-                          "no server URL configured (Settings → Server URL)")
-        elif not register_agent(config):
-            logger.error("Failed to register with server")
-            # Continue anyway - can work offline with cached whitelist
-            logger.warning("Continuing with offline mode...")
-            result.record("registration", STATUS_DEGRADED,
-                          "server unreachable, continuing offline")
-        else:
-            logger.info(f"Registered successfully - Agent ID: {config.get('agent_id')}")
-            result.record("registration", STATUS_OK,
-                          f"agent_id={config.get('agent_id')}")
-
-        # 1.5. Initialize Token Manager for JWT auto-refresh
-        logger.info("Step 1.5: Initializing Token Manager...")
-        token_manager = init_token_manager(config)
-        
-        # Setup re-registration callback
-        def on_token_expired():
-            """Handle token expiry - trigger re-registration"""
-            logger.warning("JWT tokens expired - triggering re-registration")
-            if register_agent(config):
-                logger.info("Re-registration successful")
-                # Reset token manager with new tokens
-                token_manager.reset_reregistration_flag()
-                # Reload tokens from updated config
-                token_manager._load_tokens_from_config()
-            else:
-                logger.error("Re-registration failed")
-        
-        def on_token_refreshed():
-            """Handle successful token refresh"""
-            logger.debug("JWT tokens refreshed successfully")
-        
-        # Start auto-refresh with callbacks
-        token_manager.start_auto_refresh(
-            on_refreshed=on_token_refreshed,
-            on_expired=on_token_expired
-        )
-        logger.info("Token Manager initialized with auto-refresh")
-        result.record("token_manager", STATUS_OK)
-
-        # 2. Initialize WhitelistManager and SYNC FIRST (before firewall)
-        logger.info("Step 2: Initializing whitelist manager...")
-        from whitelist import WhitelistManager
-        try:
-            agent.whitelist = WhitelistManager(config)
-            logger.info("Whitelist manager initialized")
-            result.record("whitelist_manager", STATUS_OK)
-        except Exception as e:
-            logger.error(f"Whitelist manager init failed: {e}", exc_info=True)
-            result.record("whitelist_manager", STATUS_FAILED, str(e))
-            # Critical: without a whitelist manager nothing else can run safely
-            raise
-
-        # 2.5. SYNC WHITELIST IMMEDIATELY (before enabling firewall)
-        # This is critical - we need whitelist data BEFORE enabling Default Deny
-        if config.get("whitelist", {}).get("auto_sync", True):
-            logger.info("Step 2.5: Syncing whitelist from server (BEFORE firewall)...")
-            try:
-                sync_success = agent.whitelist.sync_now()
-                if sync_success:
-                    stats = agent.whitelist.get_stats()
-                    domains = stats.get('domain_count', 0)
-                    ips = stats.get('ip_count', 0)
-                    logger.info(f"Whitelist synced: {domains} domains, {ips} IPs")
-                    result.record("whitelist_sync", STATUS_OK,
-                                  f"{domains} domains, {ips} IPs")
-                else:
-                    logger.warning("Whitelist sync failed - firewall may block connections")
-                    result.record("whitelist_sync", STATUS_DEGRADED,
-                                  "sync failed (auth or server unreachable)")
-            except Exception as e:
-                logger.warning(f"Whitelist sync error: {e}")
-                result.record("whitelist_sync", STATUS_DEGRADED, str(e))
-        else:
-            result.record("whitelist_sync", STATUS_SKIPPED,
-                          "auto_sync disabled in config")
-        
-        # 3. Initialize FirewallManager (only when enabled + admin).
-        # The agent supports a single firewall mode: `whitelist_only`. Any
-        # other value in config has already been coerced by the validator.
-        admin_status = check_admin_privileges()
-        firewall_config = config.get("firewall", {})
-        firewall_enabled = bool(firewall_config.get("enabled"))
-
-        if firewall_enabled and admin_status:
-            # 3.1. Auto-install WinPcap so packet capture works
-            logger.info("Step 3.1: Checking WinPcap for packet capture...")
-            try:
-                from capture.winpcap_installer import (
-                    ensure_winpcap_available, is_winpcap_installed,
-                )
-                if not is_winpcap_installed():
-                    logger.info("WinPcap not found - attempting auto-installation...")
-                    success, message = ensure_winpcap_available()
-                    if success:
-                        logger.info(message)
-                    else:
-                        logger.warning("⚠️ WinPcap auto-install: %s", message)
-                        logger.warning("Packet capture may not work without WinPcap/Npcap")
-                else:
-                    logger.info("WinPcap/Npcap already installed")
-            except Exception as e:
-                logger.warning("WinPcap check/install failed: %s", e)
-
-            logger.info("Step 3: Initializing firewall manager...")
-            from firewall import FirewallManager
-            agent.firewall = FirewallManager(
-                firewall_config.get("rule_prefix", "FirewallController")
-            )
-
-            # Save pre-SAINT firewall state once so Restore can revert to it.
-            # Skip-if-exists prevents clobbering the genuine baseline after a
-            # crashed run.
-            backup_cfg = firewall_config.get("backup", {}) or {}
-            if backup_cfg.get("enabled", True):
-                backup_path = backup_cfg.get(
-                    "path", "profiles/backup.saint-snapshot.json"
-                )
-                logger.info("Saving pre-SAINT firewall snapshot (if missing)...")
-                agent.firewall.save_snapshot(backup_path)
-            else:
-                logger.info("Firewall backup disabled by config; skipping snapshot.")
-
-            # Link firewall to whitelist
-            if agent.whitelist:
-                agent.whitelist.set_firewall_manager(agent.firewall)
-                logger.info("Firewall manager linked to whitelist")
-
-            # Enable whitelist_only mode (the only supported mode).
-            logger.info("Enabling whitelist_only mode (Default Deny + allow whitelist)...")
-            server_config = config.get("server", {})
-            server_urls = []
-            if server_config.get("urls"):
-                server_urls.extend(server_config["urls"])
-            if server_config.get("url"):
-                server_urls.append(server_config["url"])
-
-            whitelist_ips: set = set()
-            whitelist_domains: set = set()
-            if agent.whitelist and hasattr(agent.whitelist, "_state"):
-                whitelist_ips = agent.whitelist._state.get_all_ips()
-                whitelist_domains = agent.whitelist._state.get_all_domains()
-                whitelist_domains.update(
-                    agent.whitelist._state.get_all_patterns()
-                )
-
-            logger.info(
-                "Whitelist data: %d IPs, %d domains/patterns",
-                len(whitelist_ips), len(whitelist_domains),
-            )
-
-            if agent.firewall.enable_whitelist_mode(
-                server_urls=server_urls,
-                whitelist_ips=whitelist_ips,
-                whitelist_domains=whitelist_domains,
-            ):
-                logger.info(
-                    "Default Deny enabled - non-whitelisted traffic will be blocked"
-                )
-                result.record("firewall", STATUS_OK,
-                              f"whitelist_only mode ({len(whitelist_ips)} IPs, "
-                              f"{len(whitelist_domains)} domains)")
-            else:
-                logger.error("Failed to enable Default Deny policy")
-                result.record("firewall", STATUS_FAILED,
-                              "enable_whitelist_mode returned False")
-        else:
-            if not firewall_enabled:
-                logger.info("Step 3: Firewall disabled in config")
-                result.record("firewall", STATUS_SKIPPED, "disabled in config")
-            else:
-                logger.warning(
-                    "Step 3: Firewall requires administrator privileges - "
-                    "running without enforcement. Relaunch as admin to apply rules."
-                )
-                result.record("firewall", STATUS_SKIPPED,
-                              "no admin privileges (relaunch as administrator)")
-        
-        # 4. Start periodic whitelist sync (initial sync already done in Step 2.5)
-        if config.get("whitelist", {}).get("auto_sync", True):
-            agent.whitelist.start_sync()
-            logger.info(f"Whitelist periodic sync started (interval: {config.get('whitelist', {}).get('update_interval', 60)}s)")
-        
-        # 5. Initialize LogSender
-        logger.info("Step 5: Initializing log sender...")
-        from logging_module import LogSender
-
-        server_url = config.get("server_url") or config.get("server", {}).get("url")
-        agent_id = config.get("agent_id")
-        missing_creds = _missing_server_creds(server_url, agent_id)
-
-        if not missing_creds:
-            try:
-                # FIX: Build config dict for LogSender
-                log_sender_config = {
-                    "server": config.get("server", {}),
-                    "server_url": server_url,
-                    "agent_id": agent_id,
-                    "batch_size": config.get("logging", {}).get("sender", {}).get("batch_size", 100),
-                    "max_queue_size": config.get("logging", {}).get("sender", {}).get("max_queue_size", 1000),
-                    "send_interval": config.get("logging", {}).get("sender", {}).get("send_interval", 2),
-                }
-                agent.log_sender = LogSender(log_sender_config)
-                agent.log_sender.start()
-                logger.info("Log sender initialized and started")
-                result.record("log_sender", STATUS_OK)
-            except Exception as e:
-                logger.warning(f"Log sender init failed: {e}")
-                result.record("log_sender", STATUS_DEGRADED, str(e))
-        else:
-            msg = f"missing config: {', '.join(missing_creds)}"
-            logger.warning(f"Log sender not initialized - {msg}")
-            result.record("log_sender", STATUS_DEGRADED, msg)
-
-        # 6. Initialize HeartbeatSender
-        logger.info("Step 6: Initializing heartbeat sender...")
-        from services import HeartbeatSender
-
-        if not missing_creds:
-            try:
-                # FIX: Build config dict for HeartbeatSender
-                heartbeat_config = {
-                    "server": config.get("server", {}),
-                    "heartbeat": config.get("heartbeat", {}),
-                    "device_id": config.get("device_id") or agent.device_id,
-                }
-                agent.heartbeat = HeartbeatSender(heartbeat_config)
-                agent.heartbeat.set_agent_credentials(agent_id, config.get("agent_token", ""))
-                # Wire force_sync callback: when server requests re-sync (policy/whitelist changed)
-                if agent.whitelist and hasattr(agent.whitelist, 'sync_now'):
-                    agent.heartbeat.on_force_sync = agent.whitelist.sync_now
-                # Wire whitelist version getter so heartbeat reports current versions
-                if agent.whitelist and hasattr(agent.whitelist, '_state'):
-                    agent.heartbeat.get_whitelist_versions = lambda: {
-                        "global_version": agent.whitelist._state._version or None,
-                        "group_version": agent.whitelist._state._group_version or None,
-                    }
-                agent.heartbeat.start()
-                logger.info("Heartbeat sender initialized and started")
-                result.record("heartbeat_sender", STATUS_OK)
-            except Exception as e:
-                logger.warning(f"Heartbeat sender init failed: {e}")
-                result.record("heartbeat_sender", STATUS_DEGRADED, str(e))
-        else:
-            msg = f"missing config: {', '.join(missing_creds)}"
-            logger.warning(f"Heartbeat sender not initialized - {msg}")
-            result.record("heartbeat_sender", STATUS_DEGRADED, msg)
-        
-        # 7. Initialize PacketSniffer (if capture enabled)
-        capture_config = config.get("capture", config.get("packet_capture", {}))
-        if capture_config.get("enabled", True):
-            logger.info("Step 7: Initializing packet sniffer...")
-            try:
-                from capture import PacketSniffer
-
-                # Create domain detection handler
-                from .handlers import create_domain_handler
-                domain_handler = create_domain_handler(config, agent)
-
-                agent.sniffer = PacketSniffer(callback=domain_handler)
-                agent.sniffer.start()
-                logger.info("Packet sniffer initialized and started")
-                result.record("packet_sniffer", STATUS_OK)
-            except Exception as e:
-                logger.warning(f"Could not initialize packet sniffer: {e}")
-                logger.warning("Continuing without packet capture...")
-                result.record("packet_sniffer", STATUS_DEGRADED, str(e))
-        else:
-            logger.info("Step 7: Packet capture disabled in config")
-            result.record("packet_sniffer", STATUS_SKIPPED, "disabled in config")
+        _init_registration(agent, config, result)
+        _init_token_manager(agent, config, result)
+        _init_whitelist_manager(agent, config, result)  # may raise (critical)
+        _init_whitelist_sync(agent, config, result)
+        _init_firewall(agent, config, result)
+        _init_periodic_whitelist_sync(agent, config, result)
+        _init_log_sender(agent, config, result)
+        _init_heartbeat(agent, config, result)
+        _init_packet_sniffer(agent, config, result)
 
         # Mark agent as running
         agent.running = True
@@ -398,6 +127,350 @@ def initialize_components(config: Dict,
         result.record("initialization", STATUS_FAILED, str(e))
         _log_init_summary(result)
         return result
+
+
+# ---------------------------------------------------------------------------
+# Per-step helpers. Each takes ``(agent, config, result)``, records its
+# outcome, and reads/writes attributes on ``agent`` for the next step. They
+# are private to this module — the orchestrator above is the public surface.
+# ---------------------------------------------------------------------------
+
+
+def _init_registration(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 1: register with server (or stay offline if no URL configured)."""
+    logger.info("Step 1: Registering with server...")
+    from .registry import register_agent, _collect_server_urls
+
+    configured_urls = _collect_server_urls(config)
+    if not configured_urls:
+        # First-run state: no server URL set yet. Do NOT attempt to call any
+        # default endpoint - this protects the user from leaking device info
+        # to an unconfigured server. The GUI should prompt the user to set
+        # a URL in Settings.
+        logger.warning(
+            "Server URL is empty - agent will start in OFFLINE mode. "
+            "Open Settings → enter a Server URL → Save to enable sync."
+        )
+        result.record("registration", STATUS_SKIPPED,
+                      "no server URL configured (Settings → Server URL)")
+    elif not register_agent(config):
+        logger.error("Failed to register with server")
+        # Continue anyway - can work offline with cached whitelist
+        logger.warning("Continuing with offline mode...")
+        result.record("registration", STATUS_DEGRADED,
+                      "server unreachable, continuing offline")
+    else:
+        logger.info(f"Registered successfully - Agent ID: {config.get('agent_id')}")
+        result.record("registration", STATUS_OK,
+                      f"agent_id={config.get('agent_id')}")
+
+
+def _init_token_manager(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 1.5: init TokenManager and wire re-registration callbacks.
+
+    Callbacks are defined inline so they close over ``config`` and the
+    ``token_manager`` reference. Each callback step is independently
+    try/except'd — see the long comment inside for why a partial failure
+    must not leave TokenManager half-applied.
+    """
+    logger.info("Step 1.5: Initializing Token Manager...")
+    from .registry import register_agent
+    token_manager = init_token_manager(config)
+
+    def on_token_expired():
+        """Handle token expiry - trigger re-registration."""
+        logger.warning("JWT tokens expired - triggering re-registration")
+        try:
+            ok = register_agent(config)
+        except Exception as e:
+            logger.error(f"Re-registration raised: {e}", exc_info=True)
+            return
+
+        if not ok:
+            logger.error("Re-registration failed")
+            return
+
+        logger.info("Re-registration successful")
+        try:
+            token_manager.reset_reregistration_flag()
+        except Exception as e:
+            logger.warning(f"reset_reregistration_flag failed: {e}")
+        try:
+            token_manager._load_tokens_from_config()
+        except Exception as e:
+            logger.warning(f"_load_tokens_from_config failed: {e}")
+
+    def on_token_refreshed():
+        """Handle successful token refresh."""
+        try:
+            logger.debug("JWT tokens refreshed successfully")
+        except Exception:  # pragma: no cover — logger shouldn't raise
+            pass
+
+    token_manager.start_auto_refresh(
+        on_refreshed=on_token_refreshed,
+        on_expired=on_token_expired,
+    )
+    logger.info("Token Manager initialized with auto-refresh")
+    result.record("token_manager", STATUS_OK)
+
+
+def _init_whitelist_manager(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 2: construct the WhitelistManager.
+
+    Critical step — if this raises, the agent can't run safely (nothing
+    below has a whitelist to consult), so we record FAILED and re-raise.
+    The orchestrator's outer try/except will log and return a failed
+    InitResult.
+    """
+    logger.info("Step 2: Initializing whitelist manager...")
+    from whitelist import WhitelistManager
+    try:
+        agent.whitelist = WhitelistManager(config)
+        logger.info("Whitelist manager initialized")
+        result.record("whitelist_manager", STATUS_OK)
+    except Exception as e:
+        logger.error(f"Whitelist manager init failed: {e}", exc_info=True)
+        result.record("whitelist_manager", STATUS_FAILED, str(e))
+        raise
+
+
+def _init_whitelist_sync(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 2.5: do the initial whitelist sync *before* the firewall flips
+    Default Deny. If the sync fails (auth, server down) the firewall step
+    will still run, but we record DEGRADED so the user sees the warning."""
+    if not config.get("whitelist", {}).get("auto_sync", True):
+        result.record("whitelist_sync", STATUS_SKIPPED,
+                      "auto_sync disabled in config")
+        return
+
+    logger.info("Step 2.5: Syncing whitelist from server (BEFORE firewall)...")
+    try:
+        sync_success = agent.whitelist.sync_now()
+        if sync_success:
+            stats = agent.whitelist.get_stats()
+            domains = stats.get('domain_count', 0)
+            ips = stats.get('ip_count', 0)
+            logger.info(f"Whitelist synced: {domains} domains, {ips} IPs")
+            result.record("whitelist_sync", STATUS_OK,
+                          f"{domains} domains, {ips} IPs")
+        else:
+            logger.warning("Whitelist sync failed - firewall may block connections")
+            result.record("whitelist_sync", STATUS_DEGRADED,
+                          "sync failed (auth or server unreachable)")
+    except Exception as e:
+        logger.warning(f"Whitelist sync error: {e}")
+        result.record("whitelist_sync", STATUS_DEGRADED, str(e))
+
+
+def _init_firewall(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 3: init FirewallManager + enable whitelist_only mode.
+
+    Gated on ``firewall.enabled`` config + admin privileges. Without admin
+    netsh fails silently, so we don't lie to the user about enforcement —
+    we record SKIPPED with a "relaunch as admin" hint instead.
+    """
+    admin_status = check_admin_privileges()
+    firewall_config = config.get("firewall", {})
+    firewall_enabled = bool(firewall_config.get("enabled"))
+
+    if not firewall_enabled:
+        logger.info("Step 3: Firewall disabled in config")
+        result.record("firewall", STATUS_SKIPPED, "disabled in config")
+        return
+    if not admin_status:
+        logger.warning(
+            "Step 3: Firewall requires administrator privileges - "
+            "running without enforcement. Relaunch as admin to apply rules."
+        )
+        result.record("firewall", STATUS_SKIPPED,
+                      "no admin privileges (relaunch as administrator)")
+        return
+
+    # 3.1. Auto-install WinPcap so packet capture works
+    logger.info("Step 3.1: Checking WinPcap for packet capture...")
+    try:
+        from capture.winpcap_installer import (
+            ensure_winpcap_available, is_winpcap_installed,
+        )
+        if not is_winpcap_installed():
+            logger.info("WinPcap not found - attempting auto-installation...")
+            success, message = ensure_winpcap_available()
+            if success:
+                logger.info(message)
+            else:
+                logger.warning("⚠️ WinPcap auto-install: %s", message)
+                logger.warning("Packet capture may not work without WinPcap/Npcap")
+        else:
+            logger.info("WinPcap/Npcap already installed")
+    except Exception as e:
+        logger.warning("WinPcap check/install failed: %s", e)
+
+    logger.info("Step 3: Initializing firewall manager...")
+    from firewall import FirewallManager
+    agent.firewall = FirewallManager(
+        firewall_config.get("rule_prefix", "FirewallController")
+    )
+
+    # Save pre-SAINT firewall state once so Restore can revert to it.
+    # Skip-if-exists prevents clobbering the genuine baseline after a
+    # crashed run.
+    backup_cfg = firewall_config.get("backup", {}) or {}
+    if backup_cfg.get("enabled", True):
+        backup_path = backup_cfg.get(
+            "path", "profiles/backup.saint-snapshot.json"
+        )
+        logger.info("Saving pre-SAINT firewall snapshot (if missing)...")
+        agent.firewall.save_snapshot(backup_path)
+    else:
+        logger.info("Firewall backup disabled by config; skipping snapshot.")
+
+    # Link firewall to whitelist
+    if agent.whitelist:
+        agent.whitelist.set_firewall_manager(agent.firewall)
+        logger.info("Firewall manager linked to whitelist")
+
+    # Enable whitelist_only mode (the only supported mode).
+    logger.info("Enabling whitelist_only mode (Default Deny + allow whitelist)...")
+    server_config = config.get("server", {})
+    server_urls = []
+    if server_config.get("urls"):
+        server_urls.extend(server_config["urls"])
+    if server_config.get("url"):
+        server_urls.append(server_config["url"])
+
+    whitelist_ips: set = set()
+    whitelist_domains: set = set()
+    if agent.whitelist and hasattr(agent.whitelist, "_state"):
+        whitelist_ips = agent.whitelist._state.get_all_ips()
+        whitelist_domains = agent.whitelist._state.get_all_domains()
+        whitelist_domains.update(agent.whitelist._state.get_all_patterns())
+
+    logger.info(
+        "Whitelist data: %d IPs, %d domains/patterns",
+        len(whitelist_ips), len(whitelist_domains),
+    )
+
+    if agent.firewall.enable_whitelist_mode(
+        server_urls=server_urls,
+        whitelist_ips=whitelist_ips,
+        whitelist_domains=whitelist_domains,
+    ):
+        logger.info(
+            "Default Deny enabled - non-whitelisted traffic will be blocked"
+        )
+        result.record("firewall", STATUS_OK,
+                      f"whitelist_only mode ({len(whitelist_ips)} IPs, "
+                      f"{len(whitelist_domains)} domains)")
+    else:
+        logger.error("Failed to enable Default Deny policy")
+        result.record("firewall", STATUS_FAILED,
+                      "enable_whitelist_mode returned False")
+
+
+def _init_periodic_whitelist_sync(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 4: kick the periodic sync thread (initial sync already done)."""
+    if config.get("whitelist", {}).get("auto_sync", True):
+        agent.whitelist.start_sync()
+        interval = config.get('whitelist', {}).get('update_interval', 60)
+        logger.info(f"Whitelist periodic sync started (interval: {interval}s)")
+
+
+def _init_log_sender(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 5: build & start LogSender."""
+    logger.info("Step 5: Initializing log sender...")
+    from logging_module import LogSender
+
+    server_url = config.get("server_url") or config.get("server", {}).get("url")
+    agent_id = config.get("agent_id")
+    missing_creds = _missing_server_creds(server_url, agent_id)
+
+    if missing_creds:
+        msg = f"missing config: {', '.join(missing_creds)}"
+        logger.warning(f"Log sender not initialized - {msg}")
+        result.record("log_sender", STATUS_DEGRADED, msg)
+        return
+
+    try:
+        log_sender_config = {
+            "server": config.get("server", {}),
+            "server_url": server_url,
+            "agent_id": agent_id,
+            "batch_size": config.get("logging", {}).get("sender", {}).get("batch_size", 100),
+            "max_queue_size": config.get("logging", {}).get("sender", {}).get("max_queue_size", 1000),
+            "send_interval": config.get("logging", {}).get("sender", {}).get("send_interval", 2),
+        }
+        agent.log_sender = LogSender(log_sender_config)
+        agent.log_sender.start()
+        logger.info("Log sender initialized and started")
+        result.record("log_sender", STATUS_OK)
+    except Exception as e:
+        logger.warning(f"Log sender init failed: {e}")
+        result.record("log_sender", STATUS_DEGRADED, str(e))
+
+
+def _init_heartbeat(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 6: build & start HeartbeatSender, wire force_sync + version getter."""
+    logger.info("Step 6: Initializing heartbeat sender...")
+    from services import HeartbeatSender
+
+    server_url = config.get("server_url") or config.get("server", {}).get("url")
+    agent_id = config.get("agent_id")
+    missing_creds = _missing_server_creds(server_url, agent_id)
+
+    if missing_creds:
+        msg = f"missing config: {', '.join(missing_creds)}"
+        logger.warning(f"Heartbeat sender not initialized - {msg}")
+        result.record("heartbeat_sender", STATUS_DEGRADED, msg)
+        return
+
+    try:
+        heartbeat_config = {
+            "server": config.get("server", {}),
+            "heartbeat": config.get("heartbeat", {}),
+            "device_id": config.get("device_id") or agent.device_id,
+        }
+        agent.heartbeat = HeartbeatSender(heartbeat_config)
+        agent.heartbeat.set_agent_credentials(agent_id, config.get("agent_token", ""))
+        # Wire force_sync callback: when server requests re-sync (policy/whitelist changed)
+        if agent.whitelist and hasattr(agent.whitelist, 'sync_now'):
+            agent.heartbeat.on_force_sync = agent.whitelist.sync_now
+        # Wire whitelist version getter so heartbeat reports current versions
+        if agent.whitelist and hasattr(agent.whitelist, '_state'):
+            agent.heartbeat.get_whitelist_versions = lambda: {
+                "global_version": agent.whitelist._state._version or None,
+                "group_version": agent.whitelist._state._group_version or None,
+            }
+        agent.heartbeat.start()
+        logger.info("Heartbeat sender initialized and started")
+        result.record("heartbeat_sender", STATUS_OK)
+    except Exception as e:
+        logger.warning(f"Heartbeat sender init failed: {e}")
+        result.record("heartbeat_sender", STATUS_DEGRADED, str(e))
+
+
+def _init_packet_sniffer(agent: AgentRuntime, config: Dict, result: InitResult) -> None:
+    """Step 7: start packet capture (if enabled in config)."""
+    capture_config = config.get("capture", config.get("packet_capture", {}))
+    if not capture_config.get("enabled", True):
+        logger.info("Step 7: Packet capture disabled in config")
+        result.record("packet_sniffer", STATUS_SKIPPED, "disabled in config")
+        return
+
+    logger.info("Step 7: Initializing packet sniffer...")
+    try:
+        from capture import PacketSniffer
+        from .handlers import create_domain_handler
+
+        domain_handler = create_domain_handler(config, agent)
+        agent.sniffer = PacketSniffer(callback=domain_handler)
+        agent.sniffer.start()
+        logger.info("Packet sniffer initialized and started")
+        result.record("packet_sniffer", STATUS_OK)
+    except Exception as e:
+        logger.warning(f"Could not initialize packet sniffer: {e}")
+        logger.warning("Continuing without packet capture...")
+        result.record("packet_sniffer", STATUS_DEGRADED, str(e))
 
 
 def _missing_server_creds(server_url: Optional[str], agent_id: Optional[str]) -> List[str]:
@@ -470,10 +543,16 @@ def cleanup(config: Optional[Dict] = None,
             agent.sniffer.stop()
             agent.sniffer = None
         
-        # Stop whitelist sync
+        # Stop whitelist sync and tear down its resources (DNS resolver
+        # thread pool, cached state). Calling `cleanup()` instead of just
+        # `stop_sync()` ensures the OptimizedDNSResolver executor shuts
+        # down here rather than relying on the atexit handler.
         if hasattr(agent, 'whitelist') and agent.whitelist:
             logger.info("Stopping whitelist sync...")
-            agent.whitelist.stop_sync()
+            try:
+                agent.whitelist.cleanup()
+            except Exception as e:
+                logger.warning(f"Whitelist cleanup failed: {e}")
             agent.whitelist = None
         
         # Stop heartbeat sender

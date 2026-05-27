@@ -1,5 +1,7 @@
+import atexit
 import logging
 import platform
+import random
 import threading
 from typing import Dict, Optional
 
@@ -25,7 +27,13 @@ class HeartbeatSender:
         self.enabled = self.heartbeat_config.get("enabled", True)
         self.interval = self.heartbeat_config.get("interval", 20)
         self.timeout = self.heartbeat_config.get("timeout", 10)
+        # ``retry_interval`` is the *base* for exponential backoff (was a
+        # fixed sleep before). When the server is down we previously hammered
+        # it every 5 s; now we double the sleep up to ``max_retry_interval``,
+        # with full jitter to break herd effects across agents that came up
+        # at the same time. On the next success we reset to the base.
         self.retry_interval = self.heartbeat_config.get("retry_interval", 5)
+        self.max_retry_interval = self.heartbeat_config.get("max_retry_interval", 300)
         self.max_failures = self.heartbeat_config.get("max_failures", 3)
         
         # Credentials
@@ -38,6 +46,10 @@ class HeartbeatSender:
         self._thread: Optional[threading.Thread] = None
         self._consecutive_failures = 0
         self._last_successful_heartbeat: Optional[float] = None
+        # See LogSender for the same pattern: daemon thread + atexit safety
+        # net to wake the loop on hard exit so the interpreter doesn't
+        # block on an in-flight ``requests.post`` for the full timeout.
+        self._atexit_registered = False
 
         # Callback when server requests force sync (policy or whitelist changed)
         self.on_force_sync = None  # Set by caller: fn() -> None
@@ -72,19 +84,34 @@ class HeartbeatSender:
             name="HeartbeatSender"
         )
         self._thread.start()
+        if not self._atexit_registered:
+            atexit.register(self._atexit_stop)
+            self._atexit_registered = True
         logger.info(f"Heartbeat sender started (interval: {self.interval}s)")
-    
+
     def stop(self) -> None:
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
         logger.info("Heartbeat sender stopped")
+
+    def _atexit_stop(self) -> None:
+        """Signal the loop to exit at interpreter shutdown.
+
+        Heartbeats are idempotent (the server tolerates one being
+        missed/duplicated), so we don't try to flush. We only flip the
+        ``_running`` flag so the interruptible sleep inside
+        ``_heartbeat_loop`` returns within ~1 s instead of blocking on the
+        next ``requests.post`` timeout.
+        """
+        if self._running:
+            self._running = False
     
     def _heartbeat_loop(self) -> None:
         while self._running:
             try:
                 success = self._send_heartbeat()
-                
+
                 if success:
                     self._consecutive_failures = 0
                     self._last_successful_heartbeat = now()
@@ -96,17 +123,32 @@ class HeartbeatSender:
                             f"Too many consecutive heartbeat failures "
                             f"({self._consecutive_failures})"
                         )
-                    sleep_time = self.retry_interval
-                
+                    sleep_time = self._backoff_seconds()
+
                 # Interruptible sleep
                 for _ in range(int(sleep_time)):
                     if not self._running:
                         break
                     sleep(1)
-                    
+
             except Exception as e:
                 logger.error(f"Error in heartbeat loop: {e}")
-                sleep(self.retry_interval)
+                sleep(self._backoff_seconds())
+
+    def _backoff_seconds(self) -> float:
+        """Capped exponential backoff with full jitter.
+
+        Formula: ``random_uniform(0, min(cap, base * 2**n))`` where ``n`` is
+        the consecutive-failure count. This is AWS Architecture Blog's "full
+        jitter" recipe — it spreads retries across the whole window so a
+        fleet of agents coming back up doesn't thunder on the server. Reset
+        to the base happens implicitly by zeroing ``_consecutive_failures``
+        on the next success.
+        """
+        attempt = max(0, self._consecutive_failures - 1)
+        cap = max(1, int(self.max_retry_interval))
+        exp = min(cap, int(self.retry_interval) * (2 ** attempt))
+        return random.uniform(0, exp)
     
     def _send_heartbeat(self) -> bool:
         # Offline mode: no server URL configured. Skip silently — counting

@@ -485,14 +485,22 @@ class FirewallManager:
                 from agent.network import OptimizedDNSResolver
 
                 resolver = OptimizedDNSResolver(max_workers=10, timeout=5.0)
-                results = resolver.resolve_multiple_parallel(cleaned_domains)
+                try:
+                    results = resolver.resolve_multiple_parallel(cleaned_domains)
 
-                for domain, record in results.items():
-                    for ip in (record.ipv4 or []):
-                        if FirewallUtils.is_valid_ip(ip):
-                            resolved_ips.add(ip)
+                    for domain, record in results.items():
+                        for ip in (record.ipv4 or []):
+                            if FirewallUtils.is_valid_ip(ip):
+                                resolved_ips.add(ip)
 
-                logger.info(f"Resolved {len(cleaned_domains)} domains -> {len(resolved_ips)} IPs (optimized)")
+                    logger.info(f"Resolved {len(cleaned_domains)} domains -> {len(resolved_ips)} IPs (optimized)")
+                finally:
+                    # Ephemeral resolver: shut down its thread pool now so
+                    # worker threads don't linger until process exit.
+                    try:
+                        resolver.shutdown()
+                    except Exception as e:
+                        logger.debug(f"Ephemeral DNS resolver shutdown failed: {e}")
 
             except ImportError:
                 for domain in cleaned_domains:
@@ -613,13 +621,18 @@ class FirewallManager:
                         ips.add(ip)
                         logger.debug(f"Resolved {hostname} -> {ip}")
                     except socket.gaierror:
-                        # Try to get all IPs
+                        # Try to get all IPs. Narrow exception type so a
+                        # genuine bug (e.g. socket lib broken) isn't masked
+                        # as "could not resolve" — only DNS failures land
+                        # here.
                         try:
                             _, _, ip_list = socket.gethostbyname_ex(hostname)
                             for ip in ip_list:
                                 ips.add(ip)
-                        except:
-                            logger.warning(f"Could not resolve {hostname}")
+                        except (socket.gaierror, socket.herror) as e:
+                            logger.warning(
+                                f"Could not resolve {hostname}: {e.__class__.__name__}: {e}"
+                            )
             except Exception as e:
                 logger.warning(f"Error resolving {url}: {e}")
         

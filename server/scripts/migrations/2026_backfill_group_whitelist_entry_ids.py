@@ -19,7 +19,8 @@ What this script does:
   1. Scan every group document with a non-empty ``whitelist`` array.
   2. For each embedded entry without an ``_id`` field, generate a fresh
      ObjectId and persist it in place.
-  3. Skip entries that already have ``_id`` (idempotent).
+  3. Skip entries that already have an ``ObjectId`` ``_id``; convert valid
+     string ObjectIds back to BSON ``ObjectId`` so dotted-path queries match.
   4. Log a one-line summary so re-runs show "0 new IDs" once we're
      converged.
 
@@ -52,7 +53,7 @@ if _SERVER_ROOT not in sys.path:
 
 from bson import ObjectId  # noqa: E402
 
-from database.config import get_db, close_mongo_client  # noqa: E402
+from database.config import get_database, close_mongo_client  # noqa: E402
 
 
 logging.basicConfig(
@@ -67,13 +68,14 @@ def backfill(dry_run: bool = False) -> dict:
 
     Returns a stats dict — handy for tests and re-run reporting.
     """
-    db = get_db()
+    db = get_database()
     groups = db.groups
 
     scanned_groups = 0
     scanned_entries = 0
     updated_groups = 0
     new_ids = 0
+    normalized_ids = 0
 
     for group in groups.find({"whitelist": {"$exists": True, "$ne": []}}):
         scanned_groups += 1
@@ -86,8 +88,16 @@ def backfill(dry_run: bool = False) -> dict:
         for entry in whitelist:
             scanned_entries += 1
             if isinstance(entry, dict):
-                if entry.get("_id"):
+                entry_id = entry.get("_id")
+                if isinstance(entry_id, ObjectId):
                     new_entries.append(entry)
+                    continue
+                if entry_id and ObjectId.is_valid(str(entry_id)):
+                    entry_with_id = dict(entry)
+                    entry_with_id["_id"] = ObjectId(str(entry_id))
+                    new_entries.append(entry_with_id)
+                    mutated = True
+                    normalized_ids += 1
                     continue
                 # Stamp a fresh ObjectId. We do not derive it from
                 # (type, value) — that's still recoverable as the pseudo-ID
@@ -126,6 +136,7 @@ def backfill(dry_run: bool = False) -> dict:
         "scanned_entries": scanned_entries,
         "updated_groups": updated_groups,
         "new_ids_assigned": new_ids,
+        "ids_normalized": normalized_ids,
         "dry_run": dry_run,
     }
     logger.info("Migration summary: %s", stats)

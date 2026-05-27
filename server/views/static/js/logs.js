@@ -41,12 +41,9 @@ function getAgentDisplayName(log) {
     return log.agent_host || log.hostname || log.host_name || log.agent_id || 'Unknown Agent';
 }
 
-function escapeHtml(text) {
-    if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
-}
+// Delegate to the shared helper so XSS-escape behavior is identical across
+// admin pages (see server/views/static/js/core/utils.js).
+const escapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 // Server reconstructs a human description from the structured fields the agent
 // already sends (see agent/core/handlers.py::handle_domain_detection). This
@@ -128,39 +125,26 @@ function getLogDetailText(log) {
  */
 async function loadFullStatistics() {
     try {
-        console.log(' Loading full statistics...');
-        
+        SaintLog.debug(' Loading full statistics...');
+
         const params = new URLSearchParams();
         if (currentFilter.level) params.append('level', currentFilter.level);
         if (currentFilter.agent) params.append('agent_id', currentFilter.agent);
         if (currentFilter.search) params.append('search', currentFilter.search);
         if (currentFilter.time !== 'all') params.append('time_range', currentFilter.time);
-        
+
         const url = `/api/logs/stats?${params.toString()}`;
-        console.log(' Fetching statistics from:', url);
-        
-        const response = await fetch(url);
-        console.log(' Statistics response status:', response.status);
-        
-        if (response.ok) {
-            const responseText = await response.text();
-            console.log(' Raw statistics response:', responseText.substring(0, 500));
-            
-            try {
-                allTimeStats = JSON.parse(responseText);
-                console.log(' Statistics loaded:', allTimeStats);
-                return allTimeStats;
-            } catch (parseError) {
-                console.error(' Statistics JSON parse error:', parseError);
-                console.log(' Response text:', responseText);
-            }
-        } else {
-            console.error(' Failed to load statistics:', response.status, await response.text());
-        }
+        SaintLog.debug(' Fetching statistics from:', url);
+
+        allTimeStats = await SaintAPI.get(url);
+        SaintLog.debug(' Statistics loaded:', allTimeStats);
+        return allTimeStats;
     } catch (error) {
+        // SaintAPIError carries status + body so we don't need a manual
+        // .text() pass for diagnostic output.
         console.error(' Error loading statistics:', error);
     }
-    
+
     // Fallback statistics
     return {
         success: false,
@@ -176,11 +160,11 @@ async function loadFullStatistics() {
  */
 async function updateStatistics() {
     try {
-        console.log(' Updating statistics display...');
+        SaintLog.debug(' Updating statistics display...');
         
         await loadFullStatistics();
         
-        console.log(' Statistics data:', allTimeStats);
+        SaintLog.debug(' Statistics data:', allTimeStats);
         
         if (allTimeStats && allTimeStats.success) {
             const hasClientFilters = currentFilter.time !== 'all' ||
@@ -189,7 +173,7 @@ async function updateStatistics() {
                               currentFilter.search;
             const hasFilters = hasClientFilters || allTimeStats.has_filters;
 
-            console.log(' Has filters:', hasFilters, '(client:', hasClientFilters, 'server:', allTimeStats.has_filters, ')');
+            SaintLog.debug(' Has filters:', hasFilters, '(client:', hasClientFilters, 'server:', allTimeStats.has_filters, ')');
             
             // Update display elements
             const totalEl = document.getElementById('totalLogsCount');
@@ -225,7 +209,7 @@ async function updateStatistics() {
             }
             
         } else {
-            console.log(' Using fallback statistics calculation');
+            SaintLog.debug(' Using fallback statistics calculation');
             // Fallback: calculate from current logs data
             const total = logsData.length;
             const allowed = logsData.filter(log => (log.level === 'ALLOWED' || log.action === 'ALLOWED')).length;
@@ -255,80 +239,69 @@ async function updateStatistics() {
  */
 async function loadLogs() {
     try {
-        console.log('Loading logs with filter:', currentFilter);
+        SaintLog.debug('Loading logs with filter:', currentFilter);
         
         const params = new URLSearchParams();
         
         // Add all filter parameters
         if (currentFilter.level) {
             params.append('level', currentFilter.level);
-            console.log('  Level filter:', currentFilter.level);
+            SaintLog.debug('  Level filter:', currentFilter.level);
         }
         
         if (currentFilter.agent) {
             params.append('agent_id', currentFilter.agent);
-            console.log('  Agent filter:', currentFilter.agent);
+            SaintLog.debug('  Agent filter:', currentFilter.agent);
         }
         
         if (currentFilter.search) {
             params.append('search', currentFilter.search);
-            console.log('  Search filter:', currentFilter.search);
+            SaintLog.debug('  Search filter:', currentFilter.search);
         }
         
         if (currentFilter.time && currentFilter.time !== 'all') {
             params.append('time_range', currentFilter.time);
-            console.log('  Time filter:', currentFilter.time);
+            SaintLog.debug('  Time filter:', currentFilter.time);
         }
         
         params.append('limit', currentFilter.limit);
-        console.log('  Limit:', currentFilter.limit);
+        SaintLog.debug('  Limit:', currentFilter.limit);
         
         const url = `/api/logs?${params.toString()}`;
-        console.log('Fetching from URL:', url);
-        
-        const response = await fetch(url);
-        console.log('Response status:', response.status);
-        
-        if (response.ok) {
-            const responseText = await response.text();
-            console.log('📦 Raw response length:', responseText.length);
-            
-            try {
-                const data = JSON.parse(responseText);
-                console.log('Parsed JSON successfully');
-                console.log('Response structure:', {
-                    success: data.success,
-                    hasLogs: !!data.logs,
-                    logsLength: data.logs ? data.logs.length : 0,
-                    total: data.total
-                });
-                
-                if (data.logs && Array.isArray(data.logs)) {
-                    logsData = data.logs;
-                    console.log('Logs data assigned:', logsData.length, 'items');
-                    
-                    if (logsData.length > 0) {
-                        console.log('First log sample:', JSON.stringify(logsData[0], null, 2));
-                    }
-                    
-                    renderLogs(logsData);
-                    await updateStatistics();
-                } else {
-                    console.error('No valid logs array in response');
-                    console.log('📄 Full response:', data);
-                    showError('Invalid response format - no logs array');
-                }
-            } catch (parseError) {
-                console.error('JSON parse error:', parseError);
-                console.log('📄 Response text:', responseText.substring(0, 500));
-                showError('Failed to parse server response');
-            }
-        } else {
-            const errorText = await response.text();
-            console.error('Failed to load logs:', response.status, errorText);
-            showError(`Failed to load logs: ${response.status}`);
+        SaintLog.debug('Fetching from URL:', url);
+
+        let data;
+        try {
+            data = await SaintAPI.get(url);
+        } catch (apiErr) {
+            // SaintAPIError carries status + parsed body so we can surface
+            // the same diagnostic info the old hand-rolled fetch did.
+            console.error('Failed to load logs:', apiErr.status, apiErr.body);
+            showError(`Failed to load logs: ${apiErr.status || apiErr.message}`);
+            return;
         }
-        
+
+        SaintLog.debug('Response structure:', {
+            success: data.success,
+            hasLogs: !!data.logs,
+            logsLength: data.logs ? data.logs.length : 0,
+            total: data.total
+        });
+
+        if (data.logs && Array.isArray(data.logs)) {
+            logsData = data.logs;
+            SaintLog.debug('Logs data assigned:', logsData.length, 'items');
+            if (logsData.length > 0) {
+                SaintLog.debug('First log sample:', JSON.stringify(logsData[0], null, 2));
+            }
+            renderLogs(logsData);
+            await updateStatistics();
+        } else {
+            console.error('No valid logs array in response');
+            SaintLog.debug('Full response:', data);
+            showError('Invalid response format - no logs array');
+        }
+
     } catch (error) {
         console.error('Error loading logs:', error);
         showError('Error loading logs: ' + error.message);
@@ -341,18 +314,11 @@ async function loadLogs() {
  */
 async function loadAgentsForFilter() {
     try {
-        console.log('Loading agents for filter...');
-        const response = await fetch('/api/agents');
-        
-        if (response.ok) {
-            const data = await response.json();
-            agentsData = data.agents || [];
-            console.log(' Loaded agents:', agentsData.length);
-            
-            populateAgentFilter();
-        } else {
-            console.error('Failed to load agents:', response.status);
-        }
+        SaintLog.debug('Loading agents for filter...');
+        const data = await SaintAPI.get('/api/agents');
+        agentsData = data.agents || [];
+        SaintLog.debug(' Loaded agents:', agentsData.length);
+        populateAgentFilter();
     } catch (error) {
         console.error('Error loading agents:', error);
     }
@@ -408,14 +374,14 @@ function populateAgentFilter() {
         window.initCustomSelect('agent-filter');
     }
     
-    console.log(`Populated agent filter with ${sortedAgents.length} agents`);
+    SaintLog.debug(`Populated agent filter with ${sortedAgents.length} agents`);
 }
 
 /**
  *  Filter change handler
  */
 function onFilterChange() {
-    console.log('Filter changed, current state:', currentFilter);
+    SaintLog.debug('Filter changed, current state:', currentFilter);
     
     const levelFilter = document.getElementById('level-filter');
     const agentFilter = document.getElementById('agent-filter');
@@ -425,7 +391,7 @@ function onFilterChange() {
     currentFilter.agent = agentFilter ? agentFilter.value : '';
     currentFilter.search = searchInput ? searchInput.value : '';
     
-    console.log('Reloading logs with filter:', currentFilter);
+    SaintLog.debug('Reloading logs with filter:', currentFilter);
     loadLogs();
 }
 
@@ -433,7 +399,7 @@ function onFilterChange() {
  *  Render logs
  */
 function renderLogs(logs) {
-    console.log('🎨 renderLogs called with:', logs ? logs.length : 0, 'logs');
+    SaintLog.debug('🎨 renderLogs called with:', logs ? logs.length : 0, 'logs');
     
     const container = document.getElementById('logsContainer');
     
@@ -443,7 +409,7 @@ function renderLogs(logs) {
     }
     
     if (!logs || !Array.isArray(logs) || logs.length === 0) {
-        console.log(' No logs to render');
+        SaintLog.debug(' No logs to render');
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-file-alt"></i>
@@ -457,7 +423,7 @@ function renderLogs(logs) {
         return;
     }
     
-    console.log(' Starting to render', logs.length, 'logs');
+    SaintLog.debug(' Starting to render', logs.length, 'logs');
     container.innerHTML = '';
     
     let renderedCount = 0;
@@ -465,7 +431,7 @@ function renderLogs(logs) {
     logs.forEach((log, index) => {
         try {
             //  Enhanced data extraction with better fallbacks
-            console.log(` Processing log ${index}:`, log);
+            SaintLog.debug(` Processing log ${index}:`, log);
             
             const timestamp = log.timestamp ? 
                 (typeof log.timestamp === 'string' ? 
@@ -586,7 +552,7 @@ function renderLogs(logs) {
         cb.addEventListener('change', updateSelectedLogs);
     });
     
-    console.log(` Successfully rendered ${renderedCount}/${logs.length} logs`);
+    SaintLog.debug(` Successfully rendered ${renderedCount}/${logs.length} logs`);
 }
 
 /**
@@ -693,54 +659,53 @@ async function performClearAction() {
                 successMessage = 'Logs cleared successfully';
         }
         
-        console.log(' Clearing logs with:', requestBody);
-        
-        //  FIX: Use correct URL
-        const response = await fetch('/api/logs/clear', {
-            method: 'DELETE',
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        console.log(' Clear response status:', response.status);
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log(' Clear result:', result);
-            
-            if (result.success) {
-                const actualDeleted = result.deleted_count || 0;
-                
-                if (actualDeleted > 0) {
-                    showNotification('success', `${actualDeleted} logs cleared successfully`);
-                    
-                    // Reload data
-                    await loadLogs();
-                    
-                    // Clear selection
-                    selectedLogs.clear();
-                    updateSelectedLogs();
-                    
-                } else {
-                    showNotification('info', 'No logs were found to clear');
+        SaintLog.debug(' Clearing logs with:', requestBody);
+
+        let result;
+        try {
+            // SaintAPI sends DELETE with a JSON body via the same _send
+            // path. It attaches X-CSRF-Token automatically and parses the
+            // JSON response. If the server returns non-2xx the helper
+            // throws SaintAPIError carrying status + body.
+            result = await SaintAPI.raw('/api/logs/clear', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(requestBody),
+            }).then(async (response) => {
+                SaintLog.debug(' Clear response status:', response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('clearConfirmModal'));
-                if (modal) modal.hide();
-                
-            } else {
-                throw new Error(result.error || 'Failed to clear logs');
-            }
-        } else {
-            const errorText = await response.text();
-            console.error(' Clear failed:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                return response.json();
+            });
+        } catch (apiErr) {
+            console.error(' Clear failed:', apiErr);
+            throw apiErr;
         }
-        
+
+        SaintLog.debug(' Clear result:', result);
+
+        if (result.success) {
+            const actualDeleted = result.deleted_count || 0;
+            if (actualDeleted > 0) {
+                showNotification('success', `${actualDeleted} logs cleared successfully`);
+                await loadLogs();
+                selectedLogs.clear();
+                updateSelectedLogs();
+            } else {
+                showNotification('info', 'No logs were found to clear');
+            }
+            const modal = bootstrap.Modal.getInstance(document.getElementById('clearConfirmModal'));
+            if (modal) modal.hide();
+        } else {
+            throw new Error(result.error || 'Failed to clear logs');
+        }
+
     } catch (error) {
         console.error(' Error clearing logs:', error);
         showNotification('danger', `Failed to clear logs: ${error.message}`);
@@ -996,7 +961,7 @@ function showNotification(type, message) {
  *  SINGLE INITIALIZATION
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing logs management...');
+    SaintLog.debug('Initializing logs management...');
     
     // Initialize custom selects for static elements
     ['level-filter', 'limit-select'].forEach(id => {
@@ -1009,7 +974,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.time-pill.active')?.classList.remove('active');
             this.classList.add('active');
             currentFilter.time = this.dataset.time;
-            console.log('Time filter changed to:', currentFilter.time);
+            SaintLog.debug('Time filter changed to:', currentFilter.time);
             onFilterChange();
         });
     });
@@ -1019,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             currentFilter.search = this.value;
-            console.log('Search filter changed to:', currentFilter.search);
+            SaintLog.debug('Search filter changed to:', currentFilter.search);
             filterLogs(); // Use filterLogs for client-side search
         });
     }
@@ -1029,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (levelFilter) {
         levelFilter.addEventListener('change', function() {
             currentFilter.level = this.value;
-            console.log('Level filter changed to:', currentFilter.level);
+            SaintLog.debug('Level filter changed to:', currentFilter.level);
             onFilterChange();
         });
     }
@@ -1039,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (agentFilter) {
         agentFilter.addEventListener('change', function() {
             currentFilter.agent = this.value;
-            console.log('Agent filter changed to:', currentFilter.agent);
+            SaintLog.debug('Agent filter changed to:', currentFilter.agent);
             onFilterChange();
         });
     }
@@ -1049,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (limitSelect) {
         limitSelect.addEventListener('change', function() {
             currentFilter.limit = parseInt(this.value);
-            console.log('Limit changed to:', currentFilter.limit);
+            SaintLog.debug('Limit changed to:', currentFilter.limit);
             loadLogs();
         });
     }
@@ -1139,10 +1104,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load initial data
-    console.log('Loading initial data...');
+    SaintLog.debug('Loading initial data...');
     loadAgentsForFilter()
         .then(() => {
-            console.log('Agent filter loaded successfully');
+            SaintLog.debug('Agent filter loaded successfully');
             loadLogs();
         })
         .catch(error => {
@@ -1150,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loadLogs(); // Load logs anyway
         });
     
-    console.log('Logs management initialized');
+    SaintLog.debug('Logs management initialized');
 });
 
 // Socket.IO for real-time updates
@@ -1159,11 +1124,11 @@ try {
         const socket = io();
         
         socket.on('connect', function() {
-            console.log('Connected for real-time updates');
+            SaintLog.debug('Connected for real-time updates');
         });
         
         socket.on('new_log', function(logData) {
-            console.log(' New log received:', logData);
+            SaintLog.debug(' New log received:', logData);
             logsData.unshift(logData);
             logsData = logsData.slice(0, currentFilter.limit);
             updateStatistics();
@@ -1171,13 +1136,13 @@ try {
         });
         
         socket.on('logs_cleared', function(data) {
-            console.log(' Logs cleared:', data);
+            SaintLog.debug(' Logs cleared:', data);
             showNotification('info', `${data.count} logs were cleared`);
             loadLogs();
         });
         
     } else {
-        console.log(' Socket.IO not available');
+        SaintLog.debug(' Socket.IO not available');
     }
 } catch (error) {
     console.error(' Socket.IO error:', error);
@@ -1185,28 +1150,15 @@ try {
 
 //  Add emergency test function
 function emergencyTest() {
-    console.log('🚨 Running emergency test');
-    
+    SaintLog.debug('🚨 Running emergency test');
+
     // Test direct API call
-    fetch('/api/logs?limit=5')
-        .then(response => {
-            console.log(' Emergency test response status:', response.status);
-            return response.text();
-        })
-        .then(text => {
-            console.log(' Emergency test response text length:', text.length);
-            console.log(' Emergency test response start:', text.substring(0, 300));
-            
-            try {
-                const data = JSON.parse(text);
-                console.log(' Emergency test parsed data:', data);
-                
-                if (data.logs) {
-                    console.log(' Emergency test logs count:', data.logs.length);
-                    renderLogs(data.logs);
-                }
-            } catch (e) {
-                console.error(' Emergency test parse error:', e);
+    SaintAPI.get('/api/logs?limit=5')
+        .then(data => {
+            SaintLog.debug(' Emergency test parsed data:', data);
+            if (data.logs) {
+                SaintLog.debug(' Emergency test logs count:', data.logs.length);
+                renderLogs(data.logs);
             }
         })
         .catch(error => {
@@ -1216,7 +1168,7 @@ function emergencyTest() {
 
 //  Add test render function
 function testRender() {
-    console.log(' Testing render with sample data');
+    SaintLog.debug(' Testing render with sample data');
     
     const sampleLogs = [
         {
@@ -1247,7 +1199,7 @@ function testRender() {
         }
     ];
     
-    console.log(' Rendering sample logs:', sampleLogs);
+    SaintLog.debug(' Rendering sample logs:', sampleLogs);
     renderLogs(sampleLogs);
 }
 

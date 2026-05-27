@@ -21,6 +21,7 @@ from typing import Tuple
 from services.admin_auth_service import AdminAuthService
 from services.jwt_service import JWTService
 from middleware.rbac import require_login
+from middleware.csrf import set_csrf_cookie, delete_csrf_cookie
 from time_utils import now_iso
 from utils.request_ip import get_client_ip
 from database.config import get_config_by_name
@@ -130,6 +131,11 @@ class WebAuthController:
 
             # Build response with httpOnly cookies
             tokens = result["tokens"]
+            # Mint a fresh CSRF token for this session. We include it in the
+            # JSON body so single-page clients can pick it up immediately
+            # without an extra ``document.cookie`` read, and also drop it on
+            # a non-httpOnly cookie so the SaintAPI helper can echo it back
+            # in the ``X-CSRF-Token`` header on subsequent mutations.
             resp = make_response(jsonify({
                 "success": True,
                 "message": "Login successful",
@@ -158,6 +164,19 @@ class WebAuthController:
                 path=COOKIE_PATH,
                 max_age=tokens.get("refresh_expires_in", 604800),
             )
+
+            csrf_token = set_csrf_cookie(resp)
+            # Re-emit the response body with the CSRF token included so the
+            # frontend can pick it up before its first cookie-read race.
+            resp.set_data(jsonify({
+                "success": True,
+                "message": "Login successful",
+                "data": {
+                    "user": result["user"],
+                    "tokens": tokens,
+                    "csrf_token": csrf_token,
+                },
+            }).get_data())
 
             return resp
 
@@ -216,11 +235,17 @@ class WebAuthController:
                     return self._error(error, 401, "REFRESH_TOKEN_EXPIRED")
                 return self._error(error or "Refresh failed", 401)
 
-            # Update access_token cookie
+            # Update access_token cookie and rotate the CSRF token. Rotating
+            # on refresh limits the lifetime of a leaked CSRF cookie to one
+            # access-token window.
+            csrf_token = set_csrf_cookie(make_response())  # generate fresh value
+            result_with_csrf = dict(result)
+            result_with_csrf["csrf_token"] = csrf_token
+
             resp = make_response(jsonify({
                 "success": True,
                 "message": "Token refreshed",
-                "data": result,
+                "data": result_with_csrf,
             }))
             resp.set_cookie(
                 COOKIE_ACCESS_NAME,
@@ -231,6 +256,7 @@ class WebAuthController:
                 path=COOKIE_PATH,
                 max_age=result.get("expires_in", 86400),
             )
+            set_csrf_cookie(resp, csrf_token)
             return resp
 
         except Exception as e:
@@ -261,6 +287,7 @@ class WebAuthController:
             }))
             resp.delete_cookie(COOKIE_ACCESS_NAME, path=COOKIE_PATH)
             resp.delete_cookie(COOKIE_REFRESH_NAME, path=COOKIE_PATH)
+            delete_csrf_cookie(resp)
 
             return resp
 

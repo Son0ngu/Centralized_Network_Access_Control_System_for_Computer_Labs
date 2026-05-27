@@ -173,8 +173,7 @@
 // ========================================
 (function() {
     // Fetch current user info for navbar
-    fetch('/api/admin/auth/me', { credentials: 'same-origin' })
-        .then(r => r.json())
+    SaintAPI.get('/api/admin/auth/me')
         .then(data => {
             if (data.success && data.user) {
                 const u = data.user;
@@ -186,13 +185,12 @@
         })
         .catch(() => {});
 
-    // Logout function
+    // Logout function. SaintAPI.post automatically attaches the CSRF
+    // token; we still redirect to /login on any failure so a stale
+    // session doesn't trap the user on the current page.
     window.doLogout = function() {
-        fetch('/api/admin/auth/logout', {
-            method: 'POST',
-            credentials: 'same-origin',
-        })
-        .then(() => { window.location.href = '/login'; })
-        .catch(() => { window.location.href = '/login'; });
+        SaintAPI.post('/api/admin/auth/logout')
+            .then(() => { window.location.href = '/login'; })
+            .catch(() => { window.location.href = '/login'; });
     };
 })();

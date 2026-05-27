@@ -49,17 +49,7 @@
 
         // Verify with server (authoritative)
         try {
-            const resp = await fetch(AUTH_ME_API, { credentials: 'same-origin' });
-
-            if (resp.status === 401) {
-                // Not authenticated
-                handleNotAuthenticated();
-                return;
-            }
-
-            if (!resp.ok) return;
-
-            const data = await resp.json();
+            const data = await SaintAPI.get(AUTH_ME_API);
             if (data.success && data.data) {
                 const user = data.data;
                 sessionStorage.setItem('saint_user', JSON.stringify({
@@ -71,8 +61,14 @@
                 startTokenRefreshTimer();
             }
         } catch (err) {
+            // SaintAPIError with status 401 means not authenticated; any
+            // other status (or a network error) we treat as transient and
+            // fall back to the cached user data already applied above.
+            if (err && err.status === 401) {
+                handleNotAuthenticated();
+                return;
+            }
             console.warn('Auth check failed:', err);
-            // If server unreachable, use cached data
         }
     }
 
@@ -168,28 +164,18 @@
 
     async function refreshToken() {
         try {
-            const resp = await fetch(AUTH_REFRESH_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({}),
-            });
-
-            if (resp.status === 401) {
-                // Refresh failed, session expired
+            await SaintAPI.post(AUTH_REFRESH_API, {});
+            console.debug('Token refreshed successfully');
+            return true;
+        } catch (err) {
+            if (err && err.status === 401) {
                 console.warn('Token refresh failed, session expired');
                 handleNotAuthenticated();
                 return false;
             }
-
-            if (resp.ok) {
-                console.debug('Token refreshed successfully');
-                return true;
-            }
-        } catch (err) {
             console.warn('Token refresh error:', err);
+            return false;
         }
-        return false;
     }
 
     // ========================================================================
@@ -198,12 +184,7 @@
 
     async function doLogout() {
         try {
-            await fetch(AUTH_LOGOUT_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({}),
-            });
+            await SaintAPI.post(AUTH_LOGOUT_API, {});
         } catch (err) {
             console.warn('Logout request failed:', err);
         }

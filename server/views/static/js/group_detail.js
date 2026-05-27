@@ -19,7 +19,7 @@ let wpAssignedTeachers = [];   // Current assigned teacher ObjectIds
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Group detail page initialized for:', groupId);
+    SaintLog.debug('Group detail page initialized for:', groupId);
     
     loadGroupAgents();
     setupEventListeners();
@@ -86,7 +86,7 @@ function setupSocketIO() {
     });
 
     socket.on('connect', () => {
-        console.log('Socket.IO connected');
+        SaintLog.debug('Socket.IO connected');
     });
 }
 
@@ -108,13 +108,10 @@ function formatDates() {
 
 async function loadGroupAgents() {
     try {
-        const response = await fetch(`/api/agents?group_id=${groupId}`);
-        if (!response.ok) throw new Error('Failed to load agents');
-
-        const data = await response.json();
+        const data = await SaintAPI.get(`/api/agents?group_id=${groupId}`);
         groupAgents = data.agents || [];
 
-        console.log(`Loaded ${groupAgents.length} agents for group`);
+        SaintLog.debug(`Loaded ${groupAgents.length} agents for group`);
 
         // Load policies for all agents in parallel
         await loadAgentPolicies(groupAgents.map(a => a.agent_id));
@@ -136,15 +133,13 @@ async function loadAgentPolicies(agentIds) {
     // Load policy for each agent (batch would be better but individual is fine for now)
     const promises = agentIds.map(async (id) => {
         try {
-            const resp = await fetch(`/api/agents/${id}/policy`);
-            if (resp.ok) {
-                const result = await resp.json();
-                if (result.success && result.data) {
-                    agentPolicies[id] = result.data;
-                }
+            const result = await SaintAPI.get(`/api/agents/${id}/policy`);
+            if (result.success && result.data) {
+                agentPolicies[id] = result.data;
             }
         } catch (e) {
-            // Policy not found = none, which is fine
+            // Policy not found = none, which is fine.
+            // SaintAPI throws on non-2xx; swallow silently.
         }
     });
     await Promise.all(promises);
@@ -153,12 +148,9 @@ async function loadAgentPolicies(agentIds) {
 async function loadAllAgents() {
     try {
         // Ask server to exclude agents already in this group so the picker only shows available ones
-        const response = await fetch(`/api/agents?exclude_group_id=${groupId}`);
-        if (!response.ok) throw new Error('Failed to load agents');
-        
-        const data = await response.json();
+        const data = await SaintAPI.get(`/api/agents?exclude_group_id=${groupId}`);
         allAgents = data.agents || [];
-        
+
         return allAgents;
     } catch (error) {
         console.error('Error loading all agents:', error);
@@ -421,32 +413,26 @@ async function addSelectedAgents() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Adding...';
     
     try {
-        const promises = Array.from(selectedAgents).map(agentId => 
-            fetch(`/api/agents/${agentId}/group`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ group_id: groupId })
-            })
+        const promises = Array.from(selectedAgents).map(agentId =>
+            SaintAPI.patch(`/api/agents/${agentId}/group`, { group_id: groupId })
         );
-        
+
         await Promise.all(promises);
 
         // If adding to specific slot
         if (targetSlotPosition !== null && selectedAgents.size === 1) {
             const agentId = selectedAgents.values().next().value;
-            await fetch(`/api/agents/${agentId}/position`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ position: targetSlotPosition })
+            await SaintAPI.patch(`/api/agents/${agentId}/position`, {
+                position: targetSlotPosition,
             });
         }
-        
+
         showSuccess(`Added ${selectedAgents.size} agent(s) to group`);
         bootstrap.Modal.getInstance(document.getElementById('addAgentModal')).hide();
-        
+
         // Reload agents
         await loadGroupAgents();
-        
+
     } catch (error) {
         console.error('Error adding agents:', error);
         showError('Failed to add some agents');
@@ -474,25 +460,20 @@ async function removeAgentFromGroup(agentId) {
     
     try {
         // Get pending group ID
-        const groupsResponse = await fetch('/api/groups');
-        const groupsData = await groupsResponse.json();
+        const groupsData = await SaintAPI.get('/api/groups');
         const pendingGroup = groupsData.data?.find(g => g.is_system && g.name === 'pending');
-        
+
         if (!pendingGroup) {
             throw new Error('Pending group not found');
         }
-        
-        const response = await fetch(`/api/agents/${agentId}/group`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_id: pendingGroup._id })
+
+        await SaintAPI.patch(`/api/agents/${agentId}/group`, {
+            group_id: pendingGroup._id,
         });
-        
-        if (!response.ok) throw new Error('Failed to remove agent');
-        
+
         showSuccess(`${displayName} removed from group`);
         await loadGroupAgents();
-        
+
     } catch (error) {
         console.error('Error removing agent:', error);
         showError('Failed to remove agent from group');
@@ -559,28 +540,26 @@ async function saveGroupChanges() {
     }
     
     try {
-        const response = await fetch(`/api/groups/${groupId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description })
+        const result = await SaintAPI.patch(`/api/groups/${groupId}`, {
+            name,
+            description,
         });
-        
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to update group');
+
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to update group');
         }
-        
+
         // Update page
         document.getElementById('groupName').textContent = name;
         document.getElementById('groupDescription').textContent = description || 'No description';
-        
+
         bootstrap.Modal.getInstance(document.getElementById('editGroupModal')).hide();
         showSuccess('Group updated successfully');
-        
+
     } catch (error) {
+        const msg = (error && error.body && (error.body.error || error.body.message)) || error.message;
         console.error('Error updating group:', error);
-        showError(error.message || 'Failed to update group');
+        showError(msg || 'Failed to update group');
     }
 }
 
@@ -618,11 +597,9 @@ function formatTimestamp(timestamp) {
     }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Delegate to the shared helper so XSS-escape behavior is identical across
+// admin pages (see server/views/static/js/core/utils.js).
+const escapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 function showSuccess(message) {
     if (typeof showNotification === 'function') {
@@ -684,17 +661,9 @@ async function saveGroupLayout() {
     if (!cols || cols < 1) cols = 1;
 
     try {
-        const response = await fetch(`/api/groups/${groupId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                layout: { rows: rows, cols: cols }
-            })
+        await SaintAPI.patch(`/api/groups/${groupId}`, {
+            layout: { rows: rows, cols: cols },
         });
-        
-        if (!response.ok) {
-            console.error("Failed to save room layout to database");
-        }
     } catch (e) {
         console.error("Error saving room layout:", e);
     }
@@ -1009,15 +978,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function updateAgentPosition(agentId, position) {
     try {
-        const response = await fetch(`/api/agents/${agentId}/position`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ position: position })
-        });
-
-        if (!response.ok) throw new Error('Failed to update position');
+        await SaintAPI.patch(`/api/agents/${agentId}/position`, { position });
 
         // Update local state
         const agent = groupAgents.find(a => a.agent_id === agentId);
@@ -1227,8 +1188,7 @@ async function ctxViewPolicy() {
     modal.show();
 
     try {
-        const resp = await fetch(`/api/agents/${ctxTargetAgentId}/policy`);
-        const result = await resp.json();
+        const result = await SaintAPI.get(`/api/agents/${ctxTargetAgentId}/policy`);
         const p = result.data || {};
 
         const modeLabels = {
@@ -1268,16 +1228,10 @@ async function applyPolicy(agentId, mode, reason = '', durationMinutes = null, c
         if (durationMinutes) body.duration_minutes = durationMinutes;
         if (customWhitelist) body.custom_whitelist = customWhitelist;
 
-        const resp = await fetch(`/api/agents/${agentId}/policy`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
+        const result = await SaintAPI.patch(`/api/agents/${agentId}/policy`, body);
 
-        const result = await resp.json();
-
-        if (!resp.ok || !result.success) {
-            throw new Error(result.error || 'Failed to set policy');
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to set policy');
         }
 
         // Update local cache
@@ -1318,8 +1272,7 @@ async function wlLoadEntries() {
     if (!container) return;
 
     try {
-        const res = await fetch(`/api/groups/${groupId}`);
-        const data = await res.json();
+        const data = await SaintAPI.get(`/api/groups/${groupId}`);
 
         if (!data.success) {
             container.innerHTML = '<div class="wl-empty-state"><p>Error loading whitelist</p></div>';
@@ -1503,12 +1456,9 @@ async function wlAddEntry() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     try {
-        const res = await fetch(`/api/groups/${groupId}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ whitelist: currentDomains })
+        const data = await SaintAPI.patch(`/api/groups/${groupId}`, {
+            whitelist: currentDomains,
         });
-        const data = await res.json();
 
         if (data.success) {
             input.value = '';
@@ -1541,12 +1491,9 @@ async function wlDeleteEntry(entryIndex) {
     const removedVal = typeof removed[0] === 'string' ? removed[0] : removed[0]?.value;
 
     try {
-        const res = await fetch(`/api/groups/${groupId}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ whitelist: currentDomains })
+        const data = await SaintAPI.patch(`/api/groups/${groupId}`, {
+            whitelist: currentDomains,
         });
-        const data = await res.json();
 
         if (data.success) {
             showNotification('success', `Deleted "${removedVal}"`);
@@ -1570,14 +1517,10 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-/**
- * Escape HTML to prevent XSS
- */
-function wlEscapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
+// Whitelist editor + teacher modals used a separate name (``wlEscapeHtml``)
+// for historical reasons. Keep the name so call sites in this file don't
+// move, but route through the shared helper.
+const wlEscapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 // ========================================
 // WHITELIST PROFILES
@@ -1585,8 +1528,7 @@ function wlEscapeHtml(str) {
 
 async function wpLoadProfiles() {
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles`);
-        const data = await res.json();
+        const data = await SaintAPI.get(`/api/groups/${groupId}/profiles`);
         if (!data.success) return;
         wpProfiles = data.data || [];
         wpRenderProfiles();
@@ -1705,8 +1647,7 @@ function wpRenderProfiles() {
 async function wpActivate(profileId) {
     // Refresh from server to get fresh state before activating
     try {
-        const freshRes = await fetch(`/api/groups/${groupId}/profiles`);
-        const freshData = await freshRes.json();
+        const freshData = await SaintAPI.get(`/api/groups/${groupId}/profiles`);
         if (freshData.success) {
             wpProfiles = freshData.data || [];
             wpRenderProfiles();
@@ -1723,8 +1664,7 @@ async function wpActivate(profileId) {
     }
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}/activate`, { method: 'POST' });
-        const data = await res.json();
+        const data = await SaintAPI.post(`/api/groups/${groupId}/profiles/${profileId}/activate`);
         if (data.success) {
             await wpLoadProfiles();
             showNotification('success', 'Profile activated');
@@ -1738,8 +1678,7 @@ async function wpActivate(profileId) {
 
 async function wpDeactivate(profileId) {
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}/deactivate`, { method: 'POST' });
-        const data = await res.json();
+        const data = await SaintAPI.post(`/api/groups/${groupId}/profiles/${profileId}/deactivate`);
         if (data.success) {
             await wpLoadProfiles();
             showNotification('warning', 'Profile deactivated - fallback to Default');
@@ -1773,13 +1712,7 @@ async function saveProfile() {
     const payload = { name, domains: [] };
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
+        const data = await SaintAPI.post(`/api/groups/${groupId}/profiles`, payload);
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('profileModal'))?.hide();
             await wpLoadProfiles();
@@ -1795,8 +1728,7 @@ async function saveProfile() {
 async function wpDeleteProfile(profileId) {
     if (!confirm('Delete this profile?')) return;
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, { method: 'DELETE' });
-        const data = await res.json();
+        const data = await SaintAPI.del(`/api/groups/${groupId}/profiles/${profileId}`);
         if (data.success) {
             wpLoadProfiles();
             showNotification('success', 'Profile deleted');
@@ -1818,8 +1750,7 @@ async function wpLoadTeachers() {
 
     try {
         // Get group data to find current teacher_ids
-        const res = await fetch(`/api/groups/${groupId}`);
-        const data = await res.json();
+        const data = await SaintAPI.get(`/api/groups/${groupId}`);
         if (!data.success) return;
 
         const group = data.data;
@@ -1845,8 +1776,7 @@ async function wpRenderTeachersList(group) {
 
     // Fetch user details for assigned teachers
     try {
-        const res = await fetch('/api/admin/users');
-        const data = await res.json();
+        const data = await SaintAPI.get('/api/admin/users');
         if (!data.success) return;
 
         const allUsers = data.data?.users || data.data || [];
@@ -1882,8 +1812,7 @@ async function openAssignTeacherModal() {
     new bootstrap.Modal(document.getElementById('assignTeacherModal')).show();
 
     try {
-        const res = await fetch('/api/admin/users');
-        const data = await res.json();
+        const data = await SaintAPI.get('/api/admin/users');
         if (!data.success) return;
 
         const allUsers = data.data?.users || data.data || [];
@@ -1918,12 +1847,9 @@ async function saveTeacherAssignments() {
     });
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/teachers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ teacher_ids: selectedIds })
+        const data = await SaintAPI.post(`/api/groups/${groupId}/teachers`, {
+            teacher_ids: selectedIds,
         });
-        const data = await res.json();
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('assignTeacherModal'))?.hide();
             wpAssignedTeachers = selectedIds;
@@ -1942,12 +1868,9 @@ async function wpRemoveTeacher(teacherId) {
     const newIds = wpAssignedTeachers.filter(id => id !== String(teacherId));
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/teachers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ teacher_ids: newIds })
+        const data = await SaintAPI.post(`/api/groups/${groupId}/teachers`, {
+            teacher_ids: newIds,
         });
-        const data = await res.json();
         if (data.success) {
             wpAssignedTeachers = newIds;
             wpLoadTeachers();
@@ -2056,12 +1979,10 @@ async function wpSaveProfileDomains() {
     const profileId = epdEditingProfile._id;
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/profiles/${profileId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domains: epdDomains })
-        });
-        const data = await res.json();
+        const data = await SaintAPI.patch(
+            `/api/groups/${groupId}/profiles/${profileId}`,
+            { domains: epdDomains },
+        );
 
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('editProfileDomainsModal'))?.hide();

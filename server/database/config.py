@@ -76,6 +76,9 @@ class Config:
     ADMIN_COOKIE_SECURE = get_env('ADMIN_COOKIE_SECURE', False)
     ENABLE_DEBUG_ENDPOINTS = get_env('ENABLE_DEBUG_ENDPOINTS', False)
     DEBUG_AUTH_QUERY_TOKEN = get_env('DEBUG_AUTH_QUERY_TOKEN', False)
+    # CSRF (double-submit cookie). Default ON; disable only for tests that
+    # don't go through the login flow.
+    ENFORCE_CSRF = get_env('ENFORCE_CSRF', True)
 
 def get_mongo_client(config):
     """Get MongoDB client with optimized settings - vietnam logging"""
@@ -160,6 +163,11 @@ class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     MONGO_DBNAME = 'test_firewall_controller'
+    # Tests use the Flask test client directly without going through login,
+    # so they typically have neither csrf cookie nor header. Keep the
+    # middleware registered for coverage, but disable enforcement here so
+    # the existing test suite doesn't need a global rewrite.
+    ENFORCE_CSRF = False
 
 def get_config_by_name(config_name: str = None) -> Config:
     """Get configuration by environment name"""

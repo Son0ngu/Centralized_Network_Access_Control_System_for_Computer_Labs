@@ -8,12 +8,58 @@ from flask_socketio import SocketIO
 
 from bootstrap.container import initialize_container, initialize_database_indexes
 from database.config import get_config, get_database, validate_config
+from middleware.csrf import register_csrf
 from routes.errors import register_error_handlers
 from routes.pages import register_page_routes
 from routes.socketio_events import register_socketio_events
 from time_utils import format_datetime, parse_agent_timestamp
 
 logger = logging.getLogger(__name__)
+
+API_CORS_OPTIONS = {
+    "origins": ["*"],
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": [
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Agent-ID",
+        "X-Access-Token",
+        "X-CSRF-Token",
+    ],
+}
+
+
+def _configure_cors(app) -> None:
+    """Configure CORS for API routes."""
+    CORS(app, resources={r"/api/*": API_CORS_OPTIONS})
+
+
+def _create_socketio(app, async_mode: str):
+    """Create Socket.IO and fall back when the configured backend is missing."""
+    try:
+        return SocketIO(
+            app,
+            cors_allowed_origins="*",
+            async_mode=async_mode,
+            logger=False,
+            engineio_logger=False,
+        )
+    except ValueError as exc:
+        if "Invalid async_mode" not in str(exc) or async_mode == "threading":
+            raise
+        app.logger.warning(
+            "Socket.IO async_mode '%s' is unavailable; falling back to 'threading'",
+            async_mode,
+        )
+        app.config["SOCKETIO_ASYNC_MODE"] = "threading"
+        return SocketIO(
+            app,
+            cors_allowed_origins="*",
+            async_mode="threading",
+            logger=False,
+            engineio_logger=False,
+        )
 
 
 def create_app():
@@ -43,26 +89,11 @@ def create_app():
     if not validate_config(config):
         raise RuntimeError("Invalid configuration")
 
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": ["*"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": [
-                "Content-Type",
-                "Authorization",
-                "X-API-Key",
-                "X-Agent-ID",
-                "X-Access-Token",
-            ],
-        }
-    })
+    _configure_cors(app)
 
-    socketio = SocketIO(
+    socketio = _create_socketio(
         app,
-        cors_allowed_origins="*",
-        async_mode=getattr(config, "SOCKETIO_ASYNC_MODE", "gevent"),
-        logger=False,
-        engineio_logger=False,
+        getattr(config, "SOCKETIO_ASYNC_MODE", "gevent"),
     )
 
     try:
@@ -79,6 +110,12 @@ def create_app():
     except Exception as exc:
         app.logger.error(f" Failed to initialize MVC components: {exc}")
         raise
+
+    # CSRF check must be registered before route handlers run. It hooks
+    # before_request, so order vs. blueprint registration doesn't affect
+    # correctness, but keeping it near the top makes the security posture
+    # obvious to readers.
+    register_csrf(app)
 
     register_page_routes(app)
     register_error_handlers(app)

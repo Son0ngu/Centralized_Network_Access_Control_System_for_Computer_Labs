@@ -48,6 +48,13 @@ def _apply_entry_update(entry: Dict, update_data: Dict) -> None:
             entry[k] = v
 
 
+# Target removal: 2026-Q4 (after the unified whitelist_entries migration
+# has run in production and access logs confirm no remaining callers). If
+# you are reading this past that date, grep for callers and delete the five
+# ``*_domain[s]`` methods + this helper.
+LEGACY_DOMAIN_API_REMOVAL = "2026-Q4"
+
+
 def _warn_legacy_domain_api(method_name: str) -> None:
     """Emit a single DeprecationWarning when a legacy domain API is called.
 
@@ -56,12 +63,13 @@ def _warn_legacy_domain_api(method_name: str) -> None:
     older callers (some CLI scripts, integration tests) import them by
     name, but new code MUST use the entry API — the next phase removes
     these methods and replaces them with a thin compat shim, then drops
-    that shim too.
+    that shim too. Planned removal: see ``LEGACY_DOMAIN_API_REMOVAL``.
     """
     warnings.warn(
         f"WhitelistService.{method_name}() is deprecated — use the entry API "
-        f"(add_entry / delete_entry / bulk_*). This wrapper will be removed "
-        f"after the unified whitelist_entries migration lands.",
+        f"(add_entry / delete_entry / bulk_*). Scheduled for removal in "
+        f"{LEGACY_DOMAIN_API_REMOVAL} after the unified whitelist_entries "
+        f"migration lands.",
         DeprecationWarning,
         stacklevel=3,
     )

@@ -254,11 +254,7 @@ async function preloadLatestLogsForAgents(agentIds = []) {
 
     try {
         const limit = Math.min(Math.max(agentIds.length * 3, 50), 300);
-        const response = await fetch(`/api/logs?limit=${limit}`);
-
-        if (!response.ok) return;
-
-        const data = await response.json();
+        const data = await SaintAPI.get(`/api/logs?limit=${limit}`);
         const latestByAgent = {};
 
         (data.logs || []).forEach((log) => {
@@ -272,6 +268,8 @@ async function preloadLatestLogsForAgents(agentIds = []) {
             updateAgentLogElement(agentId);
         });
     } catch (error) {
+        // SaintAPIError on network/HTTP failure — preload is best-effort,
+        // so we log and move on without showing the user an error.
         console.error('Error preloading latest logs:', error);
     }
 }
@@ -281,32 +279,35 @@ async function preloadLatestLogsForAgents(agentIds = []) {
  */
 async function loadAgents() {
     try {
-        console.log(' Loading agents...');
-        
-        const [agentsResponse, statsResponse] = await Promise.all([
-            fetch('/api/agents').catch(err => ({ ok: false, statusText: err.message })),
-            fetch('/api/agents/statistics').catch(err => ({ ok: false, statusText: err.message }))
+        SaintLog.debug(' Loading agents...');
+
+        // Promise.allSettled so one failing endpoint doesn't break the
+        // other — matches the previous behavior where each fetch had its
+        // own ``.catch`` returning a fake ``{ok: false, ...}``.
+        const [agentsResult, statsResult] = await Promise.allSettled([
+            SaintAPI.get('/api/agents'),
+            SaintAPI.get('/api/agents/statistics'),
         ]);
-        
-        if (agentsResponse.ok) {
-            const data = await agentsResponse.json();
+
+        if (agentsResult.status === 'fulfilled') {
+            const data = agentsResult.value;
             agentsData = data.agents || [];
-            console.log(' Loaded agents:', agentsData);
+            SaintLog.debug(' Loaded agents:', agentsData);
             renderAgents(agentsData);
             await preloadLatestLogsForAgents(agentsData.map(agent => getAgentId(agent)).filter(Boolean));
         } else {
-            console.error(' Failed to load agents:', agentsResponse.statusText);
+            console.error(' Failed to load agents:', agentsResult.reason);
             showError('Failed to load agents');
         }
-        
-        if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
+
+        if (statsResult.status === 'fulfilled') {
+            const statsData = statsResult.value;
             updateStatistics(statsData.data);
         } else {
             updateStatistics();
         }
-    
-    // Ensure the group board reflects the latest agent assignments/counts
+
+        // Ensure the group board reflects the latest agent assignments/counts
         // even if the groups were fetched before the agents finished loading.
         refreshGroupBoardIfReady();
 
@@ -476,18 +477,21 @@ function renderAgents(agents) {
                                     data-action="edit-name"
                                     data-agent-id="${agentId}"
                                     onclick="editAgentDisplayName('${agentId}')"
-                                    title="Edit Display Name">
-                                <i class="fas fa-pen"></i>
+                                    title="Edit Display Name"
+                                    aria-label="Edit display name for agent ${agentId}">
+                                <i class="fas fa-pen" aria-hidden="true"></i>
                             </button>
                             <button type="button" class="btn btn-outline-primary btn-action"
                                     onclick="viewAgentLogs('${agentId}')"
-                                    title="View Logs">
-                                <i class="fas fa-file-alt"></i>
+                                    title="View Logs"
+                                    aria-label="View logs for agent ${agentId}">
+                                <i class="fas fa-file-alt" aria-hidden="true"></i>
                             </button>
                             <button type="button" class="btn btn-outline-danger btn-action"
                                     onclick="removeAgent('${agentId}')"
-                                    title="Remove Agent">
-                                <i class="fas fa-trash"></i>
+                                    title="Remove Agent"
+                                    aria-label="Remove agent ${agentId}">
+                                <i class="fas fa-trash" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -760,17 +764,18 @@ async function moveAgentToGroup(agentId, groupId) {
             groupCard.style.pointerEvents = 'none';
         }
 
-        const response = await fetch(`/api/agents/${resolvedAgentId}/group`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_id: resolvedGroupId })
-        });
-
-        const result = await response.json().catch(() => ({}));
-
-        if (!response.ok || result.success === false) {
-            const errorMessage = result.error || result.message || 'Failed to move agent';
+        let result;
+        try {
+            result = await SaintAPI.patch(`/api/agents/${resolvedAgentId}/group`, {
+                group_id: resolvedGroupId,
+            });
+        } catch (apiErr) {
+            const body = apiErr.body || {};
+            const errorMessage = body.error || body.message || apiErr.message || 'Failed to move agent';
             throw new Error(errorMessage);
+        }
+        if (result && result.success === false) {
+            throw new Error(result.error || result.message || 'Failed to move agent');
         }
 
         // Update local data immediately for instant UI feedback
@@ -801,14 +806,11 @@ async function moveAgentToGroup(agentId, groupId) {
 
 async function loadGroups(skipAgentRerender = false) {
     try {
-        console.log('Loading groups...');
-        const response = await fetch('/api/groups');
-        if (!response.ok) throw new Error('Failed to load groups');
-        
-        const data = await response.json();
+        SaintLog.debug('Loading groups...');
+        const data = await SaintAPI.get('/api/groups');
         groupsData = data.data || [];
-        
-        console.log('Loaded groups:', groupsData.length);
+
+        SaintLog.debug('Loaded groups:', groupsData.length);
         renderGroups();
 
         // Only re-render agents if explicitly needed (to update group badges)
@@ -861,26 +863,22 @@ async function saveGroup() {
 
     const isEdit = Boolean(idInput.value);
     const url = isEdit ? `/api/groups/${idInput.value}` : '/api/groups';
-    const method = isEdit ? 'PATCH' : 'POST';
 
     try {
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to save group');
+        const result = isEdit
+            ? await SaintAPI.patch(url, payload)
+            : await SaintAPI.post(url, payload);
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to save group');
         }
 
         bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
         showSuccess(isEdit ? 'Group updated' : 'Group created');
         await loadGroups();
     } catch (error) {
+        const msg = (error && error.body && (error.body.error || error.body.message)) || error.message;
         console.error('Error saving group:', error);
-        showError(error.message || 'Failed to save group');
+        showError(msg || 'Failed to save group');
     }
 }
 
@@ -890,18 +888,18 @@ async function deleteGroup(groupId) {
     if (!confirm(`Delete group "${group.name}"?`)) return;
 
     try {
-        const response = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to delete group');
+        const result = await SaintAPI.del(`/api/groups/${groupId}`);
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to delete group');
         }
 
         showSuccess('Group deleted');
         await loadGroups();
         await loadAgents();
     } catch (error) {
+        const msg = (error && error.body && (error.body.error || error.body.message)) || error.message;
         console.error('Error deleting group:', error);
-        showError(error.message || 'Failed to delete group');
+        showError(msg || 'Failed to delete group');
     }
 }
 
@@ -958,16 +956,17 @@ async function saveDisplayName() {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
 
-        const response = await fetch(`/api/agents/${agentId}/display-name`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ display_name: newDisplayName })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || 'Failed to update display name');
+        let data;
+        try {
+            data = await SaintAPI.patch(`/api/agents/${agentId}/display-name`, {
+                display_name: newDisplayName,
+            });
+        } catch (apiErr) {
+            const body = apiErr.body || {};
+            throw new Error(body.error || apiErr.message || 'Failed to update display name');
+        }
+        if (!data || !data.success) {
+            throw new Error((data && data.error) || 'Failed to update display name');
         }
 
         // Update local data
@@ -1007,20 +1006,16 @@ async function removeAgent(agentId) {
     
     try {
         showNotification('info', `Removing agent ${agentName}...`);
-        
-        const response = await fetch(`/api/agents/${agentId}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+
+        let data;
+        try {
+            data = await SaintAPI.del(`/api/agents/${agentId}`);
+        } catch (apiErr) {
+            const body = apiErr.body || {};
+            throw new Error(body.message || body.error || `HTTP ${apiErr.status || '?'}: ${apiErr.message}`);
         }
-        
-        const data = await response.json();
-        
-        if (data.success) {
+
+        if (data && data.success) {
             showNotification('success', `Agent ${agentName} removed successfully`);
             
             // Remove from local data
@@ -1165,31 +1160,28 @@ function updateAllGroupCounts() {
  */
 function startPeriodicStatusCheck() {
     setInterval(async () => {
-        console.log('Checking agent status...');
-        
+        SaintLog.debug('Checking agent status...');
+
         try {
-            const response = await fetch('/api/agents/statistics');
-            if (response.ok) {
-                const data = await response.json();
-                const stats = data.data;
-                
-                // Check if stats changed significantly
-                const currentStats = {
-                    active: agentsData.filter(a => a.status === 'active').length,
-                    inactive: agentsData.filter(a => a.status === 'inactive').length,
-                    offline: agentsData.filter(a => a.status === 'offline').length
-                };
-                
-                const hasChanges = 
-                    stats.active !== currentStats.active ||
-                    stats.inactive !== currentStats.inactive ||
-                    stats.offline !== currentStats.offline;
-                
-                if (hasChanges) {
-                    console.log('Status changed, reloading agents...');
-                    await loadAgents();
-                    updateAllGroupCounts();
-                }
+            const data = await SaintAPI.get('/api/agents/statistics');
+            const stats = data.data;
+
+            // Check if stats changed significantly
+            const currentStats = {
+                active: agentsData.filter(a => a.status === 'active').length,
+                inactive: agentsData.filter(a => a.status === 'inactive').length,
+                offline: agentsData.filter(a => a.status === 'offline').length
+            };
+
+            const hasChanges =
+                stats.active !== currentStats.active ||
+                stats.inactive !== currentStats.inactive ||
+                stats.offline !== currentStats.offline;
+
+            if (hasChanges) {
+                SaintLog.debug('Status changed, reloading agents...');
+                await loadAgents();
+                updateAllGroupCounts();
             }
         } catch (error) {
             console.error('Error checking status:', error);
@@ -1199,7 +1191,7 @@ function startPeriodicStatusCheck() {
 
 // Add to DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Agents page initialized');
+    SaintLog.debug('Agents page initialized');
     loadAgents();
     loadGroups();
     
@@ -1263,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // CRITICAL: Listen for heartbeat to update status
         socket.on('agent_heartbeat', (data) => {
-            console.log('Agent heartbeat received:', data);
+            SaintLog.debug('Agent heartbeat received:', data);
             
             // Update local agent data
             const agent = agentsData.find(a => getAgentId(a) === data.agent_id);
@@ -1277,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 agent.time_since_heartbeat = data.time_since_heartbeat;
                 agent.metrics = data.metrics;
                 
-                console.log(`${getAgentDisplayName(agent)}: ${oldStatus} → ${agent.status}`);
+                SaintLog.debug(`${getAgentDisplayName(agent)}: ${oldStatus} → ${agent.status}`);
                 
                 // Re-render agent row
                 renderAgents(agentsData);
@@ -1291,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateStatistics();
             } else {
                 // New agent - reload everything
-                console.log('New agent detected, reloading...');
+                SaintLog.debug('New agent detected, reloading...');
                 loadAgents();
                 loadGroups();
             }
@@ -1299,13 +1291,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Listen for agent updates (registration, deletion)
         socket.on('agent_update', (data) => {
-            console.log('Agent update received:', data);
+            SaintLog.debug('Agent update received:', data);
             loadAgents();
         });
         
         // Listen for agent group changes
         socket.on('agent_group_updated', (data) => {
-            console.log('Agent group updated:', data);
+            SaintLog.debug('Agent group updated:', data);
             
             // Update local data
             const agent = agentsData.find(a => getAgentId(a) === data.agent_id);
@@ -1329,14 +1321,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Listen for agent registration
         socket.on('agent_registered', (data) => {
-            console.log('Agent registered:', data);
+            SaintLog.debug('Agent registered:', data);
             loadAgents();
             loadGroups(); // Reload groups to update pending count
         });
         
         // Listen for agent deletion
         socket.on('agent_deleted', (data) => {
-            console.log('Agent deleted:', data);
+            SaintLog.debug('Agent deleted:', data);
             
             // Remove from local data
             const index = agentsData.findIndex(a => getAgentId(a) === data.agent_id);
@@ -1357,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Listen for new logs
         socket.on('new_log', (logData) => {
-            console.log('New log received:', logData);
+            SaintLog.debug('New log received:', logData);
             if (logData.agent_id) {
                 agentLogs[logData.agent_id] = normalizeAgentLog(logData);
                 updateAgentLogElement(logData.agent_id);
@@ -1365,14 +1357,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         socket.on('connect', () => {
-            console.log('Socket.IO connected');
+            SaintLog.debug('Socket.IO connected');
             // Reload data on reconnect
             loadAgents();
             loadGroups();
         });
         
         socket.on('disconnect', () => {
-            console.log('Socket.IO disconnected');
+            SaintLog.debug('Socket.IO disconnected');
         });
         
         socket.on('error', (error) => {

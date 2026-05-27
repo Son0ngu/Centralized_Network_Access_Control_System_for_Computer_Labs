@@ -4,7 +4,7 @@
         const socket = io();
 
         socket.on('connect', function () {
-            console.log('Connected to server for real-time updates');
+            SaintLog.debug('Connected to server for real-time updates');
 
             const statusDot = document.querySelector('.pulse-dot');
             if (statusDot) {
@@ -13,7 +13,7 @@
         });
 
         socket.on('disconnect', function () {
-            console.log('Disconnected from server');
+            SaintLog.debug('Disconnected from server');
 
             const statusDot = document.querySelector('.pulse-dot');
             if (statusDot) {
@@ -22,11 +22,11 @@
         });
 
         socket.on('stats_update', function (statsData) {
-            console.log('Stats update received:', statsData);
+            SaintLog.debug('Stats update received:', statsData);
             updateDashboardStats(statsData, true);
         });
     } catch (error) {
-        console.log('Socket.IO not available:', error);
+        SaintLog.debug('Socket.IO not available:', error);
     }
 
     function getStatElements() {
@@ -88,10 +88,8 @@
     // Load initial statistics
     async function loadDashboardStats(animate) {
         try {
-            const response = await fetch('/api/logs/stats');
-            if (response.ok) {
-                const data = await response.json();
-
+            try {
+                const data = await SaintAPI.get('/api/logs/stats');
                 if (data.success) {
                     // Use filtered stats when server applies RBAC filtering (teacher)
                     const useFiltered = data.has_filters;
@@ -102,19 +100,21 @@
                         active_agents: 0
                     }, animate);
                 }
+            } catch (e) {
+                // Non-fatal — keep loading agent stats below.
             }
 
             // Load active agents count
-            const agentsResponse = await fetch('/api/agents/statistics');
-            if (agentsResponse.ok) {
-                const agentsData = await agentsResponse.json();
-
+            try {
+                const agentsData = await SaintAPI.get('/api/agents/statistics');
                 if (agentsData.success && agentsData.data) {
                     const el = document.getElementById('statActiveAgents');
                     if (el) {
                         setStatValue(el, agentsData.data.active || 0, animate);
                     }
                 }
+            } catch (e) {
+                // Non-fatal.
             }
         } catch (error) {
             console.error('Error loading dashboard stats:', error);

@@ -47,20 +47,27 @@ class TokenManager:
             self._access_token = jwt_config.get('access_token')
             self._refresh_token = jwt_config.get('refresh_token')
             
-            # Parse expiry times
+            # Parse expiry times. Malformed timestamps from a stale config
+            # file shouldn't break startup, but they must be logged or
+            # `has_valid_token` will silently report False and the agent
+            # will spin trying to refresh a token it can't introspect.
             access_exp = jwt_config.get('access_expires_at')
             if access_exp:
                 try:
                     self._access_expires_at = datetime.fromisoformat(access_exp.replace('Z', '+00:00'))
-                except:
-                    pass
-            
+                except (ValueError, AttributeError, TypeError) as e:
+                    self.logger.warning(
+                        f"Could not parse jwt.access_expires_at={access_exp!r}: {e}"
+                    )
+
             refresh_exp = jwt_config.get('refresh_expires_at')
             if refresh_exp:
                 try:
                     self._refresh_expires_at = datetime.fromisoformat(refresh_exp.replace('Z', '+00:00'))
-                except:
-                    pass
+                except (ValueError, AttributeError, TypeError) as e:
+                    self.logger.warning(
+                        f"Could not parse jwt.refresh_expires_at={refresh_exp!r}: {e}"
+                    )
             
             if self._access_token:
                 self.logger.info("Loaded existing JWT tokens from config")
@@ -157,12 +164,18 @@ class TokenManager:
         if not self._access_token or not self._access_expires_at:
             return False
         
-        # Calculate refresh threshold (refresh X seconds before expiry)
+        # Calculate refresh threshold (refresh X seconds before expiry).
+        # Only timezone arithmetic can blow up here; bare-except hides cases
+        # where _access_expires_at is the wrong type (e.g. a string slipped
+        # past _load_tokens_from_config) which we want surfaced once.
         try:
             now = datetime.now(self._access_expires_at.tzinfo)
             refresh_at = self._access_expires_at - timedelta(seconds=self._refresh_margin)
             return now >= refresh_at
-        except:
+        except (TypeError, AttributeError, OverflowError) as e:
+            self.logger.warning(
+                f"_should_refresh comparison failed (expires_at={self._access_expires_at!r}): {e}"
+            )
             return False
     
     def _do_refresh(self, with_rotation: bool = True) -> bool:
@@ -217,9 +230,14 @@ class TokenManager:
                                 self._refresh_expires_at = datetime.fromisoformat(
                                     refresh_exp.replace('Z', '+00:00')
                                 )
-                            except:
-                                pass
-                    
+                            except (ValueError, AttributeError, TypeError) as e:
+                                # Server sent a malformed timestamp; keep the
+                                # previous expiry so _should_refresh keeps
+                                # working, but surface the bug.
+                                self.logger.warning(
+                                    f"Server returned unparseable refresh_expires_at={refresh_exp!r}: {e}"
+                                )
+
                     # Update access expiry
                     expires_at = token_data.get('expires_at') or token_data.get('access_expires_at')
                     if expires_at:
@@ -227,8 +245,10 @@ class TokenManager:
                             self._access_expires_at = datetime.fromisoformat(
                                 expires_at.replace('Z', '+00:00')
                             )
-                        except:
-                            pass
+                        except (ValueError, AttributeError, TypeError) as e:
+                            self.logger.warning(
+                                f"Server returned unparseable access expires_at={expires_at!r}: {e}"
+                            )
                     
                     # Update config
                     self._update_config_tokens(token_data)
@@ -249,12 +269,21 @@ class TokenManager:
                 else:
                     return self._handle_refresh_error(data)
             elif response.status_code == 401:
-                # Auth error - token invalid or expired
+                # Auth error - token invalid or expired. The server *should*
+                # return a JSON body with an error code; if the response is
+                # garbled or not JSON we fall back to a generic
+                # re-registration. Bare-except previously swallowed the
+                # failure type, which made it impossible to tell "server
+                # returned HTML 401" from "server JSON had unexpected
+                # shape".
                 try:
                     data = response.json()
                     return self._handle_refresh_error(data)
-                except:
-                    self._trigger_reregistration("Server returned 401")
+                except ValueError as e:
+                    self.logger.warning(
+                        f"401 response body was not JSON ({e}); falling back to re-registration"
+                    )
+                    self._trigger_reregistration("Server returned 401 with non-JSON body")
                     return False
             else:
                 self.logger.error(f"Token refresh HTTP error: {response.status_code}")
@@ -419,15 +448,19 @@ class TokenManager:
             if self._access_expires_at:
                 try:
                     access_expires_in = (self._access_expires_at - now.replace(tzinfo=self._access_expires_at.tzinfo)).total_seconds()
-                except:
-                    pass
-            
+                except (TypeError, AttributeError, OverflowError) as e:
+                    self.logger.debug(
+                        f"access_expires_in calc failed (expires_at={self._access_expires_at!r}): {e}"
+                    )
+
             refresh_expires_in = None
             if self._refresh_expires_at:
                 try:
                     refresh_expires_in = (self._refresh_expires_at - now.replace(tzinfo=self._refresh_expires_at.tzinfo)).total_seconds()
-                except:
-                    pass
+                except (TypeError, AttributeError, OverflowError) as e:
+                    self.logger.debug(
+                        f"refresh_expires_in calc failed (expires_at={self._refresh_expires_at!r}): {e}"
+                    )
             
             return {
                 'has_access_token': bool(self._access_token),

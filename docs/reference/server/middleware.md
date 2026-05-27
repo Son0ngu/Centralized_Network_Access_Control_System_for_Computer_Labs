@@ -4,8 +4,9 @@
 Hai module decorator độc lập:
 - **`auth.py`**: Xác thực **Agent** (API key cho register, JWT cho operations). Caller chỉ định permission. Lưu kết quả vào `flask.g`.
 - **`rbac.py`**: Xác thực **Admin/Teacher** (cookie JWT > Authorization header). Kết hợp permission check (`resource:action`) và ownership check (Teacher chỉ tới Groups được assign).
+- **`csrf.py`**: Double-submit CSRF token cho cookie-authenticated admin mutations. `SaintAPI` tự gửi `X-CSRF-Token`; API key/Bearer endpoints được exempt.
 
-Hai middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin endpoints dùng `rbac.py`. Một số endpoint dùng cả 2 (vd `whitelist:GET` accept JWT của agent hoặc admin login).
+Auth/RBAC middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin endpoints dùng `rbac.py`. CSRF là global `before_request` hook cho unsafe methods trên cookie-authenticated admin requests.
 
 ## Public API
 
@@ -37,6 +38,15 @@ Hai middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin
 | `_extract_token()` | `() -> Optional[str]` | [rbac.py:44](../../../server/middleware/rbac.py#L44) | Cookie `access_token` trước, fallback `Authorization: Bearer` |
 | `_validate_admin_token(token)` | `(str) -> (bool, user_dict, error)` | [rbac.py:62](../../../server/middleware/rbac.py#L62) | Decode JWT → check `token_for == "admin_user"` → load user → check active/locked |
 
+### `server/middleware/csrf.py` - Cookie-authenticated mutation protection
+
+| Symbol | Signature | Vị trí | Mô tả |
+|---|---|---|---|
+| `register_csrf(app)` | `(Flask) -> None` | [csrf.py](../../../server/middleware/csrf.py) | Cài global `before_request` hook. |
+| `set_csrf_cookie(response, token=None)` | `(Response, Optional[str]) -> str` | [csrf.py](../../../server/middleware/csrf.py) | Set cookie `csrf_token` non-httpOnly để JS đọc và echo qua header. |
+| `delete_csrf_cookie(response)` | `(Response) -> None` | [csrf.py](../../../server/middleware/csrf.py) | Xóa CSRF cookie khi logout. |
+| `mint_csrf_token()` | `() -> str` | [csrf.py](../../../server/middleware/csrf.py) | Tạo token ngẫu nhiên 32 bytes hex. |
+
 ## `flask.g` namespace (sau decorator)
 
 | Key | Set bởi | Kiểu |
@@ -53,8 +63,9 @@ Hai middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin
 | `g.current_role` | ↑ | `"admin"` hoặc `"teacher"` |
 
 ## Ai gọi module này
-- `server/controllers/*.py` - mọi controller dùng decorators để wrap handler
-- `server/app.py:241,244` - init wires
+- `server/controllers/*.py` - mọi controller dùng decorators để wrap handler.
+- `server/bootstrap/container.py` - init auth/RBAC middleware.
+- `server/bootstrap/app_factory.py` - `register_csrf(app)`.
 
 ## Module này gọi ra
 - `flask` (request, g, jsonify, redirect)
@@ -87,11 +98,15 @@ Hai middleware chạy **song song** - agent endpoints dùng `auth.py`, web/admin
 - **Order decorator quan trọng**: `@require_login` PHẢI trước `@require_admin`/`@require_permission`/`@require_group_ownership`. Sai thứ tự → `g.current_user` chưa set → KeyError hoặc 401 silent.
 - **API path vs page path** (rbac.py:113-119): `request.path.startswith("/api/")` → JSON, ngược lại → redirect. Đừng dùng `/api/admin/...` cho trang HTML - sẽ trả JSON.
 - **`@inject_current_user` SET `g.current_user = None` trước khi check** (rbac.py:212-214) - caller có thể `if g.current_user:` an toàn. Đừng dựa vào `hasattr`.
-- **`require_group_ownership` lookup group từ DB mỗi request** (rbac.py:267-274): nếu endpoint cũng cần group → query 2 lần. Acceptable cho clarity.
+- **`require_group_ownership` lookup group qua `GroupModel.find_by_id()` mỗi request**: nếu endpoint cũng cần group → query 2 lần. Acceptable cho clarity; không gọi `.collection` trực tiếp trong middleware.
 - **`is_admin(role)` từ `config.rbac_config`** - đừng tự `role == "admin"` rải rác. Tập trung 1 chỗ để dễ đổi.
 - **Token revoked không check trong `_validate_admin_token`** (rbac.py:62-91) - `JWTService.validate_access_token` đã check `_is_token_revoked` qua `revoked_tokens` collection. Logout = revoke = JWT next call 401.
+
+### CSRF
+- **Unsafe cookie-authenticated requests phải có `X-CSRF-Token`**: `SaintAPI` đọc cookie `csrf_token` và tự attach header cho same-origin POST/PUT/PATCH/DELETE.
+- **Bearer/API key requests exempt**: browser không tự attach các header này, nên không nằm trong CSRF threat model.
+- **CORS phải allow `X-CSRF-Token` và `PATCH`**: app factory đã cấu hình trong `API_CORS_OPTIONS`. Nếu thêm custom CSRF header mới, update CORS cùng lúc.
 
 ### Cả hai
 - **`flask.g` per-request scope**: an toàn dùng giữa decorators và handler. Không leak qua request.
 - **Middleware `auth.py` không log username** (chỉ log endpoint + remote_addr). RBAC log username. Đối tượng audit khác nhau.
-- **Không có CSRF check** vì SPA gọi qua `fetch` với `Authorization` header. Cookie-based auth (RBAC) có rủi ro CSRF - hiện chưa có protection. Nếu thêm POST từ form HTML cần CSRF token.

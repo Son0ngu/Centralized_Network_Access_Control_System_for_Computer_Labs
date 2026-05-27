@@ -2,7 +2,7 @@
 RBAC Middleware - Decorators cho Admin/Teacher web routes.
 - Cookie-based JWT authentication (httpOnly)
 - Permission check theo resource:action format
-- Ownership check: Teacher chi thao tac tren Group ma minh tao (created_by)
+- Ownership check: Teacher chỉ thao tác trên Group được gán hoặc legacy owned.
 - Hoat dong SONG SONG voi middleware/auth.py (cho Agent API)
 """
 
@@ -229,7 +229,7 @@ def require_group_ownership(group_id_param: str = "group_id"):
     """
     Decorator: Check Teacher ownership on Group.
     - Admin: always pass (full access)
-    - Teacher: group.created_by must == user._id
+    - Teacher: must be assigned via teacher_ids or legacy created_by
     Must be used AFTER @require_login.
 
     Usage:
@@ -259,15 +259,9 @@ def require_group_ownership(group_id_param: str = "group_id"):
 
             # Check ownership via RBACService
             if _rbac_service:
-                from models.group_model import GroupModel
-                # Get group from database
                 group_model = _rbac_service.group_model
                 if group_model:
-                    from bson import ObjectId
-                    try:
-                        group = group_model.collection.find_one({"_id": ObjectId(group_id)})
-                    except Exception:
-                        group = None
+                    group = group_model.find_by_id(group_id)
 
                     if not group:
                         return jsonify({"success": False, "error": "Group not found"}), 404

@@ -120,9 +120,5 @@
     });
   }
 
-  function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
-  }
+  const escHtml = (value) => window.SaintUtils.escapeHtml(value);
 })();

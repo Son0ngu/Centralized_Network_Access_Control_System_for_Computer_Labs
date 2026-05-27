@@ -87,6 +87,22 @@ class APIKeyController:
     def _error_response(self, message: str, status_code=400) -> Tuple:
         """Helper method for error responses"""
         return jsonify({"success": False, "error": message}), status_code
+
+    def _current_actor(self) -> str:
+        """Return the authenticated admin's username for audit fields.
+
+        ``require_login`` populates ``g.current_user``; we fall back to the
+        raw user id, then to ``"unknown"`` for the (defensive) case where
+        neither is set. Used as ``created_by`` / ``updated_by`` / ``revoked_by``
+        so the audit trail shows the real operator instead of the historical
+        hard-coded ``"admin"``.
+        """
+        user = getattr(g, "current_user", None) or {}
+        return (
+            user.get("username")
+            or getattr(g, "current_user_id", None)
+            or "unknown"
+        )
     
     # ========================================
     # CRUD OPERATIONS
@@ -175,23 +191,12 @@ class APIKeyController:
                 if invalid:
                     return self._error_response(f"Invalid permissions: {invalid}")
             
-            # Stamp created_by with the authenticated admin's username so audit
-            # trail and revocation flows show who issued the key. require_login
-            # populates g.current_user; fall back to the raw user_id string if
-            # the user record is missing a username for any reason.
-            creator = getattr(g, "current_user", None) or {}
-            created_by = (
-                creator.get("username")
-                or getattr(g, "current_user_id", None)
-                or "unknown"
-            )
-
             result = self.service.create_api_key(
                 name=name,
                 description=description,
                 expires_in_days=expires_in_days,
                 permissions=permissions,
-                created_by=created_by,
+                created_by=self._current_actor(),
             )
             
             if result.get('success'):
@@ -263,7 +268,7 @@ class APIKeyController:
                 description=description,
                 permissions=permissions,
                 is_active=is_active,
-                updated_by="admin"
+                updated_by=self._current_actor(),
             )
             
             if result.get('success'):
@@ -294,7 +299,7 @@ class APIKeyController:
         try:
             result = self.service.revoke_api_key(
                 key_id=key_id,
-                revoked_by="admin"
+                revoked_by=self._current_actor(),
             )
             
             if result.get('success'):

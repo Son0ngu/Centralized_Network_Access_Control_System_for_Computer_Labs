@@ -9,7 +9,15 @@ from shared.time_utils import now, now_iso
 from shared.os_info import get_os_details
 from shared.server_urls import collect_server_urls
 
-from .agent import agent_state, AGENT_DEVICE_ID
+from .agent import agent_state, DeviceIdentityProvider
+# Note: do NOT do ``from .agent import AGENT_DEVICE_ID`` at module level.
+# That triggers ``agent.core.agent.__getattr__("AGENT_DEVICE_ID")``
+# immediately at import time (PEP 562 fires the lookup on the *import*,
+# not on later attribute access), which shells out to PowerShell. Any
+# module that imports ``registry`` would then pay the WMI/CIM cost on
+# its own import — defeating the whole point of the lazy provider.
+# Callers must resolve the device id at call time via
+# ``DeviceIdentityProvider.get_device_id()`` instead.
 from utils.ip_detector import get_local_ip, check_admin_privileges
 from utils.error_handler import CriticalErrorHandler
 
@@ -48,7 +56,7 @@ def register_agent(config: Dict) -> bool:
 
         agent_info = {
             "hostname": socket.gethostname(),
-            "device_id": AGENT_DEVICE_ID,
+            "device_id": DeviceIdentityProvider.get_device_id(),
             "ip_address": local_ip,
             "platform": os_details["platform"],
             "os_info": f"{os_details['name']} {os_details['version']}",

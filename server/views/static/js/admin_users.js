@@ -41,9 +41,7 @@
         params.set('skip', currentPage * PAGE_SIZE);
 
         try {
-            const resp = await fetch(`${API_BASE}?${params}`, { credentials: 'same-origin' });
-            const data = await resp.json();
-
+            const data = await SaintAPI.get(`${API_BASE}?${params}`);
             if (data.success) {
                 totalUsers = data.data.total || 0;
                 renderTable(data.data.users || []);
@@ -59,8 +57,7 @@
 
     async function loadStats() {
         try {
-            const resp = await fetch(`${API_BASE}/statistics`, { credentials: 'same-origin' });
-            const data = await resp.json();
+            const data = await SaintAPI.get(`${API_BASE}/statistics`);
             if (data.success) {
                 const s = data.data;
                 document.getElementById('statTotal').textContent = s.total || 0;
@@ -171,13 +168,9 @@
             if (!confirm(`Are you sure you want to ${action} this account?`)) return;
 
             try {
-                const resp = await fetch(`${API_BASE}/${userId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ is_active: newState }),
+                const data = await SaintAPI.patch(`${API_BASE}/${userId}`, {
+                    is_active: newState,
                 });
-                const data = await resp.json();
                 if (data.success) {
                     showNotification('success', data.message);
                     loadUsers();
@@ -202,11 +195,7 @@
             if (!confirm(`Are you sure you want to DELETE account "${username}"? This action cannot be undone!`)) return;
 
             try {
-                const resp = await fetch(`${API_BASE}/${userId}`, {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                });
-                const data = await resp.json();
+                const data = await SaintAPI.del(`${API_BASE}/${userId}`);
                 if (data.success) {
                     showNotification('success', data.message);
                     loadUsers();
@@ -266,13 +255,12 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating...';
 
         try {
-            const resp = await fetch(API_BASE, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ username, password, email: email || undefined, role }),
+            const data = await SaintAPI.post(API_BASE, {
+                username,
+                password,
+                email: email || undefined,
+                role,
             });
-            const data = await resp.json();
 
             if (data.success) {
                 showNotification('success', 'Account created successfully!');
@@ -285,7 +273,7 @@
                 alertEl.classList.remove('d-none');
             }
         } catch (err) {
-            alertEl.textContent = 'Server connection error';
+            alertEl.textContent = (err && err.body && err.body.error) || 'Server connection error';
             alertEl.classList.remove('d-none');
         } finally {
             btn.disabled = false;
@@ -307,13 +295,9 @@
         }
 
         try {
-            const resp = await fetch(`${API_BASE}/${userId}/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ new_password: newPassword }),
+            const data = await SaintAPI.post(`${API_BASE}/${userId}/reset-password`, {
+                new_password: newPassword,
             });
-            const data = await resp.json();
 
             if (data.success) {
                 showNotification('success', 'Password reset successfully!');
@@ -323,7 +307,7 @@
                 alertEl.classList.remove('d-none');
             }
         } catch (err) {
-            alertEl.textContent = 'Server connection error';
+            alertEl.textContent = (err && err.body && err.body.error) || 'Server connection error';
             alertEl.classList.remove('d-none');
         }
     }
@@ -332,11 +316,9 @@
     // HELPERS
     // ========================================================================
 
-    function escHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML;
-    }
+    // Delegate to the shared helper so XSS-escape behavior is identical
+    // across admin pages (see server/views/static/js/core/utils.js).
+    const escHtml = (value) => window.SaintUtils.escapeHtml(value);
 
     // ``formatDate`` used to be defined locally with an en-US locale that
     // disagreed with what other pages rendered. Route through SaintDate so

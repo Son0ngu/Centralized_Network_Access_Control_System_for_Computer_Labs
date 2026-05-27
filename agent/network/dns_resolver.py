@@ -274,8 +274,14 @@ class OptimizedDNSResolver:
                     return DNSRecord(
                         ipv4=(), cname=None, ttl=300, resolved_at=now()
                     )
-            except:
-                pass
+            except ValueError as e:
+                # ``_is_ip_address`` just said yes, so this is genuinely
+                # unexpected. Log at debug so we don't spam, but don't
+                # swallow silently — fall through to DNS resolution below.
+                logger.debug(
+                    f"ipaddress.ip_address({domain!r}) rejected an IP that "
+                    f"passed _is_ip_address: {e}"
+                )
         
         ipv4_ips = []
         

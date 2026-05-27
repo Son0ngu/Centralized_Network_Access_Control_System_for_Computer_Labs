@@ -82,7 +82,7 @@
     <div class="card-body py-3">
         <div class="row align-items-center g-3">
             <div class="col-md-5">
-                <label class="form-label fw-bold mb-1">
+                <label class="form-label fw-bold mb-1" for="profileSelect">
                     <i class="fas fa-user-edit me-2 text-success"></i>Select Profile to edit
                 </label>
                 <select id="profileSelect" class="form-select">
@@ -279,13 +279,10 @@
             </div>
             <div class="modal-body p-4">
                 <form id="addItemForm">
-                    <!-- FIX: Correct ID for hidden type field -->
                     <input type="hidden" name="item_type" id="itemType">
-                    
+
                     <div class="mb-3">
-                        <!-- FIX: Correct ID for label -->
                         <label class="form-label fw-semibold" id="valueLabel">Value</label>
-                        <!-- FIX: Correct ID for input -->
                         <input type="text" class="form-control" name="value" id="valueInput" required>
                         <div class="form-text" id="valueHelp">
                             <i class="fas fa-info-circle me-1"></i>

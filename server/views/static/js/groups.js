@@ -10,7 +10,7 @@ let currentView = 'grid';
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Groups page initialized');
+    SaintLog.debug('Groups page initialized');
     
     loadGroups();
     loadAgents();
@@ -66,14 +66,11 @@ function setView(view) {
 
 async function loadGroups() {
     try {
-        const response = await fetch('/api/groups');
-        if (!response.ok) throw new Error('Failed to load groups');
-        
-        const data = await response.json();
+        const data = await SaintAPI.get('/api/groups');
         groupsData = data.data || [];
-        
+
         document.getElementById('totalGroupsCount').textContent = groupsData.length;
-        
+
         renderGroups();
     } catch (error) {
         console.error('Error loading groups:', error);
@@ -83,10 +80,7 @@ async function loadGroups() {
 
 async function loadAgents() {
     try {
-        const response = await fetch('/api/agents');
-        if (!response.ok) throw new Error('Failed to load agents');
-        
-        const data = await response.json();
+        const data = await SaintAPI.get('/api/agents');
         agentsData = data.agents || [];
         
         document.getElementById('totalAgentsCount').textContent = agentsData.length;
@@ -370,63 +364,59 @@ async function saveGroup() {
     }
     
     const url = isEdit ? `/api/groups/${groupId}` : '/api/groups';
-    const method = isEdit ? 'PATCH' : 'POST';
-    
+
     try {
-        console.log('Saving group:', { url, method, payload });
-        
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        const result = await response.json();
-        console.log('Save result:', result);
-        
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to save group');
+        SaintLog.debug('Saving group:', { url, isEdit, payload });
+
+        const result = isEdit
+            ? await SaintAPI.patch(url, payload)
+            : await SaintAPI.post(url, payload);
+        SaintLog.debug('Save result:', result);
+
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to save group');
         }
-        
+
         bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
         showSuccess(isEdit ? 'Group updated successfully' : 'Group created successfully');
-        
+
         await loadGroups();
-        
+
     } catch (error) {
+        const msg = (error && error.body && (error.body.error || error.body.message)) || error.message;
         console.error('Error saving group:', error);
-        showError(error.message || 'Failed to save group');
+        showError(msg || 'Failed to save group');
     }
 }
 
 async function deleteGroup(groupId) {
     const group = groupsData.find(g => g._id === groupId);
     if (!group) return;
-    
+
     const agentsInGroup = agentsData.filter(a => a.group_id === groupId);
-    
+
     let confirmMsg = `Delete group "${group.name}"?`;
     if (agentsInGroup.length > 0) {
         confirmMsg += `\n\nThis group has ${agentsInGroup.length} agent(s) assigned. They will be moved to Pending.`;
     }
-    
+
     if (!confirm(confirmMsg)) return;
-    
+
     try {
-        const response = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to delete group');
+        const result = await SaintAPI.del(`/api/groups/${groupId}`);
+
+        if (!result || !result.success) {
+            throw new Error((result && result.error) || 'Failed to delete group');
         }
-        
+
         showSuccess('Group deleted successfully');
         await loadGroups();
         await loadAgents();
-        
+
     } catch (error) {
+        const msg = (error && error.body && (error.body.error || error.body.message)) || error.message;
         console.error('Error deleting group:', error);
-        showError(error.message || 'Failed to delete group');
+        showError(msg || 'Failed to delete group');
     }
 }
 
@@ -523,8 +513,12 @@ function bulkExportWhitelist() {
 }
 
 function bulkSyncWhitelist() {
-    // TODO: Implement actual sync via SocketIO
-    showSuccess('Sync request sent to all agents');
+    // Server already pushes whitelist changes to agents via heartbeat
+    // ``force_sync`` (see services/heartbeat.py and the server-side
+    // socketio events). There is nothing the admin UI needs to trigger
+    // here — the button stays so operators can confirm rollout is
+    // happening, but it's a no-op apart from the toast.
+    showSuccess('Agents will sync on next heartbeat (≤20s)');
     bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'))?.hide();
 }
 
@@ -583,18 +577,12 @@ async function executeCopyWhitelist() {
     }
     
     try {
-        const response = await fetch(`/api/groups/${toId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ whitelist: newWhitelist })
-        });
-        
-        if (!response.ok) throw new Error('Failed to copy whitelist');
-        
+        await SaintAPI.patch(`/api/groups/${toId}`, { whitelist: newWhitelist });
+
         bootstrap.Modal.getInstance(document.getElementById('copyWhitelistModal')).hide();
         showSuccess(`Whitelist copied to ${toGroup.name}`);
         await loadGroups();
-        
+
     } catch (error) {
         console.error('Error copying whitelist:', error);
         showError('Failed to copy whitelist');
@@ -605,12 +593,8 @@ async function executeCopyWhitelist() {
 // UTILITIES
 // ========================================
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Delegate to the shared helper (see server/views/static/js/core/utils.js).
+const escapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 function showSuccess(message) {
     // Try to use global notification if available

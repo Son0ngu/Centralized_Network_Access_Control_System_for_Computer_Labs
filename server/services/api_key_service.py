@@ -35,7 +35,7 @@ class APIKeyService:
         description: str = "",
         expires_in_days: Optional[int] = None,
         permissions: Optional[List[str]] = None,
-        created_by: str = "admin"
+        created_by: str = "unknown"
     ) -> Dict:
         """
         Create a new API key.
@@ -107,7 +107,7 @@ class APIKeyService:
         
         return self.model.validate_api_key(api_key, required_permission)
     
-    def revoke_api_key(self, key_id: str, revoked_by: str = "admin") -> Dict:
+    def revoke_api_key(self, key_id: str, revoked_by: str = "unknown") -> Dict:
         """
         Revoke an API key.
         
@@ -175,7 +175,7 @@ class APIKeyService:
         description: Optional[str] = None,
         permissions: Optional[List[str]] = None,
         is_active: Optional[bool] = None,
-        updated_by: str = "admin"
+        updated_by: str = "unknown"
     ) -> Dict:
         """
         Update API key properties.

@@ -3,7 +3,9 @@ from typing import Callable, Dict, Optional
 
 from shared.time_utils import now, now_iso, uptime_string
 
-from .agent import AGENT_HOSTNAME
+# Lazy device identity — see note in ``agent/core/registry.py`` for why we
+# must NOT do ``from .agent import AGENT_HOSTNAME`` at module level.
+from .agent import DeviceIdentityProvider
 from utils.ip_detector import get_local_ip, check_admin_privileges
 from utils.error_handler import CriticalErrorHandler
 
@@ -128,8 +130,8 @@ def handle_domain_detection(
             "ip_allowed": ip_allowed,
             "source": "domain_detection",
             "agent_uptime": uptime_string(),
-            "agent_host": AGENT_HOSTNAME,
-            "hostname": AGENT_HOSTNAME
+            "agent_host": DeviceIdentityProvider.get_hostname(),
+            "hostname": DeviceIdentityProvider.get_hostname()
         }
         
         # Queue log with error handling

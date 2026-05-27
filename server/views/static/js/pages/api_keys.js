@@ -227,13 +227,8 @@ function formatPermission(perm) {
   return names[perm] || perm;
 }
 
-// Escape HTML — stays local because used inside template literals where
-// SaintToast's internal escape isn't reachable.
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// Delegate to the shared helper (see server/views/static/js/core/utils.js).
+const escapeHtml = (value) => window.SaintUtils.escapeHtml(value);
 
 // Create new API key
 async function createApiKey() {

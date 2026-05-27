@@ -385,6 +385,37 @@ class TestRBACServiceCanAccessGroup:
         assert svc.can_access_group(teacher_user, group) is False
 
 
+class TestRBACMiddlewareGroupOwnership:
+    """Decorator should delegate group lookup to GroupModel, not raw collection."""
+
+    def test_require_group_ownership_uses_model_method(self, app, teacher_user, monkeypatch):
+        import middleware.rbac as rbac_middleware
+        from middleware.rbac import require_group_ownership
+
+        group_model = MagicMock(spec=["find_by_id"])
+        group = {"_id": "g1", "created_by": teacher_user["_id"]}
+        group_model.find_by_id.return_value = group
+        rbac = MagicMock()
+        rbac.group_model = group_model
+        rbac.can_access_group.return_value = True
+        monkeypatch.setattr(rbac_middleware, "_rbac_service", rbac)
+
+        @require_group_ownership("group_id")
+        def handler(group_id):
+            return {"group_id": group_id}, 200
+
+        with app.test_request_context("/api/groups/g1", method="PATCH"):
+            g.current_user = teacher_user
+            g.current_role = "teacher"
+
+            response, status = handler(group_id="g1")
+
+        assert status == 200
+        assert response == {"group_id": "g1"}
+        group_model.find_by_id.assert_called_once_with("g1")
+        rbac.can_access_group.assert_called_once_with(teacher_user, group)
+
+
 # ============================================================================
 # 2. RBAC CONFIG PERMISSION TESTS
 # ============================================================================

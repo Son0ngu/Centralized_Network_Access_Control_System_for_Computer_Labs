@@ -12,6 +12,12 @@
  *     httpOnly cookies via WebAuthController.
  *   - Always set ``Accept: application/json`` so the server returns JSON
  *     error bodies instead of HTML error pages.
+ *   - For state-changing methods (POST/PUT/PATCH/DELETE), attach the CSRF
+ *     token from the non-httpOnly ``csrf_token`` cookie as an
+ *     ``X-CSRF-Token`` header. The server middleware (see
+ *     ``server/middleware/csrf.py``) validates the header against the cookie
+ *     in a double-submit pattern. A cross-origin attacker cannot read the
+ *     cookie (Same-Origin Policy) and therefore cannot forge the header.
  *   - Parse JSON on the way back. On non-2xx, throw a ``SaintAPIError``
  *     carrying the status code, the parsed body (if any), and the failed URL
  *     so call sites have something to log.
@@ -23,10 +29,29 @@
  *   SaintAPI.patch(url, body)
  *   SaintAPI.del(url)
  *   SaintAPI.raw(url, init)       // escape hatch for blobs/streams
+ *   SaintAPI.getCsrfToken()       // read current token (e.g. for raw fetch)
  */
 
 (function (global) {
   'use strict';
+
+  const CSRF_COOKIE_NAME = 'csrf_token';
+  const CSRF_HEADER_NAME = 'X-CSRF-Token';
+  const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+  function _readCookie(name) {
+    // document.cookie is "k1=v1; k2=v2"; we don't bother with a regex so
+    // there's nothing for a malicious cookie value to break.
+    const target = name + '=';
+    const parts = (document.cookie || '').split(';');
+    for (let i = 0; i < parts.length; i++) {
+      const trimmed = parts[i].trim();
+      if (trimmed.indexOf(target) === 0) {
+        return decodeURIComponent(trimmed.substring(target.length));
+      }
+    }
+    return null;
+  }
 
   class SaintAPIError extends Error {
     constructor(message, { status, body, url } = {}) {
@@ -49,6 +74,14 @@
     if (body !== undefined && body !== null) {
       init.headers['Content-Type'] = 'application/json';
       init.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+    if (UNSAFE_METHODS.has(method)) {
+      const csrf = _readCookie(CSRF_COOKIE_NAME);
+      if (csrf) {
+        init.headers[CSRF_HEADER_NAME] = csrf;
+      }
+      // If the cookie is missing we still send the request; the server will
+      // respond 403 with code=CSRF_FAIL and the caller can prompt re-login.
     }
 
     let response;
@@ -97,7 +130,22 @@
     put: (url, body) => _send('PUT', url, body),
     patch: (url, body) => _send('PATCH', url, body),
     del: (url) => _send('DELETE', url),
-    raw: (url, init = {}) => fetch(url, { credentials: 'include', ...init }),
+    raw: (url, init = {}) => {
+      // Mirror the CSRF behaviour of the structured helpers so blob/stream
+      // call sites stay safe without each one re-implementing the cookie
+      // dance. The method header in `init` (if any) decides whether we
+      // attach the token.
+      const method = (init.method || 'GET').toUpperCase();
+      const headers = Object.assign({}, init.headers || {});
+      if (UNSAFE_METHODS.has(method)) {
+        const csrf = _readCookie(CSRF_COOKIE_NAME);
+        if (csrf && !headers[CSRF_HEADER_NAME]) {
+          headers[CSRF_HEADER_NAME] = csrf;
+        }
+      }
+      return fetch(url, { credentials: 'include', ...init, headers });
+    },
+    getCsrfToken: () => _readCookie(CSRF_COOKIE_NAME),
     Error: SaintAPIError,
   };
 

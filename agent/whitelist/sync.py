@@ -8,6 +8,18 @@ from core.token_manager import get_auth_headers
 
 logger = logging.getLogger("whitelist.sync")
 
+# Error categories returned via ``result["category"]`` so callers can
+# differentiate "server is down" from "our token is bad" from "server
+# rejected our payload". Caller used to only see ``success=False`` and
+# couldn't tell whether to retry, prompt re-registration, or surface a
+# user-facing config error.
+ERROR_OFFLINE = "offline"          # no server URL configured
+ERROR_AUTH = "auth"                # 401/403 from server
+ERROR_NETWORK = "network"          # connection refused / timeout / DNS
+ERROR_SERVER = "server"            # 5xx or non-2xx with body
+ERROR_CLIENT = "client"            # 4xx other than auth
+ERROR_UNKNOWN = "unknown"          # everything else, including JSON decode
+
 
 class WhitelistSyncer:
 
@@ -45,8 +57,18 @@ class WhitelistSyncer:
         return headers
     
     def sync_with_server(self, params: Dict) -> Dict:
-        """Sync with server, trying fallback servers if needed."""
+        """Sync with server, trying fallback servers if needed.
+
+        Returns a dict with:
+          - ``success``: bool
+          - ``data``: payload on success
+          - ``error``: human-readable error message on failure
+          - ``category``: one of ``ERROR_*`` constants on failure (lets the
+            caller distinguish "no server configured" from "auth expired"
+            from "network down" without string-matching ``error``)
+        """
         last_error = None
+        last_category = ERROR_UNKNOWN
 
         # No server configured - agent is in first-run offline mode.
         # Skip silently so we don't spam logs every sync interval.
@@ -54,6 +76,7 @@ class WhitelistSyncer:
             return {
                 "success": False,
                 "error": "Server URL not configured (offline mode)",
+                "category": ERROR_OFFLINE,
                 "offline": True,
             }
 
@@ -66,7 +89,11 @@ class WhitelistSyncer:
                 "configure JWT credentials or agent_token"
             )
             logger.error(error_msg)
-            return {"success": False, "error": error_msg}
+            return {
+                "success": False,
+                "error": error_msg,
+                "category": ERROR_AUTH,
+            }
 
         # Try current server first
         for attempt in range(self.max_retries):
@@ -77,63 +104,93 @@ class WhitelistSyncer:
                     timeout=(self.connect_timeout, self.read_timeout),
                     headers=headers
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     return {"success": True, "data": data}
-                elif response.status_code == 401:
-                    # Authentication failed - might need token refresh
-                    last_error = "Authentication failed - token may be expired"
-                    logger.warning(f"Sync authentication failed: {response.text[:200]}")
+                elif response.status_code in (401, 403):
+                    # Authentication / authorization failure: no point
+                    # retrying with the same token. Surface auth category
+                    # so the lifecycle can trigger re-registration.
+                    last_error = (
+                        f"Authentication failed (HTTP {response.status_code}) — "
+                        f"token may be expired"
+                    )
+                    last_category = ERROR_AUTH
+                    logger.warning(f"Sync auth failed: {response.text[:200]}")
                     break  # Don't retry auth failures
+                elif 500 <= response.status_code < 600:
+                    last_error = f"HTTP {response.status_code}: {response.text[:200]}"
+                    last_category = ERROR_SERVER
+                    logger.warning(f"Sync attempt {attempt + 1} server error: {last_error}")
                 else:
                     last_error = f"HTTP {response.status_code}: {response.text[:200]}"
-                    logger.warning(f"Sync attempt {attempt + 1} failed: {last_error}")
-                    
+                    last_category = ERROR_CLIENT
+                    logger.warning(f"Sync attempt {attempt + 1} client error: {last_error}")
+
             except requests.exceptions.Timeout as e:
                 last_error = f"Timeout: {e}"
+                last_category = ERROR_NETWORK
                 logger.warning(f"Sync attempt {attempt + 1} timed out")
-                
+
             except requests.exceptions.ConnectionError as e:
                 last_error = f"Connection error: {e}"
+                last_category = ERROR_NETWORK
                 logger.warning(f"Sync attempt {attempt + 1} connection failed")
-                
+
+            except ValueError as e:
+                # JSON decode failure on a 200 response — server returned
+                # garbage. Treat as server-side bug.
+                last_error = f"Invalid JSON in response: {e}"
+                last_category = ERROR_SERVER
+                logger.warning(f"Sync attempt {attempt + 1} bad response body: {e}")
+
             except Exception as e:
                 last_error = str(e)
+                last_category = ERROR_UNKNOWN
                 logger.warning(f"Sync attempt {attempt + 1} failed: {e}")
-            
+
             if attempt < self.max_retries - 1:
                 sleep(2 ** attempt)  # Exponential backoff
-        
-        # Try fallback servers
-        if len(self.server_urls) > 1:
+
+        # Try fallback servers (only meaningful for network/server failures —
+        # an auth failure on one URL will fail on the rest too).
+        if len(self.server_urls) > 1 and last_category != ERROR_AUTH:
             logger.info("Trying fallback servers...")
             for i, fallback_url in enumerate(self.server_urls):
                 if i == self.current_server_index:
                     continue
-                    
+
                 try:
                     sync_url = self._build_sync_url(fallback_url)
                     logger.info(f"Trying fallback server: {fallback_url}")
-                    
+
                     response = requests.get(
                         sync_url,
                         params=params,
                         timeout=(self.connect_timeout, self.read_timeout),
                         headers=headers
                     )
-                    
+
                     if response.status_code == 200:
                         data = response.json()
                         # Update current server index to successful fallback
                         self.current_server_index = i
                         logger.info(f"Switched to fallback server: {fallback_url}")
                         return {"success": True, "data": data}
-                        
+
+                except (requests.exceptions.Timeout,
+                        requests.exceptions.ConnectionError) as e:
+                    last_category = ERROR_NETWORK
+                    logger.warning(f"Fallback server {fallback_url} network failed: {e}")
                 except Exception as e:
                     logger.warning(f"Fallback server {fallback_url} failed: {e}")
-        
-        return {"success": False, "error": str(last_error)}
+
+        return {
+            "success": False,
+            "error": str(last_error),
+            "category": last_category,
+        }
     
     def extract_domain_value(self, domain_data) -> Optional[str]:
         """Extract domain value from server response."""
