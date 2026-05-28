@@ -93,7 +93,13 @@ def initialize_container(app, socketio, db):
         policy_service=agent_policy_service,
         profile_service=whitelist_profile_service,
     )
-    agent_service = AgentService(agent_model, group_model, socketio, jwt_service)
+    agent_service = AgentService(
+        agent_model,
+        group_model,
+        socketio,
+        jwt_service,
+        policy_model=agent_policy_model,
+    )
     log_service = LogService(log_model, agent_model=agent_model, socketio=socketio)
     api_key_service = APIKeyService(api_key_model, socketio)
     audit_service = AuditService(audit_model)

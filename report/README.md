@@ -1,5 +1,11 @@
 # Bộ report kỹ thuật SAINT
 
+## Cập nhật 2026-05-28
+
+- Thêm `2026-05-28_E2E_VALIDATION_AND_OPEN_ITEMS.md`: tổng hợp kết quả full E2E/deep firewall, lỗi UI `/api-keys`, các fix local và các tồn đọng cần deploy/canary.
+- Firewall-only deep run `20260527_235108` đã PASS packet-level: Default Deny active, allowed packet OK, blocked packet bị chặn, managed rule add/remove OK, restore policy về allow và residual rules = 0.
+- Các fix local quan trọng: API Keys page null DOM, favicon 404, Agent heartbeat policy force sync injection, NetSecurity remote address parsing, remove allow rule vừa tạo, và E2E runner firewall-only/deep coverage.
+
 Bộ tài liệu này được tạo từ source code hiện tại trong `agent/` và `server/`, không dựa vào tài liệu cũ trong `docs/` làm nguồn chính.
 
 ## Cập nhật 2026-05-26

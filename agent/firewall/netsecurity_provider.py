@@ -120,7 +120,7 @@ $out = foreach ($r in $rules) {
         protocol         = "$($port.Protocol)".ToLower()
         profile          = "$($r.Profile)"
         program          = $app.Program
-        remote_addresses = $rports | Out-Null; $remote
+        remote_addresses = $remote
         remote_ports     = $rports
     }
 }

@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 
 from shared.time_utils import now, now_iso, sleep
 from .provider import FirewallProvider, get_default_provider, get_write_provider
@@ -18,6 +18,7 @@ class RulesManager:
     ):
         self.rule_prefix = rule_prefix
         self.allowed_ips: Set[str] = set()
+        self.allowed_rule_names: Dict[str, str] = {}
         self._rule_lock = threading.Lock()
         # Read and write sides are injectable for tests and backend rollout.
         # Writes default to netsh through the provider, with PowerShell
@@ -94,6 +95,7 @@ class RulesManager:
                 description=f"ALLOW rule for whitelisted IP {ip} (Created: {now_iso()})",
             ):
                 self.allowed_ips.add(ip)
+                self.allowed_rule_names[ip] = rule_name
                 logger.debug(f"Created allow rule for {ip}")
                 return True
             else:
@@ -114,6 +116,9 @@ class RulesManager:
             rule_pattern = f"_{sanitized_ip}_"
 
             rule_names_to_delete = []
+            mapped_rule_name = self.allowed_rule_names.get(ip)
+            if mapped_rule_name:
+                rule_names_to_delete.append(mapped_rule_name)
             for rule in self._provider.list_rules(
                 rule_prefix=self.rule_prefix,
                 direction="out",
@@ -136,7 +141,7 @@ class RulesManager:
                     rule_names_to_delete.append(rule_name)
             
             success = True
-            for rule_name in rule_names_to_delete:
+            for rule_name in dict.fromkeys(rule_names_to_delete):
                 if self._write_provider.delete_rule(rule_name):
                     logger.debug(f"Removed allow rule: {rule_name}")
                 else:
@@ -145,6 +150,7 @@ class RulesManager:
             
             if success:
                 self.allowed_ips.discard(ip)
+                self.allowed_rule_names.pop(ip, None)
             
             return success
                 
@@ -185,6 +191,7 @@ class RulesManager:
         try:
             removed = self._write_provider.delete_rules_by_prefix(self.rule_prefix)
             self.allowed_ips.clear()
+            self.allowed_rule_names.clear()
             if removed:
                 logger.info(f"Cleared {removed} rules successfully")
             else:

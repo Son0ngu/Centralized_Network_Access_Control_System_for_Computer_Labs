@@ -1,5 +1,26 @@
 # Testing và deployment
 
+## Cập nhật kiểm thử production 2026-05-28
+
+Chi tiết đầy đủ nằm ở `report/2026-05-28_E2E_VALIDATION_AND_OPEN_ITEMS.md`.
+
+| Nhóm kiểm thử | Kết quả |
+| --- | --- |
+| Full system E2E deep trên Render | Chạy được server API/RBAC, whitelist, profile, build Agent, agent register/JWT/heartbeat/sync/log, GUI, Socket.IO, synthetic classroom scale và soak 30 phút. Run `20260527_214919` phát hiện các điểm cần sửa: policy heartbeat chưa force sync, runner false positive bulk duplicate, firewall rule read/remove cần cứng hơn. |
+| Firewall-only packet deep sau patch | Run `20260527_235108`: PASS=8, FAIL=0, cleanup OK. Default Deny bật thật, allowed packet `1.1.1.1:443` vẫn đi được, blocked packet `151.101.1.69:443` bị chặn, add/remove managed rule đúng, restore policy về allow và residual rule = 0. |
+| GUI `/api-keys` production issue | Đã tái hiện lỗi `Cannot read properties of null (reading 'style')`; nguyên nhân JS dùng sai DOM id so với template. Đã sửa local trong `server/views/static/js/pages/api_keys.js` và `server/views/templates/api_keys.html`; cần deploy để production hết lỗi. |
+| Favicon | Đã thêm route `/favicon.ico` và `<link rel="icon">` để tránh 404. |
+| Local regression sau patch | `agent/tests`: 8 passed. `server/tests/test_teacher_data_filtering.py`: 81 passed. `server/tests/test_app_factory.py server/tests/test_agent_full.py server/tests/test_whitelist_and_logs.py`: 184 passed, chỉ còn DeprecationWarning dự kiến ở legacy whitelist API. |
+
+Các tồn đọng sau mốc này:
+
+- Deploy lên Render các fix local trước khi rerun full deep.
+- Rerun full deep sau deploy để xác nhận policy heartbeat `force_sync` pass trên production.
+- Canary PowerShell/NetSecurity firewall backend trên thêm 1-2 máy lab trước khi đổi default rộng.
+- Chưa test reboot thật/service autostart sau reboot; runner chỉ sinh script post-reboot check.
+- Chưa test multi-machine vật lý thật; hiện deep mode dùng synthetic registered agents từ một workstation.
+- Chưa xóa whitelist fallback/pseudo-ID production cho tới khi migration write, backup và log không còn `group::...` được xác nhận.
+
 ## Tests hiện có
 
 | Test file | Phạm vi |

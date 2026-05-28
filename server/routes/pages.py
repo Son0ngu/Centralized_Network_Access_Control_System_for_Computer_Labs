@@ -2,7 +2,7 @@
 
 import os
 
-from flask import jsonify, redirect, render_template, url_for
+from flask import Response, jsonify, redirect, render_template, url_for
 
 from time_utils import now_iso
 
@@ -97,6 +97,17 @@ def register_page_routes(app) -> None:
     @app.route("/admin/change-password")
     def change_password_page():
         return redirect(url_for("profile_page"))
+
+    @app.route("/favicon.ico")
+    def favicon():
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+            '<rect width="64" height="64" rx="14" fill="#4f46e5"/>'
+            '<path d="M32 10l18 7v12c0 12-7.6 20.7-18 25C21.6 49.7 14 41 14 29V17l18-7z" fill="#fff"/>'
+            '<path d="M32 16l12 4.7V29c0 8.2-4.7 14.1-12 17.5V16z" fill="#c7d2fe"/>'
+            '</svg>'
+        )
+        return Response(svg, mimetype="image/svg+xml")
 
     @app.route("/api/health")
     def health_check():

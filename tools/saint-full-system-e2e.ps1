@@ -10,6 +10,8 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipAgentExeLaunch,
     [switch]$DryRun,
+    [switch]$Deep,
+    [switch]$FirewallOnly,
     [ValidateSet("auto", "netsh", "netsecurity")]
     [string]$ReadProvider = "auto",
     [ValidateSet("netsh", "powershell", "netsecurity")]
@@ -18,6 +20,16 @@ param(
     [int]$BuildTimeoutSeconds = 900,
     [int]$AgentExeSmokeSeconds = 12,
     [string]$FirewallTestIp = "203.0.113.10",
+    [string]$DeepAllowedIp = "1.1.1.1",
+    [int]$DeepAllowedPort = 443,
+    [string]$DeepBlockedCandidates = "151.101.1.69,104.16.132.229,142.250.190.14,93.184.216.34",
+    [string]$DeepMutationIp = "203.0.113.10",
+    [int]$DeepPacketTimeoutSeconds = 25,
+    [int]$DeepClassroomAgentCount = 24,
+    [double]$DeepSoakMinutes = 30,
+    [int]$DeepSoakIntervalSeconds = 60,
+    [int]$DeepGuiTimeoutSeconds = 180,
+    [int]$DeepWebSocketTimeoutSeconds = 25,
     [switch]$VerboseSmoke
 )
 
@@ -63,6 +75,9 @@ if (Test-Path $VenvPython) {
     $Python = $PythonCommand.Source
 }
 
+$EnvDeep = $env:SAINT_E2E_DEEP -match '^(1|true|yes|on)$'
+$DeepEnabled = [bool]$Deep -or [bool]$EnvDeep
+
 $ArgsList = @(
     $Runner,
     "--server-url", $ServerUrl,
@@ -73,7 +88,17 @@ $ArgsList = @(
     "--timeout-seconds", "$TimeoutSeconds",
     "--build-timeout-seconds", "$BuildTimeoutSeconds",
     "--agent-exe-smoke-seconds", "$AgentExeSmokeSeconds",
-    "--firewall-test-ip", $FirewallTestIp
+    "--firewall-test-ip", $FirewallTestIp,
+    "--deep-allowed-ip", $DeepAllowedIp,
+    "--deep-allowed-port", "$DeepAllowedPort",
+    "--deep-blocked-candidates", $DeepBlockedCandidates,
+    "--deep-mutation-ip", $DeepMutationIp,
+    "--deep-packet-timeout-seconds", "$DeepPacketTimeoutSeconds",
+    "--deep-classroom-agent-count", "$DeepClassroomAgentCount",
+    "--deep-soak-minutes", "$DeepSoakMinutes",
+    "--deep-soak-interval-seconds", "$DeepSoakIntervalSeconds",
+    "--deep-gui-timeout-seconds", "$DeepGuiTimeoutSeconds",
+    "--deep-websocket-timeout-seconds", "$DeepWebSocketTimeoutSeconds"
 )
 
 if ($OutputDir) { $ArgsList += @("--output-dir", $OutputDir) }
@@ -84,6 +109,8 @@ if ($KeepTestData) { $ArgsList += "--keep-test-data" }
 if ($SkipBuild) { $ArgsList += "--skip-build" }
 if ($SkipAgentExeLaunch) { $ArgsList += "--skip-agent-exe-launch" }
 if ($DryRun) { $ArgsList += "--dry-run" }
+if ($DeepEnabled) { $ArgsList += "--deep" }
+if ($FirewallOnly) { $ArgsList += "--firewall-only" }
 if ($VerboseSmoke) { $ArgsList += "--verbose" }
 
 Write-Host "Running SAINT full system E2E..."
@@ -91,6 +118,8 @@ Write-Host "Repo: $RepoRoot"
 Write-Host "Python: $Python"
 Write-Host "Server: $ServerUrl"
 Write-Host "Real firewall policy: $RunRealFirewallPolicy"
+Write-Host "Deep mode: $DeepEnabled"
+Write-Host "Firewall only: $FirewallOnly"
 
 & $Python @ArgsList
 exit $LASTEXITCODE

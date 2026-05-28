@@ -130,6 +130,25 @@ def test_rules_manager_delegates_writes_to_write_provider():
     assert write_provider.deleted_prefixes == ["SAINT"]
 
 
+def test_rules_manager_removes_recent_rule_when_read_provider_is_empty():
+    read_provider = FakeFirewallProvider()
+    write_provider = FakeFirewallProvider()
+    manager = RulesManager(
+        "SAINT",
+        provider=read_provider,
+        write_provider=write_provider,
+    )
+
+    assert manager.create_allow_rule("8.8.4.4") is True
+    created_rule_name = write_provider.created[0]["rule_name"]
+    read_provider.rules = []
+
+    assert manager.remove_allow_rule("8.8.4.4") is True
+    assert write_provider.deleted == [created_rule_name]
+    assert manager.allowed_ips == set()
+    assert manager.allowed_rule_names == {}
+
+
 def test_policy_manager_delegates_profile_writes_to_provider():
     provider = FakeFirewallProvider()
     manager = PolicyManager(write_provider=provider)

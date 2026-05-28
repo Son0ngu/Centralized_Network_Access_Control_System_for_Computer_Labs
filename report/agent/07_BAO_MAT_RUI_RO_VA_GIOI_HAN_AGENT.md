@@ -1,5 +1,19 @@
 # Bảo mật, rủi ro và giới hạn của Agent
 
+## Cập nhật xác thực firewall 2026-05-28
+
+Đã chạy kiểm thử `FirewallOnly + Deep` trên máy Windows Administrator với backend ghi `powershell`/NetSecurity. Run cuối `20260527_235108` PASS sạch:
+
+- Snapshot trước mutation có đủ `domain/private/public = allow`.
+- Bật whitelist-only/Default Deny thành công, cả 3 profile outbound chuyển sang `block`.
+- Self-allow rules đủ 3 rule: HTTPS TCP/443, DNS UDP/53, DNS TCP/53; không duplicate sau tạo lại.
+- Packet allowed `1.1.1.1:443` vẫn kết nối được trong khi Default Deny active.
+- Packet blocked `151.101.1.69:443` bị chặn đúng trong khi Default Deny active.
+- Managed allow rule test tăng/giảm đúng count `10 -> 11 -> 10`.
+- Restore snapshot thành công, cả 3 profile quay về `allow`, residual SAINTE2E rules = 0, blocked candidate kết nối lại được sau restore.
+
+Kết luận vận hành: PowerShell/NetSecurity write backend đã đạt packet-level smoke trên một máy Windows admin thật. Tuy nhiên vẫn cần canary thêm máy lab trước khi đổi default rộng, vì rủi ro khóa mạng phụ thuộc driver/firewall policy/local security software từng máy.
+
 ## Cơ chế bảo mật
 
 | Cơ chế | Source | Ý nghĩa |

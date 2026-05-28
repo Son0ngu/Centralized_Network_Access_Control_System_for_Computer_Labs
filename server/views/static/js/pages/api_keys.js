@@ -38,9 +38,12 @@ function setupSocket() {
 
 // Setup filter listeners
 function setupFilters() {
-  document.getElementById('searchKeys').addEventListener('input', filterKeys);
-  document.getElementById('filterStatus').addEventListener('change', filterKeys);
-  document.getElementById('filterPermission').addEventListener('change', filterKeys);
+  const searchKeys = document.getElementById('searchKeys');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterPermission = document.getElementById('filterPermission');
+  if (searchKeys) searchKeys.addEventListener('input', filterKeys);
+  if (filterStatus) filterStatus.addEventListener('change', filterKeys);
+  if (filterPermission) filterPermission.addEventListener('change', filterKeys);
 }
 
 // Load API keys from server
@@ -78,17 +81,17 @@ async function loadApiKeys() {
 
 // Update statistics cards
 function updateStats(stats) {
-  document.getElementById('totalKeys').textContent = stats.total || 0;
-  document.getElementById('activeKeys').textContent = stats.active || 0;
-  document.getElementById('revokedKeys').textContent = stats.revoked || 0;
-  document.getElementById('expiringKeys').textContent = stats.expiring_soon || 0;
+  setText('totalKeys', stats.total || 0);
+  setText('activeKeys', stats.active || 0);
+  setText('revokedKeys', stats.revoked || 0);
+  setText('expiringKeys', stats.expiring_soon || 0);
 }
 
 // Filter keys based on search and filters
 function filterKeys() {
-  const search = document.getElementById('searchKeys').value.toLowerCase();
-  const status = document.getElementById('filterStatus').value;
-  const permission = document.getElementById('filterPermission').value;
+  const search = (document.getElementById('searchKeys')?.value || '').toLowerCase();
+  const status = document.getElementById('filterStatus')?.value || 'all';
+  const permission = document.getElementById('filterPermission')?.value || 'all';
 
   const filtered = allKeys.filter((key) => {
     if (search && !key.name.toLowerCase().includes(search)) return false;
@@ -118,17 +121,30 @@ function getKeyStatus(key) {
 
 // Render keys list
 function renderKeys(keys) {
-  const container = document.getElementById('keysList');
-  const emptyState = document.getElementById('emptyState');
+  const container = document.getElementById('keysContainer');
+  if (!container) return;
 
   if (keys.length === 0) {
-    container.innerHTML = '';
-    emptyState.style.display = 'block';
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="empty-state text-center py-5">
+          <div class="empty-state-icon mx-auto mb-3">
+            <i class="fas fa-key"></i>
+          </div>
+          <h5 class="mb-2">No API keys found</h5>
+          <p class="text-muted mb-0">Create a key to allow agents to register and sync with this server.</p>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  emptyState.style.display = 'none';
   container.innerHTML = keys.map((key) => renderKeyCard(key)).join('');
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 // Render single key card

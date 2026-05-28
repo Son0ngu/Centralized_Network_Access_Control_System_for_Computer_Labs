@@ -261,16 +261,42 @@ class ApiClient:
             use_csrf=use_csrf,
             extra=headers,
         )
-        started = time.monotonic()
-        response = self.session.request(
-            method,
-            url,
-            json=json_body,
-            params=params,
-            headers=request_headers,
-            timeout=self.timeout,
-        )
-        duration_ms = int((time.monotonic() - started) * 1000)
+        method_upper = method.upper()
+        max_attempts = 3 if method_upper in ("GET", "HEAD", "OPTIONS") or path == "/api/admin/auth/login" else 1
+        response = None
+        duration_ms = 0
+        for attempt in range(1, max_attempts + 1):
+            started = time.monotonic()
+            try:
+                response = self.session.request(
+                    method,
+                    url,
+                    json=json_body,
+                    params=params,
+                    headers=request_headers,
+                    timeout=self.timeout,
+                )
+                duration_ms = int((time.monotonic() - started) * 1000)
+                break
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                duration_ms = int((time.monotonic() - started) * 1000)
+                raw_entry = {
+                    "label": label or path,
+                    "client": self.name,
+                    "method": method,
+                    "url": url,
+                    "attempt": attempt,
+                    "duration_ms": duration_ms,
+                    "params": params,
+                    "request_json": json_body,
+                    "exception": type(exc).__name__,
+                    "error": str(exc),
+                }
+                self.raw_log.append(self.redactor.sanitize(raw_entry))
+                if attempt >= max_attempts:
+                    raise
+                time.sleep(min(2 * attempt, 5))
+        assert response is not None
         content_type = response.headers.get("Content-Type", "")
         parsed: Any
         try:
@@ -346,6 +372,19 @@ class FullSystemE2E:
         self.results: List[StepResult] = []
         self.metadata: Dict[str, Any] = {}
         self.cleanup_results: List[Dict[str, Any]] = []
+        self.deep_whitelist_matrix: Dict[str, Any] = {}
+        self.deep_policy_matrix: Dict[str, Any] = {}
+        self.deep_firewall_packet_matrix: Dict[str, Any] = {}
+        self.deep_classroom_matrix: Dict[str, Any] = {}
+        self.deep_service_autostart_matrix: Dict[str, Any] = {}
+        self.deep_gui_matrix: Dict[str, Any] = {}
+        self.deep_websocket_matrix: Dict[str, Any] = {}
+        self.deep_soak_matrix: Dict[str, Any] = {}
+        self.coverage_not_tested: List[str] = [
+            "physical multi-machine hardware scale; deep mode uses many synthetic registered agents unless the script is run from multiple Windows endpoints",
+            "actual Windows reboot cycle; deep mode checks service/autostart readiness and records whether service persistence is configured",
+            "soak longer than the configured --deep-soak-minutes window",
+        ]
 
         self.bootstrap: Optional[ApiClient] = None
         self.admin: Optional[ApiClient] = None
@@ -366,6 +405,7 @@ class FullSystemE2E:
             "whitelist_ids": [],
             "profiles": [],
             "log_ids": [],
+            "extra_agents": [],
             "agent_deleted": False,
         }
 
@@ -407,6 +447,10 @@ class FullSystemE2E:
             "run_real_firewall_policy": bool(self.args.run_real_firewall_policy),
             "write_backend": self.args.write_backend,
             "read_provider": self.args.read_provider,
+            "deep": bool(self.args.deep),
+            "deep_classroom_agent_count": self.args.deep_classroom_agent_count,
+            "deep_soak_minutes": self.args.deep_soak_minutes,
+            "deep_soak_interval_seconds": self.args.deep_soak_interval_seconds,
         }
 
         self.step("environment_and_inputs", self.step_environment_and_inputs)
@@ -417,6 +461,20 @@ class FullSystemE2E:
             self.step("load_cleanup_result_json", self.step_load_cleanup_result_json)
         elif self.args.dry_run:
             self.skip("dry_run_requested", "No network or mutation executed", required=False)
+        elif self.args.firewall_only:
+            for name, func, required in (
+                ("public_server_surface", self.step_public_server_surface, True),
+                ("bootstrap_login", self.step_bootstrap_login, True),
+                ("firewall_only_api_key", self.step_firewall_only_api_key, True),
+                ("build_agent_exe", self.step_build_agent_exe, not self.args.skip_build),
+                ("agent_registration_and_auth", self.step_agent_registration_and_auth, True),
+                ("agent_heartbeat_sync_logs", self.step_agent_heartbeat_sync_logs, True),
+                ("real_firewall_default_deny_contract", self.step_real_firewall_contract, True),
+            ):
+                if self.has_required_failure():
+                    self.skip(name, "Skipped because an earlier required firewall-only prerequisite failed", required=False)
+                    continue
+                self.step(name, func, required=required)
         else:
             self.step("public_server_surface", self.step_public_server_surface)
             self.step("bootstrap_login", self.step_bootstrap_login)
@@ -432,6 +490,17 @@ class FullSystemE2E:
             self.step("agent_registration_and_auth", self.step_agent_registration_and_auth)
             self.step("agent_heartbeat_sync_logs", self.step_agent_heartbeat_sync_logs)
             self.step("agent_admin_teacher_policy_rbac", self.step_agent_admin_teacher_policy_rbac)
+            if self.args.deep:
+                self.step("deep_whitelist_conflict_matrix", self.step_deep_whitelist_conflict_matrix)
+                self.step("deep_policy_matrix", self.step_deep_policy_matrix)
+                self.step("deep_classroom_scale_matrix", self.step_deep_classroom_scale_matrix)
+                self.step("deep_service_autostart_matrix", self.step_deep_service_autostart_matrix)
+                self.step("deep_gui_click_matrix", self.step_deep_gui_click_matrix)
+                self.step("deep_websocket_realtime_matrix", self.step_deep_websocket_realtime_matrix)
+                if self.args.deep_soak_minutes > 0:
+                    self.step("deep_long_soak_matrix", self.step_deep_long_soak_matrix)
+                else:
+                    self.skip("deep_long_soak_matrix", "Skipped because --deep-soak-minutes is 0", required=False)
             self.step("logs_and_audit_contract", self.step_logs_and_audit_contract)
             if self.args.run_real_firewall_policy:
                 self.step("real_firewall_default_deny_contract", self.step_real_firewall_contract)
@@ -497,6 +566,9 @@ class FullSystemE2E:
             )
             self.logger.exception("STEP %s failed", name)
 
+    def has_required_failure(self) -> bool:
+        return any(result.required and result.status == "FAIL" for result in self.results)
+
     def skip(self, name: str, reason: str, *, required: bool = True) -> None:
         self.results.append(
             StepResult(
@@ -517,6 +589,7 @@ class FullSystemE2E:
             "bootstrap_password_present": bool(self.bootstrap_password),
             "output_dir": str(self.output_dir),
             "dry_run": self.args.dry_run,
+            "deep": self.args.deep,
         }
         if self.server_url:
             parsed = urlparse(self.server_url)
@@ -534,13 +607,30 @@ class FullSystemE2E:
                 missing.append("BootstrapAdminPassword")
             if missing:
                 raise StepFailure("Missing required input: " + ", ".join(missing), details)
-        if self.args.run_real_firewall_policy and not is_admin():
+        if self.args.run_real_firewall_policy and not self.args.dry_run and not is_admin():
             raise StepFailure("Real firewall policy test requires Administrator", details)
+        if self.args.deep and not self.args.run_real_firewall_policy and not self.args.dry_run:
+            raise StepFailure("Deep mode requires --run-real-firewall-policy so packet-level firewall coverage is not skipped", details)
+        if self.args.firewall_only and not self.args.run_real_firewall_policy and not self.args.dry_run:
+            raise StepFailure("--firewall-only requires --run-real-firewall-policy", details)
+        if self.args.deep_classroom_agent_count < 0:
+            raise StepFailure("--deep-classroom-agent-count must be >= 0", details)
+        if self.args.deep_soak_minutes < 0:
+            raise StepFailure("--deep-soak-minutes must be >= 0", details)
+        if self.args.deep_soak_interval_seconds < 10:
+            raise StepFailure("--deep-soak-interval-seconds must be >= 10", details)
         self.write_local_secrets()
         return details
 
     def make_client(self, name: str) -> ApiClient:
         return ApiClient(name, self.server_url, self.redactor, self.raw_log, self.args.timeout_seconds)
+
+    def configure_firewall_env(self) -> None:
+        os.environ["FIREWALL_WRITE_BACKEND"] = self.args.write_backend
+        if self.args.read_provider != "auto":
+            os.environ["SAINT_FIREWALL_PROVIDER"] = self.args.read_provider
+        else:
+            os.environ.pop("SAINT_FIREWALL_PROVIDER", None)
 
     def step_public_server_surface(self) -> Dict[str, Any]:
         client = self.make_client("public")
@@ -861,6 +951,40 @@ class FullSystemE2E:
         if details["validate_bad_key"].get("valid") is not False:
             raise StepFailure("Bad API key unexpectedly validated", details)
         return details
+
+    def step_firewall_only_api_key(self) -> Dict[str, Any]:
+        self.require_bootstrap()
+        assert self.bootstrap is not None
+        self.admin = self.bootstrap
+        key_name = f"{self.prefix}_firewall_packet_key"
+        created = self.bootstrap.request(
+            "POST",
+            "/api/api-keys",
+            expected=(201,),
+            json_body={
+                "name": key_name,
+                "description": f"Firewall-only packet E2E {self.run_id}",
+                "expires_in_days": 1,
+                "permissions": ["agent_register", "whitelist_sync", "logs_write"],
+            },
+            check_success=True,
+            label="firewall_only_create_api_key",
+        )
+        api_key = created.get("api_key")
+        key_id = created.get("key_id")
+        self.redactor.add(api_key)
+        self.state["api_key"] = {"api_key": api_key, "key_id": key_id, "name": key_name}
+        validate = self.bootstrap.request(
+            "POST",
+            "/api/api-keys/validate",
+            expected=(200,),
+            json_body={"api_key": api_key, "permission": "agent_register"},
+            check_success=True,
+            label="firewall_only_validate_api_key",
+        )
+        if not validate.get("valid"):
+            raise StepFailure("Firewall-only API key did not validate for agent_register", {"created": created, "validate": validate})
+        return {"created": created, "validate_register": validate}
 
     def step_group_rbac_contract(self) -> Dict[str, Any]:
         self.require_clients()
@@ -1286,6 +1410,762 @@ class FullSystemE2E:
         )
         return details
 
+    def step_deep_whitelist_conflict_matrix(self) -> Dict[str, Any]:
+        self.require_clients()
+        self.require_agent()
+        assert self.admin is not None and self.teacher is not None
+        group_a_id = self.group_id("a")
+        group_b_id = self.group_id("b")
+        conflict_value = f"{self.domain_prefix}-scope-conflict.example.com"
+        cross_value = f"{self.domain_prefix}-cross-group.example.com"
+        bulk_dup_value = f"{self.domain_prefix}-bulk-dupe.example.com"
+        profile_only_value = f"{self.domain_prefix}-profile-only.example.com"
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "values": {
+                "scope_conflict": conflict_value,
+                "cross_group": cross_value,
+                "bulk_duplicate": bulk_dup_value,
+                "profile_only": profile_only_value,
+            },
+            "cases": {},
+        }
+        self.deep_whitelist_matrix = matrix
+
+        def ok(name: str, details: Dict[str, Any]) -> None:
+            matrix["cases"][name] = {"passed": True, **details}
+
+        def fail(name: str, message: str, details: Dict[str, Any]) -> None:
+            matrix["cases"][name] = {"passed": False, "message": message, **details}
+            raise StepFailure(message, matrix)
+
+        global_add = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(201,),
+            json_body={"type": "domain", "value": conflict_value, "category": "deep-global", "priority": "high"},
+            check_success=True,
+            label="deep_global_conflict_add",
+        )
+        global_id = str(global_add.get("id"))
+        self.assert_real_id(global_id, "deep global conflict")
+        self.track_whitelist_id(global_id)
+
+        group_add = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(201,),
+            json_body={
+                "scope": "group",
+                "group_id": group_a_id,
+                "type": "domain",
+                "value": conflict_value,
+                "category": "deep-group",
+                "priority": "normal",
+            },
+            check_success=True,
+            label="deep_group_conflict_add",
+        )
+        group_conflict_id = str(group_add.get("id"))
+        self.assert_real_id(group_conflict_id, "deep group conflict")
+        self.track_whitelist_id(group_conflict_id)
+
+        scoped = self.admin.request("GET", "/api/whitelist", params={"group_id": group_a_id}, expected=(200,), check_success=True)
+        merged_conflict = self.entries_for_value(scoped.get("merged", []), conflict_value)
+        if len(merged_conflict) != 1:
+            fail("scoped_merge_single", "Scoped whitelist did not return exactly one merged conflict entry", {"entries": merged_conflict})
+        merged = merged_conflict[0]
+        if str(merged.get("_id") or merged.get("id")) != group_conflict_id or merged.get("scope") != "group":
+            fail("scoped_group_wins", "Group entry did not win scoped whitelist conflict", {"merged": merged, "group_id": group_conflict_id})
+        if merged.get("priority") != "high":
+            fail("scoped_priority_high_preserved", "Merged conflict did not preserve high priority", {"merged": merged})
+        ok("scoped_group_wins_with_global_priority", {"group_entry_id": group_conflict_id, "global_entry_id": global_id})
+
+        sync = self.agent_sync(policy_mode="none")
+        sync_conflict = self.entries_for_value(sync.get("domains", []), conflict_value)
+        if len(sync_conflict) != 1:
+            fail("agent_sync_single_conflict", "Agent sync did not return exactly one conflict entry", {"entries": sync_conflict})
+        sync_entry = sync_conflict[0]
+        if (
+            sync_entry.get("scope") == "global"
+            or str(sync_entry.get("_id") or sync_entry.get("id")) == global_id
+            or sync_entry.get("category") == "deep-global"
+        ):
+            fail("agent_sync_group_wins", "Agent sync used global entry instead of group conflict entry", {"entry": sync_entry})
+        ok("agent_sync_group_wins", {"entry": sync_entry})
+
+        cross_a = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(201,),
+            json_body={"scope": "group", "group_id": group_a_id, "type": "domain", "value": cross_value, "category": "deep-a"},
+            check_success=True,
+            label="deep_cross_group_a_add",
+        )
+        cross_a_id = str(cross_a.get("id"))
+        self.assert_real_id(cross_a_id, "deep cross group A")
+        self.track_whitelist_id(cross_a_id)
+        cross_b = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(201,),
+            json_body={"scope": "group", "group_id": group_b_id, "type": "domain", "value": cross_value, "category": "deep-b"},
+            check_success=True,
+            label="deep_cross_group_b_add",
+        )
+        cross_b_id = str(cross_b.get("id"))
+        self.assert_real_id(cross_b_id, "deep cross group B")
+        self.track_whitelist_id(cross_b_id)
+        sync_cross = self.entries_for_value(self.agent_sync(policy_mode="none").get("domains", []), cross_value)
+        if len(sync_cross) != 1:
+            fail("cross_group_agent_scope", "Agent sync did not return exactly one own-group cross entry", {"entries": sync_cross})
+        if str(sync_cross[0].get("_id") or sync_cross[0].get("id")) == cross_b_id or str(sync_cross[0].get("group_id")) == group_b_id:
+            fail("cross_group_b_not_visible", "Group B entry leaked into group A agent sync", {"entry": sync_cross[0]})
+        teacher_b_update = self.teacher.request(
+            "POST",
+            "/api/whitelist/bulk-update",
+            expected=(403,),
+            json_body={"item_ids": [cross_b_id], "active": False},
+            label="deep_teacher_group_b_update_denied",
+        )
+        ok("cross_group_isolated_and_teacher_denied", {"group_a_entry_id": cross_a_id, "group_b_entry_id": cross_b_id, "teacher_b_update": teacher_b_update})
+
+        duplicate_global = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(400,),
+            json_body={"type": "domain", "value": conflict_value, "category": "deep-duplicate"},
+            label="deep_duplicate_global_denied",
+        )
+        duplicate_group = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(400,),
+            json_body={"scope": "group", "group_id": group_a_id, "type": "domain", "value": conflict_value, "category": "deep-duplicate"},
+            label="deep_duplicate_group_denied",
+        )
+        bulk_dup = self.admin.request(
+            "POST",
+            "/api/whitelist/bulk",
+            expected=(200,),
+            json_body={
+                "items": [
+                    {"scope": "group", "group_id": group_a_id, "type": "domain", "value": bulk_dup_value, "category": "deep"},
+                    {"scope": "group", "group_id": group_a_id, "type": "domain", "value": bulk_dup_value, "category": "deep"},
+                ]
+            },
+            check_success=True,
+            label="deep_bulk_duplicate_batch",
+        )
+        bulk_ids = self.find_whitelist_ids(group_a_id, [bulk_dup_value])
+        for item_id in bulk_ids:
+            self.assert_real_id(item_id, "deep bulk duplicate group entry")
+            self.track_whitelist_id(item_id)
+        if len(bulk_ids) > 1:
+            fail("bulk_duplicate_no_duplicate_rows", "Bulk duplicate inserted more than one row", {"ids": bulk_ids, "response": bulk_dup})
+        ok("duplicate_same_scope_denied", {"global": duplicate_global, "group": duplicate_group, "bulk": bulk_dup, "bulk_ids": bulk_ids})
+
+        self.admin.request(
+            "POST",
+            "/api/whitelist/bulk-update",
+            expected=(200,),
+            json_body={"item_ids": [group_conflict_id], "active": False},
+            check_success=True,
+            label="deep_disable_group_conflict",
+        )
+        disabled_sync_entry = self.single_value_entry(self.agent_sync(policy_mode="none").get("domains", []), conflict_value)
+        if disabled_sync_entry.get("scope") == "group" or str(disabled_sync_entry.get("_id") or disabled_sync_entry.get("id")) == group_conflict_id:
+            fail("disabled_group_falls_back_global", "Disabled group conflict did not fall back to global", {"entry": disabled_sync_entry})
+        self.admin.request(
+            "POST",
+            "/api/whitelist/bulk-update",
+            expected=(200,),
+            json_body={"item_ids": [group_conflict_id], "active": True},
+            check_success=True,
+            label="deep_reenable_group_conflict",
+        )
+        restored_sync_entry = self.single_value_entry(self.agent_sync(policy_mode="none").get("domains", []), conflict_value)
+        if (
+            restored_sync_entry.get("scope") == "global"
+            or str(restored_sync_entry.get("_id") or restored_sync_entry.get("id")) == global_id
+            or restored_sync_entry.get("category") == "deep-global"
+        ):
+            fail("reenabled_group_wins", "Re-enabled group conflict did not win", {"entry": restored_sync_entry})
+        ok("disable_restore_group_conflict", {"disabled_entry": disabled_sync_entry, "restored_entry": restored_sync_entry})
+
+        self.admin.request("DELETE", f"/api/whitelist/{group_conflict_id}", expected=(200,), check_success=True, label="deep_delete_group_conflict")
+        self.untrack_whitelist_id(group_conflict_id)
+        deleted_sync_entry = self.single_value_entry(self.agent_sync(policy_mode="none").get("domains", []), conflict_value)
+        if (
+            deleted_sync_entry.get("scope") == "group"
+            or (
+                str(deleted_sync_entry.get("_id") or deleted_sync_entry.get("id")) != global_id
+                and deleted_sync_entry.get("category") != "deep-global"
+            )
+        ):
+            fail("deleted_group_falls_back_global", "Deleted group conflict did not fall back to global", {"entry": deleted_sync_entry})
+        restored_group = self.admin.request(
+            "POST",
+            "/api/whitelist",
+            expected=(201,),
+            json_body={"scope": "group", "group_id": group_a_id, "type": "domain", "value": conflict_value, "category": "deep-group-restore"},
+            check_success=True,
+            label="deep_restore_group_conflict",
+        )
+        group_conflict_id = str(restored_group.get("id"))
+        self.assert_real_id(group_conflict_id, "deep restored group conflict")
+        self.track_whitelist_id(group_conflict_id)
+        self.state.setdefault("deep", {})["conflict_group_id"] = group_conflict_id
+        self.state.setdefault("deep", {})["conflict_global_id"] = global_id
+        self.state.setdefault("deep", {})["conflict_value"] = conflict_value
+        restored_after_delete = self.single_value_entry(self.agent_sync(policy_mode="none").get("domains", []), conflict_value)
+        if (
+            restored_after_delete.get("scope") == "global"
+            or str(restored_after_delete.get("_id") or restored_after_delete.get("id")) == global_id
+            or restored_after_delete.get("category") == "deep-global"
+        ):
+            fail("restored_group_wins_after_delete", "Restored group conflict did not win after delete", {"entry": restored_after_delete})
+        ok("delete_restore_group_conflict", {"deleted_entry": deleted_sync_entry, "restored_entry": restored_after_delete})
+
+        profile = self.teacher.request(
+            "POST",
+            f"/api/groups/{group_a_id}/profiles",
+            expected=(201,),
+            json_body={"name": f"{self.prefix}_deep_profile", "domains": [{"domain": profile_only_value, "category": "deep-profile"}]},
+            check_success=True,
+            label="deep_profile_create",
+        )
+        profile_id = str(profile.get("data", {}).get("_id") or profile.get("_id") or profile.get("id"))
+        if not profile_id or profile_id == "None":
+            fail("active_profile_id_present", "Profile create response did not include an id", {"profile": profile})
+        self.state["profiles"].append({"group_id": group_a_id, "profile_id": profile_id})
+        self.teacher.request("POST", f"/api/groups/{group_a_id}/profiles/{profile_id}/activate", expected=(200,), check_success=True, label="deep_profile_activate")
+        profile_sync = self.agent_sync(policy_mode="none")
+        profile_conflict = self.single_value_entry(profile_sync.get("domains", []), conflict_value)
+        if (
+            profile_conflict.get("scope") == "group"
+            or str(profile_conflict.get("_id") or profile_conflict.get("id")) == group_conflict_id
+            or profile_conflict.get("category") != "deep-global"
+        ):
+            fail("active_profile_suppresses_group_base", "Active profile leaked group base conflict entry", {"entry": profile_conflict})
+        if len(self.entries_for_value(profile_sync.get("domains", []), profile_only_value)) != 1:
+            fail("active_profile_domain_present", "Active profile domain missing from sync", {"domains": profile_sync.get("domains", [])})
+        self.teacher.request("POST", f"/api/groups/{group_a_id}/profiles/{profile_id}/deactivate", expected=(200,), check_success=True, label="deep_profile_deactivate")
+        self.teacher.request("DELETE", f"/api/groups/{group_a_id}/profiles/{profile_id}", expected=(200,), check_success=True, label="deep_profile_delete")
+        self.state["profiles"] = [p for p in self.state["profiles"] if p.get("profile_id") != profile_id]
+        ok("active_profile_overrides_group_base", {"profile_id": profile_id, "profile_conflict_entry": profile_conflict})
+
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_policy_matrix(self) -> Dict[str, Any]:
+        self.require_clients()
+        self.require_agent()
+        assert self.admin is not None and self.teacher is not None
+        group_a_id = self.group_id("a")
+        group_b_id = self.group_id("b")
+        conflict_value = self.state.get("deep", {}).get("conflict_value")
+        custom_value = f"{self.domain_prefix}-custom-policy.example.com"
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "values": {"conflict": conflict_value, "custom": custom_value},
+            "cases": {},
+        }
+        self.deep_policy_matrix = matrix
+
+        def ok(name: str, details: Dict[str, Any]) -> None:
+            matrix["cases"][name] = {"passed": True, **details}
+
+        def fail(name: str, message: str, details: Dict[str, Any]) -> None:
+            matrix["cases"][name] = {"passed": False, "message": message, **details}
+            raise StepFailure(message, matrix)
+
+        sync_none = self.agent_sync(policy_mode="none")
+        if sync_none.get("policy_mode") != "none" or sync_none.get("policy_active") is not False:
+            fail("none_policy_inactive", "Policy none sync reported active policy", {"sync": sync_none})
+        if conflict_value:
+            conflict_entry = self.single_value_entry(sync_none.get("domains", []), conflict_value)
+            if conflict_entry.get("scope") == "global" or conflict_entry.get("category") == "deep-global":
+                fail("none_policy_group_conflict_visible", "Policy none did not preserve group conflict merge", {"entry": conflict_entry})
+        repeat = self.agent_sync(
+            policy_mode="none",
+            global_version=sync_none.get("global_version"),
+            group_version=sync_none.get("group_version"),
+        )
+        if repeat.get("up_to_date") is not True or repeat.get("count") != 0:
+            fail("versioned_sync_up_to_date", "Repeated sync with current versions was not up_to_date", {"repeat": repeat})
+        ok("none_policy_and_version_cache", {"sync_count": sync_none.get("count"), "repeat": repeat})
+
+        self.admin.request(
+            "PATCH",
+            f"/api/agents/{self.agent_id}/policy",
+            expected=(200,),
+            json_body={"mode": "isolate", "reason": f"{self.prefix} deep isolate", "duration_minutes": 5},
+            check_success=True,
+            label="deep_policy_isolate",
+        )
+        heartbeat = self.send_agent_heartbeat()
+        if heartbeat.get("force_sync") is not True or heartbeat.get("policy_mode") != "isolate":
+            fail("isolate_heartbeat_force_sync", "Heartbeat did not request force sync for isolate", {"heartbeat": heartbeat})
+        isolate_sync = self.agent_sync(policy_mode="none")
+        isolate_values = {self.entry_value(e) for e in isolate_sync.get("domains", [])}
+        if isolate_sync.get("policy_mode") != "isolate" or isolate_sync.get("policy_active") is not True:
+            fail("isolate_sync_policy_active", "Isolate sync did not report active isolate policy", {"sync": isolate_sync})
+        if conflict_value and conflict_value in isolate_values:
+            fail("isolate_suppresses_group_whitelist", "Isolate sync still contained base whitelist domain", {"values": sorted(isolate_values)})
+        if not {"8.8.8.8", "8.8.4.4", "1.1.1.1"}.issubset(isolate_values):
+            fail("isolate_system_dns_present", "Isolate sync missing DNS system entries", {"values": sorted(isolate_values)})
+        ok("isolate_policy_sync", {"heartbeat": heartbeat, "count": isolate_sync.get("count"), "values": sorted(isolate_values)})
+
+        self.admin.request(
+            "PATCH",
+            f"/api/agents/{self.agent_id}/policy",
+            expected=(200,),
+            json_body={
+                "mode": "custom_whitelist",
+                "reason": f"{self.prefix} deep custom",
+                "custom_whitelist": [{"domain": custom_value, "category": "deep-custom"}],
+                "duration_minutes": 5,
+            },
+            check_success=True,
+            label="deep_policy_custom",
+        )
+        custom_sync = self.agent_sync(policy_mode="isolate")
+        custom_values = {self.entry_value(e) for e in custom_sync.get("domains", [])}
+        if custom_sync.get("policy_mode") != "custom_whitelist" or custom_sync.get("policy_active") is not True:
+            fail("custom_sync_policy_active", "Custom whitelist sync did not report active custom policy", {"sync": custom_sync})
+        if custom_value not in custom_values:
+            fail("custom_domain_present", "Custom whitelist domain missing from sync", {"values": sorted(custom_values)})
+        if conflict_value and conflict_value in custom_values:
+            fail("custom_suppresses_group_whitelist", "Custom whitelist sync still contained base whitelist domain", {"values": sorted(custom_values)})
+        ok("custom_policy_sync", {"count": custom_sync.get("count"), "values": sorted(custom_values)})
+
+        invalid = self.admin.request(
+            "PATCH",
+            f"/api/agents/{self.agent_id}/policy",
+            expected=(400,),
+            json_body={"mode": "not_a_policy"},
+            label="deep_policy_invalid_mode",
+        )
+        teacher_denied: Dict[str, Any] = {}
+        try:
+            self.admin.request(
+                "PATCH",
+                f"/api/agents/{self.agent_id}/group",
+                expected=(200,),
+                json_body={"group_id": group_b_id},
+                check_success=True,
+                label="deep_policy_move_group_b",
+            )
+            teacher_denied = self.teacher.request(
+                "PATCH",
+                f"/api/agents/{self.agent_id}/policy",
+                expected=(403,),
+                json_body={"mode": "isolate", "reason": "should fail"},
+                label="deep_teacher_policy_group_b_denied",
+            )
+        finally:
+            self.admin.request(
+                "PATCH",
+                f"/api/agents/{self.agent_id}/group",
+                expected=(200,),
+                json_body={"group_id": group_a_id},
+                check_success=True,
+                label="deep_policy_move_group_a",
+            )
+        ok("policy_negative_paths", {"invalid_mode": invalid, "teacher_group_b_denied": teacher_denied})
+
+        reset = self.admin.request(
+            "PATCH",
+            f"/api/agents/{self.agent_id}/policy",
+            expected=(200,),
+            json_body={"mode": "none", "reason": f"{self.prefix} deep reset"},
+            check_success=True,
+            label="deep_policy_reset",
+        )
+        reset_sync = self.agent_sync(policy_mode="custom_whitelist")
+        if reset_sync.get("policy_mode") != "none" or reset_sync.get("policy_active") is not False:
+            fail("reset_policy_none", "Reset policy sync did not return to none", {"sync": reset_sync, "reset": reset})
+        if conflict_value:
+            reset_conflict = self.single_value_entry(reset_sync.get("domains", []), conflict_value)
+            if reset_conflict.get("scope") == "global" or reset_conflict.get("category") == "deep-global":
+                fail("reset_restores_group_merge", "Reset did not restore group conflict merge", {"entry": reset_conflict})
+        ok("reset_policy_restores_normal_sync", {"reset": reset, "sync_count": reset_sync.get("count")})
+
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_classroom_scale_matrix(self) -> Dict[str, Any]:
+        self.require_clients()
+        self.require_agent()
+        assert self.admin is not None and self.teacher is not None
+        group_a_id = self.group_id("a")
+        group_b_id = self.group_id("b")
+        count = int(self.args.deep_classroom_agent_count)
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "mode": "synthetic_registered_agents",
+            "requested_agent_count": count,
+            "cases": {},
+        }
+        self.deep_classroom_matrix = matrix
+        if count == 0:
+            matrix["passed"] = True
+            matrix["skipped"] = True
+            matrix["reason"] = "--deep-classroom-agent-count is 0"
+            self.add_coverage_note("multi-machine classroom scale disabled by --deep-classroom-agent-count=0")
+            return matrix
+
+        group_a_agents: List[Dict[str, Any]] = []
+        group_b_agents: List[Dict[str, Any]] = []
+        registered_agents: List[Dict[str, Any]] = []
+        for index in range(1, count + 1):
+            hostname = f"{self.prefix}_classroom_{index:03d}"
+            device_id = f"{self.prefix}_classroom_device_{index:03d}"
+            agent = self.register_test_agent(hostname, device_id, f"deep_classroom_register_{index:03d}")
+            target_group_id = group_a_id if index <= (count + 1) // 2 else group_b_id
+            target_group_key = "a" if target_group_id == group_a_id else "b"
+            self.admin.request(
+                "PATCH",
+                f"/api/agents/{agent['agent_id']}/group",
+                expected=(200,),
+                json_body={"group_id": target_group_id},
+                check_success=True,
+                label=f"deep_classroom_move_{index:03d}",
+            )
+            agent["group_key"] = target_group_key
+            agent["group_id"] = target_group_id
+            self.send_registered_agent_heartbeat(agent)
+            self.sync_registered_agent(agent)
+            self.send_registered_agent_logs(
+                agent,
+                [
+                    {
+                        "level": "INFO",
+                        "action": "CLASSROOM_SCALE_HEARTBEAT",
+                        "message": f"{self.prefix} classroom synthetic endpoint {index}",
+                        "domain": f"classroom-{index:03d}.example.test",
+                    }
+                ],
+            )
+            registered_agents.append(agent)
+            self.state["extra_agents"].append(agent)
+            if target_group_key == "a":
+                group_a_agents.append(agent)
+            else:
+                group_b_agents.append(agent)
+
+        admin_list = self.admin.request("GET", "/api/agents", params={"hostname": f"{self.prefix}_classroom"}, expected=(200,), check_success=True)
+        teacher_list = self.teacher.request("GET", "/api/agents", params={"hostname": f"{self.prefix}_classroom"}, expected=(200,), check_success=True)
+        teacher_group_a_checks = [
+            self.teacher.request("GET", f"/api/agents/{agent['agent_id']}", expected=(200,), check_success=True)
+            for agent in group_a_agents[:3]
+        ]
+        teacher_group_b_denied = [
+            self.teacher.request("GET", f"/api/agents/{agent['agent_id']}", expected=(403,))
+            for agent in group_b_agents[:3]
+        ]
+        admin_stats = self.admin.request("GET", "/api/agents/statistics", expected=(200,), check_success=True)
+        if len(registered_agents) != count:
+            raise StepFailure("Classroom scale registration count mismatch", matrix)
+        if not group_a_agents or (count > 1 and not group_b_agents):
+            raise StepFailure("Classroom scale did not distribute agents across groups", matrix)
+
+        matrix["cases"]["registration_heartbeat_sync_logs"] = {
+            "passed": True,
+            "registered_count": len(registered_agents),
+            "group_a_count": len(group_a_agents),
+            "group_b_count": len(group_b_agents),
+        }
+        matrix["cases"]["admin_teacher_scope"] = {
+            "passed": True,
+            "admin_list_summary": self.payload_list_summary(admin_list),
+            "teacher_list_summary": self.payload_list_summary(teacher_list),
+            "teacher_group_a_get_checks": len(teacher_group_a_checks),
+            "teacher_group_b_denied_checks": len(teacher_group_b_denied),
+            "admin_stats": admin_stats,
+        }
+        matrix["note"] = "This is server-side synthetic scale from one Windows runner, not a physical multi-PC lab run."
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_service_autostart_matrix(self) -> Dict[str, Any]:
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "actual_reboot_performed": False,
+            "cases": {},
+        }
+        self.deep_service_autostart_matrix = matrix
+        exe_meta = self.verify_exe_metadata()
+        service_script = r"""
+$services = Get-Service | Where-Object {
+    $_.Name -match 'SAINT|FirewallController|Firewall Controller' -or
+    $_.DisplayName -match 'SAINT|Firewall Controller|Network Access Control'
+} | Select-Object Name,DisplayName,Status,StartType
+@($services) | ConvertTo-Json -Depth 4 -Compress
+"""
+        startup_script = r"""
+$registry = @()
+foreach ($path in @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run'
+)) {
+    if (Test-Path $path) {
+        $props = Get-ItemProperty -Path $path
+        foreach ($prop in $props.PSObject.Properties) {
+            if ($prop.Name -notlike 'PS*' -and "$($prop.Value)" -match 'SAINT|FirewallController|Firewall Controller') {
+                $registry += [pscustomobject]@{Path=$path; Name=$prop.Name; Value="$($prop.Value)"}
+            }
+        }
+    }
+}
+$startup = @()
+foreach ($dir in @([Environment]::GetFolderPath('Startup'), [Environment]::GetFolderPath('CommonStartup'))) {
+    if ($dir -and (Test-Path $dir)) {
+        Get-ChildItem -Path $dir -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -match 'SAINT|FirewallController|Firewall Controller'
+        } | ForEach-Object {
+            $startup += [pscustomobject]@{Directory=$dir; Name=$_.Name; FullName=$_.FullName}
+        }
+    }
+}
+[pscustomobject]@{RegistryRun=$registry; StartupFolder=$startup} | ConvertTo-Json -Depth 6 -Compress
+"""
+        services = self.run_powershell_json(service_script, "deep_service_autostart_services", timeout=30)
+        startup = self.run_powershell_json(startup_script, "deep_service_autostart_startup", timeout=30)
+        post_reboot_script = self.output_dir / "post_reboot_autostart_check.ps1"
+        post_reboot_output = self.output_dir / f"post_reboot_autostart_{self.run_id}.json"
+        post_reboot_script.write_text(
+            self.post_reboot_check_ps1(str(post_reboot_output)),
+            encoding="utf-8",
+        )
+        service_items = [
+            item for item in self.ensure_list(services.get("parsed"))
+            if isinstance(item, dict) and any(item.values())
+        ]
+        startup_data = startup.get("parsed") if isinstance(startup.get("parsed"), dict) else {}
+        registry_items = [
+            item for item in self.ensure_list(startup_data.get("RegistryRun"))
+            if isinstance(item, dict) and any(item.values())
+        ]
+        startup_items = [
+            item for item in self.ensure_list(startup_data.get("StartupFolder"))
+            if isinstance(item, dict) and any(item.values())
+        ]
+        configured = bool(service_items or registry_items or startup_items)
+        automatic_services = [
+            item for item in service_items
+            if str(item.get("StartType", "")).lower() in ("automatic", "automaticdelayedstart")
+        ]
+        matrix["cases"]["exe_artifact"] = {"passed": True, **exe_meta}
+        matrix["cases"]["service_inventory"] = {
+            "passed": True,
+            "services": service_items,
+            "automatic_service_count": len(automatic_services),
+        }
+        matrix["cases"]["autostart_inventory"] = {
+            "passed": True,
+            "registry_run": registry_items,
+            "startup_folder": startup_items,
+        }
+        matrix["service_or_autostart_configured"] = configured
+        matrix["note"] = "The runner does not reboot Windows; it verifies whether persistence is configured before a manual reboot test."
+        matrix["post_reboot_check_script"] = str(post_reboot_script)
+        matrix["post_reboot_expected_output"] = str(post_reboot_output)
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_gui_click_matrix(self) -> Dict[str, Any]:
+        self.require_clients()
+        node = shutil.which("node")
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "tool": "node + @playwright/test",
+            "node": node,
+            "cases": {},
+        }
+        self.deep_gui_matrix = matrix
+        if not node:
+            self.add_coverage_note("GUI click-by-click skipped because node.exe is not available")
+            raise StepFailure("Node.js not found for Playwright GUI click smoke", matrix)
+        playwright_package = REPO_ROOT / "node_modules" / "@playwright" / "test"
+        if not playwright_package.exists():
+            self.add_coverage_note("GUI click-by-click skipped because @playwright/test is not installed")
+            raise StepFailure("@playwright/test is not installed; run npm install before deep GUI smoke", matrix)
+
+        script_path = self.output_dir / "deep_gui_click_smoke.js"
+        script_path.write_text(self.gui_click_smoke_js(), encoding="utf-8")
+        env = os.environ.copy()
+        env.update(
+            {
+                "SAINT_E2E_SERVER_URL": self.server_url,
+                "SAINT_E2E_USERNAME": self.temp_admin_username,
+                "SAINT_E2E_PASSWORD": self.temp_admin_password,
+            }
+        )
+        result = subprocess.run(
+            [node, str(script_path)],
+            cwd=str(REPO_ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=self.args.deep_gui_timeout_seconds,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        parsed = self.parse_last_json_object(result.stdout)
+        matrix["returncode"] = result.returncode
+        matrix["stdout_tail"] = truncate_text(result.stdout[-4000:])
+        matrix["stderr_tail"] = truncate_text(result.stderr[-4000:])
+        matrix["parsed"] = parsed
+        if result.returncode != 0 or not parsed.get("ok"):
+            raise StepFailure("Playwright GUI click smoke failed", matrix)
+        matrix["cases"]["login_and_navigation_clicks"] = {
+            "passed": True,
+            "steps": parsed.get("steps", []),
+            "http_errors": parsed.get("httpErrors", []),
+            "browser": parsed.get("browser"),
+        }
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_websocket_realtime_matrix(self) -> Dict[str, Any]:
+        self.require_clients()
+        assert self.admin is not None
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "events": [],
+            "cases": {},
+        }
+        self.deep_websocket_matrix = matrix
+        try:
+            import socketio  # type: ignore[import-not-found]
+        except Exception as exc:  # noqa: BLE001
+            self.add_coverage_note("Socket.IO realtime skipped because python-socketio is not installed")
+            raise StepFailure("python-socketio is not available for realtime smoke", {"error": str(exc), **matrix})
+
+        events: List[Dict[str, Any]] = []
+        sio = socketio.Client(reconnection=False, logger=False, engineio_logger=False, request_timeout=self.args.timeout_seconds)
+
+        def record(name: str, payload: Any = None) -> None:
+            events.append({"event": name, "payload": self.redactor.sanitize(payload), "at": datetime.now().isoformat(timespec="seconds")})
+
+        @sio.event
+        def connect():  # type: ignore[no-untyped-def]
+            record("connect")
+
+        @sio.event
+        def disconnect():  # type: ignore[no-untyped-def]
+            record("disconnect")
+
+        @sio.on("server_message")
+        def on_server_message(data):  # type: ignore[no-untyped-def]
+            record("server_message", data)
+
+        @sio.on("pong")
+        def on_pong(data):  # type: ignore[no-untyped-def]
+            record("pong", data)
+
+        for event_name in ("whitelist_updated", "whitelist_added", "agent_heartbeat", "new_log"):
+            sio.on(event_name, lambda data, event_name=event_name: record(event_name, data))
+
+        try:
+            sio.connect(self.server_url, transports=["polling", "websocket"], wait_timeout=self.args.deep_websocket_timeout_seconds)
+            sio.emit("ping", {"run_id": self.run_id, "prefix": self.prefix})
+            self.wait_for_event(events, "pong", self.args.deep_websocket_timeout_seconds)
+            realtime_value = f"{self.domain_prefix}-socketio-realtime.example.com"
+            created = self.admin.request(
+                "POST",
+                "/api/whitelist",
+                expected=(201,),
+                json_body={"type": "domain", "value": realtime_value, "category": "deep-realtime"},
+                check_success=True,
+                label="deep_socketio_whitelist_add",
+            )
+            created_id = created.get("_id") or created.get("id") or created.get("data", {}).get("_id") or created.get("data", {}).get("id")
+            self.assert_real_id(created_id, "deep socketio whitelist entry")
+            self.track_whitelist_id(created_id)
+            self.wait_for_any_event(events, {"whitelist_updated", "whitelist_added"}, self.args.deep_websocket_timeout_seconds)
+        finally:
+            if sio.connected:
+                sio.disconnect()
+        matrix["events"] = events
+        event_names = [item.get("event") for item in events]
+        matrix["cases"]["connect_ping_pong"] = {
+            "passed": "connect" in event_names and "pong" in event_names,
+            "event_names": event_names,
+        }
+        matrix["cases"]["whitelist_realtime_event"] = {
+            "passed": bool({"whitelist_updated", "whitelist_added"}.intersection(event_names)),
+            "event_names": event_names,
+        }
+        if not matrix["cases"]["connect_ping_pong"]["passed"] or not matrix["cases"]["whitelist_realtime_event"]["passed"]:
+            raise StepFailure("Socket.IO realtime event matrix did not receive required events", matrix)
+        matrix["passed"] = True
+        return matrix
+
+    def step_deep_long_soak_matrix(self) -> Dict[str, Any]:
+        self.require_agent()
+        minutes = float(self.args.deep_soak_minutes)
+        interval = int(self.args.deep_soak_interval_seconds)
+        matrix: Dict[str, Any] = {
+            "passed": False,
+            "requested_minutes": minutes,
+            "interval_seconds": interval,
+            "samples": [],
+        }
+        self.deep_soak_matrix = matrix
+        deadline = time.monotonic() + (minutes * 60.0)
+        sample_index = 0
+        public_client = self.make_client("deep_soak_public")
+        extra_agents = list(self.state.get("extra_agents", []))
+        while True:
+            sample_index += 1
+            sample_started = time.monotonic()
+            sample: Dict[str, Any] = {
+                "sample": sample_index,
+                "at": datetime.now().isoformat(timespec="seconds"),
+            }
+            health = public_client.request("GET", "/api/health", expected=(200,), use_bearer=False)
+            heartbeat = self.send_agent_heartbeat()
+            sync = self.agent_sync(policy_mode="none")
+            log_send = self.send_agent_logs(
+                [
+                    {
+                        "level": "INFO",
+                        "action": "DEEP_SOAK_SAMPLE",
+                        "message": f"{self.prefix} soak sample {sample_index}",
+                        "domain": f"soak-{sample_index:03d}.example.test",
+                    }
+                ]
+            )
+            sample.update(
+                {
+                    "duration_ms": int((time.monotonic() - sample_started) * 1000),
+                    "health_status": health.get("status") or health.get("data", {}).get("status"),
+                    "heartbeat_success": heartbeat.get("success"),
+                    "sync_success": sync.get("success"),
+                    "sync_count": sync.get("count"),
+                    "log_success": log_send.get("success"),
+                }
+            )
+            if extra_agents:
+                extra = extra_agents[(sample_index - 1) % len(extra_agents)]
+                extra_heartbeat = self.send_registered_agent_heartbeat(extra)
+                sample["extra_agent_id"] = extra.get("agent_id")
+                sample["extra_heartbeat_success"] = extra_heartbeat.get("success")
+            matrix["samples"].append(sample)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(interval, remaining))
+        matrix["actual_samples"] = len(matrix["samples"])
+        matrix["actual_duration_seconds"] = round(minutes * 60.0, 3)
+        matrix["passed"] = True
+        return matrix
+
     def step_logs_and_audit_contract(self) -> Dict[str, Any]:
         self.require_clients()
         self.require_agent()
@@ -1317,11 +2197,7 @@ class FullSystemE2E:
     def step_real_firewall_contract(self) -> Dict[str, Any]:
         self.require_agent()
         add_agent_path()
-        os.environ["FIREWALL_WRITE_BACKEND"] = self.args.write_backend
-        if self.args.read_provider != "auto":
-            os.environ["SAINT_FIREWALL_PROVIDER"] = self.args.read_provider
-        else:
-            os.environ.pop("SAINT_FIREWALL_PROVIDER", None)
+        self.configure_firewall_env()
 
         from firewall.manager import FirewallManager  # pylint: disable=import-error
 
@@ -1341,42 +2217,115 @@ class FullSystemE2E:
                     "repair": repair,
                 },
             )
+        required_profiles = {"domain", "private", "public"}
+        packet_matrix: Dict[str, Any] = {
+            "passed": False,
+            "snapshot_policies": snapshot_policies,
+            "cases": {},
+        }
+        allowed_ip = self.args.firewall_test_ip
+        blocked_ip: Optional[str] = None
+        if self.args.deep:
+            self.deep_firewall_packet_matrix = packet_matrix
+            missing_profiles = sorted(required_profiles - set(snapshot_policies))
+            if missing_profiles:
+                raise StepFailure(
+                    "Firewall snapshot is missing required profile policies",
+                    {"snapshot": str(self.firewall_snapshot_path), "missing_profiles": missing_profiles, "policies": snapshot_policies},
+                )
+            allowed_ip = self.args.deep_allowed_ip
+            allowed_preflight = self.tcp_probe(allowed_ip, self.args.deep_allowed_port, "deep_allowed_preflight")
+            packet_matrix["cases"]["allowed_preflight"] = allowed_preflight
+            if not allowed_preflight.get("ok"):
+                raise StepFailure("Deep allowed IP is not reachable before firewall mutation", packet_matrix)
+            blocked_ip, blocked_preflight = self.select_blocked_packet_candidate(allowed_ip)
+            packet_matrix["blocked_ip"] = blocked_ip
+            packet_matrix["cases"]["blocked_preflight"] = blocked_preflight
 
         enabled = False
         restored = False
         cleared = False
         forced_default_allow = None
         exe_launch = {}
+        active_policy: Dict[str, Any] = {}
+        health: Dict[str, Any] = {}
+        heartbeat: Dict[str, Any] = {}
+        log_send: Dict[str, Any] = {}
+        created_rule = False
+        removed_rule = False
         try:
             if DEFAULT_EXE.exists():
                 manager.rules_manager.create_self_allow_rules(str(DEFAULT_EXE))
             enabled = manager.enable_whitelist_mode(
                 server_urls=[self.server_url],
-                whitelist_ips={self.args.firewall_test_ip},
+                whitelist_ips={allowed_ip},
                 whitelist_domains=set(),
             )
             if not enabled:
                 raise StepFailure("enable_whitelist_mode returned False")
+            active_policy = manager.get_firewall_policy_status()
+            if self.args.deep:
+                if not self.profiles_are_all_block(active_policy.get("profiles") or {}):
+                    raise StepFailure("Default Deny did not set every outbound profile to block", {"active_policy": active_policy})
+                packet_matrix["cases"]["active_policy_block"] = active_policy
+                self_allow_before = self.firewall_rule_summary(manager)
+                manager.rules_manager.create_self_allow_rules(sys.executable)
+                self_allow_after = self.firewall_rule_summary(manager)
+                if self_allow_after.get("self_allow_count") != 3 or self_allow_after.get("duplicate_rule_names"):
+                    raise StepFailure("Self-allow rules are missing or duplicated", {"before": self_allow_before, "after": self_allow_after})
+                packet_matrix["cases"]["self_allow_idempotent"] = {"before": self_allow_before, "after": self_allow_after}
+
+                allowed_active = self.tcp_probe(allowed_ip, self.args.deep_allowed_port, "deep_allowed_active")
+                packet_matrix["cases"]["allowed_active"] = allowed_active
+                if not allowed_active.get("ok"):
+                    raise StepFailure("Allowed packet probe failed while Default Deny was active", packet_matrix)
+                if blocked_ip:
+                    blocked_active = self.tcp_probe(blocked_ip, self.args.deep_allowed_port, "deep_blocked_active")
+                    packet_matrix["cases"]["blocked_active"] = blocked_active
+                    if blocked_active.get("ok"):
+                        raise StepFailure("Blocked packet probe unexpectedly succeeded while Default Deny was active", packet_matrix)
+
+                before_rules = self.firewall_rule_summary(manager)
+                created_rule = manager.rules_manager.create_allow_rule(self.args.deep_mutation_ip)
+                after_add_rules = self.firewall_rule_summary(manager)
+                removed_rule = manager.rules_manager.remove_allow_rule(self.args.deep_mutation_ip)
+                after_remove_rules = self.firewall_rule_summary(manager)
+                if not created_rule or not removed_rule:
+                    raise StepFailure("Deep firewall add/remove rule mutation failed", {"created": created_rule, "removed": removed_rule})
+                if after_add_rules.get("allow_rule_count", 0) <= before_rules.get("allow_rule_count", 0):
+                    raise StepFailure("Deep firewall add rule did not increase managed allow rules", {"before": before_rules, "after_add": after_add_rules})
+                if after_remove_rules.get("allow_rule_count", 0) > before_rules.get("allow_rule_count", 0):
+                    raise StepFailure("Deep firewall remove rule did not restore managed allow rule count", {"before": before_rules, "after_remove": after_remove_rules})
+                packet_matrix["cases"]["managed_rule_add_remove"] = {
+                    "mutation_ip": self.args.deep_mutation_ip,
+                    "before": before_rules,
+                    "after_add": after_add_rules,
+                    "after_remove": after_remove_rules,
+                }
             health = requests.get(self.server_url.rstrip("/") + "/api/health", timeout=self.args.timeout_seconds).json()
             heartbeat = self.send_agent_heartbeat()
             log_send = self.send_agent_logs([
                 {"level": "INFO", "action": "FIREWALL_E2E", "message": f"{self.prefix} firewall active log", "is_lifecycle_event": True}
             ])
-            created_rule = manager.rules_manager.create_allow_rule(self.args.firewall_test_ip)
-            removed_rule = manager.rules_manager.remove_allow_rule(self.args.firewall_test_ip)
+            if not self.args.deep:
+                created_rule = manager.rules_manager.create_allow_rule(self.args.firewall_test_ip)
+                removed_rule = manager.rules_manager.remove_allow_rule(self.args.firewall_test_ip)
             if not self.args.skip_agent_exe_launch:
                 exe_launch = self.launch_agent_exe_smoke()
+            if self.args.deep:
+                packet_matrix["passed"] = True
             return {
                 "snapshot": str(self.firewall_snapshot_path),
                 "before_policy": before_policy,
                 "enabled": enabled,
-                "active_policy": manager.get_firewall_policy_status(),
+                "active_policy": active_policy,
                 "health": health,
                 "heartbeat": heartbeat,
                 "log_send": log_send,
                 "rule_create": created_rule,
                 "rule_remove": removed_rule,
                 "exe_launch": exe_launch,
+                "deep_packet_matrix": packet_matrix if self.args.deep else {},
             }
         finally:
             try:
@@ -1391,7 +2340,32 @@ class FullSystemE2E:
                 if not profiles or self.profiles_are_all_block(profiles):
                     forced_default_allow = manager.policy_manager.restore_default_policy()
                     after_policy = manager.get_firewall_policy_status()
-                cleanup_ok = restored and cleared and forced_default_allow is not False
+                residual_rules = self.firewall_rule_summary(manager)
+                post_restore_packet = None
+                if self.args.deep:
+                    if not self.profiles_are_all_allow(after_policy.get("profiles") or {}):
+                        forced_default_allow = manager.policy_manager.restore_default_policy()
+                        after_policy = manager.get_firewall_policy_status()
+                    if blocked_ip:
+                        post_restore_packet = self.tcp_probe(blocked_ip, self.args.deep_allowed_port, "deep_blocked_post_restore")
+                        packet_matrix["cases"]["blocked_post_restore"] = post_restore_packet
+                    packet_matrix["post_restore_policy"] = after_policy
+                    packet_matrix["post_restore_rules"] = residual_rules
+                    packet_matrix["passed"] = bool(
+                        packet_matrix.get("passed")
+                        and self.profiles_are_all_allow(after_policy.get("profiles") or {})
+                        and residual_rules.get("total_count") == 0
+                        and (post_restore_packet is None or post_restore_packet.get("ok"))
+                    )
+                    self.deep_firewall_packet_matrix = packet_matrix
+                cleanup_ok = (
+                    restored
+                    and cleared
+                    and forced_default_allow is not False
+                    and self.profiles_are_all_allow(after_policy.get("profiles") or {})
+                    and residual_rules.get("total_count") == 0
+                    and (post_restore_packet is None or post_restore_packet.get("ok"))
+                )
                 self.cleanup_results.append(
                     self.redactor.sanitize(
                         {
@@ -1401,6 +2375,8 @@ class FullSystemE2E:
                             "clear_rules_ok": cleared,
                             "forced_default_allow": forced_default_allow,
                             "after_policy": after_policy,
+                            "residual_rules": residual_rules,
+                            "post_restore_packet": post_restore_packet,
                         }
                     )
                 )
@@ -1420,6 +2396,7 @@ class FullSystemE2E:
         self.cleanup_api_key()
         self.cleanup_whitelist()
         self.cleanup_profiles()
+        self.cleanup_extra_agents()
         self.cleanup_agent()
         self.cleanup_groups()
         self.cleanup_users()
@@ -1507,6 +2484,18 @@ class FullSystemE2E:
             lambda: self.bootstrap.request("DELETE", f"/api/agents/{self.agent_id}", expected=(200, 400, 403, 404), check_success=None),
         )
 
+    def cleanup_extra_agents(self) -> None:
+        if not self.bootstrap:
+            return
+        for agent in list(reversed(self.state.get("extra_agents", []))):
+            agent_id = agent.get("agent_id")
+            if not agent_id:
+                continue
+            self.cleanup_call(
+                f"delete_extra_agent_{agent_id}",
+                lambda agent_id=agent_id: self.bootstrap.request("DELETE", f"/api/agents/{agent_id}", expected=(200, 400, 403, 404), check_success=None),
+            )
+
     def cleanup_groups(self) -> None:
         if not self.bootstrap:
             return
@@ -1546,6 +2535,7 @@ class FullSystemE2E:
     def cleanup_firewall_best_effort(self) -> None:
         try:
             add_agent_path()
+            self.configure_firewall_env()
             from firewall.manager import FirewallManager  # pylint: disable=import-error
             manager = FirewallManager(rule_prefix=self.firewall_rule_prefix)
             def _restore() -> Dict[str, Any]:
@@ -1639,6 +2629,177 @@ class FullSystemE2E:
             check_success=True,
         )
 
+    def agent_sync(
+        self,
+        *,
+        policy_mode: str = "none",
+        global_version: Any = None,
+        group_version: Any = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {
+            "agent_id": self.agent_id,
+            "policy_mode": policy_mode,
+            "timestamp": datetime.now().isoformat(),
+        }
+        if global_version is not None:
+            params["global_version"] = global_version
+        if group_version is not None:
+            params["group_version"] = group_version
+        return self.agent_api_request(
+            "GET",
+            "/api/whitelist/agent-sync",
+            params=params,
+            expected=(200,),
+            check_success=True,
+        )
+
+    def register_test_agent(self, hostname: str, device_id: str, label: str) -> Dict[str, Any]:
+        api_key = self.state["api_key"].get("api_key")
+        if not api_key:
+            raise StepFailure("Temporary API key is not available")
+        payload = {
+            "hostname": hostname,
+            "device_id": device_id,
+            "ip_address": self.local_ip(),
+            "platform": platform.system(),
+            "os_info": platform.platform(),
+            "agent_version": "e2e-deep",
+            "admin_privileges": is_admin(),
+            "capabilities": {
+                "packet_capture": True,
+                "firewall_management": is_admin(),
+                "whitelist_sync": True,
+                "classroom_scale": True,
+            },
+        }
+        client = self.make_client(label)
+        registered = client.request(
+            "POST",
+            "/api/agents/register",
+            expected=(200,),
+            json_body=payload,
+            headers={"X-API-Key": api_key},
+            use_bearer=False,
+            check_success=True,
+            label=label,
+        )
+        data = registered.get("data", {})
+        jwt_data = data.get("jwt", {})
+        agent = {
+            "agent_id": data.get("agent_id"),
+            "token": data.get("token"),
+            "access_token": jwt_data.get("access_token"),
+            "refresh_token": jwt_data.get("refresh_token"),
+            "hostname": hostname,
+            "device_id": device_id,
+            "label": label,
+        }
+        self.redactor.add_many([agent.get("token"), agent.get("access_token"), agent.get("refresh_token")])
+        if not agent["agent_id"] or not agent["token"] or not agent["access_token"]:
+            raise StepFailure("Registered test agent response missing credentials", {"registered": registered, "agent": agent})
+        return agent
+
+    def agent_request_for(
+        self,
+        agent: Dict[str, Any],
+        method: str,
+        path: str,
+        *,
+        expected: Tuple[int, ...] = (200,),
+        json_body: Any = None,
+        params: Optional[Dict[str, Any]] = None,
+        check_success: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        client = self.make_client(str(agent.get("label") or agent.get("hostname") or "registered_agent"))
+        client.access_token = agent.get("access_token")
+        return client.request(
+            method,
+            path,
+            expected=expected,
+            json_body=json_body,
+            params=params,
+            use_bearer=True,
+            use_csrf=False,
+            check_success=check_success,
+        )
+
+    def send_registered_agent_heartbeat(self, agent: Dict[str, Any]) -> Dict[str, Any]:
+        return self.agent_request_for(
+            agent,
+            "POST",
+            "/api/agents/heartbeat",
+            expected=(200,),
+            json_body={
+                "agent_id": agent.get("agent_id"),
+                "token": agent.get("token"),
+                "device_id": agent.get("device_id"),
+                "timestamp": datetime.now().isoformat(),
+                "metrics": {"memory_percent": 2, "disk_percent": 2, "uptime_seconds": int(time.time())},
+                "status": "active",
+                "platform": platform.system(),
+                "os_info": platform.platform(),
+                "agent_version": "e2e-deep",
+            },
+            check_success=True,
+        )
+
+    def send_registered_agent_logs(self, agent: Dict[str, Any], logs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        normalized = []
+        for log in logs:
+            item = {
+                "timestamp": datetime.now().isoformat(),
+                "agent_id": agent.get("agent_id"),
+                "source": "saint_full_system_e2e_deep",
+                "domain": log.get("domain", "e2e.local"),
+                "destination": log.get("destination", "e2e.local"),
+                "source_ip": self.local_ip(),
+                "dest_ip": log.get("dest_ip", "203.0.113.10"),
+                "protocol": log.get("protocol", "HTTPS"),
+                "port": str(log.get("port", "443")),
+                **log,
+            }
+            normalized.append(item)
+        return self.agent_request_for(
+            agent,
+            "POST",
+            "/api/logs",
+            expected=(200, 201, 202),
+            json_body={"agent_id": agent.get("agent_id"), "logs": normalized},
+            check_success=True,
+        )
+
+    def sync_registered_agent(self, agent: Dict[str, Any], *, policy_mode: str = "none") -> Dict[str, Any]:
+        return self.agent_request_for(
+            agent,
+            "GET",
+            "/api/whitelist/agent-sync",
+            params={"agent_id": agent.get("agent_id"), "policy_mode": policy_mode, "timestamp": datetime.now().isoformat()},
+            expected=(200,),
+            check_success=True,
+        )
+
+    @staticmethod
+    def entry_value(entry: Dict[str, Any]) -> str:
+        return str(entry.get("value") or entry.get("domain") or "").strip().lower()
+
+    def entries_for_value(self, entries: Any, value: str) -> List[Dict[str, Any]]:
+        wanted = value.strip().lower()
+        if not isinstance(entries, list):
+            return []
+        return [
+            entry for entry in entries
+            if isinstance(entry, dict) and self.entry_value(entry) == wanted
+        ]
+
+    def single_value_entry(self, entries: Any, value: str) -> Dict[str, Any]:
+        found = self.entries_for_value(entries, value)
+        if len(found) != 1:
+            raise StepFailure(
+                f"Expected exactly one entry for {value}, found {len(found)}",
+                {"value": value, "entries": found},
+            )
+        return found[0]
+
     def find_whitelist_ids(self, group_id: str, values: List[str]) -> List[str]:
         self.require_clients()
         assert self.admin is not None
@@ -1648,13 +2809,15 @@ class FullSystemE2E:
             if isinstance(scoped.get(key), list):
                 rows.extend(scoped[key])
         found: List[str] = []
+        seen: set[str] = set()
         wanted = set(values)
         for row in rows:
             if not isinstance(row, dict):
                 continue
             value = row.get("value") or row.get("domain")
             row_id = row.get("_id") or row.get("id")
-            if value in wanted and row_id:
+            if value in wanted and row_id and str(row_id) not in seen:
+                seen.add(str(row_id))
                 found.append(str(row_id))
         return found
 
@@ -1688,9 +2851,408 @@ class FullSystemE2E:
         return bool(values) and all(value == "block" for value in values)
 
     @staticmethod
+    def profiles_are_all_allow(profiles: Dict[str, Any]) -> bool:
+        values = [str(value).lower() for value in (profiles or {}).values()]
+        return bool(values) and all(value == "allow" for value in values)
+
+    def add_coverage_note(self, note: str) -> None:
+        if note and note not in self.coverage_not_tested:
+            self.coverage_not_tested.append(note)
+
+    @staticmethod
+    def ensure_list(value: Any) -> List[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
+    def payload_list_summary(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        candidates: List[Any] = []
+        for key in ("agents", "items", "results", "users", "groups", "logs", "data"):
+            value = payload.get(key) if isinstance(payload, dict) else None
+            if isinstance(value, list):
+                candidates = value
+                break
+            if isinstance(value, dict):
+                for nested_key in ("agents", "items", "results", "users", "groups", "logs"):
+                    nested = value.get(nested_key)
+                    if isinstance(nested, list):
+                        candidates = nested
+                        break
+            if candidates:
+                break
+        return {
+            "count": len(candidates),
+            "sample_ids": [
+                str(item.get("_id") or item.get("id") or item.get("agent_id"))
+                for item in candidates[:5]
+                if isinstance(item, dict)
+            ],
+        }
+
+    def run_powershell_json(self, script: str, label: str, *, timeout: int) -> Dict[str, Any]:
+        binary = shutil.which("powershell.exe") or shutil.which("powershell")
+        if not binary:
+            raise StepFailure("PowerShell not found", {"label": label})
+        result = subprocess.run(
+            [binary, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        parsed = self.parse_last_json_object(result.stdout)
+        details = {
+            "label": label,
+            "returncode": result.returncode,
+            "parsed": parsed,
+            "stdout_tail": truncate_text((result.stdout or "")[-2000:]),
+            "stderr_tail": truncate_text((result.stderr or "")[-2000:]),
+        }
+        if result.returncode != 0:
+            raise StepFailure(f"PowerShell JSON command failed: {label}", details)
+        return details
+
+    @staticmethod
+    def parse_last_json_object(text: str) -> Any:
+        raw = (text or "").strip()
+        if not raw:
+            return {}
+        for start in range(len(raw)):
+            candidate = raw[start:].strip()
+            if not candidate or candidate[0] not in "[{":
+                continue
+            try:
+                return json.loads(candidate)
+            except ValueError:
+                continue
+        match = re.search(r"(\{.*\}|\[.*\])", raw, flags=re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except ValueError:
+                return {}
+        return {}
+
+    @staticmethod
+    def wait_for_event(events: List[Dict[str, Any]], event_name: str, timeout_seconds: int) -> None:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if any(item.get("event") == event_name for item in events):
+                return
+            time.sleep(0.25)
+        raise StepFailure(f"Timed out waiting for Socket.IO event {event_name}", {"events": events})
+
+    @staticmethod
+    def wait_for_any_event(events: List[Dict[str, Any]], names: set[str], timeout_seconds: int) -> None:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if any(item.get("event") in names for item in events):
+                return
+            time.sleep(0.25)
+        raise StepFailure("Timed out waiting for any Socket.IO event", {"wanted": sorted(names), "events": events})
+
+    @staticmethod
+    def gui_click_smoke_js() -> str:
+        return r"""
+const { chromium } = require('@playwright/test');
+
+const base = (process.env.SAINT_E2E_SERVER_URL || '').replace(/\/$/, '');
+const username = process.env.SAINT_E2E_USERNAME || '';
+const password = process.env.SAINT_E2E_PASSWORD || '';
+const steps = [];
+const httpErrors = [];
+
+function trimText(value, max = 300) {
+  value = String(value || '');
+  return value.length > max ? value.slice(0, max) + '...' : value;
+}
+
+async function launchBrowser() {
+  const attempts = [
+    { headless: true },
+    { headless: true, channel: 'msedge' },
+    { headless: true, channel: 'chrome' },
+  ];
+  const errors = [];
+  for (const options of attempts) {
+    try {
+      const browser = await chromium.launch(options);
+      return { browser, options };
+    } catch (error) {
+      errors.push(`${JSON.stringify(options)}: ${error.message}`);
+    }
+  }
+  throw new Error('Unable to launch Chromium/Edge/Chrome: ' + errors.join(' | '));
+}
+
+async function step(name, fn) {
+  const started = Date.now();
+  try {
+    const details = await fn();
+    steps.push({ name, status: 'PASS', durationMs: Date.now() - started, details: details || {} });
+  } catch (error) {
+    steps.push({ name, status: 'FAIL', durationMs: Date.now() - started, error: error.message });
+    throw error;
+  }
+}
+
+(async () => {
+  if (!base || !username || !password) throw new Error('Missing GUI smoke environment');
+  const launched = await launchBrowser();
+  const browser = launched.browser;
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  const page = await context.newPage();
+  page.on('response', (response) => {
+    if (response.status() >= 500) {
+      httpErrors.push({ url: response.url(), status: response.status() });
+    }
+  });
+
+  await step('open_login_page', async () => {
+    await page.goto(`${base}/login`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('input[name="username"], #username', { timeout: 15000 });
+    return { title: await page.title() };
+  });
+
+  await step('submit_login_form', async () => {
+    await page.fill('input[name="username"], #username', username);
+    await page.fill('input[name="password"], #password', password);
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/api/admin/auth/login'), { timeout: 15000 }).catch(() => null),
+      page.click('button[type="submit"], button:has-text("Login"), button:has-text("Dang nhap")'),
+    ]);
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    const me = await context.request.get(`${base}/api/admin/auth/me`);
+    if (!me.ok()) throw new Error(`/api/admin/auth/me after GUI login returned ${me.status()}`);
+    return { currentUrl: page.url(), meStatus: me.status() };
+  });
+
+  const pages = [
+    ['dashboard', '/'],
+    ['agents', '/agents'],
+    ['groups', '/groups'],
+    ['whitelist', '/whitelist'],
+    ['logs', '/logs'],
+    ['api_keys', '/api-keys'],
+    ['admin_users', '/admin/users'],
+    ['admin_audit', '/admin/audit'],
+    ['profile', '/profile'],
+  ];
+  for (const [name, path] of pages) {
+    await step(`click_${name}`, async () => {
+      const locator = page.locator(`a[href="${path}"], a[href="${path}/"]`).first();
+      const visible = await locator.isVisible({ timeout: 2500 }).catch(() => false);
+      if (visible) {
+        await locator.click();
+      } else {
+        await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded' });
+      }
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      const body = trimText(await page.locator('body').innerText({ timeout: 10000 }));
+      if (/Internal Server Error|Traceback|CSRF_FAIL/i.test(body)) {
+        throw new Error(`Page ${path} shows server/auth failure: ${body}`);
+      }
+      return { path, url: page.url(), title: await page.title(), bodyHead: body };
+    });
+  }
+
+  await browser.close();
+  const ok = steps.every((item) => item.status === 'PASS') && httpErrors.length === 0;
+  console.log(JSON.stringify({ ok, browser: launched.options, steps, httpErrors }));
+})().catch(async (error) => {
+  console.log(JSON.stringify({ ok: false, error: error.message, steps, httpErrors }));
+  process.exit(1);
+});
+"""
+
+    @staticmethod
+    def post_reboot_check_ps1(output_path: str) -> str:
+        escaped_output = output_path.replace("'", "''")
+        return f"""$ErrorActionPreference = "Stop"
+$services = Get-Service | Where-Object {{
+    $_.Name -match 'SAINT|FirewallController|Firewall Controller' -or
+    $_.DisplayName -match 'SAINT|Firewall Controller|Network Access Control'
+}} | Select-Object Name,DisplayName,Status,StartType
+$processes = Get-Process | Where-Object {{
+    $_.ProcessName -match 'SAINT|FirewallController|Firewall'
+}} | Select-Object ProcessName,Id,StartTime -ErrorAction SilentlyContinue
+$payload = [pscustomobject]@{{
+    checked_at = (Get-Date).ToString("o")
+    computer = $env:COMPUTERNAME
+    user = $env:USERNAME
+    services = @($services)
+    processes = @($processes)
+    saint_running = [bool](@($services | Where-Object {{ $_.Status -eq 'Running' }}).Count -or @($processes).Count)
+}}
+$payload | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 -Path '{escaped_output}'
+Write-Host "POST_REBOOT_AUTOSTART_RESULT={escaped_output}"
+"""
+
+    @staticmethod
     def is_socket_permission_error(exc: BaseException) -> bool:
         text = str(exc)
         return "WinError 10013" in text or "forbidden by its access permissions" in text
+
+    def tcp_probe(self, host: str, port: int, label: str) -> Dict[str, Any]:
+        binary = shutil.which("powershell.exe") or shutil.which("powershell")
+        if not binary:
+            return {"label": label, "host": host, "port": port, "ok": False, "error": "PowerShell not found"}
+        script = "\n".join([
+            "$ProgressPreference = 'SilentlyContinue'",
+            "$ErrorActionPreference = 'SilentlyContinue'",
+            f"$target = {json.dumps(str(host))}",
+            f"$port = {int(port)}",
+            "$r = Test-NetConnection -ComputerName $target -Port $port -InformationLevel Detailed -WarningAction SilentlyContinue",
+            "[pscustomobject]@{",
+            "  Host = $target",
+            "  Port = $port",
+            "  TcpTestSucceeded = [bool]$r.TcpTestSucceeded",
+            "  RemoteAddress = \"$($r.RemoteAddress)\"",
+            "  InterfaceAlias = \"$($r.InterfaceAlias)\"",
+            "} | ConvertTo-Json -Compress",
+        ])
+        started = time.monotonic()
+        try:
+            result = subprocess.run(
+                [binary, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self.args.deep_packet_timeout_seconds,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else str(exc.stdout or "")
+            stderr = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
+            return {
+                "label": label,
+                "host": host,
+                "port": port,
+                "ok": False,
+                "timeout": True,
+                "duration_ms": int((time.monotonic() - started) * 1000),
+                "stdout": truncate_text(stdout),
+                "stderr": truncate_text(stderr),
+            }
+        duration_ms = int((time.monotonic() - started) * 1000)
+        parsed: Dict[str, Any] = {}
+        match = re.search(r"\{.*\}", result.stdout or "", flags=re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+            except ValueError:
+                parsed = {}
+        ok = bool(parsed.get("TcpTestSucceeded"))
+        return {
+            "label": label,
+            "host": host,
+            "port": port,
+            "ok": ok,
+            "returncode": result.returncode,
+            "duration_ms": duration_ms,
+            "remote_address": parsed.get("RemoteAddress"),
+            "interface_alias": parsed.get("InterfaceAlias"),
+            "stdout_tail": truncate_text(result.stdout[-1000:]),
+            "stderr_tail": truncate_text(result.stderr[-1000:]),
+        }
+
+    def select_blocked_packet_candidate(self, allowed_ip: str) -> Tuple[str, Dict[str, Any]]:
+        excluded = {allowed_ip, "1.1.1.1", "8.8.8.8", "8.8.4.4"}
+        attempts = []
+        for raw in str(self.args.deep_blocked_candidates or "").split(","):
+            candidate = raw.strip()
+            if not candidate or candidate in excluded:
+                continue
+            probe = self.tcp_probe(candidate, self.args.deep_allowed_port, f"deep_blocked_preflight_{candidate}")
+            attempts.append(probe)
+            if probe.get("ok"):
+                return candidate, {"chosen": candidate, "attempts": attempts}
+        raise StepFailure(
+            "No reachable blocked packet candidate found before firewall mutation",
+            {"allowed_ip": allowed_ip, "attempts": attempts},
+        )
+
+    def firewall_rule_summary(self, manager: Any) -> Dict[str, Any]:
+        source = "provider"
+        try:
+            rules = manager.rules_manager._provider.list_rules(  # pylint: disable=protected-access
+                rule_prefix=self.firewall_rule_prefix,
+                enabled_only=False,
+            )
+        except Exception as exc:
+            return {"error": str(exc), "total_count": -1, "self_allow_count": -1, "allow_rule_count": -1}
+        if not rules:
+            fallback_rules = self.list_firewall_rules_powershell(self.firewall_rule_prefix)
+            if fallback_rules is not None:
+                rules = fallback_rules
+                source = "powershell_fallback"
+        rules = [rule for rule in rules if isinstance(rule, dict) and rule.get("rule_name")]
+        names = [str(rule.get("rule_name", "")) for rule in rules if rule.get("rule_name")]
+        duplicate_names = sorted({name for name in names if names.count(name) > 1})
+        self_allow = [name for name in names if "_SelfAllow_" in name]
+        allow_rules = [name for name in names if "_Allow_" in name and "_SelfAllow_" not in name]
+        return {
+            "source": source,
+            "total_count": len(names),
+            "self_allow_count": len(self_allow),
+            "allow_rule_count": len(allow_rules),
+            "duplicate_rule_names": duplicate_names,
+            "self_allow_names": sorted(self_allow),
+            "allow_rule_names": sorted(allow_rules),
+        }
+
+    @staticmethod
+    def list_firewall_rules_powershell(rule_prefix: str) -> Optional[List[Dict[str, Any]]]:
+        binary = shutil.which("powershell.exe") or shutil.which("powershell")
+        if not binary:
+            return None
+        prefix_literal = "'" + str(rule_prefix).replace("'", "''") + "*'"
+        script = f"""
+$ErrorActionPreference = 'SilentlyContinue'
+$rules = Get-NetFirewallRule -DisplayName {prefix_literal}
+$out = foreach ($r in @($rules)) {{
+    $addr = $r | Get-NetFirewallAddressFilter
+    $port = $r | Get-NetFirewallPortFilter
+    $app = $r | Get-NetFirewallApplicationFilter
+    [pscustomobject]@{{
+        rule_name = "$($r.DisplayName)"
+        direction = "$($r.Direction)".ToLower()
+        action = "$($r.Action)".ToLower()
+        enabled = ($r.Enabled -eq 'True' -or $r.Enabled -eq $true)
+        protocol = "$($port.Protocol)".ToLower()
+        profile = "$($r.Profile)"
+        program = "$($app.Program)"
+        remote_addresses = @($addr.RemoteAddress)
+        remote_ports = @($port.RemotePort)
+    }}
+}}
+@($out) | ConvertTo-Json -Compress -Depth 5
+"""
+        try:
+            result = subprocess.run(
+                [binary, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except Exception:
+            return None
+        if result.returncode != 0:
+            return None
+        parsed = FullSystemE2E.parse_last_json_object(result.stdout)
+        if isinstance(parsed, dict):
+            return [parsed] if any(parsed.values()) else []
+        if isinstance(parsed, list):
+            return [item for item in parsed if isinstance(item, dict) and any(item.values())]
+        return []
 
     @staticmethod
     def find_agent_id_in_payloads(payloads: Iterable[Any]) -> Optional[str]:
@@ -1812,7 +3374,7 @@ class FullSystemE2E:
             return "127.0.0.1"
 
     def require_bootstrap(self) -> None:
-        if not self.bootstrap:
+        if not self.bootstrap or not self.bootstrap.access_token:
             raise StepFailure("Bootstrap admin client is not logged in")
 
     def require_clients(self) -> None:
@@ -1844,6 +3406,15 @@ class FullSystemE2E:
             "steps": [self.step_to_dict(r) for r in self.results],
             "cleanup": self.redactor.sanitize(self.cleanup_results),
             "state": self.redactor.sanitize(self.state),
+            "deep_whitelist_matrix": self.redactor.sanitize(self.deep_whitelist_matrix),
+            "deep_policy_matrix": self.redactor.sanitize(self.deep_policy_matrix),
+            "deep_firewall_packet_matrix": self.redactor.sanitize(self.deep_firewall_packet_matrix),
+            "deep_classroom_matrix": self.redactor.sanitize(self.deep_classroom_matrix),
+            "deep_service_autostart_matrix": self.redactor.sanitize(self.deep_service_autostart_matrix),
+            "deep_gui_matrix": self.redactor.sanitize(self.deep_gui_matrix),
+            "deep_websocket_matrix": self.redactor.sanitize(self.deep_websocket_matrix),
+            "deep_soak_matrix": self.redactor.sanitize(self.deep_soak_matrix),
+            "coverage_not_tested": self.coverage_not_tested,
         }
         self.json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
         self.raw_log_path.write_text(json.dumps(self.raw_log, indent=2, ensure_ascii=True), encoding="utf-8")
@@ -1888,6 +3459,7 @@ class FullSystemE2E:
             f"Output: {self.output_dir}",
             f"Windows Administrator: {self.metadata.get('admin')}",
             f"Real firewall policy: {self.args.run_real_firewall_policy}",
+            f"Deep mode: {self.args.deep}",
             "",
             "Important:",
             "- Send back TXT, JSON, and raw JSON result files.",
@@ -1902,6 +3474,15 @@ class FullSystemE2E:
         lines.append("Cleanup: " + json.dumps(cleanup_counts, ensure_ascii=True))
         lines.append("Required failures: " + (", ".join(summary["required_failures"]) or "none"))
         lines.append("Cleanup failures: " + (", ".join([str(x) for x in summary["cleanup_failures"]]) or "none"))
+        if self.args.deep:
+            lines.append("Deep whitelist matrix: " + ("PASS" if self.deep_whitelist_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep policy matrix: " + ("PASS" if self.deep_policy_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep classroom scale matrix: " + ("PASS" if self.deep_classroom_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep service/autostart matrix: " + ("PASS" if self.deep_service_autostart_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep GUI click matrix: " + ("PASS" if self.deep_gui_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep WebSocket matrix: " + ("PASS" if self.deep_websocket_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep soak matrix: " + ("PASS" if self.deep_soak_matrix.get("passed") else "CHECK JSON"))
+            lines.append("Deep firewall packet matrix: " + ("PASS" if self.deep_firewall_packet_matrix.get("passed") else "CHECK JSON"))
         lines.extend(["", "Steps:"])
         for result in self.results:
             lines.append(f"[{result.status}] {result.name} ({result.duration_ms} ms, required={result.required})")
@@ -1940,6 +3521,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--cleanup-result-json", default=None)
+    parser.add_argument("--deep", action="store_true")
+    parser.add_argument("--firewall-only", action="store_true")
     parser.add_argument("--keep-test-data", action="store_true")
     parser.add_argument("--skip-build", action="store_true")
     parser.add_argument("--run-real-firewall-policy", action="store_true")
@@ -1948,6 +3531,16 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--timeout-seconds", type=int, default=20)
     parser.add_argument("--build-timeout-seconds", type=int, default=900)
     parser.add_argument("--firewall-test-ip", default="203.0.113.10")
+    parser.add_argument("--deep-allowed-ip", default="1.1.1.1")
+    parser.add_argument("--deep-allowed-port", type=int, default=443)
+    parser.add_argument("--deep-blocked-candidates", default="151.101.1.69,104.16.132.229,142.250.190.14,93.184.216.34")
+    parser.add_argument("--deep-mutation-ip", default="203.0.113.10")
+    parser.add_argument("--deep-packet-timeout-seconds", type=int, default=25)
+    parser.add_argument("--deep-classroom-agent-count", type=int, default=24)
+    parser.add_argument("--deep-soak-minutes", type=float, default=30.0)
+    parser.add_argument("--deep-soak-interval-seconds", type=int, default=60)
+    parser.add_argument("--deep-gui-timeout-seconds", type=int, default=180)
+    parser.add_argument("--deep-websocket-timeout-seconds", type=int, default=25)
     parser.add_argument("--read-provider", choices=("auto", "netsh", "netsecurity"), default="auto")
     parser.add_argument("--write-backend", choices=("netsh", "powershell", "netsecurity"), default="powershell")
     parser.add_argument("--verbose", action="store_true")
