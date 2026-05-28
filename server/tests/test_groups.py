@@ -538,6 +538,27 @@ class TestGroupController:
             _validate_admin_token=lambda token: (True, user, None),
         )
 
+    def test_controller_web_routes_require_login(self, client, group_model):
+        """Unauthenticated web-facing group routes must not expose data."""
+        group = group_model.create_group("PrivateGroup", "", [])
+        gid = str(group["_id"])
+
+        cases = [
+            ("get", "/api/groups", None),
+            ("get", f"/api/groups/{gid}", None),
+            ("patch", f"/api/groups/{gid}", {"name": "NoAuth"}),
+            ("delete", f"/api/groups/{gid}", None),
+            ("post", f"/api/groups/{gid}/teachers", {"teacher_ids": []}),
+        ]
+
+        for method_name, path, payload in cases:
+            method = getattr(client, method_name)
+            kwargs = {"json": payload} if payload is not None else {}
+            resp = method(path, **kwargs)
+
+            assert resp.status_code == 401, path
+            assert resp.get_json()["error"] == "Authentication required"
+
     # ── LIST GROUPS ──
 
     def test_controller_list_groups_admin(self, app, client, group_model, admin_user):

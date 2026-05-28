@@ -1,7 +1,6 @@
 """
 Group Controller - handles group HTTP requests.
-RBAC: inject_current_user on all endpoints for teacher data filtering.
-- Agent request (no cookie): no filter, like before
+RBAC: require_login on web-facing endpoints for teacher data filtering.
 - Admin request: no filter (toan quyen)
 - Teacher request: filter by teacher_ids (assigned groups)
 """
@@ -11,7 +10,7 @@ from flask import Blueprint, request, jsonify, g
 
 from services.group_service import GroupService
 from services.rbac_service import RBACService
-from middleware.rbac import inject_current_user, require_admin, require_login
+from middleware.rbac import require_admin, require_login
 
 
 class GroupController:
@@ -23,20 +22,20 @@ class GroupController:
         self._register_routes()
 
     def _register_routes(self):
-        # All routes wrapped with inject_current_user (non-blocking)
+        # All web-facing routes require an authenticated admin/teacher session.
         self.blueprint.add_url_rule('/groups', 'list_groups',
-            inject_current_user(self.list_groups), methods=['GET'])
+            require_login(self.list_groups), methods=['GET'])
         self.blueprint.add_url_rule('/groups', 'create_group',
             require_login(require_admin(self.create_group)), methods=['POST'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'get_group',
-            inject_current_user(self.get_group), methods=['GET'])
+            require_login(self.get_group), methods=['GET'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'update_group',
-            inject_current_user(self.update_group), methods=['PATCH'])
+            require_login(self.update_group), methods=['PATCH'])
         self.blueprint.add_url_rule('/groups/<group_id>', 'delete_group',
-            inject_current_user(self.delete_group), methods=['DELETE'])
+            require_login(self.delete_group), methods=['DELETE'])
         # Admin-only: assign teachers to group
         self.blueprint.add_url_rule('/groups/<group_id>/teachers', 'set_teachers',
-            inject_current_user(self.set_teachers), methods=['POST'])
+            require_login(require_admin(self.set_teachers)), methods=['POST'])
 
     def _is_teacher(self):
         """Thin wrapper around ``RBACService.is_teacher_request`` for backwards-compat.

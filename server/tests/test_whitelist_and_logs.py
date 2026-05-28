@@ -1018,6 +1018,23 @@ class TestLogController:
         app.register_blueprint(controller.blueprint, url_prefix='/api')
         return app
 
+    def test_web_routes_require_login(self, app):
+        """Unauthenticated web-facing log routes must not expose data."""
+        cases = [
+            ("get", "/api/logs"),
+            ("get", "/api/logs/stats"),
+            ("delete", "/api/logs/clear"),
+            ("delete", "/api/logs"),
+            ("get", "/api/logs/export?format=json"),
+        ]
+
+        with app.test_client() as client:
+            for method_name, path in cases:
+                resp = getattr(client, method_name)(path)
+
+                assert resp.status_code == 401, path
+                assert resp.get_json()["error"] == "Authentication required"
+
     def test_receive_logs_via_jwt(self, agent_model, group_model):
         """Agent sends logs via POST with JWT - no RBAC check."""
         from flask import Flask

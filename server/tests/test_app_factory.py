@@ -7,6 +7,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from bootstrap import app_factory
+from database.config import _mask_connection_uri
 
 
 class _FakeLogger:
@@ -58,3 +59,13 @@ def test_api_cors_options_cover_patch_and_csrf_header():
 
     assert "PATCH" in options["methods"]
     assert "X-CSRF-Token" in options["allow_headers"]
+
+
+def test_mask_connection_uri_hides_credentials():
+    uri = "mongodb+srv://dbuser:dbpass@example.mongodb.net/Monitoring?retryWrites=true"
+
+    masked = _mask_connection_uri(uri)
+
+    assert masked == "mongodb+srv://***:***@example.mongodb.net/Monitoring?retryWrites=true"
+    assert "dbuser" not in masked
+    assert "dbpass" not in masked

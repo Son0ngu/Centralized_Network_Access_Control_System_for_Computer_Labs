@@ -1,6 +1,6 @@
 """
 Log Controller - handles log HTTP requests
-RBAC: inject_current_user on web-facing endpoints for teacher data filtering.
+RBAC: require_login on web-facing endpoints for teacher data filtering.
 - Agent endpoint (receive_logs via POST) keeps require_jwt - NOT affected
 - Web-facing endpoints apply teacher ownership filter (logs from teacher's agents only)
 - Teacher does NOT have logs:delete or logs:export permissions
@@ -20,7 +20,7 @@ from time_utils import now_iso, now_vietnam
 
 # Import auth middleware for JWT validation
 from middleware.auth import require_jwt
-from middleware.rbac import inject_current_user
+from middleware.rbac import require_login
 
 from config.rbac_config import check_permission
 
@@ -57,7 +57,7 @@ class LogController:
         # Stats route MUST be before generic /logs route
         self.blueprint.add_url_rule('/logs/stats',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.get_log_statistics))
+                                   view_func=require_login(self.get_log_statistics))
 
         # POST /api/logs - Receive logs from agents (requires JWT - NOT affected)
         self.blueprint.add_url_rule('/logs',
@@ -67,24 +67,24 @@ class LogController:
         # GET /api/logs - List logs (web-facing - teacher filtered)
         self.blueprint.add_url_rule('/logs',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.list_logs))
+                                   view_func=require_login(self.list_logs))
 
         # DELETE /api/logs/clear - Clear logs (web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs/clear',
                                    methods=['DELETE'],
                                    endpoint='clear_logs',
-                                   view_func=inject_current_user(self.clear_logs))
+                                   view_func=require_login(self.clear_logs))
 
         # DELETE /api/logs - DEPRECATED. Returns 410 Gone pointing at /logs/clear.
         self.blueprint.add_url_rule('/logs',
                                    methods=['DELETE'],
                                    endpoint='clear_logs_legacy',
-                                   view_func=self._gone_clear_logs_legacy)
+                                   view_func=require_login(self._gone_clear_logs_legacy))
 
         # GET /api/logs/export - Export logs (web-facing - teacher blocked)
         self.blueprint.add_url_rule('/logs/export',
                                    methods=['GET'],
-                                   view_func=inject_current_user(self.export_logs))
+                                   view_func=require_login(self.export_logs))
 
     def _gone_clear_logs_legacy(self):
         """Deprecated DELETE /api/logs → 410 Gone.

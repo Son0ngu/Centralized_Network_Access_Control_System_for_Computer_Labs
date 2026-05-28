@@ -2,6 +2,7 @@ import os
 import secrets
 import logging
 from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 from pymongo import MongoClient
 from bson.codec_options import CodecOptions
 
@@ -36,6 +37,30 @@ def get_env(key: str, default: Any = None) -> Any:
         except ValueError:
             return default
     return value
+
+def _mask_connection_uri(uri: str) -> str:
+    """Mask credentials in a MongoDB URI before writing it to logs."""
+    if not isinstance(uri, str) or not uri:
+        return "<empty>"
+
+    try:
+        parsed = urlsplit(uri)
+        if parsed.hostname and (parsed.username or parsed.password):
+            host = parsed.hostname
+            if parsed.port:
+                host = f"{host}:{parsed.port}"
+            netloc = f"***:***@{host}"
+            return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+    except Exception:
+        pass
+
+    if "://" in uri and "@" in uri:
+        scheme, remainder = uri.split("://", 1)
+        host_part = remainder.split("@", 1)[1]
+        return f"{scheme}://***:***@{host_part}"
+
+    return uri
+
 class Config:
     """Configuration class for the application - vietnam ONLY"""
     
@@ -86,7 +111,7 @@ def get_mongo_client(config):
     
     if _mongo_client is None:
         try:
-            logger.info(f"[{now_iso()}] Connecting to MongoDB: {config.MONGO_URI}")
+            logger.info(f"[{now_iso()}] Connecting to MongoDB: {_mask_connection_uri(config.MONGO_URI)}")
             
             # FIX: Optimized connection settings to reduce Win32 exceptions
             _mongo_client = MongoClient(
@@ -196,12 +221,10 @@ def validate_config(config: Config = None) -> bool:
             logger.error(f" [{now_iso()}] Missing required configuration: {setting}")
             return False
     
-    # Log current MongoDB URI (careful with credentials)
-    mongo_uri = config.MONGO_URI
+    # Log current MongoDB URI without credentials.
+    mongo_uri = _mask_connection_uri(config.MONGO_URI)
     if 'mongodb+srv://' in mongo_uri:
-        # Mask credentials in log
-        masked_uri = mongo_uri.split('@')[1] if '@' in mongo_uri else mongo_uri
-        logger.info(f" [{now_iso()}] Using MongoDB Atlas: {masked_uri}")
+        logger.info(f" [{now_iso()}] Using MongoDB Atlas: {mongo_uri}")
     else:
         logger.info(f"[{now_iso()}] Using MongoDB: {mongo_uri}")
     
