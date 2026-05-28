@@ -35,10 +35,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from models.whitelist_model import WhitelistModel
 from models.whitelist_entry_model import WhitelistEntryModel
+from models.whitelist_profile_model import WhitelistProfileModel
 from models.log_model import LogModel
 from models.agent_model import AgentModel
 from models.group_model import GroupModel
 from services.whitelist_service import WhitelistService
+from services.whitelist_profile_service import WhitelistProfileService
 from services.log_service import LogService
 from services.rbac_service import RBACService
 from controllers.whitelist_controller import WhitelistController
@@ -90,6 +92,11 @@ def whitelist_entry_model(db):
 
 
 @pytest.fixture
+def whitelist_profile_model(db):
+    return WhitelistProfileModel(db)
+
+
+@pytest.fixture
 def log_model(db):
     return LogModel(db)
 
@@ -122,6 +129,22 @@ def whitelist_service_with_entries(whitelist_model, whitelist_entry_model, agent
         group_model,
         socketio=None,
         entry_model=whitelist_entry_model,
+    )
+
+
+@pytest.fixture
+def whitelist_profile_service(whitelist_profile_model, group_model):
+    return WhitelistProfileService(whitelist_profile_model, group_model, socketio=None)
+
+
+@pytest.fixture
+def whitelist_service_with_profiles(whitelist_model, agent_model, group_model, whitelist_profile_service):
+    return WhitelistService(
+        whitelist_model,
+        agent_model,
+        group_model,
+        socketio=None,
+        profile_service=whitelist_profile_service,
     )
 
 
@@ -540,6 +563,39 @@ class TestWhitelistService:
         domain_values = [d.get("value") for d in result["domains"]]
         assert "sync-global.com" in domain_values
         assert "sync-group.com" in domain_values
+
+    def test_agent_sync_active_profile_accepts_domain_key(
+        self,
+        whitelist_service_with_profiles,
+        whitelist_profile_service,
+        group_model,
+        agent_model,
+    ):
+        group = create_group(group_model, "Profile Sync Group", whitelist=[
+            {"value": "base-profile-sync.com", "type": "domain", "category": "base"}
+        ])
+        gid = str(group["_id"])
+        agent = insert_agent(agent_model, gid, hostname="ProfileSyncPC")
+
+        profile = whitelist_profile_service.create_profile(
+            gid,
+            ObjectId(),
+            "teacher-profile",
+            "Lesson Profile",
+            domains=[{"domain": "profile-only-sync.com", "category": "lesson"}],
+        )
+        whitelist_profile_service.activate_profile(profile["_id"])
+
+        result = whitelist_service_with_profiles.get_agent_sync_data(agent_id=agent["agent_id"])
+
+        assert result["success"] is True
+        entries = result["domains"]
+        values = [entry.get("value") for entry in entries]
+        assert "profile-only-sync.com" in values
+        assert "base-profile-sync.com" not in values
+        profile_entry = next(entry for entry in entries if entry.get("value") == "profile-only-sync.com")
+        assert profile_entry["category"] == "lesson"
+        assert not str(profile_entry.get("_id")).endswith("::None")
 
     def test_agent_sync_data_up_to_date(self, whitelist_service, group_model, agent_model):
         group = create_group(group_model, "UpToDate Group")

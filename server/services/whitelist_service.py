@@ -586,7 +586,14 @@ class WhitelistService:
             if not entry:
                 continue
             if isinstance(entry, dict):
-                value = entry.get("value")
+                value = (
+                    entry.get("value")
+                    or entry.get("domain")
+                    or entry.get("ip")
+                    or entry.get("url")
+                    or entry.get("port")
+                    or entry.get("process")
+                )
                 entry_type = entry.get("type", "domain")
                 priority = entry.get("priority", "normal")
                 category = entry.get("category", "uncategorized")
@@ -605,6 +612,11 @@ class WhitelistService:
                 category = "uncategorized"
                 is_active = True
                 real_oid = None
+
+            if value is None or str(value).strip() == "":
+                self.logger.warning("Skipping group whitelist entry without value: %s", entry)
+                continue
+            value = str(value).strip().lower()
 
             if not include_inactive and not is_active:
                 continue

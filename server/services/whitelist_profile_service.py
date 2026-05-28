@@ -27,6 +27,41 @@ class WhitelistProfileService:
         profile["teacher_id"] = str(profile.get("teacher_id", ""))
         return profile
 
+    def _normalize_domains(self, domains: List[Dict]) -> List[Dict]:
+        """Normalize profile entries to the same value/type shape as whitelist entries."""
+        if not domains:
+            return []
+        if not isinstance(domains, list):
+            raise ValueError("domains must be a list")
+
+        normalized = []
+        for entry in domains:
+            if isinstance(entry, str):
+                payload = {"value": entry, "type": "domain"}
+            elif isinstance(entry, dict):
+                payload = dict(entry)
+                value = (
+                    payload.get("value")
+                    or payload.get("domain")
+                    or payload.get("ip")
+                    or payload.get("url")
+                    or payload.get("port")
+                    or payload.get("process")
+                )
+                payload["value"] = value
+                payload["type"] = str(payload.get("type") or "domain").strip().lower()
+            else:
+                raise ValueError("profile domain entries must be strings or objects")
+
+            value = payload.get("value")
+            if value is None or str(value).strip() == "":
+                raise ValueError("profile domain value is required")
+
+            payload["value"] = str(value).strip().lower()
+            normalized.append(payload)
+
+        return normalized
+
     def list_profiles(self, group_id: str, teacher_id: str = None) -> List[Dict]:
         profiles = self.model.list_by_group(group_id, teacher_id=teacher_id)
         return [self._serialize(p) for p in profiles]
@@ -43,7 +78,7 @@ class WhitelistProfileService:
             teacher_id=teacher_id,
             teacher_username=teacher_username,
             name=name,
-            domains=domains or [],
+            domains=self._normalize_domains(domains or []),
         )
         self.logger.info(f"Profile created: {name} by {teacher_username} in group {group_id}")
         return self._serialize(profile)
@@ -60,6 +95,7 @@ class WhitelistProfileService:
 
         # If domains changed, bump version
         if "domains" in payload:
+            payload["domains"] = self._normalize_domains(payload.get("domains") or [])
             payload["version"] = profile.get("version", 1) + 1
 
         updated = self.model.update_profile(profile_id, payload)

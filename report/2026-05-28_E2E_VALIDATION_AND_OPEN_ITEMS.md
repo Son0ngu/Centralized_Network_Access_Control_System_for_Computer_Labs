@@ -154,6 +154,8 @@ curl.exe -i "https://firewall-controller.onrender.com/api/logs?limit=1"
 curl.exe -i "https://firewall-controller.onrender.com/api/logs/stats"
 ```
 
+Production smoke 2026-05-28 10:41 +07: all three unauthenticated endpoints returned `401 application/json` with `Authentication required`.
+
 ### 7. Hotfix log secret: khong ghi plaintext Mongo URI
 
 Hien tuong: code boot MongoDB co log `MONGO_URI` day du. Neu Render logs da ghi connection string, can rotate credential sau khi deploy ban mask log.
@@ -168,6 +170,36 @@ File lien quan:
 
 - `server/database/config.py`
 - `server/tests/test_app_factory.py`
+
+### 8. Render full deep E2E run `20260528_104509`
+
+Lenh da chay tren Render production voi `-RunRealFirewallPolicy -WriteBackend powershell -Deep`.
+
+Ket qua:
+
+- Summary: `PASS=22`, `FAIL=2`, `SKIP=0`.
+- Cleanup: `CLEANUP_OK=45`, cleanup failures = none.
+- PASS quan trong: public server surface, bootstrap login, CSRF negative, users, API keys, group RBAC, whitelist contract, profile contract, build Agent exe, agent registration/auth, agent heartbeat/sync/logs, agent policy RBAC, classroom scale, GUI, WebSocket, 30-minute soak, logs/audit, real Windows Firewall Default Deny.
+- Real firewall packet matrix PASS; firewall restored ve allow, residual rules = 0.
+- FAIL:
+  - `deep_whitelist_conflict_matrix`: active profile domain missing from sync.
+  - `deep_policy_matrix`: policy none did not preserve group conflict merge.
+
+Nguyen nhan da xac dinh: active whitelist profile duoc tao voi payload `{"domain": "...", "category": "deep-profile"}`. Agent sync dung group-entry normalizer chi doc `value`, nen entry profile ra sync thanh `value: null` va pseudo-id `group::<group_id>::domain::None`. Loi `deep_policy_matrix` la loi day chuyen vi step truoc fail khi profile con active, lam conflict base bi profile override.
+
+Trang thai local sau run:
+
+- Da normalize whitelist profile domains ve shape `value/type` khi create/update.
+- Agent sync group-entry normalizer chap nhan ca legacy key `domain`, `ip`, `url`, `port`, `process`, va bo qua entry khong co value that.
+- Da them regression test `test_agent_sync_active_profile_accepts_domain_key`.
+
+Can redeploy fix profile sync nay len Render roi rerun full deep. Rieng assertion `isolate_heartbeat_force_sync` trong `deep_policy_matrix` chua duoc cham toi trong run nay vi step fail som o case policy none.
+
+Artifacts:
+
+- `test-results/saint-full-system-e2e/20260528_104509/full_system_e2e_20260528_104509.txt`
+- `test-results/saint-full-system-e2e/20260528_104509/full_system_e2e_20260528_104509.json`
+- `test-results/saint-full-system-e2e/20260528_104509/full_system_e2e_20260528_104509_raw.json`
 
 ## Ket qua firewall-only deep run cuoi
 
@@ -199,22 +231,22 @@ Ket luan: PowerShell/NetSecurity write backend da pass packet-level smoke tren m
 | `.venv\Scripts\python.exe -m py_compile server\database\config.py server\tests\test_app_factory.py` | Pass |
 | `.venv\Scripts\python.exe -m pytest server\tests\test_app_factory.py -q --tb=short` | 4 passed |
 | `.venv\Scripts\python.exe -m pytest server\tests\test_groups.py -q --tb=short` | 73 passed |
-| `.venv\Scripts\python.exe -m pytest server\tests\test_whitelist_and_logs.py -q --tb=short` | 118 passed, 3 expected DeprecationWarning |
+| `.venv\Scripts\python.exe -m pytest server\tests\test_whitelist_and_logs.py -q --tb=short` | 119 passed, 3 expected DeprecationWarning |
 | `.venv\Scripts\python.exe -m pytest agent\tests -q --tb=short` | 8 passed |
 | `.venv\Scripts\python.exe -m pytest server\tests\test_teacher_data_filtering.py -q --tb=short` | 81 passed |
 | `.venv\Scripts\python.exe -m pytest server\tests\test_app_factory.py server\tests\test_agent_full.py server\tests\test_whitelist_and_logs.py -q --tb=short` | 184 passed, 3 expected DeprecationWarning |
 
 ## Ton dong con lai
 
-### Can redeploy hotfix bao mat len Render
+### Da verify hotfix bao mat tren Render
 
-Public smoke sau deploy Render 2026-05-28 da thay `/api-keys` DOM fix va `/favicon.ico` len production, nhung production truoc hotfix van public group/log data. Can redeploy ban hien tai de dua cac sua sau len Render:
+Public smoke sau deploy Render 2026-05-28 da thay `/api-keys` DOM fix va `/favicon.ico` len production. Sau hotfix auth, public smoke luc 10:41 +07 xac nhan:
 
-- Bat buoc login cho cac endpoint web-facing group/log.
-- Mask MongoDB URI truoc khi ghi log.
-- Sau deploy, verify 3 endpoint public leak o tren phai tra `401`.
+- `/api/groups` tra `401`.
+- `/api/logs?limit=1` tra `401`.
+- `/api/logs/stats` tra `401`.
 
-Sau deploy hotfix, rerun full deep E2E de xac nhan production khong con fail policy heartbeat force sync.
+Tiep theo can deploy fix profile sync `value/domain`, kiem tra Render logs de xac nhan khong con plaintext Mongo URI/secret sau ban mask log, roi rerun full deep E2E de xac nhan production khong con fail profile sync va policy heartbeat force sync.
 
 ### Can rerun full deep sau deploy
 
@@ -284,9 +316,9 @@ Chua nen xoa fallback embedded whitelist/pseudo-ID tren production neu chua co:
 | --- | --- |
 | Server API/RBAC co ban | Tot, da duoc E2E va unit/integration test rong |
 | GUI admin API Keys | Public smoke sau deploy OK, tiep tuc monitor |
-| Agent/server contract | Tot voi register/JWT/heartbeat/sync/log; can rerun full deep de xac nhan policy force sync tren production |
+| Agent/server contract | Register/JWT/basic heartbeat/sync/log pass; can deploy profile sync fix va rerun full deep de xac nhan isolate heartbeat force sync |
 | Firewall Default Deny PowerShell backend | Pass tren 1 may Windows admin, can canary them |
 | Cleanup/rollback firewall | Pass: restore allow, residual rules 0 |
 | Whitelist final cutover | Chua san sang xoa fallback production |
 
-Ket luan ngan: he thong da dat muc smoke/E2E sau tren mot workstation Windows admin, nhung truoc khi coi la release production final can redeploy hotfix bao mat group/log + mask log secret, verify unauthenticated endpoints tra 401, rerun full deep tren Render, canary firewall PowerShell tren them may lab va chua xoa whitelist fallback cho toi khi co bang chung production khong con pseudo-ID.
+Ket luan ngan: he thong da dat muc smoke/E2E sau tren mot workstation Windows admin va public auth leak da duoc verify 401 tren Render, nhung truoc khi coi la release production final can deploy fix profile sync `value/domain`, rerun full deep tren Render de cham toi isolate heartbeat force sync, canary firewall PowerShell tren them may lab va chua xoa whitelist fallback cho toi khi co bang chung production khong con pseudo-ID.
